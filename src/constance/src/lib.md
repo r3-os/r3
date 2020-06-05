@@ -55,7 +55,9 @@ crate constance_xxx_port {
     // opportunity to insert port-specific code (such as `static`s and inline
     // assembler) referencing `$sys` to the application.
     macro_rules! use_port {
-        (unsafe $sys:ty) => {
+        (unsafe struct $sys:ident) => {
+            struct $sys;
+
             // Assume `$sys: Kernel`
             unsafe impl constance::Port for $sys {
                 /* ... */
@@ -65,11 +67,13 @@ crate constance_xxx_port {
 }
 
 crate your_app {
-    struct System;
+    constance_xxx_port::use_port!(unsafe struct System);
 
     struct Objects {
         task1: constance::Task<System>,
     }
+
+    static COTTAGE: Objects = constance::build!(System, configure_app);
 
     // The configure function. The exact syntax is yet to be determined. See
     // the section Static Configuration for more.
@@ -80,9 +84,6 @@ crate your_app {
             }
         }
     }
-
-    static ID: Objects = constance::build!(System, configure_app);
-    constance_xxx_port::use_port!(unsafe System);
 }
 ```
 

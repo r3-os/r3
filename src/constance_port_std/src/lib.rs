@@ -4,7 +4,9 @@ pub use constance::kernel::Port;
 
 #[macro_export]
 macro_rules! use_port {
-    (unsafe $sys:ty) => {
+    (unsafe $vis:vis struct $sys:ident) => {
+        $vis struct $sys;
+
         // Assume `$sys: Kernel`
         unsafe impl $crate::Port for $sys {
             type PortTaskState = ();

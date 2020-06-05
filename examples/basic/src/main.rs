@@ -2,12 +2,16 @@
 #![feature(const_if_match)]
 use constance::{kernel::Task, sync::Mutex};
 
-struct System;
+constance_port_std::use_port!(unsafe struct System);
 
+#[allow(dead_code)]
 struct Objects {
     task1: Task<System>,
     mutex1: Mutex<System, u32>,
 }
+
+#[allow(dead_code)]
+const COTTAGE: Objects = constance::build!(System, configure_app);
 
 constance::configure! {
     fn configure_app(_: CfgBuilder<System>) -> Objects {
@@ -21,6 +25,3 @@ constance::configure! {
         }
     }
 }
-
-const ID: Objects = constance::build!(System, configure_app);
-constance_port_std::use_port!(unsafe System);
