@@ -3,6 +3,7 @@ use core::num::NonZeroUsize;
 
 use crate::utils::Init;
 
+#[macro_use]
 mod cfg;
 mod task;
 pub use self::{cfg::*, task::*};

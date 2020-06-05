@@ -7,7 +7,9 @@
 #![no_std]
 #![doc(include = "./lib.md")]
 
+#[macro_use]
 pub mod kernel;
+pub mod sync;
 pub mod utils;
 
 /// The prelude module.
