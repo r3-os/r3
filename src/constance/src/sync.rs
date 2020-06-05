@@ -12,7 +12,7 @@ impl<System: Kernel, T> Mutex<System, T> {
         /// Construct a `Mutex`.
         ///
         /// This is a
-        pub fn new(ctx: CfgBuilder<System>) -> Self {
+        pub fn new(_: CfgBuilder<System>) -> Self {
             Self {
                 _phantom: PhantomData,
             }

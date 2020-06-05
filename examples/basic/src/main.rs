@@ -10,10 +10,10 @@ struct Objects {
 }
 
 constance::configure! {
-    fn configure_app(ctx: CfgBuilder<System>) -> Objects {
-        let task1 = constance::create_task!(ctx);
+    fn configure_app(_: CfgBuilder<System>) -> Objects {
+        let task1 = new_task!();
 
-        let mutex1 = constance::call!(ctx, constance::sync::Mutex::new);
+        let mutex1 = call!(Mutex::new);
 
         Objects {
             task1,

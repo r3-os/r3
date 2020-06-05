@@ -74,9 +74,9 @@ crate your_app {
     // The configure function. The exact syntax is yet to be determined. See
     // the section Static Configuration for more.
     constance::configure! {
-        fn configure_app(ctx) -> Objects {
+        fn configure_app(_: CfgBuilder<System>) -> Objects {
             Objects {
-                task1: constance::create_task!(ctx),
+                task1: new_task!(),
             }
         }
     }
