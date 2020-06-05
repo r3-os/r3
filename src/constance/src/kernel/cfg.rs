@@ -52,7 +52,8 @@ macro_rules! configure {
                 () => {{
                     cfg.tasks = cfg.tasks.push($crate::kernel::CfgBuilderTask {});
                     unsafe {
-                        $crate::kernel::Task::new(::core::num::NonZeroUsize::new_unchecked(cfg.tasks.len()))
+                        $crate::kernel::Task::from_id(
+                            ::core::num::NonZeroUsize::new_unchecked(cfg.tasks.len()))
                     }
                 }};
             }

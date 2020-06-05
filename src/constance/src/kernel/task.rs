@@ -10,7 +10,7 @@ pub struct Task<System>(Id, PhantomData<System>);
 
 impl<System: Kernel> Task<System> {
     /// Construct a `Task` from `Id`.
-    pub const unsafe fn new(id: Id) -> Self {
+    pub const unsafe fn from_id(id: Id) -> Self {
         Self(id, PhantomData)
     }
 
