@@ -50,6 +50,16 @@ macro_rules! create_task {
     }};
 }
 
+/// Invoke a configure function. Should be used inside [`configure!`].
+#[macro_export]
+macro_rules! call {
+    ($ctx:expr, $path:path $(, $arg:expr)* $(,)*) => {{
+        let (ctx, id_map) = $path($ctx, $($arg),*);
+        $ctx = ctx;
+        id_map
+    }};
+}
+
 /// Attach a configuration function (defined by [`configure!`]) to a "system"
 /// type.
 #[macro_export]
