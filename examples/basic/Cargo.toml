@@ -1,0 +1,9 @@
+[package]
+name = "constance_example_basic"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+
+[dependencies]
+constance = { path = "../../src/constance" }
+constance_port_std = { path = "../../src/constance_port_std" }

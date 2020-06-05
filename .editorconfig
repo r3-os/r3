@@ -1,0 +1,26 @@
+# https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.yml]
+indent_style = space
+indent_size = 2
+
+[*.toml]
+indent_style = space
+indent_size = 4
+
+[*.rs]
+indent_style = space
+indent_size = 4
+
+[*.{c,h}]
+indent_style = space
+indent_size = 4
