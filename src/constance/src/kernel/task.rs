@@ -1,7 +1,7 @@
 //! Tasks
 use core::marker::PhantomData;
 
-use super::{Id, Kernel};
+use super::{ActivateTaskError, Id, Kernel};
 use crate::utils::Init;
 
 /// Identifies a task in a system.
@@ -20,7 +20,7 @@ impl<System: Kernel> Task<System> {
     }
 
     /// Start the execution of the task.
-    pub fn activate(self) {
+    pub fn activate(self) -> Result<(), ActivateTaskError> {
         todo!()
     }
 }

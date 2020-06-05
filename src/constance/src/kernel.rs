@@ -5,8 +5,9 @@ use crate::utils::Init;
 
 #[macro_use]
 mod cfg;
+mod error;
 mod task;
-pub use self::{cfg::*, task::*};
+pub use self::{cfg::*, error::*, task::*};
 
 /// Numeric value used to identify various kinds of kernel objects.
 pub type Id = NonZeroUsize;
