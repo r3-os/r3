@@ -75,7 +75,7 @@ crate your_app {
 
     static COTTAGE: Objects = constance::build!(System, configure_app);
 
-    // The configure function. The exact syntax is yet to be determined. See
+    // The configuration function. The exact syntax is yet to be determined. See
     // the section Static Configuration for more.
     constance::configure! {
         fn configure_app(_: CfgBuilder<System>) -> Objects {
@@ -89,6 +89,6 @@ crate your_app {
 
 ## Static Configuration
 
-Kernel objects are created in *a configure function*, defined by the [`configure!`] macro.
+Kernel objects are created in *a configuration function*, defined by the [`configure!`] macro.
 
-The syntax of configure functions is not determined at the moment and is expected to change as Rust's const evaluation capability matures.
+The syntax of configuration functions is not determined at the moment and is expected to change as Rust's const evaluation capability matures.

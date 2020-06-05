@@ -11,7 +11,7 @@ impl<System: Kernel, T> Mutex<System, T> {
     configure! {
         /// Construct a `Mutex`.
         ///
-        /// This is a configure function. Use `call!` inside `configure!` to
+        /// This is a configuration function. Use `call!` inside `configure!` to
         /// use it.
         pub fn new(_: CfgBuilder<System>) -> Self {
             Self {

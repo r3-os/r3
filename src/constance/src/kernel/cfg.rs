@@ -8,13 +8,13 @@ mod vec;
 #[doc(hidden)]
 pub use self::vec::ComptimeVec;
 
-/// Define a configure function.
+/// Define a configuration function.
 ///
 /// The following macros are available inside the function:
 ///
 /// # `call!(path, arg1, arg2, ...)`
 ///
-/// Invokes another configure function.
+/// Invokes another configuration function.
 ///
 /// # `new_task!()`
 ///
