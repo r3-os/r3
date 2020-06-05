@@ -4,12 +4,20 @@ use core::marker::PhantomData;
 use super::{ActivateTaskError, Id, Kernel};
 use crate::utils::Init;
 
-/// Identifies a task in a system.
+/// Represents a single task in a system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Task<System>(Id, PhantomData<System>);
 
 impl<System: Kernel> Task<System> {
     /// Construct a `Task` from `Id`.
+    ///
+    /// # Safety
+    ///
+    /// The kernel can handle invalid IDs without a problem. However, the
+    /// constructed `Task` may point to an object that is not intended to be
+    /// manipulated except by its creator. This is usually prevented by making
+    /// `Task` an opaque handle, but this safeguard can be circumvented by
+    /// this method.
     pub const unsafe fn from_id(id: Id) -> Self {
         Self(id, PhantomData)
     }
