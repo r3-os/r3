@@ -47,7 +47,6 @@ macro_rules! configure {
                 }};
             }
 
-            #[macro_export]
             macro_rules! new_task {
                 () => {{
                     cfg.tasks = cfg.tasks.push($crate::kernel::CfgBuilderTask {});
