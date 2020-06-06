@@ -127,9 +127,10 @@ macro_rules! configure {
 #[macro_export]
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
+        use ::core::cell::UnsafeCell;
         use $crate::{
             kernel::{CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, TaskAttr, TaskCb},
-            utils::AssertSendSync,
+            utils::{AlignedStorage, AssertSendSync, Init},
         };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
@@ -150,14 +151,15 @@ macro_rules! build {
         }
 
         // Instantiate hunks
-        static HUNK_POOL: AssertSendSync<::core::cell::UnsafeCell<[u8; { CFG.hunk_pool_len }]>> =
-            AssertSendSync(::core::cell::UnsafeCell::new([0; CFG.hunk_pool_len]));
+        static HUNK_POOL: AssertSendSync<
+            UnsafeCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>>,
+        > = Init::INIT;
         const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
 
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg for $sys {
             const HUNK_ATTR: HunkAttr = HunkAttr {
-                hunk_pool: || &HUNK_POOL.0,
+                hunk_pool: || HUNK_POOL.0.get() as *const u8,
                 inits: &HUNK_INITS,
             };
 
@@ -200,6 +202,7 @@ pub struct CfgBuilder<System> {
     _phantom: PhantomData<System>,
     pub hunks: ComptimeVec<super::HunkInitAttr>,
     pub hunk_pool_len: usize,
+    pub hunk_pool_align: usize,
     pub tasks: ComptimeVec<CfgBuilderTask<System>>,
 }
 
@@ -209,6 +212,7 @@ impl<System> CfgBuilder<System> {
             _phantom: PhantomData,
             hunks: ComptimeVec::new(),
             hunk_pool_len: 0,
+            hunk_pool_align: 1,
             tasks: ComptimeVec::new(),
         }
     }
@@ -249,6 +253,9 @@ pub const fn cfg_new_hunk<System, T: Init>(
     });
 
     cfg.hunk_pool_len += size;
+    if align > cfg.hunk_pool_align {
+        cfg.hunk_pool_align = align;
+    }
 
     let hunk = unsafe { hunk::Hunk::from_range(start, size) };
 
@@ -273,6 +280,9 @@ pub const fn cfg_new_hunk_bytes<System>(
     let start = cfg.hunk_pool_len;
     let hunk = unsafe { hunk::Hunk::from_range(start, len) };
     cfg.hunk_pool_len += len;
+    if align > cfg.hunk_pool_align {
+        cfg.hunk_pool_align = align;
+    }
 
     CfgOutput { cfg, id_map: hunk }
 }

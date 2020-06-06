@@ -147,14 +147,14 @@ impl<System: Kernel, T: 'static> Deref for Hunk<System, [T]> {
 pub struct HunkAttr {
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
     //        to be resolved
-    pub hunk_pool: fn() -> &'static UnsafeCell<[u8]>,
+    pub hunk_pool: fn() -> *const u8,
     pub inits: &'static [HunkInitAttr],
 }
 
 impl HunkAttr {
     #[inline(always)]
     fn hunk_pool_ptr(&self) -> *const u8 {
-        (self.hunk_pool)().get() as _
+        (self.hunk_pool)()
     }
 
     /// Initialize hunks.
