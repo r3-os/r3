@@ -29,6 +29,10 @@ impl<T: Init> Init for UnsafeCell<T> {
     const INIT: Self = UnsafeCell::new(T::INIT);
 }
 
+impl<T: Init, I: Init> Init for tokenlock::TokenLock<T, I> {
+    const INIT: Self = Self::new(I::INIT, T::INIT);
+}
+
 macro_rules! impl_init {
     (
         $($ty:ty => $value:expr,)*
