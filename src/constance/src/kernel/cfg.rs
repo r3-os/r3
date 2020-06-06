@@ -64,7 +64,7 @@ macro_rules! configure {
                     use $crate::kernel::CfgOutput;
 
                     let builder = $path $dollar(. $argname($arg))*;
-                    let CfgOutput { cfg: new_cfg, id_map } = builder.finish(cfg, $dollar($arg),*);
+                    let CfgOutput { cfg: new_cfg, id_map } = builder.finish(cfg);
                     cfg = new_cfg;
                     id_map
                 }};
