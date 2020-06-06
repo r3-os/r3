@@ -58,7 +58,7 @@ impl<System, T: ?Sized> Hunk<System, T> {
     ///
     /// # Safety
     ///
-    ///  - Similarly to [`std::mem::transmute`], this is **incredibly** unsafe.
+    ///  - Similarly to [`core::mem::transmute`], this is **incredibly** unsafe.
     ///  - The byte offset and length must be valid for the destination type.
     ///
     pub const unsafe fn transmute<U: ?Sized>(self) -> Hunk<System, U> {
