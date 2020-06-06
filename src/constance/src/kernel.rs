@@ -53,4 +53,10 @@ pub unsafe trait KernelCfg: Port {
     //        and can't be referred to by `const`
     #[doc(hidden)]
     fn task_state() -> &'static [TaskState<Self::PortTaskState>];
+
+    #[doc(hidden)]
+    #[inline(always)]
+    fn get_task(i: usize) -> Option<&'static TaskState<Self::PortTaskState>> {
+        Self::task_state().get(i)
+    }
 }
