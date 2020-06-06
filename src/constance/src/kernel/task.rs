@@ -45,11 +45,14 @@ pub struct TaskState<PortTaskState> {
     /// Place this at the beginning so that assembler code can refer to this
     /// easily.
     pub(super) port_task_state: PortTaskState,
+
+    pub(super) _force_int_mut: crate::utils::AssertSendSync<core::cell::UnsafeCell<()>>,
 }
 
 impl<PortTaskState: Init> Init for TaskState<PortTaskState> {
     const INIT: Self = Self {
         port_task_state: Init::INIT,
+        _force_int_mut: crate::utils::AssertSendSync(core::cell::UnsafeCell::new(())),
     };
 }
 

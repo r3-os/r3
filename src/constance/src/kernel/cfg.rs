@@ -1,7 +1,7 @@
 //! Static configuration mechanism for the kernel
 use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
-use super::{hunk, task, Port};
+use super::{hunk, task};
 use crate::utils::Init;
 
 mod vec;
@@ -127,7 +127,7 @@ macro_rules! build {
         let id_map = $configure(CfgBuilder::new()).id_map;
 
         $crate::array_item_from_fn! {
-            const TASK_STATE:
+            static TASK_STATE:
                 [TaskState<<$sys as Port>::PortTaskState>; _] =
                     (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state());
             const TASK_ATTR: [TaskAttr; _] =
@@ -145,7 +145,10 @@ macro_rules! build {
                 inits: &HUNK_INITS,
             };
 
-            const TASK_STATE: &'static [TaskState<<$sys as Port>::PortTaskState>] = &TASK_STATE;
+            #[inline(always)]
+            fn task_state() -> &'static [TaskState<<$sys as Port>::PortTaskState>] {
+                &TASK_STATE
+            }
             const TASK_ATTR: &'static [TaskAttr] = &TASK_ATTR;
         }
 
@@ -162,7 +165,7 @@ macro_rules! array_item_from_fn {
         $static_or_const $out: [$ty; { $len }] = {
             let mut values = [$crate::prelude::Init::INIT; { $len }];
             let mut i = 0;
-            while i < values.len() {
+            while i < $len {
                 values[i] = {
                     let $var = i;
                     $map
@@ -270,6 +273,7 @@ impl CfgBuilderTask {
     pub const fn to_state<PortTaskState: Init>(&self) -> task::TaskState<PortTaskState> {
         task::TaskState {
             port_task_state: PortTaskState::INIT,
+            _force_int_mut: crate::utils::AssertSendSync(core::cell::UnsafeCell::new(())),
         }
     }
 
