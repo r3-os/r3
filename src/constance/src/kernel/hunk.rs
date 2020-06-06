@@ -18,6 +18,11 @@ pub struct Hunk<System, T: ?Sized> {
     _phantom: PhantomData<(System, T)>,
 }
 
+impl<System, T> Init for Hunk<System, [T]> {
+    // Safety: This is safe because it points to nothing
+    const INIT: Self = unsafe { Self::from_range(0, 0) };
+}
+
 impl<System, T: ?Sized> Clone for Hunk<System, T> {
     fn clone(&self) -> Self {
         Self {
