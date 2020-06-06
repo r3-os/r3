@@ -114,7 +114,7 @@ macro_rules! configure {
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
-            kernel::{CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, TaskAttr, TaskState},
+            kernel::{CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, TaskAttr, TaskCb},
             utils::AssertSendSync,
         };
 
@@ -128,11 +128,11 @@ macro_rules! build {
 
         // Instantiiate task structures
         $crate::array_item_from_fn! {
-            const TASK_ATTR: [TaskAttr; _] =
+            const TASK_ATTR_POOL: [TaskAttr; _] =
                 (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
-            static TASK_STATE:
-                [TaskState<<$sys as Port>::PortTaskState>; _] =
-                    (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR[i]));
+            static TASK_CB_POOL:
+                [TaskCb<<$sys as Port>::PortTaskState>; _] =
+                    (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR_POOL[i]));
         }
 
         // Instantiate hunks
@@ -148,8 +148,8 @@ macro_rules! build {
             };
 
             #[inline(always)]
-            fn task_state() -> &'static [TaskState<<$sys as Port>::PortTaskState>] {
-                &TASK_STATE
+            fn task_cb_pool() -> &'static [TaskCb<<$sys as Port>::PortTaskState>] {
+                &TASK_CB_POOL
             }
         }
 
@@ -274,8 +274,8 @@ impl CfgBuilderTask {
     pub const fn to_state<PortTaskState: Init>(
         &self,
         attr: &'static task::TaskAttr,
-    ) -> task::TaskState<PortTaskState> {
-        task::TaskState {
+    ) -> task::TaskCb<PortTaskState> {
+        task::TaskCb {
             port_task_state: PortTaskState::INIT,
             attr,
             _force_int_mut: crate::utils::AssertSendSync(core::cell::UnsafeCell::new(())),

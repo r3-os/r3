@@ -79,14 +79,14 @@ pub unsafe trait KernelCfg: Port {
     const HUNK_ATTR: HunkAttr;
 
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
-    //        to be resolved because `TaskState` includes interior mutability
+    //        to be resolved because `TaskCb` includes interior mutability
     //        and can't be referred to by `const`
     #[doc(hidden)]
-    fn task_state() -> &'static [TaskState<Self::PortTaskState>];
+    fn task_cb_pool() -> &'static [TaskCb<Self::PortTaskState>];
 
     #[doc(hidden)]
     #[inline(always)]
-    fn get_task(i: usize) -> Option<&'static TaskState<Self::PortTaskState>> {
-        Self::task_state().get(i)
+    fn get_task_cb(i: usize) -> Option<&'static TaskCb<Self::PortTaskState>> {
+        Self::task_cb_pool().get(i)
     }
 }
