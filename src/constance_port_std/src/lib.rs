@@ -1,3 +1,4 @@
+#[doc(hidden)]
 /// Used by `use_port!`
 pub use std::sync::atomic::{AtomicBool, Ordering};
 
