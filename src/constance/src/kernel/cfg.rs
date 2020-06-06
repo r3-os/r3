@@ -22,7 +22,7 @@ pub use self::vec::ComptimeVec;
 /// on the builder, and then finally calls `finish`, which is assumed to be a
 /// configuration function.
 ///
-/// # `new_task!()`
+/// # `new_task!(start = ENTRY_FN as fn(usize), param = USIZE)`
 ///
 /// Defines a task.
 ///
@@ -245,20 +245,42 @@ pub const fn cfg_new_hunk<System, T: Init>(
 #[doc(hidden)]
 pub struct CfgTaskBuilder<System> {
     _phantom: PhantomData<System>,
+    start: Option<fn(usize)>,
+    param: usize,
 }
 
 impl<System> CfgTaskBuilder<System> {
     pub const fn new() -> Self {
         Self {
             _phantom: PhantomData,
+            start: None,
+            param: 0,
         }
+    }
+
+    pub const fn start(self, start: fn(usize)) -> Self {
+        Self {
+            start: Some(start),
+            ..self
+        }
+    }
+
+    pub const fn param(self, param: usize) -> Self {
+        Self { param, ..self }
     }
 
     pub const fn finish(
         self,
         mut cfg: CfgBuilder<System>,
     ) -> CfgOutput<System, task::Task<System>> {
-        cfg.tasks = cfg.tasks.push(CfgBuilderTask {});
+        cfg.tasks = cfg.tasks.push(CfgBuilderTask {
+            start: if let Some(x) = self.start {
+                x
+            } else {
+                panic!("`start` (task entry point) is not specified")
+            },
+            param: self.param,
+        });
 
         let task = unsafe { task::Task::from_id(NonZeroUsize::new_unchecked(cfg.tasks.len())) };
 
@@ -268,7 +290,10 @@ impl<System> CfgTaskBuilder<System> {
 
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy)]
-pub struct CfgBuilderTask {}
+pub struct CfgBuilderTask {
+    start: fn(usize),
+    param: usize,
+}
 
 impl CfgBuilderTask {
     pub const fn to_state<PortTaskState: Init>(
@@ -283,6 +308,9 @@ impl CfgBuilderTask {
     }
 
     pub const fn to_attr(&self) -> task::TaskAttr {
-        task::TaskAttr {}
+        task::TaskAttr {
+            entry_point: self.start,
+            entry_param: self.param,
+        }
     }
 }

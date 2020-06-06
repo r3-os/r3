@@ -61,8 +61,23 @@ impl<PortTaskState: Init> Init for TaskCb<PortTaskState> {
 }
 
 /// The static properties of a task.
-pub struct TaskAttr {}
+pub struct TaskAttr {
+    /// The entry point of the task.
+    ///
+    /// # Safety
+    ///
+    /// This is only meant to be used by a kernel port, as a task entry point,
+    /// not by user code. Using this in other ways may cause an undefined
+    /// behavior.
+    pub entry_point: unsafe fn(usize),
+
+    /// The parameter supplied for `entry_point`.
+    pub entry_param: usize,
+}
 
 impl Init for TaskAttr {
-    const INIT: Self = Self {};
+    const INIT: Self = Self {
+        entry_point: |_| {},
+        entry_param: 0,
+    };
 }
