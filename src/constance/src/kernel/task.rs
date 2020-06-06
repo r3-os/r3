@@ -1,8 +1,8 @@
 //! Tasks
-use core::marker::PhantomData;
+use core::{cell::UnsafeCell, marker::PhantomData};
 
 use super::{utils, ActivateTaskError, Id, Kernel};
-use crate::utils::Init;
+use crate::utils::{AssertSendSync, Init};
 
 /// Represents a single task in a system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -49,14 +49,14 @@ pub struct TaskCb<PortTaskState> {
     /// The static properties of the task.
     pub attr: &'static TaskAttr,
 
-    pub(super) _force_int_mut: crate::utils::AssertSendSync<core::cell::UnsafeCell<()>>,
+    pub(super) _force_int_mut: AssertSendSync<UnsafeCell<()>>,
 }
 
 impl<PortTaskState: Init> Init for TaskCb<PortTaskState> {
     const INIT: Self = Self {
         port_task_state: Init::INIT,
         attr: &TaskAttr::INIT,
-        _force_int_mut: crate::utils::AssertSendSync(core::cell::UnsafeCell::new(())),
+        _force_int_mut: AssertSendSync(UnsafeCell::new(())),
     };
 }
 
