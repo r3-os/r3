@@ -29,6 +29,11 @@ pub use self::vec::ComptimeVec;
 /// # `new_hunk!(T)`
 ///
 /// Defines a new hunk. `T` must implement [`Init`](crate::utils::Init).
+///
+/// # `new_hunk!([u8], len = LEN, align = ALIGN)`
+///
+/// Defines a new zero-initialized hunk of the specified size and alignment.
+///
 #[macro_export]
 macro_rules! configure {
     (
@@ -76,8 +81,11 @@ macro_rules! configure {
                 };
             }
 
-            // TODO: array hunk
             macro_rules! new_hunk {
+                ([u8], len = $len:expr) => {new_hunk!([u8], len = $len, align = 1)};
+                ([u8], len = $len:expr, align = $align:expr) => {
+                    call!($crate::kernel::cfg_new_hunk_bytes, $len, $align)
+                };
                 ($ty:ty) => {call!($crate::kernel::cfg_new_hunk::<_, $ty>)};
             }
 
@@ -237,6 +245,28 @@ pub const fn cfg_new_hunk<System, T: Init>(
     cfg.hunk_pool_len += size;
 
     let hunk = unsafe { hunk::Hunk::from_range(start, size) };
+
+    CfgOutput { cfg, id_map: hunk }
+}
+
+/// Used by `new_hunk!` in configuraton functions
+#[doc(hidden)]
+pub const fn cfg_new_hunk_bytes<System>(
+    mut cfg: CfgBuilder<System>,
+    len: usize,
+    align: usize,
+) -> CfgOutput<System, hunk::Hunk<System, [u8]>> {
+    if !align.is_power_of_two() {
+        panic!("`align` is not power of two");
+    }
+
+    // Round up `hunk_pool_len`
+    cfg.hunk_pool_len = (cfg.hunk_pool_len + align - 1) / align * align;
+
+    // The hunk pool is zero-initialized by default
+    let start = cfg.hunk_pool_len;
+    let hunk = unsafe { hunk::Hunk::from_range(start, len) };
+    cfg.hunk_pool_len += len;
 
     CfgOutput { cfg, id_map: hunk }
 }
