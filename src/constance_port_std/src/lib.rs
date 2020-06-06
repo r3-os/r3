@@ -1,6 +1,6 @@
 /// Used by `use_port!`
 #[doc(hidden)]
-pub use constance::kernel::Port;
+pub use constance::kernel::{init_hunks, Port};
 
 #[macro_export]
 macro_rules! use_port {
@@ -18,6 +18,9 @@ macro_rules! use_port {
         }
 
         fn main() {
+            unsafe {
+                $crate::init_hunks::<$sys>();
+            }
             todo!()
         }
     };

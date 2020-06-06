@@ -4,6 +4,8 @@
 #![feature(const_panic)]
 #![feature(const_loop)]
 #![feature(const_generics)]
+#![feature(const_slice_from_raw_parts)]
+#![feature(const_raw_ptr_deref)]
 #![no_std]
 #![doc(include = "./lib.md")]
 
