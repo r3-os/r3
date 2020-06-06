@@ -48,6 +48,21 @@ impl<System, T: ?Sized> Hunk<System, T> {
             _phantom: PhantomData,
         }
     }
+
+    /// Reinterpret the hunk as another type.
+    ///
+    /// # Safety
+    ///
+    ///  - Similarly to [`std::mem::transmute`], this is **incredibly** unsafe.
+    ///  - The byte offset and length must be valid for the destination type.
+    ///
+    pub const unsafe fn transmute<U: ?Sized>(self) -> Hunk<System, U> {
+        Hunk {
+            start: self.start,
+            len: self.len,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<System: Kernel, T: ?Sized> Hunk<System, T> {
