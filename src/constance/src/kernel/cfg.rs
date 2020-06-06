@@ -16,6 +16,12 @@ pub use self::vec::ComptimeVec;
 ///
 /// Invokes another configuration function.
 ///
+/// # `build!(expr, name1 = arg1, name2 = arg2, ...)`
+///
+/// Invokes a builder method `expr`, calls modifying methods `name1, name2, ...`
+/// on the builder, and then finally calls `finish`, which is assumed to be a
+/// configuration function.
+///
 /// # `new_task!()`
 ///
 /// Defines a task.
@@ -46,6 +52,16 @@ macro_rules! configure {
             macro_rules! call {
                 ($path:path $dollar(, $arg:expr)* $dollar(,)*) => {{
                     let (new_cfg, id_map) = $path(cfg, $dollar($arg),*);
+                    cfg = new_cfg;
+                    id_map
+                }};
+            }
+
+            macro_rules! build {
+                ($path:expr $dollar(, $argname:ident = $arg:expr)* $dollar(,)*) => {{
+                    let builder = $path $dollar(. $argname($arg))*;
+
+                    let (new_cfg, id_map) = builder.finish(cfg, $dollar($arg),*);
                     cfg = new_cfg;
                     id_map
                 }};
