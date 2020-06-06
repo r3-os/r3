@@ -107,7 +107,9 @@ macro_rules! configure {
 }
 
 /// Attach a configuration function (defined by [`configure!`]) to a "system"
-/// type.
+/// type by implementing [`KernelCfg`] on `$sys`.
+///
+/// [`KernelCfg`]: crate::kernel::KernelCfg
 #[macro_export]
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
@@ -274,21 +276,4 @@ impl CfgBuilderTask {
     pub const fn to_attr(&self) -> task::TaskAttr {
         task::TaskAttr {}
     }
-}
-
-/// Associates "system" types with kernel-private data. Use [`build!`] to
-/// implement.
-///
-/// # Safety
-///
-/// This is only intended to be implemented by `build!`.
-pub unsafe trait KernelCfg: Port {
-    #[doc(hidden)]
-    const HUNK_ATTR: super::HunkAttr;
-
-    #[doc(hidden)]
-    const TASK_STATE: &'static [task::TaskState<Self::PortTaskState>];
-
-    #[doc(hidden)]
-    const TASK_ATTR: &'static [task::TaskAttr];
 }

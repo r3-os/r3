@@ -37,3 +37,20 @@ pub unsafe trait Port {
 
     fn dispatch();
 }
+
+/// Associates "system" types with kernel-private data. Use [`build!`] to
+/// implement.
+///
+/// # Safety
+///
+/// This is only intended to be implemented by `build!`.
+pub unsafe trait KernelCfg: Port {
+    #[doc(hidden)]
+    const HUNK_ATTR: HunkAttr;
+
+    #[doc(hidden)]
+    const TASK_STATE: &'static [TaskState<Self::PortTaskState>];
+
+    #[doc(hidden)]
+    const TASK_ATTR: &'static [TaskAttr];
+}
