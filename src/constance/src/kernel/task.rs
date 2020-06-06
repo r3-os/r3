@@ -1,7 +1,7 @@
 //! Tasks
 use core::{cell::UnsafeCell, marker::PhantomData};
 
-use super::{utils, ActivateTaskError, Id, Kernel};
+use super::{hunk::Hunk, utils, ActivateTaskError, Id, Kernel};
 use crate::utils::{AssertSendSync, Init};
 
 /// Represents a single task in a system.
@@ -39,7 +39,7 @@ impl<System: Kernel> Task<System> {
 
 /// *Task control block* - the state data of a task.
 #[repr(C)]
-pub struct TaskCb<PortTaskState> {
+pub struct TaskCb<System: 'static, PortTaskState> {
     /// Get a reference to `PortTaskState` in the task control block.
     ///
     /// This is guaranteed to be placed at the beginning of the struct so that
@@ -47,12 +47,12 @@ pub struct TaskCb<PortTaskState> {
     pub port_task_state: PortTaskState,
 
     /// The static properties of the task.
-    pub attr: &'static TaskAttr,
+    pub attr: &'static TaskAttr<System>,
 
     pub(super) _force_int_mut: AssertSendSync<UnsafeCell<()>>,
 }
 
-impl<PortTaskState: Init> Init for TaskCb<PortTaskState> {
+impl<System: 'static, PortTaskState: Init> Init for TaskCb<System, PortTaskState> {
     const INIT: Self = Self {
         port_task_state: Init::INIT,
         attr: &TaskAttr::INIT,
@@ -61,7 +61,7 @@ impl<PortTaskState: Init> Init for TaskCb<PortTaskState> {
 }
 
 /// The static properties of a task.
-pub struct TaskAttr {
+pub struct TaskAttr<System> {
     /// The entry point of the task.
     ///
     /// # Safety
@@ -73,11 +73,17 @@ pub struct TaskAttr {
 
     /// The parameter supplied for `entry_point`.
     pub entry_param: usize,
+
+    // FIXME: Ideally, `stack` should directly point to the stack region. But
+    //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>
+    /// The hunk representing the stack region for the task.
+    pub stack: AssertSendSync<Hunk<System, [UnsafeCell<u8>]>>,
 }
 
-impl Init for TaskAttr {
+impl<System> Init for TaskAttr<System> {
     const INIT: Self = Self {
         entry_point: |_| {},
         entry_param: 0,
+        stack: AssertSendSync(Hunk::INIT),
     };
 }

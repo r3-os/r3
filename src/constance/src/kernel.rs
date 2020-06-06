@@ -36,6 +36,12 @@ pub unsafe trait Port {
     type PortTaskState: Copy + Send + Sync + Init + 'static;
     const PORT_TASK_STATE_INIT: Self::PortTaskState;
 
+    /// The default stack size for tasks.
+    const STACK_DEFAULT_SIZE: usize = 1024;
+
+    /// The alignment requirement for task stack regions.
+    const STACK_ALIGN: usize = core::mem::size_of::<usize>();
+
     /// Yield the processor.
     ///
     /// Precondition: CPU Lock inactive
@@ -74,7 +80,7 @@ pub unsafe trait Port {
 /// # Safety
 ///
 /// This is only intended to be implemented by `build!`.
-pub unsafe trait KernelCfg: Port {
+pub unsafe trait KernelCfg: Port + Sized {
     #[doc(hidden)]
     const HUNK_ATTR: HunkAttr;
 
@@ -82,11 +88,11 @@ pub unsafe trait KernelCfg: Port {
     //        to be resolved because `TaskCb` includes interior mutability
     //        and can't be referred to by `const`
     #[doc(hidden)]
-    fn task_cb_pool() -> &'static [TaskCb<Self::PortTaskState>];
+    fn task_cb_pool() -> &'static [TaskCb<Self, Self::PortTaskState>];
 
     #[doc(hidden)]
     #[inline(always)]
-    fn get_task_cb(i: usize) -> Option<&'static TaskCb<Self::PortTaskState>> {
+    fn get_task_cb(i: usize) -> Option<&'static TaskCb<Self, Self::PortTaskState>> {
         Self::task_cb_pool().get(i)
     }
 }

@@ -1,8 +1,8 @@
 //! Static configuration mechanism for the kernel
-use core::{marker::PhantomData, mem, num::NonZeroUsize};
+use core::{cell::UnsafeCell, marker::PhantomData, mem, num::NonZeroUsize};
 
-use super::{hunk, task};
-use crate::utils::Init;
+use super::{hunk, task, Port};
+use crate::utils::{AssertSendSync, Init};
 
 mod vec;
 #[doc(hidden)]
@@ -22,9 +22,15 @@ pub use self::vec::ComptimeVec;
 /// on the builder, and then finally calls `finish`, which is assumed to be a
 /// configuration function.
 ///
-/// # `new_task!(start = ENTRY_FN as fn(usize), param = USIZE)`
+/// # `new_task!(start = ENTRY_FN, ...)`
 ///
-/// Defines a task.
+/// Defines a task. The following options are available:
+///
+///  - `start = ENTRY_FN: fn(usize)` specifies the task's entry point.
+///  - `param = PARAM: usize` specifies the parameter to `start`.
+///  - `statck_size = LEN: usize` specifies the task's stack size.
+///  - `statck_hunk = HUNK: Hunk<System, [UnsafeCell<u8>]>` specifies the task's
+///    hunk.
 ///
 /// # `new_hunk!(T)`
 ///
@@ -136,10 +142,10 @@ macro_rules! build {
 
         // Instantiiate task structures
         $crate::array_item_from_fn! {
-            const TASK_ATTR_POOL: [TaskAttr; _] =
+            const TASK_ATTR_POOL: [TaskAttr<$sys>; _] =
                 (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
             static TASK_CB_POOL:
-                [TaskCb<<$sys as Port>::PortTaskState>; _] =
+                [TaskCb<$sys, <$sys as Port>::PortTaskState>; _] =
                     (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR_POOL[i]));
         }
 
@@ -156,7 +162,7 @@ macro_rules! build {
             };
 
             #[inline(always)]
-            fn task_cb_pool() -> &'static [TaskCb<<$sys as Port>::PortTaskState>] {
+            fn task_cb_pool() -> &'static [TaskCb<$sys, <$sys as Port>::PortTaskState>] {
                 &TASK_CB_POOL
             }
         }
@@ -194,7 +200,7 @@ pub struct CfgBuilder<System> {
     _phantom: PhantomData<System>,
     pub hunks: ComptimeVec<super::HunkInitAttr>,
     pub hunk_pool_len: usize,
-    pub tasks: ComptimeVec<CfgBuilderTask>,
+    pub tasks: ComptimeVec<CfgBuilderTask<System>>,
 }
 
 impl<System> CfgBuilder<System> {
@@ -277,14 +283,23 @@ pub struct CfgTaskBuilder<System> {
     _phantom: PhantomData<System>,
     start: Option<fn(usize)>,
     param: usize,
+    stack: Option<TaskStack<System>>,
 }
 
-impl<System> CfgTaskBuilder<System> {
+enum TaskStack<System> {
+    Auto(usize),
+    Hunk(hunk::Hunk<System, [UnsafeCell<u8>]>),
+    // TODO: Externally supplied stack? It's blocked by
+    //       <https://github.com/rust-lang/const-eval/issues/11>, I think
+}
+
+impl<System: Port> CfgTaskBuilder<System> {
     pub const fn new() -> Self {
         Self {
             _phantom: PhantomData,
             start: None,
             param: 0,
+            stack: None,
         }
     }
 
@@ -299,10 +314,54 @@ impl<System> CfgTaskBuilder<System> {
         Self { param, ..self }
     }
 
+    pub const fn stack_size(self, stack_size: usize) -> Self {
+        // FIXME: `Option::is_some` is not `const fn` yet
+        if let Some(_) = self.stack {
+            panic!("the task's stack is already specified");
+        }
+
+        Self {
+            stack: Some(TaskStack::Auto(stack_size)),
+            ..self
+        }
+    }
+
+    pub const fn stack_hunk(self, stack_hunk: hunk::Hunk<System, [UnsafeCell<u8>]>) -> Self {
+        // FIXME: `Option::is_some` is not `const fn` yet
+        if let Some(_) = self.stack {
+            panic!("the task's stack is already specified");
+        }
+
+        Self {
+            stack: Some(TaskStack::Hunk(stack_hunk)),
+            ..self
+        }
+    }
+
     pub const fn finish(
         self,
         mut cfg: CfgBuilder<System>,
     ) -> CfgOutput<System, task::Task<System>> {
+        // FIXME: `Option::unwrap_or` is not `const fn` yet
+        let stack = if let Some(stack) = self.stack {
+            stack
+        } else {
+            TaskStack::Auto(System::STACK_DEFAULT_SIZE)
+        };
+        let stack = match stack {
+            TaskStack::Auto(size) => {
+                let CfgOutput {
+                    cfg: new_cfg,
+                    id_map: hunk,
+                } = cfg_new_hunk_bytes(cfg, size, System::STACK_ALIGN);
+                cfg = new_cfg;
+
+                // Safety:
+                unsafe { hunk.transmute() }
+            }
+            TaskStack::Hunk(hunk) => hunk,
+        };
+
         cfg.tasks = cfg.tasks.push(CfgBuilderTask {
             start: if let Some(x) = self.start {
                 x
@@ -310,6 +369,7 @@ impl<System> CfgTaskBuilder<System> {
                 panic!("`start` (task entry point) is not specified")
             },
             param: self.param,
+            stack,
         });
 
         let task = unsafe { task::Task::from_id(NonZeroUsize::new_unchecked(cfg.tasks.len())) };
@@ -319,17 +379,29 @@ impl<System> CfgTaskBuilder<System> {
 }
 
 #[doc(hidden)]
-#[derive(Debug, Clone, Copy)]
-pub struct CfgBuilderTask {
+pub struct CfgBuilderTask<System> {
     start: fn(usize),
     param: usize,
+    stack: hunk::Hunk<System, [UnsafeCell<u8>]>,
 }
 
-impl CfgBuilderTask {
+impl<System> Clone for CfgBuilderTask<System> {
+    fn clone(&self) -> Self {
+        Self {
+            start: self.start,
+            param: self.param,
+            stack: self.stack,
+        }
+    }
+}
+
+impl<System> Copy for CfgBuilderTask<System> {}
+
+impl<System> CfgBuilderTask<System> {
     pub const fn to_state<PortTaskState: Init>(
         &self,
-        attr: &'static task::TaskAttr,
-    ) -> task::TaskCb<PortTaskState> {
+        attr: &'static task::TaskAttr<System>,
+    ) -> task::TaskCb<System, PortTaskState> {
         task::TaskCb {
             port_task_state: PortTaskState::INIT,
             attr,
@@ -337,10 +409,11 @@ impl CfgBuilderTask {
         }
     }
 
-    pub const fn to_attr(&self) -> task::TaskAttr {
+    pub const fn to_attr(&self) -> task::TaskAttr<System> {
         task::TaskAttr {
             entry_point: self.start,
             entry_param: self.param,
+            stack: AssertSendSync(self.stack),
         }
     }
 }
