@@ -38,17 +38,16 @@ impl<System: Kernel> Task<System> {
 }
 
 /// *Task control block* - the state data of a task.
-///
-/// This type isn't technically public but needs to be `pub` so that it can be
-/// referred to by a macro.
-#[doc(hidden)]
 #[repr(C)]
 pub struct TaskCb<PortTaskState> {
-    /// Place this at the beginning so that assembler code can refer to this
-    /// easily.
-    pub(super) port_task_state: PortTaskState,
+    /// Get a reference to `PortTaskState` in the task control block.
+    ///
+    /// This is guaranteed to be placed at the beginning of the struct so that
+    /// assembler code can refer to this easily.
+    pub port_task_state: PortTaskState,
 
-    pub(super) attr: &'static TaskAttr,
+    /// The static properties of the task.
+    pub attr: &'static TaskAttr,
 
     pub(super) _force_int_mut: crate::utils::AssertSendSync<core::cell::UnsafeCell<()>>,
 }
@@ -62,10 +61,6 @@ impl<PortTaskState: Init> Init for TaskCb<PortTaskState> {
 }
 
 /// The static properties of a task.
-///
-/// This type isn't technically public but needs to be `pub` so that it can be
-/// referred to by a macro.
-#[doc(hidden)]
 pub struct TaskAttr {}
 
 impl Init for TaskAttr {
