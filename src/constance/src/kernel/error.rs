@@ -1,7 +1,7 @@
 macro_rules! define_error {
     (
         $( #[$meta:meta] )*
-        pub enum $name:ident {
+        $vis:vis enum $name:ident {
             $(
                 $( #[$vmeta:meta] )*
                 $vname:ident
@@ -13,7 +13,7 @@ macro_rules! define_error {
         /// See [`ResultCode`] for all result codes and generic descriptions.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         #[repr(i8)]
-        pub enum $name {
+        $vis enum $name {
             $(
                 $( #[$vmeta] )*
                 // Use the same discriminants as `ResultCode` for cost-free
@@ -88,5 +88,18 @@ define_error! {
     /// [`Task::activate`]: super::Task::activate
     pub enum ActivateTaskError {
         BadId,
+        BadCtx,
+    }
+}
+
+impl From<BadCtxError> for ActivateTaskError {
+    fn from(_: BadCtxError) -> Self {
+        Self::BadCtx
+    }
+}
+
+define_error! {
+    pub(super) enum BadCtxError {
+        BadCtx,
     }
 }

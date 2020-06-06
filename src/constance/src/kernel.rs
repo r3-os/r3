@@ -8,6 +8,7 @@ mod cfg;
 mod error;
 mod hunk;
 mod task;
+mod utils;
 pub use self::{cfg::*, error::*, hunk::*, task::*};
 
 /// Numeric value used to identify various kinds of kernel objects.
@@ -35,7 +36,36 @@ pub unsafe trait Port {
     type PortTaskState: Copy + Send + Sync + Init + 'static;
     const PORT_TASK_STATE_INIT: Self::PortTaskState;
 
-    fn dispatch();
+    /// Yield the processor.
+    ///
+    /// Precondition: CPU Lock inactive
+    ///
+    /// # Safety
+    ///
+    /// This is meant to be only called by the kernel.
+    unsafe fn yield_cpu();
+
+    /// Disable all kernel-managed interrupts (this state is called *CPU Lock*).
+    ///
+    /// Precondition: CPU Lock inactive
+    ///
+    /// # Safety
+    ///
+    /// This is meant to be only called by the kernel.
+    unsafe fn enter_cpu_lock();
+
+    /// Re-enable kernel-managed interrupts previously disabled by
+    /// `enter_cpu_lock`, thus deactivating the CPU Lock state.
+    ///
+    /// Precondition: CPU Lock active
+    ///
+    /// # Safety
+    ///
+    /// This is meant to be only called by the kernel.
+    unsafe fn leave_cpu_lock();
+
+    /// Return a flag indicating whether a CPU Lock state is active.
+    fn is_cpu_lock_active() -> bool;
 }
 
 /// Associates "system" types with kernel-private data. Use [`build!`] to

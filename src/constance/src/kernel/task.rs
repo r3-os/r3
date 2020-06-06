@@ -1,7 +1,7 @@
 //! Tasks
 use core::marker::PhantomData;
 
-use super::{ActivateTaskError, Id, Kernel};
+use super::{utils, ActivateTaskError, Id, Kernel};
 use crate::utils::Init;
 
 /// Represents a single task in a system.
@@ -31,6 +31,8 @@ impl<System: Kernel> Task<System> {
 
     /// Start the execution of the task.
     pub fn activate(self) -> Result<(), ActivateTaskError> {
+        let _lock = utils::lock_cpu::<System>()?;
+
         todo!()
     }
 }
