@@ -139,8 +139,8 @@ macro_rules! configure {
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
-            kernel::{CfgBuilder, TaskState, TaskAttr, HunkInitAttr, HunkAttr, Port, KernelCfg},
-            utils::AssertSendSync
+            kernel::{CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, TaskAttr, TaskState},
+            utils::AssertSendSync,
         };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
@@ -167,8 +167,7 @@ macro_rules! build {
 
         static HUNK_POOL: AssertSendSync<::core::cell::UnsafeCell<[u8; { CFG.hunk_pool_len }]>> =
             AssertSendSync(::core::cell::UnsafeCell::new([0; CFG.hunk_pool_len]));
-        const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] =
-            CFG.hunks.to_array();
+        const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
 
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg for $sys {
