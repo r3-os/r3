@@ -45,13 +45,15 @@ macro_rules! configure {
         #[allow(unused_macros)]
         $vis const fn $ident(
             cfg: $crate::kernel::CfgBuilder<$sys>
-        ) -> ($crate::kernel::CfgBuilder<$sys>, $id_map) {
+        ) -> $crate::kernel::CfgOutput<$sys, $id_map> {
             #[allow(unused_mut)]
             let mut cfg = cfg;
 
             macro_rules! call {
                 ($path:expr $dollar(, $arg:expr)* $dollar(,)*) => {{
-                    let (new_cfg, id_map) = $path(cfg, $dollar($arg),*);
+                    use $crate::kernel::CfgOutput;
+
+                    let CfgOutput { cfg: new_cfg, id_map } = $path(cfg, $dollar($arg),*);
                     cfg = new_cfg;
                     id_map
                 }};
@@ -61,7 +63,7 @@ macro_rules! configure {
                 ($path:expr $dollar(, $argname:ident = $arg:expr)* $dollar(,)*) => {{
                     let builder = $path $dollar(. $argname($arg))*;
 
-                    let (new_cfg, id_map) = builder.finish(cfg, $dollar($arg),*);
+                    let CfgOutput { cfg: new_cfg, id_map } = builder.finish(cfg, $dollar($arg),*);
                     cfg = new_cfg;
                     id_map
                 }};
@@ -114,7 +116,7 @@ macro_rules! configure {
                 $($tt)*
             };
 
-            (cfg, id_map)
+            $crate::kernel::CfgOutput { cfg, id_map }
         }
     };
 
@@ -146,16 +148,10 @@ macro_rules! build {
         // `$configure` produces two values: a `CfgBuilder` and an ID map
         // (custom type). We need the first one to be `const` so that we can
         // calculate the values of generic parameters based on its contents.
-        const CFG: CfgBuilder<$sys> = {
-            let mut cfg = CfgBuilder::new();
-            $configure(cfg).0
-        };
+        const CFG: CfgBuilder<$sys> = $configure(CfgBuilder::new()).cfg;
 
         // The second value can be just `let`
-        let id_map = {
-            let mut cfg = CfgBuilder::new();
-            $configure(cfg).1
-        };
+        let id_map = $configure(CfgBuilder::new()).id_map;
 
         $crate::array_item_from_fn! {
             const TASK_STATE:
@@ -225,6 +221,20 @@ impl<System> CfgBuilder<System> {
             tasks: ComptimeVec::new(),
         }
     }
+}
+
+/// Output of [a configuration function].
+///
+/// In a configuration function, use `call!` or `build!` to call other
+/// configuration functions (i.e., the functions returning this type).
+///
+/// [a configuration function]: configure
+pub struct CfgOutput<System, T> {
+    #[doc(hidden)]
+    pub cfg: CfgBuilder<System>,
+
+    #[doc(hidden)]
+    pub id_map: T,
 }
 
 #[doc(hidden)]
