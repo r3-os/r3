@@ -12,9 +12,9 @@ pub use self::vec::ComptimeVec;
 ///
 /// The following macros are available inside the function:
 ///
-/// # `call!(path, arg1, arg2, ...)`
+/// # `call!(expr, arg1, arg2, ...)`
 ///
-/// Invokes another configuration function.
+/// Invokes another configuration function `expr`.
 ///
 /// # `build!(expr, name1 = arg1, name2 = arg2, ...)`
 ///
@@ -50,7 +50,7 @@ macro_rules! configure {
             let mut cfg = cfg;
 
             macro_rules! call {
-                ($path:path $dollar(, $arg:expr)* $dollar(,)*) => {{
+                ($path:expr $dollar(, $arg:expr)* $dollar(,)*) => {{
                     let (new_cfg, id_map) = $path(cfg, $dollar($arg),*);
                     cfg = new_cfg;
                     id_map
