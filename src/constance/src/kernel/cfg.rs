@@ -53,10 +53,12 @@ macro_rules! configure {
 
             macro_rules! new_task {
                 () => {{
+                    use ::core::num::NonZeroUsize;
+                    use $crate::kernel::Task;
+
                     cfg.tasks = cfg.tasks.push($crate::kernel::CfgBuilderTask {});
                     unsafe {
-                        $crate::kernel::Task::from_id(
-                            ::core::num::NonZeroUsize::new_unchecked(cfg.tasks.len()))
+                        Task::from_id(NonZeroUsize::new_unchecked(cfg.tasks.len()))
                     }
                 }};
             }
@@ -64,25 +66,28 @@ macro_rules! configure {
             // TODO: array hunk
             macro_rules! new_hunk {
                 ($ty:ty) => {{
-                    let align = ::core::mem::align_of::<$ty>();
-                    let size = ::core::mem::size_of::<$ty>();
+                    use ::core::mem;
+                    use $crate::{kernel::{Hunk, HunkInitAttr}, utils::Init};
+
+                    let align = mem::align_of::<$ty>();
+                    let size = mem::size_of::<$ty>();
 
                     // Round up `hunk_pool_len`
                     cfg.hunk_pool_len = (cfg.hunk_pool_len + align - 1) / align * align;
 
                     let start = cfg.hunk_pool_len;
 
-                    cfg.hunks = cfg.hunks.push($crate::kernel::HunkInitAttr {
+                    cfg.hunks = cfg.hunks.push(HunkInitAttr {
                         offset: start,
                         init: |dest| unsafe {
-                            *(dest as *mut _) = <$ty as $crate::utils::Init>::INIT;
+                            *(dest as *mut _) = <$ty as Init>::INIT;
                         },
                     });
 
                     cfg.hunk_pool_len += size;
 
                     unsafe {
-                        $crate::kernel::Hunk::from_range(start, size)
+                        Hunk::from_range(start, size)
                     }
                 }};
             }
@@ -117,46 +122,47 @@ macro_rules! configure {
 #[macro_export]
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
-        use $crate::utils::AssertSendSync;
+        use $crate::{
+            kernel::{CfgBuilder, TaskState, TaskAttr, HunkInitAttr, HunkAttr, Port, KernelCfg},
+            utils::AssertSendSync
+        };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
         // (custom type). We need the first one to be `const` so that we can
         // calculate the values of generic parameters based on its contents.
-        const CFG: $crate::kernel::CfgBuilder<$sys> = {
-            let mut cfg = $crate::kernel::CfgBuilder::new();
+        const CFG: CfgBuilder<$sys> = {
+            let mut cfg = CfgBuilder::new();
             $configure(cfg).0
         };
 
         // The second value can be just `let`
         let id_map = {
-            let mut cfg = $crate::kernel::CfgBuilder::new();
+            let mut cfg = CfgBuilder::new();
             $configure(cfg).1
         };
 
         $crate::array_item_from_fn! {
             const TASK_STATE:
-                [$crate::kernel::TaskState<<$sys as $crate::kernel::Port>::PortTaskState>; _] =
+                [TaskState<<$sys as Port>::PortTaskState>; _] =
                     (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state());
-            const TASK_ATTR: [$crate::kernel::TaskAttr; _] =
+            const TASK_ATTR: [TaskAttr; _] =
                 (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
         }
 
         static HUNK_POOL: AssertSendSync<::core::cell::UnsafeCell<[u8; { CFG.hunk_pool_len }]>> =
             AssertSendSync(::core::cell::UnsafeCell::new([0; CFG.hunk_pool_len]));
-        const HUNK_INITS: [$crate::kernel::HunkInitAttr; { CFG.hunks.len() }] =
+        const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] =
             CFG.hunks.to_array();
 
         // Safety: We are `build!`, so it's okay to `impl` this
-        unsafe impl $crate::kernel::KernelCfg for $sys {
-            const HUNK_ATTR: $crate::kernel::HunkAttr = $crate::kernel::HunkAttr {
+        unsafe impl KernelCfg for $sys {
+            const HUNK_ATTR: HunkAttr = HunkAttr {
                 hunk_pool: || &HUNK_POOL.0,
                 inits: &HUNK_INITS,
             };
 
-            const TASK_STATE: &'static [$crate::kernel::TaskState<
-                <$sys as $crate::kernel::Port>::PortTaskState,
-            >] = &TASK_STATE;
-            const TASK_ATTR: &'static [$crate::kernel::TaskAttr] = &TASK_ATTR;
+            const TASK_STATE: &'static [TaskState<<$sys as Port>::PortTaskState>] = &TASK_STATE;
+            const TASK_ATTR: &'static [TaskAttr] = &TASK_ATTR;
         }
 
         id_map
