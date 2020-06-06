@@ -8,7 +8,7 @@ use crate::utils::Init;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Task<System>(Id, PhantomData<System>);
 
-impl<System: Kernel> Task<System> {
+impl<System> Task<System> {
     /// Construct a `Task` from `Id`.
     ///
     /// # Safety
@@ -21,7 +21,9 @@ impl<System: Kernel> Task<System> {
     pub const unsafe fn from_id(id: Id) -> Self {
         Self(id, PhantomData)
     }
+}
 
+impl<System: Kernel> Task<System> {
     /// Get the raw `Id` value representing this task.
     pub const fn id(self) -> Id {
         self.0

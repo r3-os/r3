@@ -30,7 +30,7 @@ impl<System, T: ?Sized> Clone for Hunk<System, T> {
 
 impl<System, T: ?Sized> Copy for Hunk<System, T> {}
 
-impl<System: Kernel, T: ?Sized> Hunk<System, T> {
+impl<System, T: ?Sized> Hunk<System, T> {
     // I don't see any good reason to make this public, but the macro still
     // needs to access this
     #[doc(hidden)]
@@ -48,7 +48,9 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
             _phantom: PhantomData,
         }
     }
+}
 
+impl<System: Kernel, T: ?Sized> Hunk<System, T> {
     // FIXME: The following methods are not `const fn` on account of
     //        <https://github.com/rust-lang/const-eval/issues/11> being
     //        unresolved
@@ -170,8 +172,8 @@ pub unsafe fn init_hunks<System: Kernel>() {
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct HunkInitAttr {
-    pub offset: usize,
-    pub init: unsafe fn(*mut u8),
+    pub(super) offset: usize,
+    pub(super) init: unsafe fn(*mut u8),
 }
 
 impl Init for HunkInitAttr {
