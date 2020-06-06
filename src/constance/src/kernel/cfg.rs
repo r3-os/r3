@@ -126,14 +126,16 @@ macro_rules! build {
         // The second value can be just `let`
         let id_map = $configure(CfgBuilder::new()).id_map;
 
+        // Instantiiate task structures
         $crate::array_item_from_fn! {
-            static TASK_STATE:
-                [TaskState<<$sys as Port>::PortTaskState>; _] =
-                    (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state());
             const TASK_ATTR: [TaskAttr; _] =
                 (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
+            static TASK_STATE:
+                [TaskState<<$sys as Port>::PortTaskState>; _] =
+                    (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR[i]));
         }
 
+        // Instantiate hunks
         static HUNK_POOL: AssertSendSync<::core::cell::UnsafeCell<[u8; { CFG.hunk_pool_len }]>> =
             AssertSendSync(::core::cell::UnsafeCell::new([0; CFG.hunk_pool_len]));
         const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
@@ -149,7 +151,6 @@ macro_rules! build {
             fn task_state() -> &'static [TaskState<<$sys as Port>::PortTaskState>] {
                 &TASK_STATE
             }
-            const TASK_ATTR: &'static [TaskAttr] = &TASK_ATTR;
         }
 
         id_map
@@ -270,9 +271,13 @@ impl<System> CfgTaskBuilder<System> {
 pub struct CfgBuilderTask {}
 
 impl CfgBuilderTask {
-    pub const fn to_state<PortTaskState: Init>(&self) -> task::TaskState<PortTaskState> {
+    pub const fn to_state<PortTaskState: Init>(
+        &self,
+        attr: &'static task::TaskAttr,
+    ) -> task::TaskState<PortTaskState> {
         task::TaskState {
             port_task_state: PortTaskState::INIT,
+            attr,
             _force_int_mut: crate::utils::AssertSendSync(core::cell::UnsafeCell::new(())),
         }
     }
