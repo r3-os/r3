@@ -34,6 +34,8 @@ impl<T: Port + KernelCfg> Kernel for T {}
 ///
 pub unsafe trait Port {
     type PortTaskState: Copy + Send + Sync + Init + 'static;
+
+    /// The initial value of [`TaskCb::port_task_state`] for all tasks.
     const PORT_TASK_STATE_INIT: Self::PortTaskState;
 
     /// The default stack size for tasks.

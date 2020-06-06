@@ -407,13 +407,13 @@ impl<System> Clone for CfgBuilderTask<System> {
 
 impl<System> Copy for CfgBuilderTask<System> {}
 
-impl<System> CfgBuilderTask<System> {
-    pub const fn to_state<PortTaskState: Init>(
+impl<System: Port> CfgBuilderTask<System> {
+    pub const fn to_state(
         &self,
         attr: &'static task::TaskAttr<System>,
-    ) -> task::TaskCb<System, PortTaskState> {
+    ) -> task::TaskCb<System, System::PortTaskState> {
         task::TaskCb {
-            port_task_state: PortTaskState::INIT,
+            port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
             _force_int_mut: crate::utils::AssertSendSync(core::cell::UnsafeCell::new(())),
         }
