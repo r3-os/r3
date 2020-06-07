@@ -1,6 +1,8 @@
 #![feature(const_loop)]
 #![feature(const_fn)]
 #![feature(const_if_match)]
+#![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
+#![deny(unsafe_op_in_unsafe_fn)]
 use constance::{kernel::Task, sync::Mutex};
 
 constance_port_std::use_port!(unsafe struct System);

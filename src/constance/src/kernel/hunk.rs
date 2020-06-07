@@ -88,7 +88,9 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
     /// The result might include uninitialized bytes and/or interior mutability,
     /// so it might be unsafe to access.
     pub unsafe fn as_bytes(this: Self) -> &'static [u8] {
-        &*Self::as_bytes_ptr(this)
+        // Safety: The caller is responsible for making sure interpreting the
+        // contents as `[u8]` is safe
+        unsafe { &*Self::as_bytes_ptr(this) }
     }
 }
 
@@ -164,7 +166,11 @@ impl HunkAttr {
     ///
     pub(super) unsafe fn init_hunks(&self) {
         for init in self.inits.iter() {
-            (init.init)(self.hunk_pool_ptr().add(init.offset) as *mut u8);
+            // Safety: The creator of `init` (`HunkInitAttr`) is responsible for
+            // making this safe
+            unsafe {
+                (init.init)(self.hunk_pool_ptr().add(init.offset) as *mut u8);
+            }
         }
     }
 }

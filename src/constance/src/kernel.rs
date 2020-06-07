@@ -68,6 +68,17 @@ pub unsafe trait Port: Sized {
     /// pointer to either end of [`TaskAttr::stack`], ensuring the task will
     /// start execution from `entry_point` next time the task receives the
     /// control.
+    ///
+    /// Do not call this for a running task. Calling this for a dormant task is
+    /// always safe. For tasks in other states, whether this method is safe is
+    /// dependent on how the programming language the task code is written in
+    /// is implemented. In particular, this is unsafe for Rust task code because
+    /// it might violate the requirement of [`Pin`] if there's a `Pin` pointing
+    /// to something on the task's stack.
+    ///
+    /// [`Pin`]: core::pin::Pin
+    ///
+    /// Precondition: CPU Lock active
     unsafe fn initialize_task_state(task: &task::TaskCb<Self, Self::PortTaskState>);
 
     /// Return a flag indicating whether a CPU Lock state is active.
@@ -82,9 +93,11 @@ pub unsafe trait Port: Sized {
 pub trait PortToKernel {
     /// Initialize runtime structures.
     ///
-    /// Should be called for exactly once by the port.
+    /// Should be called for exactly once by the port before calling into any
+    /// user (application) or kernel code.
     ///
-    /// Precondition: CPU Lock active
+    /// Precondition: CPU Lock active, Preboot phase
+    // TODO: Explain phases
     unsafe fn boot() -> !;
 
     /// Determine the next task to run and store it in [`State::active_task_ref`].
@@ -95,21 +108,32 @@ pub trait PortToKernel {
 
 impl<System: Kernel> PortToKernel for System {
     unsafe fn boot() -> ! {
-        System::HUNK_ATTR.init_hunks();
+        // Safety: (1) User code hasn't executed yet at this point. (2) The
+        // creator of this `HunkAttr` is responsible for creating a valid
+        // instance of `HunkAttr`.
+        unsafe {
+            System::HUNK_ATTR.init_hunks();
+        }
 
         // Initialize all tasks
         // TODO: Do this only for initially-active tasks
         for cb in Self::task_cb_pool() {
-            Self::initialize_task_state(cb);
+            // Safety: The task is dormant
+            unsafe {
+                Self::initialize_task_state(cb);
+            }
         }
 
-        Self::dispatch_first_task();
+        // Safety: CPU Lock is active, Startup phase
+        unsafe {
+            Self::dispatch_first_task();
+        }
     }
 
     unsafe fn choose_running_task() {
         // Safety: The precondition of this method includes CPU Lock being
         // active
-        let lock = utils::assume_cpu_lock::<Self>();
+        let lock = unsafe { utils::assume_cpu_lock::<Self>() };
 
         // TODO: Choose only an active task
         Self::state()
