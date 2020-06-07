@@ -1,5 +1,5 @@
 //! Tasks
-use core::marker::PhantomData;
+use core::{cell::UnsafeCell, marker::PhantomData};
 
 use super::{hunk::Hunk, utils, ActivateTaskError, Id, Kernel};
 use crate::utils::{Init, RawCell};
@@ -34,6 +34,54 @@ impl<System: Kernel> Task<System> {
         let _lock = utils::lock_cpu::<System>()?;
 
         todo!()
+    }
+}
+
+/// [`Hunk`] for a task stack.
+#[repr(transparent)]
+pub struct StackHunk<System>(Hunk<System, [UnsafeCell<u8>]>);
+
+// Safety: Safe code can't access the contents. Also, the port is responsible
+// for making sure `StackHunk` is used in the correct way.
+unsafe impl<System> Sync for StackHunk<System> {}
+
+// TODO: Preferably `StackHunk` shouldn't be `Clone` as it strengthens the
+//       safety obligation of `StackHunk::from_hunk`.
+impl<System> Clone for StackHunk<System> {
+    fn clone(&self) -> Self {
+        Self(self.0)
+    }
+}
+impl<System> Copy for StackHunk<System> {}
+
+// TODO: Should we allow zero-sized `StackHunk`?
+impl<System> Init for StackHunk<System> {
+    const INIT: Self = Self(Init::INIT);
+}
+
+impl<System> StackHunk<System> {
+    /// Construct a `StackHunk` from `Hunk`.
+    ///
+    /// # Safety
+    ///
+    /// The caller is responsible for making sure the region represented by
+    /// `hunk` is solely used for a single task's stack.
+    ///
+    /// Also, `hunk` must be properly aligned for a stack region.
+    pub const unsafe fn from_hunk(hunk: Hunk<System, [UnsafeCell<u8>]>) -> Self {
+        Self(hunk)
+    }
+
+    /// Get the inner `Hunk`, consuming `self`.
+    pub fn into_inner(self) -> Hunk<System, [UnsafeCell<u8>]> {
+        self.0
+    }
+}
+
+impl<System: Kernel> StackHunk<System> {
+    /// Get a raw pointer to the hunk's contents.
+    pub fn as_ptr(&self) -> *mut [u8] {
+        &*self.0 as *const _ as _
     }
 }
 
@@ -77,13 +125,13 @@ pub struct TaskAttr<System> {
     // FIXME: Ideally, `stack` should directly point to the stack region. But
     //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>
     /// The hunk representing the stack region for the task.
-    pub stack: Hunk<System, [RawCell<u8>]>,
+    pub stack: StackHunk<System>,
 }
 
 impl<System> Init for TaskAttr<System> {
     const INIT: Self = Self {
         entry_point: |_| {},
         entry_param: 0,
-        stack: Hunk::INIT,
+        stack: StackHunk::INIT,
     };
 }

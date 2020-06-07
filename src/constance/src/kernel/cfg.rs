@@ -2,7 +2,7 @@
 use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
 use super::{hunk, task, Port};
-use crate::utils::{Init, RawCell, ZeroInit};
+use crate::utils::{Init, ZeroInit};
 
 mod vec;
 #[doc(hidden)]
@@ -305,7 +305,7 @@ pub struct CfgTaskBuilder<System> {
 
 enum TaskStack<System> {
     Auto(usize),
-    Hunk(hunk::Hunk<System, [RawCell<u8>]>),
+    Hunk(task::StackHunk<System>),
     // TODO: Externally supplied stack? It's blocked by
     //       <https://github.com/rust-lang/const-eval/issues/11>, I think
 }
@@ -343,7 +343,7 @@ impl<System: Port> CfgTaskBuilder<System> {
         }
     }
 
-    pub const fn stack_hunk(self, stack_hunk: hunk::Hunk<System, [RawCell<u8>]>) -> Self {
+    pub const fn stack_hunk(self, stack_hunk: task::StackHunk<System>) -> Self {
         // FIXME: `Option::is_some` is not `const fn` yet
         if let Some(_) = self.stack {
             panic!("the task's stack is already specified");
@@ -373,7 +373,9 @@ impl<System: Port> CfgTaskBuilder<System> {
                 } = cfg_new_hunk_zero_array(cfg, size, System::STACK_ALIGN);
                 cfg = new_cfg;
 
-                hunk
+                // Safety: We just created a hunk just for this task, and we
+                // don't use this hunk for other purposes.
+                unsafe { task::StackHunk::from_hunk(hunk) }
             }
             TaskStack::Hunk(hunk) => hunk,
         };
@@ -398,7 +400,7 @@ impl<System: Port> CfgTaskBuilder<System> {
 pub struct CfgBuilderTask<System> {
     start: fn(usize),
     param: usize,
-    stack: hunk::Hunk<System, [RawCell<u8>]>,
+    stack: task::StackHunk<System>,
 }
 
 impl<System> Clone for CfgBuilderTask<System> {
