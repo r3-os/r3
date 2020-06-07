@@ -51,11 +51,23 @@ pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadCtxE
         System::enter_cpu_lock();
     }
 
-    Ok(CpuLockGuard {
+    // Safety: We just entered a CPU Lock state
+    Ok(unsafe { assume_cpu_lock() })
+}
+
+/// Assume a CPU Lock state and get `CpuLockGuard`.
+///
+/// # Safety
+///
+/// The system must be really in a CPU Lock state.
+pub(super) unsafe fn assume_cpu_lock<System: Kernel>() -> CpuLockGuard<System> {
+    debug_assert!(System::is_cpu_lock_active());
+
+    CpuLockGuard {
         token: CpuLockToken {
             _phantom: PhantomData,
         },
-    })
+    }
 }
 
 /// RAII guard for a CPU Lock state.

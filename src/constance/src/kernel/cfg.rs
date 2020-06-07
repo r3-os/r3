@@ -131,7 +131,9 @@ macro_rules! configure {
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
-            kernel::{CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, TaskAttr, TaskCb},
+            kernel::{
+                CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, State, TaskAttr, TaskCb,
+            },
             utils::{AlignedStorage, Init, RawCell},
         };
 
@@ -157,8 +159,15 @@ macro_rules! build {
             Init::INIT;
         const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
 
+        // Instantiate the global state
+        static KERNEL_STATE: State<$sys, <$sys as Port>::PortTaskState> = State::INIT;
+
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg for $sys {
+            fn state() -> &'static State<Self, Self::PortTaskState> {
+                &KERNEL_STATE
+            }
+
             const HUNK_ATTR: HunkAttr = HunkAttr {
                 hunk_pool: || HUNK_POOL.get() as *const u8,
                 inits: &HUNK_INITS,

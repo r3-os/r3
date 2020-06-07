@@ -8,3 +8,12 @@ edition = "2018"
 
 [dependencies]
 tokenlock = { version = "0.3.0", default-features = false }
+
+[dependencies.atomic_ref]
+# - “Make the crate `no_std`”
+#   <https://github.com/mystor/atomic_ref/pull/1>
+# - “Make `AtomicRef::new` `const fn` (nightly-only)”
+#   <https://github.com/mystor/atomic_ref/pull/2>
+git = "https://github.com/yvt/atomic_ref.git"
+rev = "37523c17a2a535f4d04c204d65d2742647abed25"
+features = ["nightly"]
