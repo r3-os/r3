@@ -2,7 +2,7 @@
 use core::{cell::UnsafeCell, marker::PhantomData, mem, num::NonZeroUsize};
 
 use super::{hunk, task, Port};
-use crate::utils::{AssertSendSync, Init};
+use crate::utils::{Init, RawCell};
 
 mod vec;
 #[doc(hidden)]
@@ -130,7 +130,7 @@ macro_rules! build {
         use ::core::cell::UnsafeCell;
         use $crate::{
             kernel::{CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, TaskAttr, TaskCb},
-            utils::{AlignedStorage, AssertSendSync, Init},
+            utils::{AlignedStorage, Init, RawCell},
         };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
@@ -151,15 +151,14 @@ macro_rules! build {
         }
 
         // Instantiate hunks
-        static HUNK_POOL: AssertSendSync<
-            UnsafeCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>>,
-        > = Init::INIT;
+        static HUNK_POOL: RawCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>> =
+            Init::INIT;
         const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
 
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg for $sys {
             const HUNK_ATTR: HunkAttr = HunkAttr {
-                hunk_pool: || HUNK_POOL.0.get() as *const u8,
+                hunk_pool: || HUNK_POOL.get() as *const u8,
                 inits: &HUNK_INITS,
             };
 
@@ -298,7 +297,7 @@ pub struct CfgTaskBuilder<System> {
 
 enum TaskStack<System> {
     Auto(usize),
-    Hunk(hunk::Hunk<System, [UnsafeCell<u8>]>),
+    Hunk(hunk::Hunk<System, [RawCell<u8>]>),
     // TODO: Externally supplied stack? It's blocked by
     //       <https://github.com/rust-lang/const-eval/issues/11>, I think
 }
@@ -336,7 +335,7 @@ impl<System: Port> CfgTaskBuilder<System> {
         }
     }
 
-    pub const fn stack_hunk(self, stack_hunk: hunk::Hunk<System, [UnsafeCell<u8>]>) -> Self {
+    pub const fn stack_hunk(self, stack_hunk: hunk::Hunk<System, [RawCell<u8>]>) -> Self {
         // FIXME: `Option::is_some` is not `const fn` yet
         if let Some(_) = self.stack {
             panic!("the task's stack is already specified");
@@ -392,7 +391,7 @@ impl<System: Port> CfgTaskBuilder<System> {
 pub struct CfgBuilderTask<System> {
     start: fn(usize),
     param: usize,
-    stack: hunk::Hunk<System, [UnsafeCell<u8>]>,
+    stack: hunk::Hunk<System, [RawCell<u8>]>,
 }
 
 impl<System> Clone for CfgBuilderTask<System> {
@@ -415,7 +414,7 @@ impl<System: Port> CfgBuilderTask<System> {
         task::TaskCb {
             port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
-            _force_int_mut: crate::utils::AssertSendSync(core::cell::UnsafeCell::new(())),
+            _force_int_mut: crate::utils::RawCell::new(()),
         }
     }
 
@@ -423,7 +422,7 @@ impl<System: Port> CfgBuilderTask<System> {
         task::TaskAttr {
             entry_point: self.start,
             entry_param: self.param,
-            stack: AssertSendSync(self.stack),
+            stack: self.stack,
         }
     }
 }

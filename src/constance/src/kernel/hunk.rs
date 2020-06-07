@@ -1,7 +1,5 @@
 //! Hunks
-use core::{
-    cell::UnsafeCell, marker::PhantomData, mem::size_of, ops::Deref, ptr::slice_from_raw_parts,
-};
+use core::{marker::PhantomData, mem::size_of, ops::Deref, ptr::slice_from_raw_parts};
 
 use super::Kernel;
 use crate::utils::Init;

@@ -1,8 +1,8 @@
 //! Tasks
-use core::{cell::UnsafeCell, marker::PhantomData};
+use core::marker::PhantomData;
 
 use super::{hunk::Hunk, utils, ActivateTaskError, Id, Kernel};
-use crate::utils::{AssertSendSync, Init};
+use crate::utils::{Init, RawCell};
 
 /// Represents a single task in a system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -49,14 +49,14 @@ pub struct TaskCb<System: 'static, PortTaskState> {
     /// The static properties of the task.
     pub attr: &'static TaskAttr<System>,
 
-    pub(super) _force_int_mut: AssertSendSync<UnsafeCell<()>>,
+    pub(super) _force_int_mut: RawCell<()>,
 }
 
 impl<System: 'static, PortTaskState: Init> Init for TaskCb<System, PortTaskState> {
     const INIT: Self = Self {
         port_task_state: Init::INIT,
         attr: &TaskAttr::INIT,
-        _force_int_mut: AssertSendSync(UnsafeCell::new(())),
+        _force_int_mut: RawCell::new(()),
     };
 }
 
@@ -77,13 +77,13 @@ pub struct TaskAttr<System> {
     // FIXME: Ideally, `stack` should directly point to the stack region. But
     //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>
     /// The hunk representing the stack region for the task.
-    pub stack: AssertSendSync<Hunk<System, [UnsafeCell<u8>]>>,
+    pub stack: Hunk<System, [RawCell<u8>]>,
 }
 
 impl<System> Init for TaskAttr<System> {
     const INIT: Self = Self {
         entry_point: |_| {},
         entry_param: 0,
-        stack: AssertSendSync(Hunk::INIT),
+        stack: Hunk::INIT,
     };
 }

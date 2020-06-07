@@ -29,8 +29,8 @@ impl<T: Init> Init for UnsafeCell<T> {
     const INIT: Self = UnsafeCell::new(T::INIT);
 }
 
-impl<T: Init> Init for AssertSendSync<T> {
-    const INIT: Self = AssertSendSync(T::INIT);
+impl<T: Init> Init for RawCell<T> {
+    const INIT: Self = RawCell::new(T::INIT);
 }
 
 impl<T: Init, I: Init> Init for tokenlock::TokenLock<T, I> {
@@ -113,11 +113,28 @@ macro_rules! array_impl_init {
 
 array_impl_init! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
-#[derive(Debug, Clone, Copy)]
-pub struct AssertSendSync<T>(pub T);
+/// Like `UnsafeCell`, but implements `Sync`.
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct RawCell<T: ?Sized>(UnsafeCell<T>);
 
-unsafe impl<T> Send for AssertSendSync<T> {}
-unsafe impl<T> Sync for AssertSendSync<T> {}
+unsafe impl<T: Sync + ?Sized> Sync for RawCell<T> {}
+
+impl<T> RawCell<T> {
+    pub const fn new(x: T) -> Self {
+        Self(UnsafeCell::new(x))
+    }
+
+    pub fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+}
+
+impl<T: ?Sized> RawCell<T> {
+    pub const fn get(&self) -> *mut T {
+        self.0.get()
+    }
+}
 
 /// A "type function" producing a type.
 #[doc(hidden)]
