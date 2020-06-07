@@ -1,6 +1,9 @@
 //! Utility
 use core::{cell::UnsafeCell, sync::atomic};
 
+mod zeroinit;
+pub use self::zeroinit::*;
+
 /// Trait for types having a constant default value. This is essentially a
 /// constant version of `Default`.
 pub trait Init {

@@ -1,8 +1,8 @@
 //! Static configuration mechanism for the kernel
-use core::{cell::UnsafeCell, marker::PhantomData, mem, num::NonZeroUsize};
+use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
 use super::{hunk, task, Port};
-use crate::utils::{Init, RawCell};
+use crate::utils::{Init, RawCell, ZeroInit};
 
 mod vec;
 #[doc(hidden)]
@@ -36,9 +36,10 @@ pub use self::vec::ComptimeVec;
 ///
 /// Defines a new hunk. `T` must implement [`Init`](crate::utils::Init).
 ///
-/// # `new_hunk!([u8], len = LEN, align = ALIGN)`
+/// # `new_hunk!([T], zeroed = true, len = LEN, align = ALIGN)`
 ///
-/// Defines a new zero-initialized hunk of the specified size and alignment.
+/// Defines a new zero-initialized hunk of an array of the specified length and
+/// alignment.
 ///
 #[macro_export]
 macro_rules! configure {
@@ -88,9 +89,11 @@ macro_rules! configure {
             }
 
             macro_rules! new_hunk {
-                ([u8], len = $len:expr) => {new_hunk!([u8], len = $len, align = 1)};
-                ([u8], len = $len:expr, align = $align:expr) => {
-                    call!($crate::kernel::cfg_new_hunk_bytes, $len, $align)
+                ([u8] $dollar(, zeroed = true)?, len = $len:expr) => {
+                    new_hunk!([u8], zeroed = true, len = $len, align = 1)
+                };
+                ([$ty:ty], zeroed = true, len = $len:expr, align = $align:expr) => {
+                    call!($crate::kernel::cfg_new_hunk_zero_array, $len, $align)
                 };
                 ($ty:ty) => {call!($crate::kernel::cfg_new_hunk::<_, $ty>)};
             }
@@ -263,22 +266,28 @@ pub const fn cfg_new_hunk<System, T: Init>(
 
 /// Used by `new_hunk!` in configuraton functions
 #[doc(hidden)]
-pub const fn cfg_new_hunk_bytes<System>(
+pub const fn cfg_new_hunk_zero_array<System, T: ZeroInit>(
     mut cfg: CfgBuilder<System>,
     len: usize,
-    align: usize,
-) -> CfgOutput<System, hunk::Hunk<System, [u8]>> {
+    mut align: usize,
+) -> CfgOutput<System, hunk::Hunk<System, [T]>> {
     if !align.is_power_of_two() {
         panic!("`align` is not power of two");
     }
+
+    if mem::align_of::<T>() > align {
+        align = mem::align_of::<T>();
+    }
+
+    let byte_len = mem::size_of::<T>() * len;
 
     // Round up `hunk_pool_len`
     cfg.hunk_pool_len = (cfg.hunk_pool_len + align - 1) / align * align;
 
     // The hunk pool is zero-initialized by default
     let start = cfg.hunk_pool_len;
-    let hunk = unsafe { hunk::Hunk::from_range(start, len) };
-    cfg.hunk_pool_len += len;
+    let hunk = unsafe { hunk::Hunk::from_range(start, byte_len) };
+    cfg.hunk_pool_len += byte_len;
     if align > cfg.hunk_pool_align {
         cfg.hunk_pool_align = align;
     }
@@ -362,11 +371,10 @@ impl<System: Port> CfgTaskBuilder<System> {
                 let CfgOutput {
                     cfg: new_cfg,
                     id_map: hunk,
-                } = cfg_new_hunk_bytes(cfg, size, System::STACK_ALIGN);
+                } = cfg_new_hunk_zero_array(cfg, size, System::STACK_ALIGN);
                 cfg = new_cfg;
 
-                // Safety:
-                unsafe { hunk.transmute() }
+                hunk
             }
             TaskStack::Hunk(hunk) => hunk,
         };
