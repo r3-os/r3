@@ -6,3 +6,5 @@ edition = "2018"
 
 [dependencies]
 constance = { path = "../constance" }
+log = "0.4.8"
+env_logger = "0.7.1"

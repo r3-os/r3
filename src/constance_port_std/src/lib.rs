@@ -6,6 +6,9 @@ pub use std::sync::atomic::{AtomicBool, Ordering};
 pub use constance::kernel::{Port, PortToKernel, TaskCb};
 
 #[doc(hidden)]
+pub extern crate env_logger;
+
+#[doc(hidden)]
 pub struct State {
     pub cpu_lock: AtomicBool,
 }
@@ -18,27 +21,35 @@ impl State {
     }
 
     pub unsafe fn dispatch_first_task(&self) -> ! {
+        log::trace!("dispatch_first_task");
         todo!()
     }
 
     pub unsafe fn yield_cpu(&self) {
+        log::trace!("yield_cpu");
         todo!()
     }
 
     pub unsafe fn enter_cpu_lock(&self) {
+        log::trace!("enter_cpu_lock");
         assert!(!self.is_cpu_lock_active());
         self.cpu_lock.store(true, Ordering::Relaxed);
     }
 
     pub unsafe fn leave_cpu_lock(&self) {
+        log::trace!("leave_cpu_lock");
         assert!(self.is_cpu_lock_active());
         self.cpu_lock.store(false, Ordering::Relaxed);
     }
 
-    pub unsafe fn initialize_task_state<System>(&self, _task: &TaskCb<System, ()>) {}
+    pub unsafe fn initialize_task_state<System>(&self, task: &TaskCb<System, ()>) {
+        log::trace!("initialize_task_state {:p}", task);
+    }
 
     pub fn is_cpu_lock_active(&self) -> bool {
-        self.cpu_lock.load(Ordering::Relaxed)
+        let b = self.cpu_lock.load(Ordering::Relaxed);
+        log::trace!("is_cpu_lock_active -> {:?}", b);
+        b
     }
 }
 
@@ -80,6 +91,8 @@ macro_rules! use_port {
         }
 
         fn main() {
+            $crate::env_logger::init();
+
             // Safety: We are a port, so it's okay to call these
             unsafe {
                 <$sys as $crate::PortToKernel>::boot();
