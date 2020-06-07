@@ -130,7 +130,6 @@ macro_rules! configure {
 #[macro_export]
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
-        use ::core::cell::UnsafeCell;
         use $crate::{
             kernel::{CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, TaskAttr, TaskCb},
             utils::{AlignedStorage, Init, RawCell},

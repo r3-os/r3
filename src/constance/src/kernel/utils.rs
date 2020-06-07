@@ -1,7 +1,7 @@
 use core::{marker::PhantomData, ops};
 use tokenlock::TokenLock;
 
-use super::{error::BadCtxError, Kernel, Port};
+use super::{error::BadCtxError, Kernel};
 use crate::utils::Init;
 
 pub(super) fn expect_cpu_lock_inactive<System: Kernel>() -> Result<(), BadCtxError> {
