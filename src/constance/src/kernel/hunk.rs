@@ -162,25 +162,11 @@ impl HunkAttr {
     /// - Assumes `HunkInitAttr` points to memory regions within `hunk_pool`.
     /// - Assumes `hunk_pool` is currently not in use by user code.
     ///
-    unsafe fn init_hunks(&self) {
+    pub(super) unsafe fn init_hunks(&self) {
         for init in self.inits.iter() {
             (init.init)(self.hunk_pool_ptr().add(init.offset) as *mut u8);
         }
     }
-}
-
-/// Initialize hunks.
-///
-/// This is meant to be called only once when a port is initializing the
-/// execution environment.
-///
-/// # Safety
-///
-/// - Assumes `HunkInitAttr` points to memory regions within `hunk_pool`.
-/// - Assumes `hunk_pool` is currently not in use by user code.
-///
-pub(super) unsafe fn init_hunks<System: Kernel>() {
-    System::HUNK_ATTR.init_hunks();
 }
 
 /// Hunk initializer.

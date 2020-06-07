@@ -95,7 +95,7 @@ pub trait PortToKernel {
 
 impl<System: Kernel> PortToKernel for System {
     unsafe fn boot() -> ! {
-        hunk::init_hunks::<Self>();
+        System::HUNK_ATTR.init_hunks();
 
         // Initialize all tasks
         // TODO: Do this only for initially-active tasks
