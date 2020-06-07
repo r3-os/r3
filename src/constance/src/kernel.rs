@@ -30,7 +30,7 @@ impl<T: Port + KernelCfg + 'static> Kernel for T {}
 ///
 /// These methods are only meant to be called by the kernel.
 pub unsafe trait Port: Sized {
-    type PortTaskState: Copy + Send + Sync + Init + 'static;
+    type PortTaskState: Send + Sync + Init + 'static;
 
     /// The initial value of [`TaskCb::port_task_state`] for all tasks.
     const PORT_TASK_STATE_INIT: Self::PortTaskState;
@@ -79,7 +79,7 @@ pub unsafe trait Port: Sized {
     /// [`Pin`]: core::pin::Pin
     ///
     /// Precondition: CPU Lock active
-    unsafe fn initialize_task_state(task: &task::TaskCb<Self, Self::PortTaskState>);
+    unsafe fn initialize_task_state(task: &'static task::TaskCb<Self, Self::PortTaskState>);
 
     /// Return a flag indicating whether a CPU Lock state is active.
     fn is_cpu_lock_active() -> bool;

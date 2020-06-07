@@ -5,6 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 
 [dependencies]
+atomic_ref = { version = "0.1", features = ["nightly"] }
 constance = { path = "../constance" }
 log = "0.4.8"
 env_logger = "0.7.1"
