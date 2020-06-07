@@ -28,12 +28,7 @@ impl<T: Port + KernelCfg + 'static> Kernel for T {}
 /// initializing the execution environment and providing a dispatcher
 /// implementation.
 ///
-/// Here's a non-comprehensive list of things a port is required to do:
-///
-///  - Call [`PortToKernel::init`] and [`PortToKernel::choose_running_task`]
-///    before dispatching the first task.
-///  - TODO
-///
+/// These methods are only meant to be called by the kernel.
 pub unsafe trait Port: Sized {
     type PortTaskState: Copy + Send + Sync + Init + 'static;
 
@@ -50,38 +45,22 @@ pub unsafe trait Port: Sized {
     /// (startup) context.
     ///
     /// Precondition: CPU Lock active, Startup phase
-    ///
-    /// # Safety
-    ///
-    /// This is meant to be only called by the kernel.
     unsafe fn dispatch_first_task() -> !;
 
     /// Yield the processor.
     ///
     /// Precondition: CPU Lock inactive
-    ///
-    /// # Safety
-    ///
-    /// This is meant to be only called by the kernel.
     unsafe fn yield_cpu();
 
     /// Disable all kernel-managed interrupts (this state is called *CPU Lock*).
     ///
     /// Precondition: CPU Lock inactive
-    ///
-    /// # Safety
-    ///
-    /// This is meant to be only called by the kernel.
     unsafe fn enter_cpu_lock();
 
     /// Re-enable kernel-managed interrupts previously disabled by
     /// `enter_cpu_lock`, thus deactivating the CPU Lock state.
     ///
     /// Precondition: CPU Lock active
-    ///
-    /// # Safety
-    ///
-    /// This is meant to be only called by the kernel.
     unsafe fn leave_cpu_lock();
 
     /// Prepare the task for activation. More specifically, set the current
@@ -89,10 +68,6 @@ pub unsafe trait Port: Sized {
     /// pointer to either end of [`TaskAttr::stack`], ensuring the task will
     /// start execution from `entry_point` next time the task receives the
     /// control.
-    ///
-    /// # Safety
-    ///
-    /// This is meant to be only called by the kernel.
     unsafe fn initialize_task_state(task: &task::TaskCb<Self, Self::PortTaskState>);
 
     /// Return a flag indicating whether a CPU Lock state is active.
