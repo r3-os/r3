@@ -66,8 +66,9 @@ macro_rules! use_port {
         }
 
         fn main() {
+            // Safety: We are a port, so it's okay to call this
             unsafe {
-                $crate::init_hunks::<$sys>();
+                <$sys as $crate::PortToKernel>::init();
             }
             todo!()
         }

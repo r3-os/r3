@@ -162,7 +162,7 @@ impl HunkAttr {
     /// - Assumes `HunkInitAttr` points to memory regions within `hunk_pool`.
     /// - Assumes `hunk_pool` is currently not in use by user code.
     ///
-    pub unsafe fn init_hunks(&self) {
+    unsafe fn init_hunks(&self) {
         for init in self.inits.iter() {
             (init.init)(self.hunk_pool_ptr().add(init.offset) as *mut u8);
         }
@@ -179,7 +179,7 @@ impl HunkAttr {
 /// - Assumes `HunkInitAttr` points to memory regions within `hunk_pool`.
 /// - Assumes `hunk_pool` is currently not in use by user code.
 ///
-pub unsafe fn init_hunks<System: Kernel>() {
+pub(super) unsafe fn init_hunks<System: Kernel>() {
     System::HUNK_ATTR.init_hunks();
 }
 

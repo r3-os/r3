@@ -76,6 +76,25 @@ pub unsafe trait Port {
     fn is_cpu_lock_active() -> bool;
 }
 
+/// Methods intended to be called by a port.
+///
+/// # Safety
+///
+/// These are only meant to be called by the port.
+pub trait PortToKernel {
+    /// Initialize runtime structures.
+    ///
+    /// Should be called for exactly once before calling any user or kernel
+    /// code.
+    unsafe fn init();
+}
+
+impl<System: Kernel> PortToKernel for System {
+    unsafe fn init() {
+        hunk::init_hunks::<Self>();
+    }
+}
+
 /// Associates "system" types with kernel-private data. Use [`build!`] to
 /// implement.
 ///
