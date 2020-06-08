@@ -2,7 +2,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 use atomic_ref::AtomicRef;
 use constance::prelude::*;
+use parking_lot::{lock_api::RawMutex, Mutex};
 use std::{
+    mem::ManuallyDrop,
     sync::atomic::AtomicU8,
     thread::{self, JoinHandle},
 };
@@ -24,7 +26,7 @@ pub struct State {
 
 #[derive(Debug)]
 pub struct TaskState {
-    thread: AtomicRef<'static, JoinHandle<()>>,
+    thread: ManuallyDrop<Mutex<Option<JoinHandle<()>>>>,
     tsm: AtomicU8,
 }
 
@@ -41,7 +43,7 @@ impl Init for TaskState {
 impl TaskState {
     pub const fn new() -> Self {
         Self {
-            thread: AtomicRef::new(None),
+            thread: ManuallyDrop::new(Mutex::const_new(RawMutex::INIT, None)),
             tsm: AtomicU8::new(TSM_UNINIT),
         }
     }
@@ -53,9 +55,7 @@ impl TaskState {
         // `self` must represent the current thread
         assert_eq!(
             Some(thread::current().id()),
-            self.thread
-                .load(Ordering::Relaxed)
-                .map(|jh| jh.thread().id()),
+            self.thread.lock().as_ref().map(|jh| jh.thread().id()),
             "`self` is not a current thread"
         );
 
@@ -120,10 +120,11 @@ impl State {
                 let pts = &task.port_task_state;
                 assert_eq!(pts.tsm.load(Ordering::Relaxed), TSM_DORMANT);
 
-                if pts.thread.load(Ordering::Relaxed).is_none() {
+                let mut thread_cell = pts.thread.lock();
+                if thread_cell.is_none() {
                     // Start the task's thread
                     let jh = thread::Builder::new()
-                        .spawn(move || loop {
+                        .spawn(move || {
                             while pts.tsm.load(Ordering::Acquire) != TSM_RUNNING {
                                 thread::park();
                             }
@@ -137,12 +138,14 @@ impl State {
                                 (task.attr.entry_point)(task.attr.entry_param);
                             }
 
-                            // Sleep until woken up again
+                            // Remove itself from `pts.thread`
+                            let mut thread_cell = pts.thread.lock();
+                            *thread_cell = None;
+
                             pts.tsm.store(TSM_UNINIT, Ordering::Relaxed);
                         })
                         .unwrap();
-                    pts.thread
-                        .store(Some(Box::leak(Box::new(jh))), Ordering::Relaxed);
+                    *thread_cell = Some(jh);
                 }
 
                 // Disable CPU Lock
@@ -150,11 +153,7 @@ impl State {
 
                 // Unpark the task's thread
                 pts.tsm.store(TSM_RUNNING, Ordering::Release);
-                pts.thread
-                    .load(Ordering::Relaxed)
-                    .unwrap()
-                    .thread()
-                    .unpark();
+                thread_cell.as_ref().unwrap().thread().unpark();
             } else {
                 // Since we don't have timers or interrupts yet, this is the end
                 panic!("No task to schedule");
