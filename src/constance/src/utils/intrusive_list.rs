@@ -31,66 +31,83 @@ impl<Index> ListHead<Index> {
     }
 }
 
-pub trait CellLike {
+pub trait CellLike<Key> {
     type Target;
 
-    fn get(&self) -> Self::Target;
-    fn set(&self, value: Self::Target);
+    fn get(&self, key: &Key) -> Self::Target;
+    fn set(&self, key: &mut Key, value: Self::Target);
 
-    fn modify(&self, f: impl FnOnce(&mut Self::Target))
+    fn modify(&self, key: &mut Key, f: impl FnOnce(&mut Self::Target))
     where
         Self: Sized,
     {
-        let mut x = self.get();
+        let mut x = self.get(key);
         f(&mut x);
-        self.set(x);
+        self.set(key, x);
     }
 }
 
-impl<Element: Copy> CellLike for core::cell::Cell<Element> {
+impl<Element: Copy> CellLike<()> for core::cell::Cell<Element> {
     type Target = Element;
 
-    fn get(&self) -> Self::Target {
+    fn get(&self, _: &()) -> Self::Target {
         self.get()
     }
-    fn set(&self, value: Self::Target) {
+    fn set(&self, _: &mut (), value: Self::Target) {
         self.set(value);
     }
 }
 
-impl<Element: CellLike> CellLike for &Element {
+impl<'a, Element: Clone, Token, Key> CellLike<&'a mut Key> for tokenlock::TokenLock<Element, Token>
+where
+    Key: tokenlock::Token<Token>,
+{
+    type Target = Element;
+
+    fn get(&self, key: &&'a mut Key) -> Self::Target {
+        self.read(*key).clone()
+    }
+    fn set(&self, key: &mut &'a mut Key, value: Self::Target) {
+        self.replace(*key, value);
+    }
+}
+
+impl<Key, Element: CellLike<Key>> CellLike<Key> for &Element {
     type Target = Element::Target;
 
-    fn get(&self) -> Self::Target {
-        (*self).get()
+    fn get(&self, key: &Key) -> Self::Target {
+        (*self).get(key)
     }
-    fn set(&self, value: Self::Target) {
-        (*self).set(value);
+    fn set(&self, key: &mut Key, value: Self::Target) {
+        (*self).set(key, value);
     }
 }
 
 /// `Cell`-based accessor to a linked list.
 #[derive(Debug)]
-pub struct ListAccessorCell<'a, HeadCell, Pool, MapLink> {
+pub struct ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey> {
     head: HeadCell,
     pool: &'a Pool,
     map_link: MapLink,
+    /// `Key` used to read or write cells.
+    cell_key: CellKey,
 }
 
-impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell>
-    ListAccessorCell<'a, HeadCell, Pool, MapLink>
+impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell, CellKey>
+    ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey>
 where
-    HeadCell: CellLike<Target = ListHead<Index>>,
+    HeadCell: CellLike<CellKey, Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
     MapLink: Fn(&Element) -> &LinkCell,
-    LinkCell: CellLike<Target = Option<Link<Index>>>,
+    LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
     Index: PartialEq + Clone,
 {
-    pub fn new(head: HeadCell, pool: &'a Pool, map_link: MapLink) -> Self {
+    pub fn new(head: HeadCell, pool: &'a Pool, map_link: MapLink, cell_key: CellKey) -> Self {
         ListAccessorCell {
             head,
             pool,
             map_link,
+            cell_key,
         }
     }
 
@@ -99,11 +116,11 @@ where
     }
 
     pub fn head(&self) -> ListHead<Index> {
-        self.head.get()
+        self.head.get(&self.cell_key)
     }
 
-    pub fn set_head(&self, head: ListHead<Index>) {
-        self.head.set(head);
+    pub fn set_head(&mut self, head: ListHead<Index>) {
+        self.head.set(&mut self.cell_key, head);
     }
 
     pub fn pool(&self) -> &Pool {
@@ -119,9 +136,12 @@ where
     }
 
     pub fn back(&self) -> Option<Index> {
-        self.head()
-            .first
-            .map(|p| (self.map_link)(&self.pool[p]).get().unwrap().prev)
+        self.head().first.map(|p| {
+            (self.map_link)(&self.pool[p])
+                .get(&self.cell_key)
+                .unwrap()
+                .prev
+        })
     }
 
     pub fn front_data(&self) -> Option<&Element> {
@@ -142,9 +162,11 @@ where
 
     /// Insert `item` before the position `p` (if `at` is `Some(p)`) or to the
     /// the list's back (if `at` is `None`).
-    pub fn insert(&self, item: Index, at: Option<Index>) {
+    pub fn insert(&mut self, item: Index, at: Option<Index>) {
         debug_assert!(
-            (self.map_link)(&self.pool[item.clone()]).get().is_none(),
+            (self.map_link)(&self.pool[item.clone()])
+                .get(&self.cell_key)
+                .is_none(),
             "item is already linked"
         );
 
@@ -159,14 +181,17 @@ where
             };
 
             let prev = (self.map_link)(&self.pool[next.clone()])
-                .get()
+                .get(&self.cell_key)
                 .unwrap()
                 .prev;
-            (self.map_link)(&self.pool[prev.clone()])
-                .modify(|l| l.as_mut().unwrap().next = item.clone());
-            (self.map_link)(&self.pool[next.clone()])
-                .modify(|l| l.as_mut().unwrap().prev = item.clone());
-            (self.map_link)(&self.pool[item.clone()]).set(Some(Link { prev, next }));
+            (self.map_link)(&self.pool[prev.clone()]).modify(&mut self.cell_key, |l| {
+                l.as_mut().unwrap().next = item.clone()
+            });
+            (self.map_link)(&self.pool[next.clone()]).modify(&mut self.cell_key, |l| {
+                l.as_mut().unwrap().prev = item.clone()
+            });
+            (self.map_link)(&self.pool[item.clone()])
+                .set(&mut self.cell_key, Some(Link { prev, next }));
 
             if update_first {
                 head.first = Some(item);
@@ -176,29 +201,34 @@ where
             debug_assert!(at.is_none());
 
             let link = (self.map_link)(&self.pool[item.clone()]);
-            link.set(Some(Link {
-                prev: item.clone(),
-                next: item.clone(),
-            }));
+            link.set(
+                &mut self.cell_key,
+                Some(Link {
+                    prev: item.clone(),
+                    next: item.clone(),
+                }),
+            );
 
             head.first = Some(item);
             self.set_head(head);
         }
     }
 
-    pub fn push_back(&self, item: Index) {
+    pub fn push_back(&mut self, item: Index) {
         self.insert(item, None);
     }
 
-    pub fn push_front(&self, item: Index) {
+    pub fn push_front(&mut self, item: Index) {
         let at = self.front();
         self.insert(item, at);
     }
 
     /// Remove `item` from the list. Returns `item`.
-    pub fn remove(&self, item: Index) -> Index {
+    pub fn remove(&mut self, item: Index) -> Index {
         debug_assert!(
-            (self.map_link)(&self.pool[item.clone()]).get().is_some(),
+            (self.map_link)(&self.pool[item.clone()])
+                .get(&self.cell_key)
+                .is_some(),
             "item is not linked"
         );
 
@@ -206,13 +236,13 @@ where
             let link_ref = (self.map_link)(&self.pool[item.clone()]);
             let mut head = self.head();
             if head.first.as_ref() == Some(&item) {
-                let next = link_ref.get().unwrap().next;
+                let next = link_ref.get(&self.cell_key).unwrap().next;
                 if next == item {
                     // The list just became empty
                     head.first = None;
                     self.set_head(head);
 
-                    link_ref.set(None);
+                    link_ref.set(&mut self.cell_key, None);
                     return item;
                 }
 
@@ -221,23 +251,25 @@ where
                 self.set_head(head);
             }
 
-            link_ref.get().unwrap()
+            link_ref.get(&self.cell_key).unwrap()
         };
 
-        (self.map_link)(&self.pool[link.prev.clone()])
-            .modify(|l| l.as_mut().unwrap().next = link.next.clone());
-        (self.map_link)(&self.pool[link.next.clone()])
-            .modify(|l| l.as_mut().unwrap().prev = link.prev.clone());
-        (self.map_link)(&self.pool[item.clone()]).set(None);
+        (self.map_link)(&self.pool[link.prev.clone()]).modify(&mut self.cell_key, |l| {
+            l.as_mut().unwrap().next = link.next.clone()
+        });
+        (self.map_link)(&self.pool[link.next.clone()]).modify(&mut self.cell_key, |l| {
+            l.as_mut().unwrap().prev = link.prev.clone()
+        });
+        (self.map_link)(&self.pool[item.clone()]).set(&mut self.cell_key, None);
 
         item
     }
 
-    pub fn pop_back(&self) -> Option<Index> {
+    pub fn pop_back(&mut self) -> Option<Index> {
         self.back().map(|item| self.remove(item))
     }
 
-    pub fn pop_front(&self) -> Option<Index> {
+    pub fn pop_front(&mut self) -> Option<Index> {
         self.front().map(|item| self.remove(item))
     }
 
@@ -247,16 +279,11 @@ where
             accessor: self,
         }
     }
-
-    pub fn clear(&self) {
-        for (_, el) in self.iter() {
-            (self.map_link)(el).set(None);
-        }
-        self.set_head(ListHead::new());
-    }
 }
 
-impl<'a, HeadCell, Pool, MapLink> ops::Deref for ListAccessorCell<'a, HeadCell, Pool, MapLink> {
+impl<'a, HeadCell, Pool, MapLink, CellKey> ops::Deref
+    for ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey>
+{
     type Target = Pool;
 
     fn deref(&self) -> &Self::Target {
@@ -264,13 +291,13 @@ impl<'a, HeadCell, Pool, MapLink> ops::Deref for ListAccessorCell<'a, HeadCell, 
     }
 }
 
-impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell> Extend<Index>
-    for ListAccessorCell<'a, HeadCell, Pool, MapLink>
+impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell, CellKey> Extend<Index>
+    for ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey>
 where
-    HeadCell: CellLike<Target = ListHead<Index>>,
+    HeadCell: CellLike<CellKey, Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
     MapLink: Fn(&Element) -> &LinkCell,
-    LinkCell: CellLike<Target = Option<Link<Index>>>,
+    LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
     Index: PartialEq + Clone,
 {
     fn extend<I: IntoIterator<Item = Index>>(&mut self, iter: I) {
@@ -287,14 +314,14 @@ pub struct Iter<Element, Index> {
     next: Option<Index>,
 }
 
-impl<'a, 'b, HeadCell, Index, Pool, MapLink, Element, LinkCell> Iterator
-    for Iter<&'b ListAccessorCell<'a, HeadCell, Pool, MapLink>, Index>
+impl<'a, 'b, HeadCell, Index, Pool, MapLink, Element, LinkCell, CellKey> Iterator
+    for Iter<&'b ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey>, Index>
 where
-    HeadCell: CellLike<Target = ListHead<Index>>,
+    HeadCell: CellLike<CellKey, Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
     MapLink: 'a + Fn(&Element) -> &LinkCell,
     Element: 'a + 'b,
-    LinkCell: CellLike<Target = Option<Link<Index>>>,
+    LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
     Index: PartialEq + Clone,
 {
     type Item = (Index, &'a Element);
@@ -302,7 +329,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.next.take() {
             let new_next = (self.accessor.map_link)(&self.accessor.pool[next.clone()])
-                .get()
+                .get(&self.accessor.cell_key)
                 .unwrap()
                 .next;
             if Some(&new_next) == self.accessor.head().first.as_ref() {
@@ -332,7 +359,7 @@ fn basic_cell() {
 
     macro_rules! get_accessor {
         () => {
-            ListAccessorCell::new(&head, &pool, |(_, link)| link)
+            ListAccessorCell::new(&head, &pool, |(_, link)| link, ())
         };
     }
 
@@ -347,7 +374,7 @@ fn basic_cell() {
 
     println!("{:?}", (&pool, &head));
 
-    let accessor = get_accessor!();
+    let mut accessor = get_accessor!();
     assert!(!accessor.is_empty());
     assert_eq!(accessor.front(), Some(ptr3));
     assert_eq!(accessor.back(), Some(ptr2));
@@ -375,7 +402,7 @@ fn clear_cell() {
 
     macro_rules! get_accessor {
         () => {
-            ListAccessorCell::new(&head, &pool, |(_, link)| link)
+            ListAccessorCell::new(&head, &pool, |(_, link)| link, ())
         };
     }
 
@@ -389,7 +416,7 @@ fn clear_cell() {
     get_accessor!().push_back(ptrs[1]);
     get_accessor!().push_front(ptrs[2]);
 
-    get_accessor!().clear();
+    while get_accessor!().pop_front().is_some() {}
 
     assert_eq!(head.get().first, None);
     for &ptr in &ptrs {
