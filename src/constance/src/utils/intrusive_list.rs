@@ -1,5 +1,6 @@
 //! Intrusive doubly linked list backed by a container implementing
 //! `std::ops::Index`.
+#![allow(dead_code)]
 use core::{fmt, ops};
 
 /// Circualr linked list header.
