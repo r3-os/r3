@@ -17,10 +17,13 @@ macro_rules! If {
 mod aligned_storage;
 mod init;
 mod int;
+mod intrusive_list;
 mod prio_bitmap;
 mod rawcell;
 mod zeroinit;
-pub use self::{aligned_storage::*, init::*, int::*, prio_bitmap::*, rawcell::*, zeroinit::*};
+pub use self::{
+    aligned_storage::*, init::*, int::*, intrusive_list::*, prio_bitmap::*, rawcell::*, zeroinit::*,
+};
 
 /// A "type function" producing a type.
 #[doc(hidden)]
