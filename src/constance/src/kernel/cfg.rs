@@ -2,7 +2,7 @@
 use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
 use super::{hunk, task, Port};
-use crate::utils::{Init, ZeroInit};
+use crate::utils::{Init, ZeroInit, FIXED_PRIO_BITMAP_MAX_LEN};
 
 mod vec;
 #[doc(hidden)]
@@ -11,6 +11,13 @@ pub use self::vec::ComptimeVec;
 /// Define a configuration function.
 ///
 /// The following macros are available inside the function:
+///
+/// # `set!(prop = value)`
+///
+/// Set a global propertry.
+///
+///  - `num_task_priority_levels = NUM_LEVELS: usize` specifies the number of
+///    task priority levels. The default value is `16`.
 ///
 /// # `call!(expr, arg1, arg2, ...)`
 ///
@@ -60,6 +67,12 @@ macro_rules! configure {
         ) -> $crate::kernel::CfgOutput<$sys, $id_map> {
             #[allow(unused_mut)]
             let mut cfg = cfg;
+
+            macro_rules! set {
+                ($argname:ident = $arg:expr $dollar(,)*) => {{
+                    cfg = cfg.$argname($arg);
+                }};
+            }
 
             macro_rules! call {
                 ($path:expr $dollar(, $arg:expr)* $dollar(,)*) => {{
@@ -134,13 +147,17 @@ macro_rules! build {
             kernel::{
                 CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, State, TaskAttr, TaskCb,
             },
-            utils::{AlignedStorage, Init, RawCell},
+            utils::{AlignedStorage, Init, RawCell, FixedPrioBitmap},
         };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
         // (custom type). We need the first one to be `const` so that we can
         // calculate the values of generic parameters based on its contents.
-        const CFG: CfgBuilder<$sys> = $configure(CfgBuilder::new()).cfg;
+        const CFG: CfgBuilder<$sys> = {
+            let cfg = $configure(CfgBuilder::new()).cfg;
+            cfg.validate();
+            cfg
+        };
 
         // The second value can be just `let`
         let id_map = $configure(CfgBuilder::new()).id_map;
@@ -159,12 +176,18 @@ macro_rules! build {
             Init::INIT;
         const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
 
+        // Task ready bitmap
+        type TaskReadyBitmap = FixedPrioBitmap<{CFG.num_task_priority_levels}>;
+
         // Instantiate the global state
-        static KERNEL_STATE: State<$sys, <$sys as Port>::PortTaskState> = State::INIT;
+        type KernelState = State<$sys, <$sys as Port>::PortTaskState, TaskReadyBitmap>;
+        static KERNEL_STATE: KernelState = State::INIT;
 
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg for $sys {
-            fn state() -> &'static State<Self, Self::PortTaskState> {
+            type TaskReadyBitmap = TaskReadyBitmap;
+
+            fn state() -> &'static KernelState {
                 &KERNEL_STATE
             }
 
@@ -214,6 +237,7 @@ pub struct CfgBuilder<System> {
     pub hunk_pool_len: usize,
     pub hunk_pool_align: usize,
     pub tasks: ComptimeVec<CfgBuilderTask<System>>,
+    pub num_task_priority_levels: usize,
 }
 
 impl<System> CfgBuilder<System> {
@@ -224,7 +248,23 @@ impl<System> CfgBuilder<System> {
             hunk_pool_len: 0,
             hunk_pool_align: 1,
             tasks: ComptimeVec::new(),
+            num_task_priority_levels: 16,
         }
+    }
+
+    pub const fn num_task_priority_levels(mut self, new_value: usize) -> Self {
+        if new_value == 0 {
+            panic!("`num_task_priority_levels` must be greater than zero");
+        } else if new_value > FIXED_PRIO_BITMAP_MAX_LEN {
+            panic!("`num_task_priority_levels` must be less than or equal to `FIXED_PRIO_BITMAP_MAX_LEN`");
+        }
+
+        self.num_task_priority_levels = new_value;
+        self
+    }
+
+    pub const fn validate(&self) {
+        // TODO: Panic if any task violates `num_task_priority_levels`
     }
 }
 

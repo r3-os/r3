@@ -19,6 +19,8 @@ const COTTAGE: Objects = constance::build!(System, configure_app);
 
 constance::configure! {
     fn configure_app(_: CfgBuilder<System>) -> Objects {
+        set!(num_task_priority_levels = 4);
+
         let task1 = new_task! { start = task1_body };
         let task2 = new_task! { start = task2_body };
 

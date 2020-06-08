@@ -2,7 +2,7 @@
 use atomic_ref::AtomicRef;
 use core::{mem::forget, num::NonZeroUsize, sync::atomic::Ordering};
 
-use crate::utils::Init;
+use crate::utils::{Init, PrioBitmap};
 
 #[macro_use]
 mod cfg;
@@ -155,8 +155,10 @@ pub unsafe trait KernelCfg: Port + Sized {
     #[doc(hidden)]
     const HUNK_ATTR: HunkAttr;
 
+    type TaskReadyBitmap: PrioBitmap;
+
     /// Access the kernel's global state.
-    fn state() -> &'static State<Self, Self::PortTaskState>;
+    fn state() -> &'static State<Self, Self::PortTaskState, Self::TaskReadyBitmap>;
 
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
     //        to be resolved because `TaskCb` includes interior mutability
@@ -172,19 +174,28 @@ pub unsafe trait KernelCfg: Port + Sized {
 }
 
 /// Global kernel state.
-pub struct State<System: 'static, PortTaskState: 'static> {
+pub struct State<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap> {
     // TODO: Make `running_task` non-null to simplify runtime code
     /// The currently running task.
     running_task: AtomicRef<'static, TaskCb<System, PortTaskState>>,
+
+    /// The task ready bitmap, in which each bit indicates whether the
+    /// task ready queue corresponding to that bit contains a task or not.
+    task_ready_bitmap: utils::CpuLockCell<System, TaskReadyBitmap>,
 }
 
-impl<System: 'static, PortTaskState: 'static> Init for State<System, PortTaskState> {
+impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap> Init
+    for State<System, PortTaskState, TaskReadyBitmap>
+{
     const INIT: Self = Self {
         running_task: AtomicRef::new(None),
+        task_ready_bitmap: Init::INIT,
     };
 }
 
-impl<System: 'static, PortTaskState: 'static> State<System, PortTaskState> {
+impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap>
+    State<System, PortTaskState, TaskReadyBitmap>
+{
     /// Get the currently running task.
     pub fn running_task(&self) -> Option<&'static TaskCb<System, PortTaskState>> {
         self.running_task.load(Ordering::Relaxed)
