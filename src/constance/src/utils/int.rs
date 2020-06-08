@@ -2,7 +2,7 @@ use core::{fmt, ops};
 use num_integer::Integer;
 
 /// Integral types with efficient binary operations.
-pub trait BinaryInteger:
+pub trait BinInteger:
     Integer
     + Clone
     + Sized
@@ -10,12 +10,11 @@ pub trait BinaryInteger:
     + ops::SubAssign
     + ops::MulAssign
     + ops::DivAssign
-    + RefSaturatingAdd<Output = Self>
     + fmt::Debug
 {
     type OneDigits: Iterator<Item = u32>;
 
-    fn max_digits() -> u32;
+    const BITS: u32;
 
     fn ones(range: ops::Range<u32>) -> Self;
 
@@ -33,7 +32,7 @@ pub trait BinaryInteger:
     /// Return the position of the least significant set bit since the position
     /// `start`.
     ///
-    /// Retruns `Self::max_digits()` if none was found.
+    /// Retruns `Self::BITS` if none was found.
     fn bit_scan_forward(&self, start: u32) -> u32;
 
     /// Slice a part of its binary representation as `u32`.
@@ -57,14 +56,8 @@ pub trait BinaryInteger:
     fn one_digits(&self) -> Self::OneDigits;
 }
 
-/// Types that supports saturating addition.
-pub trait RefSaturatingAdd<RHS = Self> {
-    type Output;
-    fn ref_saturating_add(&self, rhs: RHS) -> Self::Output;
-}
-
 /// Unsigned integral types with efficient binary operations.
-pub trait BinaryUInteger: BinaryInteger {
+pub trait BinUInteger: BinInteger {
     /// Return `ture` if and only if `self == 2^k` for some `k`.
     fn is_power_of_two(&self) -> bool;
 }
@@ -73,23 +66,21 @@ pub trait BinaryUInteger: BinaryInteger {
 pub struct OneDigits<T>(T);
 
 macro_rules! impl_binary_integer {
-    ($size:expr, $type:ty) => {
-        impl BinaryInteger for $type {
+    ($type:ty) => {
+        impl BinInteger for $type {
             type OneDigits = OneDigits<Self>;
 
-            #[inline]
-            fn max_digits() -> u32 {
-                $size
-            }
+            const BITS: u32 = core::mem::size_of::<$type>() as u32 * 8;
+
             #[inline]
             fn ones(range: ops::Range<u32>) -> Self {
-                assert!(range.end <= Self::max_digits());
+                assert!(range.end <= Self::BITS);
                 Self::ones_truncated(range)
             }
             #[inline]
             fn ones_truncated(range: ops::Range<u32>) -> Self {
                 assert!(range.start <= range.end);
-                if range.end >= Self::max_digits() {
+                if range.end >= Self::BITS {
                     (0 as Self).wrapping_sub(1 << range.start)
                 } else {
                     ((1 as Self) << range.end).wrapping_sub(1 << range.start)
@@ -109,8 +100,8 @@ macro_rules! impl_binary_integer {
             }
             #[inline]
             fn bit_scan_forward(&self, start: u32) -> u32 {
-                if start >= Self::max_digits() {
-                    Self::max_digits()
+                if start >= Self::BITS {
+                    Self::BITS
                 } else {
                     (*self & !Self::ones(0..start)).trailing_zeros()
                 }
@@ -122,7 +113,7 @@ macro_rules! impl_binary_integer {
             }
             #[inline]
             fn get_bit(&self, i: u32) -> bool {
-                if i < Self::max_digits() {
+                if i < Self::BITS {
                     self & ((1 as Self) << i) != 0
                 } else {
                     false
@@ -130,19 +121,19 @@ macro_rules! impl_binary_integer {
             }
             #[inline]
             fn set_bit(&mut self, i: u32) {
-                if i < Self::max_digits() {
+                if i < Self::BITS {
                     *self |= (1 as Self) << i;
                 }
             }
             #[inline]
             fn clear_bit(&mut self, i: u32) {
-                if i < Self::max_digits() {
+                if i < Self::BITS {
                     *self &= !((1 as Self) << i);
                 }
             }
             #[inline]
             fn checked_ceil_fix(self, fp: u32) -> Option<Self> {
-                if fp >= Self::max_digits() {
+                if fp >= Self::BITS {
                     if self == 0 {
                         Some(0)
                     } else {
@@ -156,12 +147,6 @@ macro_rules! impl_binary_integer {
             #[inline]
             fn one_digits(&self) -> Self::OneDigits {
                 OneDigits(*self)
-            }
-        }
-        impl RefSaturatingAdd for $type {
-            type Output = Self;
-            fn ref_saturating_add(&self, rhs: Self) -> Self::Output {
-                (*self).saturating_add(rhs)
             }
         }
         impl Iterator for OneDigits<$type> {
@@ -193,7 +178,7 @@ macro_rules! impl_binary_integer {
                 if self.0 == 0 {
                     None
                 } else {
-                    let index = $size - 1 - self.0.leading_zeros();
+                    let index = <$type>::BITS - 1 - self.0.leading_zeros();
                     self.0 &= !((1 as $type) << index);
                     Some(index)
                 }
@@ -203,8 +188,8 @@ macro_rules! impl_binary_integer {
 }
 
 macro_rules! impl_binary_uinteger {
-    ($size:expr, $type:ty) => {
-        impl BinaryUInteger for $type {
+    ($type:ty) => {
+        impl BinUInteger for $type {
             #[inline]
             fn is_power_of_two(&self) -> bool {
                 Self::is_power_of_two(*self)
@@ -213,20 +198,20 @@ macro_rules! impl_binary_uinteger {
     };
 }
 
-impl_binary_integer!(8, i8);
-impl_binary_integer!(16, i16);
-impl_binary_integer!(32, i32);
-impl_binary_integer!(64, i64);
+impl_binary_integer!(i8);
+impl_binary_integer!(i16);
+impl_binary_integer!(i32);
+impl_binary_integer!(i64);
 
-impl_binary_integer!(8, u8);
-impl_binary_integer!(16, u16);
-impl_binary_integer!(32, u32);
-impl_binary_integer!(64, u64);
+impl_binary_integer!(u8);
+impl_binary_integer!(u16);
+impl_binary_integer!(u32);
+impl_binary_integer!(u64);
 
-impl_binary_uinteger!(8, u8);
-impl_binary_uinteger!(16, u16);
-impl_binary_uinteger!(32, u32);
-impl_binary_uinteger!(64, u64);
+impl_binary_uinteger!(u8);
+impl_binary_uinteger!(u16);
+impl_binary_uinteger!(u32);
+impl_binary_uinteger!(u64);
 
 #[cfg(test)]
 mod tests {
