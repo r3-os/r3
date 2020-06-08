@@ -226,12 +226,52 @@ impl_binary_uinteger!(usize);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck_macros::quickcheck;
 
-    #[test]
-    fn is_power_of_two() {
-        assert!(!(&0u32).is_power_of_two(), "0");
-        assert!((&1u32).is_power_of_two(), "1");
-        assert!((&2u32).is_power_of_two(), "2");
-        assert!(!(&3u32).is_power_of_two(), "3");
+    macro_rules! gen_test {
+        ($t:ident) => {
+            mod $t {
+                use super::*;
+
+                #[test]
+                fn is_power_of_two() {
+                    assert!(!(&(0 as $t)).is_power_of_two());
+                    assert!((&(1 as $t)).is_power_of_two());
+                    assert!((&(2 as $t)).is_power_of_two());
+                    assert!(!(&(3 as $t)).is_power_of_two());
+                }
+
+                #[quickcheck]
+                fn one_digits(mut set_bits: Vec<u32>) -> bool {
+                    // Wrap around the bit positions by the target type's size
+                    for bit in set_bits.iter_mut() {
+                        *bit = *bit % $t::BITS;
+                    }
+
+                    // Sort and remove duplicates, which gives us the expected
+                    // sequence to be returned by `one_digits`
+                    set_bits.sort();
+                    set_bits.dedup();
+
+                    // Create an integer
+                    let i: $t = set_bits.iter().fold(0, |i, &bit| i | (1 << bit));
+
+                    let got_set_bits: Vec<u32> = i.one_digits().collect();
+
+                    log::trace!("i = 0x{:x}", i);
+                    log::trace!("    got = {:?}", got_set_bits);
+                    log::trace!("    expected = {:?}", set_bits);
+
+                    got_set_bits == set_bits
+                }
+            }
+        };
     }
+
+    gen_test!(u8);
+    gen_test!(u16);
+    gen_test!(u32);
+    gen_test!(u64);
+    gen_test!(u128);
+    gen_test!(usize);
 }

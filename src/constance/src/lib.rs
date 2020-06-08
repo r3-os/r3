@@ -8,8 +8,12 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
-#![no_std]
 #![doc(include = "./lib.md")]
+#![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)
+
+// When using `#![no_std]`, `core` has to be imported manually to be used
+#[cfg(test)]
+extern crate core;
 
 #[macro_use]
 pub mod kernel;
