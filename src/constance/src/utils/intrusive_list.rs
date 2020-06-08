@@ -71,21 +71,22 @@ impl<Element: CellLike> CellLike for &Element {
 
 /// `Cell`-based accessor to a linked list.
 #[derive(Debug)]
-pub struct ListAccessorCell<'a, H, Pool, MapLink> {
-    head: H,
+pub struct ListAccessorCell<'a, HeadCell, Pool, MapLink> {
+    head: HeadCell,
     pool: &'a Pool,
     map_link: MapLink,
 }
 
-impl<'a, H, Index, Pool, MapLink, Element, L> ListAccessorCell<'a, H, Pool, MapLink>
+impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell>
+    ListAccessorCell<'a, HeadCell, Pool, MapLink>
 where
-    H: CellLike<Target = ListHead<Index>>,
+    HeadCell: CellLike<Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
-    MapLink: Fn(&Element) -> &L,
-    L: CellLike<Target = Option<Link<Index>>>,
+    MapLink: Fn(&Element) -> &LinkCell,
+    LinkCell: CellLike<Target = Option<Link<Index>>>,
     Index: PartialEq + Clone,
 {
-    pub fn new(head: H, pool: &'a Pool, map_link: MapLink) -> Self {
+    pub fn new(head: HeadCell, pool: &'a Pool, map_link: MapLink) -> Self {
         ListAccessorCell {
             head,
             pool,
@@ -93,7 +94,7 @@ where
         }
     }
 
-    pub fn head_cell(&self) -> &H {
+    pub fn head_cell(&self) -> &HeadCell {
         &self.head
     }
 
@@ -255,7 +256,7 @@ where
     }
 }
 
-impl<'a, H, Pool, MapLink> ops::Deref for ListAccessorCell<'a, H, Pool, MapLink> {
+impl<'a, HeadCell, Pool, MapLink> ops::Deref for ListAccessorCell<'a, HeadCell, Pool, MapLink> {
     type Target = Pool;
 
     fn deref(&self) -> &Self::Target {
@@ -263,13 +264,13 @@ impl<'a, H, Pool, MapLink> ops::Deref for ListAccessorCell<'a, H, Pool, MapLink>
     }
 }
 
-impl<'a, H, Index, Pool, MapLink, Element, L> Extend<Index>
-    for ListAccessorCell<'a, H, Pool, MapLink>
+impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell> Extend<Index>
+    for ListAccessorCell<'a, HeadCell, Pool, MapLink>
 where
-    H: CellLike<Target = ListHead<Index>>,
+    HeadCell: CellLike<Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
-    MapLink: Fn(&Element) -> &L,
-    L: CellLike<Target = Option<Link<Index>>>,
+    MapLink: Fn(&Element) -> &LinkCell,
+    LinkCell: CellLike<Target = Option<Link<Index>>>,
     Index: PartialEq + Clone,
 {
     fn extend<I: IntoIterator<Item = Index>>(&mut self, iter: I) {
@@ -286,14 +287,14 @@ pub struct Iter<Element, Index> {
     next: Option<Index>,
 }
 
-impl<'a, 'b, H, Index, Pool, MapLink, Element, L> Iterator
-    for Iter<&'b ListAccessorCell<'a, H, Pool, MapLink>, Index>
+impl<'a, 'b, HeadCell, Index, Pool, MapLink, Element, LinkCell> Iterator
+    for Iter<&'b ListAccessorCell<'a, HeadCell, Pool, MapLink>, Index>
 where
-    H: CellLike<Target = ListHead<Index>>,
+    HeadCell: CellLike<Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
-    MapLink: 'a + Fn(&Element) -> &L,
+    MapLink: 'a + Fn(&Element) -> &LinkCell,
     Element: 'a + 'b,
-    L: CellLike<Target = Option<Link<Index>>>,
+    LinkCell: CellLike<Target = Option<Link<Index>>>,
     Index: PartialEq + Clone,
 {
     type Item = (Index, &'a Element);
