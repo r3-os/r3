@@ -1,6 +1,8 @@
 use core::{fmt, ops};
 use num_integer::Integer;
 
+use super::{Init, ZeroInit};
+
 /// Integral types with efficient binary operations.
 pub trait BinInteger:
     Integer
@@ -11,6 +13,8 @@ pub trait BinInteger:
     + ops::MulAssign
     + ops::DivAssign
     + fmt::Debug
+    + Init
+    + ZeroInit
 {
     type OneDigits: Iterator<Item = u32>;
 
