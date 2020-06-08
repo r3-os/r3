@@ -1,4 +1,4 @@
-use core::{marker::PhantomData, ops};
+use core::{fmt, marker::PhantomData, ops};
 use tokenlock::TokenLock;
 
 use super::{error::BadCtxError, Kernel};
@@ -38,7 +38,43 @@ impl<System> Init for CpuLockKeyhole<System> {
 
 /// Cell type that can be accessed by [`CpuLockToken`] (which can be obtained
 /// by [`lock_cpu`]).
-pub(super) type CpuLockCell<System, T> = tokenlock::TokenLock<T, CpuLockKeyhole<System>>;
+pub(super) struct CpuLockCell<System, T: ?Sized>(tokenlock::TokenLock<T, CpuLockKeyhole<System>>);
+
+impl<System, T> CpuLockCell<System, T> {
+    #[allow(dead_code)]
+    pub(super) fn new(x: T) -> Self {
+        Self(tokenlock::TokenLock::new(CpuLockKeyhole::INIT, x))
+    }
+}
+
+impl<System: Kernel, T: fmt::Debug> fmt::Debug for CpuLockCell<System, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Ok(lock) = lock_cpu() {
+            f.debug_tuple("CpuLockCell")
+                .field(self.0.read(&*lock))
+                .finish()
+        } else {
+            write!(f, "CpuLockCell(< locked >)")
+        }
+    }
+}
+
+impl<System, T: Init> Init for CpuLockCell<System, T> {
+    const INIT: Self = Self(Init::INIT);
+}
+
+impl<System, T: Init> ops::Deref for CpuLockCell<System, T> {
+    type Target = tokenlock::TokenLock<T, CpuLockKeyhole<System>>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<System, T: Init> ops::DerefMut for CpuLockCell<System, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 /// Attempt to enter a CPU Lock state and get an RAII guard.
 /// Return `BadCtx` if the kernel is already in a CPU Lock state.
