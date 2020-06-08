@@ -7,6 +7,7 @@
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
+#![feature(never_type)] // `!`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
 #![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)

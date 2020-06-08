@@ -9,6 +9,8 @@ use std::{
     thread::{self, JoinHandle},
 };
 
+mod threading;
+
 #[doc(hidden)]
 pub use constance::kernel::{Port, PortToKernel, TaskCb};
 /// Used by `use_port!`
@@ -48,16 +50,19 @@ impl TaskState {
         }
     }
 
-    /// Yield the current task `self` and invoke the dispatcher.
-    fn yield_current(&self, state: &State) {
-        log::trace!("yield_current({:p}) enter", self);
-
+    fn assert_current_thread(&self) {
         // `self` must represent the current thread
         assert_eq!(
             Some(thread::current().id()),
             self.thread.lock().as_ref().map(|jh| jh.thread().id()),
             "`self` is not a current thread"
         );
+    }
+
+    /// Yield the current task `self` and invoke the dispatcher.
+    fn yield_current(&self, state: &State) {
+        log::trace!("yield_current({:p}) enter", self);
+        self.assert_current_thread();
 
         self.tsm.store(TSM_RUNNABLE, Ordering::Release);
 
@@ -69,6 +74,32 @@ impl TaskState {
             thread::park();
         }
         log::trace!("yield_current({:p}) leave", self);
+    }
+
+    unsafe fn exit_and_dispatch(&self, state: &State) -> ! {
+        log::trace!("exit_and_dispatch({:p}) enter", self);
+        self.assert_current_thread();
+
+        // `self` must represent the current thread
+        assert_eq!(
+            Some(thread::current().id()),
+            self.thread.lock().as_ref().map(|jh| jh.thread().id()),
+            "`self` is not a current thread"
+        );
+
+        // Remove itself from `self.thread`
+        let mut thread_cell = self.thread.lock();
+        *thread_cell = None;
+        self.tsm.store(TSM_UNINIT, Ordering::Release);
+        drop(thread_cell);
+
+        // Unpark the dispatcher
+        state.invoke_dispatcher();
+
+        log::trace!("exit_and_dispatch({:p}) calling exit_thread", self);
+        unsafe {
+            threading::exit_thread();
+        }
     }
 }
 
@@ -138,11 +169,13 @@ impl State {
                                 (task.attr.entry_point)(task.attr.entry_param);
                             }
 
-                            // Remove itself from `pts.thread`
-                            let mut thread_cell = pts.thread.lock();
-                            *thread_cell = None;
-
-                            pts.tsm.store(TSM_UNINIT, Ordering::Relaxed);
+                            // Safety: To my knowledge, we have nothing on the
+                            // current thread' stack which are unsafe to
+                            // `forget`. (`libstd`'s thread entry point might
+                            // not be prepared to this, though...)
+                            unsafe {
+                                System::exit_task().unwrap();
+                            }
                         })
                         .unwrap();
                     *thread_cell = Some(jh);
@@ -170,6 +203,19 @@ impl State {
 
         let task = System::state().running_task().expect("no running task");
         task.port_task_state.yield_current(self);
+    }
+
+    pub unsafe fn exit_and_dispatch<System: Kernel>(&self) -> !
+    where
+        System: Port<PortTaskState = TaskState>,
+    {
+        log::trace!("exit_and_dispatch");
+        assert!(self.is_cpu_lock_active());
+
+        let task = System::state().running_task().expect("no running task");
+        unsafe {
+            task.port_task_state.exit_and_dispatch(self);
+        }
     }
 
     pub unsafe fn enter_cpu_lock(&self) {
@@ -230,6 +276,10 @@ macro_rules! use_port {
 
             unsafe fn yield_cpu() {
                 PORT_STATE.yield_cpu::<Self>()
+            }
+
+            unsafe fn exit_and_dispatch() -> ! {
+                PORT_STATE.exit_and_dispatch::<Self>();
             }
 
             unsafe fn enter_cpu_lock() {

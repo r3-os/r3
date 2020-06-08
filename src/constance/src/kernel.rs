@@ -15,10 +15,33 @@ pub use self::{cfg::*, error::*, hunk::*, task::*};
 /// Numeric value used to identify various kinds of kernel objects.
 pub type Id = NonZeroUsize;
 
-/// Represents "system" types having sufficient trait `impl`s to instantiate the
-/// kernel.
-pub trait Kernel: Port + KernelCfg + Sized + 'static {}
-impl<T: Port + KernelCfg + 'static> Kernel for T {}
+/// Provides access to the global API functions exposed by the kernel.
+///
+/// This trait is automatically implemented on "system" types that have
+/// sufficient trait `impl`s to instantiate the kernel.
+pub trait Kernel: Port + KernelCfg + Sized + 'static {
+    /// Terminate the current task, putting it into a Dormant state.
+    ///
+    /// The kernel (to be precise, the port) makes an implicit call to this
+    /// function when a task entry point function returns.
+    ///
+    /// # Safety
+    ///
+    /// On a successful call, this function destroys the current task's stack
+    /// without running any destructors on stack-allocated objects and renders
+    /// all references pointing to such objects invalid. The caller is
+    /// responsible for taking this possibility into account and ensuring this
+    /// doesn't lead to an undefined behavior.
+    ///
+    unsafe fn exit_task() -> Result<!, ExitTaskError>;
+}
+
+impl<T: Port + KernelCfg + 'static> Kernel for T {
+    unsafe fn exit_task() -> Result<!, ExitTaskError> {
+        // Safety: Just forwarding the function call
+        unsafe { exit_current_task::<Self>() }
+    }
+}
 
 /// Implemented by a port.
 ///
@@ -51,6 +74,12 @@ pub unsafe trait Port: Sized {
     ///
     /// Precondition: CPU Lock inactive
     unsafe fn yield_cpu();
+
+    /// Destroy the state of the currently running task
+    /// ([`State::running_task`]) and proceed to the dispatcher.
+    ///
+    /// Precondition: CPU Lock active, Task context
+    unsafe fn exit_and_dispatch() -> !;
 
     /// Disable all kernel-managed interrupts (this state is called *CPU Lock*).
     ///
@@ -135,7 +164,7 @@ impl<System: Kernel> PortToKernel for System {
         // active
         let lock = unsafe { utils::assume_cpu_lock::<Self>() };
 
-        // TODO: Choose only an active task
+        // TODO: Choose only a runnable task
         Self::state()
             .running_task
             .store(Self::get_task_cb(0), Ordering::Relaxed);

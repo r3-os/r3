@@ -1,7 +1,7 @@
 //! Tasks
 use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 
-use super::{hunk::Hunk, utils, ActivateTaskError, Id, Kernel};
+use super::{hunk::Hunk, utils, ActivateTaskError, ExitTaskError, Id, Kernel};
 use crate::utils::{Init, RawCell};
 
 /// Represents a single task in a system.
@@ -164,5 +164,32 @@ impl<System: Kernel> fmt::Debug for TaskAttr<System> {
             .field("entry_param", &self.entry_param)
             .field("stack", &self.stack)
             .finish()
+    }
+}
+
+/// Implements [`Kernel::exit_task`].
+pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskError> {
+    // TODO: Deny interrupt context
+
+    // If CPU Lock is inactive, activate it.
+    // TODO: If `is_cpu_lock_active() == true`, assert that it was an
+    //       application that has the lock. It's illegal for it to be a
+    //       kernel-owned CPU Lock.
+    let lock = unsafe {
+        if !System::is_cpu_lock_active() {
+            System::enter_cpu_lock();
+        }
+        utils::assume_cpu_lock::<System>()
+    };
+
+    // TODO: Transition the task to Dormant
+
+    core::mem::forget(lock);
+
+    // Safety: (1) The user of `exit_task` acknowledges that all preexisting
+    // data on the task stack will be invalidated and has promised that this
+    // will not cause any UBs. (2) CPU Lock active
+    unsafe {
+        System::exit_and_dispatch();
     }
 }

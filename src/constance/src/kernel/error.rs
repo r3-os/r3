@@ -92,6 +92,15 @@ define_error! {
     }
 }
 
+define_error! {
+    /// Error type for [`Kernel::exit_task`].
+    ///
+    /// [`Kernel::exit_task`]: super::Kernel::exit_task
+    pub enum ExitTaskError {
+        BadCtx,
+    }
+}
+
 impl From<BadCtxError> for ActivateTaskError {
     fn from(_: BadCtxError) -> Self {
         Self::BadCtx
