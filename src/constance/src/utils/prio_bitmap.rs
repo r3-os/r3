@@ -270,39 +270,41 @@ mod tests {
         (0..bitmap_len).filter(|&i| bitmap.get(i)).collect()
     }
 
+    fn test_inner<T: PrioBitmap>(bytecode: Vec<u8>, size: usize) {
+        let mut subject = T::INIT;
+        let mut reference = BTreePrioBitmap::new();
+
+        log::info!("size = {}", size);
+
+        for cmd in interpret(&bytecode, size) {
+            log::trace!("    {:?}", cmd);
+            match cmd {
+                Cmd::Insert(bit) => {
+                    subject.set(bit);
+                    reference.set(bit);
+                }
+                Cmd::Remove(bit) => {
+                    subject.clear(bit);
+                    reference.clear(bit);
+                }
+            }
+
+            assert_eq!(subject.find_set(), reference.find_set());
+        }
+
+        assert_eq!(subject.find_set(), reference.find_set());
+        assert_eq!(enum_set_bits(&subject, size), reference.enum_set_bits());
+    }
+
     macro_rules! gen_test {
         ($(#[$m:meta])* mod $name:ident, $size:literal) => {
             $(#[$m])*
             mod $name {
                 use super::*;
 
-                const INIT: FixedPrioBitmap<$size> = Init::INIT;
-
                 #[quickcheck]
                 fn test(bytecode: Vec<u8>) {
-                    let mut subject = INIT;
-                    let mut reference = BTreePrioBitmap::new();
-
-                    log::info!("size = {}", $size);
-
-                    for cmd in interpret(&bytecode, $size) {
-                        log::trace!("    {:?}", cmd);
-                        match cmd {
-                            Cmd::Insert(bit) => {
-                                subject.set(bit);
-                                reference.set(bit);
-                            }
-                            Cmd::Remove(bit) => {
-                                subject.clear(bit);
-                                reference.clear(bit);
-                            }
-                        }
-
-                        assert_eq!(subject.find_set(), reference.find_set());
-                    }
-
-                    assert_eq!(subject.find_set(), reference.find_set());
-                    assert_eq!(enum_set_bits(&subject, $size), reference.enum_set_bits());
+                    test_inner::<FixedPrioBitmap<$size>>(bytecode, $size);
                 }
             }
         };
