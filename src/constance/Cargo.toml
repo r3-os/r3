@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 tokenlock = { version = "0.3.0", default-features = false }
 atomic_ref = { version = "0.1", features = ["nightly"] }
+num-integer = "0.1.42"
