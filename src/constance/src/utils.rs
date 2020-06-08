@@ -2,8 +2,6 @@
 //!
 //! **This module is exempt from the API stability guarantee** unless specified
 //! otherwise. It's exposed only because it's needed by macros.
-// FIXME: Work-around for `rust-analyzer` denying `false` in generic parameters
-#![allow(unused_braces)]
 use core::marker::PhantomData;
 
 /// Conditional type
@@ -33,9 +31,9 @@ pub trait TypeFn {
 #[doc(hidden)]
 pub struct Conditional<T, F, const B: bool>(PhantomData<(T, F)>);
 
-impl<T, F> TypeFn for Conditional<T, F, { false }> {
+impl<T, F> TypeFn for Conditional<T, F, false> {
     type Output = F;
 }
-impl<T, F> TypeFn for Conditional<T, F, { true }> {
+impl<T, F> TypeFn for Conditional<T, F, true> {
     type Output = T;
 }
