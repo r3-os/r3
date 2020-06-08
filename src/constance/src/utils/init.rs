@@ -4,6 +4,8 @@ use super::RawCell;
 
 /// Trait for types having a constant default value. This is essentially a
 /// constant version of `Default`.
+///
+/// This trait is subject to the API stability guarantee.
 pub trait Init {
     /// The default value.
     #[allow(clippy::declare_interior_mutable_const)]

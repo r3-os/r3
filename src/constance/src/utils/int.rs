@@ -7,6 +7,7 @@ use super::{Init, ZeroInit};
 pub trait BinInteger:
     Integer
     + Clone
+    + Copy
     + Sized
     + ops::AddAssign
     + ops::SubAssign
@@ -15,6 +16,9 @@ pub trait BinInteger:
     + fmt::Debug
     + Init
     + ZeroInit
+    + Send
+    + Sync
+    + 'static
 {
     type OneDigits: Iterator<Item = u32>;
 

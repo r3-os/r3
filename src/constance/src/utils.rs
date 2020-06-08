@@ -1,14 +1,41 @@
 //! Utility
+//!
+//! **This module is exempt from the API stability guarantee** unless specified
+//! otherwise. It's exposed only because it's needed by macros.
+// FIXME: Work-around for `rust-analyzer` denying `false` in generic parameters
+#![allow(unused_braces)]
+use core::marker::PhantomData;
+
+/// Conditional type
+macro_rules! If {
+    ( if ($cond:expr) { $t:ty } else { $f:ty } ) => {
+        <crate::utils::Conditional<$t, $f, $cond> as crate::utils::TypeFn>::Output
+    };
+    ( if ($cond:expr) { $t:ty } else if $($rest:tt)* ) => {
+        If! { if ($cond) { $t } else { If!{ if $($rest)* } } }
+    };
+}
 
 mod aligned_storage;
 mod init;
 mod int;
+mod prio_bitmap;
 mod rawcell;
 mod zeroinit;
-pub use self::{aligned_storage::*, init::*, rawcell::*, zeroinit::*, int::*};
+pub use self::{aligned_storage::*, init::*, int::*, prio_bitmap::*, rawcell::*, zeroinit::*};
 
 /// A "type function" producing a type.
 #[doc(hidden)]
 pub trait TypeFn {
     type Output;
+}
+
+#[doc(hidden)]
+pub struct Conditional<T, F, const B: bool>(PhantomData<(T, F)>);
+
+impl<T, F> TypeFn for Conditional<T, F, { false }> {
+    type Output = F;
+}
+impl<T, F> TypeFn for Conditional<T, F, { true }> {
+    type Output = T;
 }
