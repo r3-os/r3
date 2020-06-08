@@ -206,16 +206,22 @@ impl_binary_integer!(i8);
 impl_binary_integer!(i16);
 impl_binary_integer!(i32);
 impl_binary_integer!(i64);
+impl_binary_integer!(i128);
+impl_binary_integer!(isize);
 
 impl_binary_integer!(u8);
 impl_binary_integer!(u16);
 impl_binary_integer!(u32);
 impl_binary_integer!(u64);
+impl_binary_integer!(u128);
+impl_binary_integer!(usize);
 
 impl_binary_uinteger!(u8);
 impl_binary_uinteger!(u16);
 impl_binary_uinteger!(u32);
 impl_binary_uinteger!(u64);
+impl_binary_uinteger!(u128);
+impl_binary_uinteger!(usize);
 
 #[cfg(test)]
 mod tests {
