@@ -17,9 +17,15 @@ pub(super) struct CpuLockToken<System> {
     _phantom: PhantomData<System>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub(super) struct CpuLockKeyhole<System> {
     _phantom: PhantomData<System>,
+}
+
+impl<System> fmt::Debug for CpuLockKeyhole<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("CpuLockKeyhole").finish()
+    }
 }
 
 // This is safe because `CpuLockToken` only can be borrowed from `CpuLockGuard`,

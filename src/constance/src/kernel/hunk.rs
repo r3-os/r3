@@ -1,5 +1,5 @@
 //! Hunks
-use core::{marker::PhantomData, mem::size_of, ops::Deref, ptr::slice_from_raw_parts};
+use core::{fmt, marker::PhantomData, mem::size_of, ops::Deref, ptr::slice_from_raw_parts};
 
 use super::Kernel;
 use crate::utils::Init;
@@ -19,6 +19,24 @@ pub struct Hunk<System, T: ?Sized> {
 impl<System, T> Init for Hunk<System, [T]> {
     // Safety: This is safe because it points to nothing
     const INIT: Self = unsafe { Self::from_range(0, 0) };
+}
+
+impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Hunk<System, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Hunk")
+            .field(&Self::as_ptr(*self))
+            .field(&**self)
+            .finish()
+    }
+}
+
+impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Hunk<System, [T]> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Hunk")
+            .field(&Self::as_ptr(*self))
+            .field(&&**self)
+            .finish()
+    }
 }
 
 impl<System, T: ?Sized> Clone for Hunk<System, T> {

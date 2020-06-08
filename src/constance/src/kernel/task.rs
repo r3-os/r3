@@ -1,12 +1,18 @@
 //! Tasks
-use core::{cell::UnsafeCell, marker::PhantomData};
+use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 
 use super::{hunk::Hunk, utils, ActivateTaskError, Id, Kernel};
 use crate::utils::{Init, RawCell};
 
 /// Represents a single task in a system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Task<System>(Id, PhantomData<System>);
+
+impl<System> fmt::Debug for Task<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Task").field(&self.0).finish()
+    }
+}
 
 impl<System> Task<System> {
     /// Construct a `Task` from `Id`.
@@ -44,6 +50,12 @@ pub struct StackHunk<System>(Hunk<System, [UnsafeCell<u8>]>);
 // Safety: Safe code can't access the contents. Also, the port is responsible
 // for making sure `StackHunk` is used in the correct way.
 unsafe impl<System> Sync for StackHunk<System> {}
+
+impl<System: Kernel> fmt::Debug for StackHunk<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("StackHunk").field(&self.0.as_ptr()).finish()
+    }
+}
 
 // TODO: Preferably `StackHunk` shouldn't be `Clone` as it strengthens the
 //       safety obligation of `StackHunk::from_hunk`.
@@ -108,6 +120,15 @@ impl<System: 'static, PortTaskState: Init> Init for TaskCb<System, PortTaskState
     };
 }
 
+impl<System: Kernel, PortTaskState: fmt::Debug> fmt::Debug for TaskCb<System, PortTaskState> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TaskCb")
+            .field("port_task_state", &self.port_task_state)
+            .field("attr", self.attr)
+            .finish()
+    }
+}
+
 /// The static properties of a task.
 pub struct TaskAttr<System> {
     /// The entry point of the task.
@@ -134,4 +155,14 @@ impl<System> Init for TaskAttr<System> {
         entry_param: 0,
         stack: StackHunk::INIT,
     };
+}
+
+impl<System: Kernel> fmt::Debug for TaskAttr<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TaskAttr")
+            .field("entry_point", &self.entry_point)
+            .field("entry_param", &self.entry_param)
+            .field("stack", &self.stack)
+            .finish()
+    }
 }

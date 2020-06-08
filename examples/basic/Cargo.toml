@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 constance = { path = "../../src/constance" }
 constance_port_std = { path = "../../src/constance_port_std" }
+log = "0.4.8"

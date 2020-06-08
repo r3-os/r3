@@ -147,7 +147,7 @@ macro_rules! build {
             kernel::{
                 CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, State, TaskAttr, TaskCb,
             },
-            utils::{AlignedStorage, Init, RawCell, FixedPrioBitmap},
+            utils::{AlignedStorage, FixedPrioBitmap, Init, RawCell},
         };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
@@ -177,7 +177,7 @@ macro_rules! build {
         const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
 
         // Task ready bitmap
-        type TaskReadyBitmap = FixedPrioBitmap<{CFG.num_task_priority_levels}>;
+        type TaskReadyBitmap = FixedPrioBitmap<{ CFG.num_task_priority_levels }>;
 
         // Instantiate the global state
         type KernelState = State<$sys, <$sys as Port>::PortTaskState, TaskReadyBitmap>;

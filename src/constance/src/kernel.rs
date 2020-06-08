@@ -1,6 +1,6 @@
 //! The RTOS kernel
 use atomic_ref::AtomicRef;
-use core::{mem::forget, num::NonZeroUsize, sync::atomic::Ordering};
+use core::{fmt, mem::forget, num::NonZeroUsize, sync::atomic::Ordering};
 
 use crate::utils::{Init, PrioBitmap};
 
@@ -191,6 +191,17 @@ impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap> Init
         running_task: AtomicRef::new(None),
         task_ready_bitmap: Init::INIT,
     };
+}
+
+impl<System: Kernel, PortTaskState: 'static + fmt::Debug, TaskReadyBitmap: PrioBitmap> fmt::Debug
+    for State<System, PortTaskState, TaskReadyBitmap>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("State")
+            .field("running_task", &self.running_task)
+            .field("task_ready_bitmap", &self.task_ready_bitmap)
+            .finish()
+    }
 }
 
 impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap>

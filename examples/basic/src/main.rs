@@ -8,6 +8,7 @@ use constance::{kernel::Task, sync::Mutex};
 constance_port_std::use_port!(unsafe struct System);
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct Objects {
     task1: Task<System>,
     task2: Task<System>,
@@ -35,6 +36,10 @@ constance::configure! {
 }
 
 fn task1_body(_: usize) {
+    use constance::kernel::KernelCfg;
+    log::trace!("COTTAGE = {:#?}", COTTAGE);
+    log::trace!("KENREL_STATE = {:#?}", System::state());
+
     COTTAGE.task2.activate().unwrap();
 }
 
