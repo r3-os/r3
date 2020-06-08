@@ -1,6 +1,6 @@
 //! Intrusive doubly linked list backed by a container implementing
 //! `std::ops::Index`.
-use core::ops;
+use core::{fmt, ops};
 
 /// Circualr linked list header.
 #[derive(Debug, Copy, Clone)]
@@ -30,6 +30,48 @@ impl<Index> ListHead<Index> {
         self.first.is_none()
     }
 }
+
+/// A virtual container of `T`s that can be indexed by `Ident<&'static T>`.
+#[derive(Debug, Clone, Copy)]
+pub struct Static;
+
+impl<T> ops::Index<Ident<&'static T>> for Static {
+    type Output = T;
+
+    fn index(&self, index: Ident<&'static T>) -> &Self::Output {
+        index.0
+    }
+}
+
+/// Reference wrapper that implements `PartialEq` and `Eq` by identity
+/// comparison.
+#[derive(Clone, Copy)]
+pub struct Ident<T>(pub T);
+
+impl<T> fmt::Debug for Ident<&'_ T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Do not print the pointee. This is a safe measure against infinite
+        // recursion.
+        f.debug_tuple("Ident").field(&(self.0 as *const T)).finish()
+    }
+}
+
+impl<T: ?Sized> PartialEq for Ident<&'_ T> {
+    fn eq(&self, other: &Self) -> bool {
+        core::ptr::eq(self.0, other.0)
+    }
+}
+
+impl<T: ?Sized> Eq for Ident<&'_ T> {}
+
+/// Circualr linked list header where elements are linked by
+/// [`StaticLink`]`<Element>` (a pair of `&'static Element`).
+pub type StaticListHead<Element> = ListHead<Ident<&'static Element>>;
+
+/// Links to neighbor items with a `'static` lifetime.
+///
+/// See also: [`StaticListHead`]
+pub type StaticLink<Element> = Link<Ident<&'static Element>>;
 
 pub trait CellLike<Key> {
     type Target;
@@ -423,4 +465,54 @@ fn clear_cell() {
         let e = &pool[ptr];
         assert!(e.1.get().is_none());
     }
+}
+
+#[cfg(test)]
+fn push_static<Element>(x: Element) -> Ident<&'static Element> {
+    Ident(Box::leak(Box::new(x)))
+}
+
+#[test]
+fn basic_cell_static() {
+    use std::cell::Cell;
+    let head = Cell::new(ListHead::<Ident<&'static El>>::new());
+
+    #[derive(Debug)]
+    struct El(u32, Cell<Option<Link<Ident<&'static El>>>>);
+
+    macro_rules! get_accessor {
+        () => {
+            ListAccessorCell::new(&head, &Static, |El(_, link)| link, ())
+        };
+    }
+
+    let ptr1 = push_static(El(1, Cell::new(None)));
+    get_accessor!().push_back(ptr1);
+
+    let ptr2 = push_static(El(2, Cell::new(None)));
+    get_accessor!().push_back(ptr2);
+
+    let ptr3 = push_static(El(3, Cell::new(None)));
+    get_accessor!().push_front(ptr3);
+
+    println!("{:?}", &head);
+
+    let mut accessor = get_accessor!();
+    assert!(!accessor.is_empty());
+    assert_eq!(accessor.front(), Some(ptr3));
+    assert_eq!(accessor.back(), Some(ptr2));
+    assert_eq!(accessor.front_data().unwrap().0, 3);
+    assert_eq!(accessor.back_data().unwrap().0, 2);
+
+    let items: Vec<_> = accessor.iter().map(|(_, El(x, _))| *x).collect();
+    assert_eq!(items, vec![3, 1, 2]);
+
+    accessor.remove(ptr1);
+    println!("{:?}", &head);
+    accessor.remove(ptr2);
+    println!("{:?}", &head);
+    accessor.remove(ptr3);
+    println!("{:?}", &head);
+
+    assert!(accessor.is_empty());
 }
