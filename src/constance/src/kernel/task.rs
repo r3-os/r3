@@ -115,6 +115,8 @@ pub struct TaskCb<
 
     pub priority: TaskPriority,
 
+    pub(super) st: utils::CpuLockCell<System, TaskSt>,
+
     pub(super) _force_int_mut: RawCell<()>,
 }
 
@@ -125,6 +127,7 @@ impl<System: Port, PortTaskState: Init, TaskPriority: Init> Init
         port_task_state: Init::INIT,
         attr: &TaskAttr::INIT,
         priority: Init::INIT,
+        st: Init::INIT,
         _force_int_mut: RawCell::new(()),
     };
 }
@@ -177,6 +180,28 @@ impl<System: Kernel> fmt::Debug for TaskAttr<System> {
             .field("stack", &self.stack)
             .finish()
     }
+}
+
+/// Task state machine
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskSt {
+    /// The task is in the Dormant state.
+    Dormant,
+
+    /// The task is in the Runnable state.
+    // TODO: Rename all mentions of "Runnable" to "Ready"
+    Runnable,
+
+    /// The task is in the Running state.
+    Running,
+
+    /// The task should be activated at startup. This will transition into
+    /// `Runnable` or `Running` before the first task is scheduled.
+    PendingActivation,
+}
+
+impl Init for TaskSt {
+    const INIT: Self = Self::Dormant;
 }
 
 /// Implements [`Kernel::exit_task`].

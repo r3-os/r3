@@ -1,7 +1,7 @@
 //! Static configuration mechanism for the kernel
 use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
-use super::{hunk, task, Port};
+use super::{hunk, task, utils::CpuLockCell, Port};
 use crate::utils::{Init, ZeroInit, FIXED_PRIO_BITMAP_MAX_LEN};
 
 mod vec;
@@ -42,6 +42,8 @@ pub use self::vec::ComptimeVec;
 ///  - `priority = PRI: usize` (**required**) specifies the task's initial
 ///    priority. Tasks with lower priority values execute first. `PRI` must be
 ///    in range `0..num_task_priority_levels`.
+///  - `active = ACTIVE: bool` specifies whether the task should be activated at
+///    system startup.
 ///
 /// # `new_hunk!(T)`
 ///
@@ -374,6 +376,7 @@ pub struct CfgTaskBuilder<System> {
     param: usize,
     stack: Option<TaskStack<System>>,
     priority: Option<usize>,
+    active: bool,
 }
 
 enum TaskStack<System> {
@@ -391,6 +394,7 @@ impl<System: Port> CfgTaskBuilder<System> {
             param: 0,
             stack: None,
             priority: None,
+            active: false,
         }
     }
 
@@ -436,6 +440,10 @@ impl<System: Port> CfgTaskBuilder<System> {
         }
     }
 
+    pub const fn active(self, active: bool) -> Self {
+        Self { active, ..self }
+    }
+
     pub const fn finish(
         self,
         mut cfg: CfgBuilder<System>,
@@ -474,6 +482,7 @@ impl<System: Port> CfgTaskBuilder<System> {
             } else {
                 panic!("`priority` is not specified")
             },
+            active: self.active,
         });
 
         let task = unsafe { task::Task::from_id(NonZeroUsize::new_unchecked(cfg.tasks.len())) };
@@ -488,6 +497,7 @@ pub struct CfgBuilderTask<System> {
     param: usize,
     stack: task::StackHunk<System>,
     priority: usize,
+    active: bool,
 }
 
 impl<System> Clone for CfgBuilderTask<System> {
@@ -497,6 +507,7 @@ impl<System> Clone for CfgBuilderTask<System> {
             param: self.param,
             stack: self.stack,
             priority: self.priority,
+            active: self.active,
         }
     }
 }
@@ -513,6 +524,11 @@ impl<System: Port> CfgBuilderTask<System> {
             } else {
                 panic!("task's `priority` must be less than `num_task_priority_levels`");
             },
+            st: CpuLockCell::new(if self.active {
+                task::TaskSt::PendingActivation
+            } else {
+                task::TaskSt::Dormant
+            }),
             _force_int_mut: crate::utils::RawCell::new(()),
         }
     }
