@@ -10,6 +10,7 @@ edition = "2018"
 tokenlock = { version = "0.3.0", default-features = false }
 atomic_ref = { version = "0.1", features = ["nightly"] }
 num-integer = "0.1.42"
+num-traits = "0.2.11"
 
 [dev-dependencies]
 quickcheck = "0.9.2"

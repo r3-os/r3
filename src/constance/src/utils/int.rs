@@ -34,6 +34,7 @@ pub trait BinInteger:
     + ZeroInit
     + Send
     + Sync
+    + num_traits::cast::ToPrimitive
     + 'static
 {
     type OneDigits: Iterator<Item = u32>;
