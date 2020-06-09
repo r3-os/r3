@@ -282,6 +282,14 @@ impl<System> CfgBuilder<System> {
             panic!("`num_task_priority_levels` must be greater than zero");
         } else if new_value > FIXED_PRIO_BITMAP_MAX_LEN {
             panic!("`num_task_priority_levels` must be less than or equal to `FIXED_PRIO_BITMAP_MAX_LEN`");
+        } else if new_value >= isize::max_value() as usize {
+            // Limiting priority values in range `0..(isize::max_value() - 1)`
+            // leaves room for special values outside the extremities.
+            //
+            // This branch is actually unreachable because
+            // `FIXED_PRIO_BITMAP_MAX_LEN` is so small compared to the size of
+            // `isize`.
+            unreachable!();
         }
 
         self.num_task_priority_levels = new_value;
