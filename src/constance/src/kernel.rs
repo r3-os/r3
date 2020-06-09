@@ -137,9 +137,7 @@ pub unsafe trait Port: KernelCfg1 {
     /// [`Pin`]: core::pin::Pin
     ///
     /// Precondition: CPU Lock active
-    unsafe fn initialize_task_state(
-        task: &'static task::TaskCb<Self, Self::PortTaskState, <Self as KernelCfg1>::TaskPriority>,
-    );
+    unsafe fn initialize_task_state(task: &'static task::TaskCb<Self>);
 
     /// Return a flag indicating whether a CPU Lock state is active.
     fn is_cpu_lock_active() -> bool;
@@ -218,30 +216,27 @@ pub unsafe trait KernelCfg2: Port + Sized {
     type TaskReadyBitmap: PrioBitmap;
 
     /// Access the kernel's global state.
-    fn state(
-    ) -> &'static State<Self, Self::PortTaskState, Self::TaskReadyBitmap, Self::TaskPriority>;
+    fn state() -> &'static State<Self>;
 
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
     //        to be resolved because `TaskCb` includes interior mutability
     //        and can't be referred to by `const`
     #[doc(hidden)]
-    fn task_cb_pool() -> &'static [TaskCb<Self, Self::PortTaskState, Self::TaskPriority>];
+    fn task_cb_pool() -> &'static [TaskCb<Self>];
 
     #[doc(hidden)]
     #[inline(always)]
-    fn get_task_cb(
-        i: usize,
-    ) -> Option<&'static TaskCb<Self, Self::PortTaskState, Self::TaskPriority>> {
+    fn get_task_cb(i: usize) -> Option<&'static TaskCb<Self>> {
         Self::task_cb_pool().get(i)
     }
 }
 
 /// Global kernel state.
 pub struct State<
-    System: 'static,
-    PortTaskState: 'static,
-    TaskReadyBitmap: PrioBitmap,
-    TaskPriority: 'static,
+    System: KernelCfg2,
+    PortTaskState: 'static = <System as Port>::PortTaskState,
+    TaskReadyBitmap: PrioBitmap = <System as KernelCfg2>::TaskReadyBitmap,
+    TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
 > {
     // TODO: Make `running_task` non-null to simplify runtime code
     /// The currently running task.
@@ -253,7 +248,7 @@ pub struct State<
 }
 
 impl<
-        System: 'static,
+        System: KernelCfg2,
         PortTaskState: 'static,
         TaskReadyBitmap: PrioBitmap,
         TaskPriority: 'static,
@@ -280,7 +275,7 @@ impl<
     }
 }
 
-impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap, TaskPriority>
+impl<System: KernelCfg2, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap, TaskPriority>
     State<System, PortTaskState, TaskReadyBitmap, TaskPriority>
 {
     /// Get the currently running task.

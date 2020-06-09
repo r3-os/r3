@@ -1,7 +1,7 @@
 //! Tasks
 use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 
-use super::{hunk::Hunk, utils, ActivateTaskError, ExitTaskError, Id, Kernel};
+use super::{hunk::Hunk, utils, ActivateTaskError, ExitTaskError, Id, Kernel, KernelCfg1, Port};
 use crate::utils::{Init, RawCell};
 
 /// Represents a single task in a system.
@@ -99,7 +99,11 @@ impl<System: Kernel> StackHunk<System> {
 
 /// *Task control block* - the state data of a task.
 #[repr(C)]
-pub struct TaskCb<System: 'static, PortTaskState, TaskPriority> {
+pub struct TaskCb<
+    System: Port,
+    PortTaskState = <System as Port>::PortTaskState,
+    TaskPriority = <System as KernelCfg1>::TaskPriority,
+> {
     /// Get a reference to `PortTaskState` in the task control block.
     ///
     /// This is guaranteed to be placed at the beginning of the struct so that
@@ -114,7 +118,7 @@ pub struct TaskCb<System: 'static, PortTaskState, TaskPriority> {
     pub(super) _force_int_mut: RawCell<()>,
 }
 
-impl<System: 'static, PortTaskState: Init, TaskPriority: Init> Init
+impl<System: Port, PortTaskState: Init, TaskPriority: Init> Init
     for TaskCb<System, PortTaskState, TaskPriority>
 {
     const INIT: Self = Self {

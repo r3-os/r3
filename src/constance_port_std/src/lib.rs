@@ -230,10 +230,8 @@ impl State {
         self.cpu_lock.store(false, Ordering::Relaxed);
     }
 
-    pub unsafe fn initialize_task_state<System: Kernel>(
-        &self,
-        task: &'static TaskCb<System, TaskState, System::TaskPriority>,
-    ) where
+    pub unsafe fn initialize_task_state<System: Kernel>(&self, task: &'static TaskCb<System>)
+    where
         System: Port<PortTaskState = TaskState>,
     {
         log::trace!("initialize_task_state {:p}", task);
@@ -290,7 +288,7 @@ macro_rules! use_port {
                 PORT_STATE.leave_cpu_lock()
             }
 
-            unsafe fn initialize_task_state(task: &'static $crate::TaskCb<Self, Self::PortTaskState, Self::TaskPriority>) {
+            unsafe fn initialize_task_state(task: &'static $crate::TaskCb<Self>) {
                 PORT_STATE.initialize_task_state(task)
             }
 

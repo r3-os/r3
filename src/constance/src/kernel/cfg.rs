@@ -182,13 +182,11 @@ macro_rules! build {
         }
 
         // Instantiiate task structures
-        type MyTaskCb =
-            TaskCb<$sys, <$sys as Port>::PortTaskState, <$sys as KernelCfg1>::TaskPriority>;
         $crate::array_item_from_fn! {
             const TASK_ATTR_POOL: [TaskAttr<$sys>; _] =
                 (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
             static TASK_CB_POOL:
-                [MyTaskCb; _] =
+                [TaskCb<$sys>; _] =
                     (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR_POOL[i]));
         }
 
@@ -201,12 +199,7 @@ macro_rules! build {
         type TaskReadyBitmap = FixedPrioBitmap<{ CFG.num_task_priority_levels }>;
 
         // Instantiate the global state
-        type KernelState = State<
-            $sys,
-            <$sys as Port>::PortTaskState,
-            TaskReadyBitmap,
-            <$sys as KernelCfg1>::TaskPriority,
-        >;
+        type KernelState = State<$sys>;
         static KERNEL_STATE: KernelState = State::INIT;
 
         // Safety: We are `build!`, so it's okay to `impl` this
@@ -223,7 +216,7 @@ macro_rules! build {
             };
 
             #[inline(always)]
-            fn task_cb_pool() -> &'static [MyTaskCb] {
+            fn task_cb_pool() -> &'static [TaskCb<$sys>] {
                 &TASK_CB_POOL
             }
         }
@@ -507,10 +500,7 @@ impl<System> Clone for CfgBuilderTask<System> {
 impl<System> Copy for CfgBuilderTask<System> {}
 
 impl<System: Port> CfgBuilderTask<System> {
-    pub const fn to_state(
-        &self,
-        attr: &'static task::TaskAttr<System>,
-    ) -> task::TaskCb<System, System::PortTaskState, System::TaskPriority> {
+    pub const fn to_state(&self, attr: &'static task::TaskAttr<System>) -> task::TaskCb<System> {
         task::TaskCb {
             port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
