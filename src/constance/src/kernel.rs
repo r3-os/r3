@@ -240,7 +240,7 @@ pub unsafe trait KernelCfg2: Port + Sized {
 pub struct State<
     System: KernelCfg2,
     PortTaskState: 'static = <System as Port>::PortTaskState,
-    TaskReadyBitmap: PrioBitmap = <System as KernelCfg2>::TaskReadyBitmap,
+    TaskReadyBitmap: 'static = <System as KernelCfg2>::TaskReadyBitmap,
     TaskReadyQueue: 'static = <System as KernelCfg2>::TaskReadyQueue,
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
 > {
@@ -260,7 +260,7 @@ pub struct State<
 impl<
         System: KernelCfg2,
         PortTaskState: 'static,
-        TaskReadyBitmap: PrioBitmap,
+        TaskReadyBitmap: 'static + Init,
         TaskReadyQueue: 'static + Init,
         TaskPriority: 'static,
     > Init for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
@@ -275,9 +275,9 @@ impl<
 impl<
         System: Kernel,
         PortTaskState: 'static + fmt::Debug,
-        TaskReadyBitmap: PrioBitmap,
+        TaskReadyBitmap: 'static + fmt::Debug,
         TaskReadyQueue: 'static + fmt::Debug,
-        TaskPriority: 'static,
+        TaskPriority: 'static + fmt::Debug,
     > fmt::Debug for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -289,16 +289,9 @@ impl<
     }
 }
 
-impl<
-        System: KernelCfg2,
-        PortTaskState: 'static,
-        TaskReadyBitmap: PrioBitmap,
-        TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System, PortTaskState, TaskPriority>>]> + Init + 'static,
-        TaskPriority,
-    > State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
-{
+impl<System: KernelCfg2> State<System> {
     /// Get the currently running task.
-    pub fn running_task(&self) -> Option<&'static TaskCb<System, PortTaskState, TaskPriority>> {
+    pub fn running_task(&self) -> Option<&'static TaskCb<System>> {
         self.running_task.load(Ordering::Relaxed)
     }
 
@@ -307,9 +300,7 @@ impl<
     /// # Safety
     ///
     /// Modifying the stored value is not allowed.
-    pub unsafe fn active_task_ref(
-        &self,
-    ) -> &AtomicRef<'static, TaskCb<System, PortTaskState, TaskPriority>> {
+    pub unsafe fn active_task_ref(&self) -> &AtomicRef<'static, TaskCb<System>> {
         &self.running_task
     }
 }

@@ -129,13 +129,14 @@ impl<System: Port, PortTaskState: Init, TaskPriority: Init> Init
     };
 }
 
-impl<System: Kernel, PortTaskState: fmt::Debug, TaskPriority> fmt::Debug
+impl<System: Kernel, PortTaskState: fmt::Debug, TaskPriority: fmt::Debug> fmt::Debug
     for TaskCb<System, PortTaskState, TaskPriority>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskCb")
             .field("port_task_state", &self.port_task_state)
             .field("attr", self.attr)
+            .field("priority", &self.priority)
             .finish()
     }
 }
