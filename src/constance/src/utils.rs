@@ -17,7 +17,7 @@ macro_rules! If {
 mod aligned_storage;
 mod init;
 mod int;
-pub(crate) mod intrusive_list;
+pub mod intrusive_list;
 mod prio_bitmap;
 mod rawcell;
 mod zeroinit;

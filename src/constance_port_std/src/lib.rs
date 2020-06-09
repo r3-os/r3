@@ -1,7 +1,7 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 use atomic_ref::AtomicRef;
-use constance::prelude::*;
+use constance::{prelude::*, utils::intrusive_list::StaticListHead};
 use parking_lot::{lock_api::RawMutex, Mutex};
 use std::{
     mem::ManuallyDrop,
@@ -121,6 +121,8 @@ impl State {
     pub unsafe fn dispatch_first_task<System: Kernel>(&'static self) -> !
     where
         System: Port<PortTaskState = TaskState>,
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         log::trace!("dispatch_first_task");
         assert!(self.is_cpu_lock_active());
@@ -197,6 +199,8 @@ impl State {
     pub unsafe fn yield_cpu<System: Kernel>(&self)
     where
         System: Port<PortTaskState = TaskState>,
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         log::trace!("yield_cpu");
         assert!(!self.is_cpu_lock_active());
@@ -208,6 +212,8 @@ impl State {
     pub unsafe fn exit_and_dispatch<System: Kernel>(&self) -> !
     where
         System: Port<PortTaskState = TaskState>,
+        // Work-around <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         log::trace!("exit_and_dispatch");
         assert!(self.is_cpu_lock_active());

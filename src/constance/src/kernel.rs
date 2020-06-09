@@ -1,8 +1,8 @@
 //! The RTOS kernel
 use atomic_ref::AtomicRef;
-use core::{fmt, mem::forget, num::NonZeroUsize, sync::atomic::Ordering};
+use core::{borrow::BorrowMut, fmt, mem::forget, num::NonZeroUsize, sync::atomic::Ordering};
 
-use crate::utils::{BinUInteger, Init, PrioBitmap};
+use crate::utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap};
 
 #[macro_use]
 mod cfg;
@@ -218,6 +218,8 @@ pub unsafe trait KernelCfg2: Port + Sized {
 
     type TaskReadyBitmap: PrioBitmap;
 
+    type TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<Self>>]> + Init + 'static;
+
     /// Access the kernel's global state.
     fn state() -> &'static State<Self>;
 
@@ -239,6 +241,7 @@ pub struct State<
     System: KernelCfg2,
     PortTaskState: 'static = <System as Port>::PortTaskState,
     TaskReadyBitmap: PrioBitmap = <System as KernelCfg2>::TaskReadyBitmap,
+    TaskReadyQueue: 'static = <System as KernelCfg2>::TaskReadyQueue,
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
 > {
     // TODO: Make `running_task` non-null to simplify runtime code
@@ -248,18 +251,24 @@ pub struct State<
     /// The task ready bitmap, in which each bit indicates whether the
     /// task ready queue corresponding to that bit contains a task or not.
     task_ready_bitmap: utils::CpuLockCell<System, TaskReadyBitmap>,
+
+    /// The task ready queues, in which each queue represents the list of
+    /// runnable task at the corresponding priority level.
+    task_ready_queue: utils::CpuLockCell<System, TaskReadyQueue>,
 }
 
 impl<
         System: KernelCfg2,
         PortTaskState: 'static,
         TaskReadyBitmap: PrioBitmap,
+        TaskReadyQueue: 'static + Init,
         TaskPriority: 'static,
-    > Init for State<System, PortTaskState, TaskReadyBitmap, TaskPriority>
+    > Init for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
 {
     const INIT: Self = Self {
         running_task: AtomicRef::new(None),
         task_ready_bitmap: Init::INIT,
+        task_ready_queue: Init::INIT,
     };
 }
 
@@ -267,19 +276,26 @@ impl<
         System: Kernel,
         PortTaskState: 'static + fmt::Debug,
         TaskReadyBitmap: PrioBitmap,
+        TaskReadyQueue: 'static + fmt::Debug,
         TaskPriority: 'static,
-    > fmt::Debug for State<System, PortTaskState, TaskReadyBitmap, TaskPriority>
+    > fmt::Debug for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("State")
             .field("running_task", &self.running_task)
             .field("task_ready_bitmap", &self.task_ready_bitmap)
+            .field("task_ready_queue", &self.task_ready_queue)
             .finish()
     }
 }
 
-impl<System: KernelCfg2, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap, TaskPriority>
-    State<System, PortTaskState, TaskReadyBitmap, TaskPriority>
+impl<
+        System: KernelCfg2,
+        PortTaskState: 'static,
+        TaskReadyBitmap: PrioBitmap,
+        TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System, PortTaskState, TaskPriority>>]> + Init + 'static,
+        TaskPriority,
+    > State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
 {
     /// Get the currently running task.
     pub fn running_task(&self) -> Option<&'static TaskCb<System, PortTaskState, TaskPriority>> {

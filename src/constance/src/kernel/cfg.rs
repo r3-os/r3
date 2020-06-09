@@ -152,7 +152,10 @@ macro_rules! build {
                 CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port, State, TaskAttr,
                 TaskCb,
             },
-            utils::{AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound},
+            utils::{
+                intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap, Init, RawCell,
+                UIntegerWithBound,
+            },
         };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
@@ -205,6 +208,7 @@ macro_rules! build {
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg2 for $sys {
             type TaskReadyBitmap = TaskReadyBitmap;
+            type TaskReadyQueue = [StaticListHead<TaskCb<Self>>; CFG.num_task_priority_levels];
 
             fn state() -> &'static KernelState {
                 &KERNEL_STATE
