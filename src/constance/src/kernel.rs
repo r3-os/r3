@@ -106,11 +106,12 @@ pub unsafe trait Port: KernelCfg1 {
     /// Precondition: CPU Lock inactive
     unsafe fn yield_cpu();
 
-    /// Destroy the state of the currently running task
-    /// ([`State::running_task`]) and proceed to the dispatcher.
+    /// Destroy the state of the previously running task (`task`, which might
+    /// already have been removed from [`State::running_task`]) and proceed to
+    /// the dispatcher.
     ///
-    /// Precondition: CPU Lock active, Task context
-    unsafe fn exit_and_dispatch() -> !;
+    /// Precondition: CPU Lock active
+    unsafe fn exit_and_dispatch(task: &'static task::TaskCb<Self>) -> !;
 
     /// Disable all kernel-managed interrupts (this state is called *CPU Lock*).
     ///
@@ -169,6 +170,8 @@ pub trait PortToKernel {
 
 impl<System: Kernel> PortToKernel for System {
     unsafe fn boot() -> ! {
+        let mut lock = unsafe { utils::assume_cpu_lock::<Self>() };
+
         // Safety: (1) User code hasn't executed yet at this point. (2) The
         // creator of this `HunkAttr` is responsible for creating a valid
         // instance of `HunkAttr`.
@@ -177,13 +180,14 @@ impl<System: Kernel> PortToKernel for System {
         }
 
         // Initialize all tasks
-        // TODO: Do this only for initially-active tasks
         for cb in Self::task_cb_pool() {
-            // Safety: The task is dormant
-            unsafe {
-                Self::initialize_task_state(cb);
-            }
+            task::init_task(&mut lock, cb);
         }
+
+        // Choose the first `runnnig_task`
+        task::choose_next_running_task(&mut lock);
+
+        forget(lock);
 
         // Safety: CPU Lock is active, Startup phase
         unsafe {
@@ -194,12 +198,9 @@ impl<System: Kernel> PortToKernel for System {
     unsafe fn choose_running_task() {
         // Safety: The precondition of this method includes CPU Lock being
         // active
-        let lock = unsafe { utils::assume_cpu_lock::<Self>() };
+        let mut lock = unsafe { utils::assume_cpu_lock::<Self>() };
 
-        // TODO: Choose only a runnable task
-        Self::state()
-            .running_task
-            .store(Self::get_task_cb(0), Ordering::Relaxed);
+        task::choose_next_running_task(&mut lock);
 
         // Post-condition: CPU Lock active
         forget(lock);
@@ -254,6 +255,9 @@ pub struct State<
 
     /// The task ready queues, in which each queue represents the list of
     /// runnable task at the corresponding priority level.
+    ///
+    /// Invariant: `task_ready_bitmap[i].first.is_some() ==
+    ///  task_ready_queue.get(i)`
     task_ready_queue: utils::CpuLockCell<System, TaskReadyQueue>,
 }
 

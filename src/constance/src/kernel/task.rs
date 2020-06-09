@@ -1,8 +1,12 @@
 //! Tasks
-use core::{cell::UnsafeCell, fmt, marker::PhantomData};
+use core::{cell::UnsafeCell, fmt, marker::PhantomData, sync::atomic::Ordering};
+use num_traits::ToPrimitive;
 
 use super::{hunk::Hunk, utils, ActivateTaskError, ExitTaskError, Id, Kernel, KernelCfg1, Port};
-use crate::utils::{Init, RawCell};
+use crate::utils::{
+    intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
+    BinInteger, Init, PrioBitmap, RawCell,
+};
 
 /// Represents a single task in a system.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -101,8 +105,8 @@ impl<System: Kernel> StackHunk<System> {
 #[repr(C)]
 pub struct TaskCb<
     System: Port,
-    PortTaskState = <System as Port>::PortTaskState,
-    TaskPriority = <System as KernelCfg1>::TaskPriority,
+    PortTaskState: 'static = <System as Port>::PortTaskState,
+    TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
 > {
     /// Get a reference to `PortTaskState` in the task control block.
     ///
@@ -117,10 +121,18 @@ pub struct TaskCb<
 
     pub(super) st: utils::CpuLockCell<System, TaskSt>,
 
+    /// Allows `TaskCb` to participate in one of linked lists.
+    ///
+    ///  - In a `Runnable` state, this forms the linked list headed by
+    ///    [`State::task_ready_queue`].
+    ///
+    /// [`State::task_ready_queue`]: crate::kernel::State::task_ready_queue
+    pub(super) link: utils::CpuLockCell<System, Option<StaticLink<Self>>>,
+
     pub(super) _force_int_mut: RawCell<()>,
 }
 
-impl<System: Port, PortTaskState: Init, TaskPriority: Init> Init
+impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> Init
     for TaskCb<System, PortTaskState, TaskPriority>
 {
     const INIT: Self = Self {
@@ -128,12 +140,13 @@ impl<System: Port, PortTaskState: Init, TaskPriority: Init> Init
         attr: &TaskAttr::INIT,
         priority: Init::INIT,
         st: Init::INIT,
+        link: Init::INIT,
         _force_int_mut: RawCell::new(()),
     };
 }
 
-impl<System: Kernel, PortTaskState: fmt::Debug, TaskPriority: fmt::Debug> fmt::Debug
-    for TaskCb<System, PortTaskState, TaskPriority>
+impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Debug + 'static>
+    fmt::Debug for TaskCb<System, PortTaskState, TaskPriority>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskCb")
@@ -212,14 +225,20 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
     // TODO: If `is_cpu_lock_active() == true`, assert that it was an
     //       application that has the lock. It's illegal for it to be a
     //       kernel-owned CPU Lock.
-    let lock = unsafe {
+    let mut lock = unsafe {
         if !System::is_cpu_lock_active() {
             System::enter_cpu_lock();
         }
         utils::assume_cpu_lock::<System>()
     };
 
-    // TODO: Transition the task to Dormant
+    // Transition the current task to Dormant
+    let running_task = System::state().running_task().unwrap();
+    assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
+    running_task.st.replace(&mut *lock, TaskSt::Dormant);
+
+    // Erase `running_task`
+    System::state().running_task.store(None, Ordering::Relaxed);
 
     core::mem::forget(lock);
 
@@ -227,6 +246,141 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
     // data on the task stack will be invalidated and has promised that this
     // will not cause any UBs. (2) CPU Lock active
     unsafe {
-        System::exit_and_dispatch();
+        System::exit_and_dispatch(running_task);
     }
+}
+
+/// Initialize a task at boot time.
+pub(super) fn init_task<System: Kernel>(
+    lock: &mut utils::CpuLockGuard<System>,
+    task_cb: &'static TaskCb<System>,
+) {
+    if let TaskSt::PendingActivation = task_cb.st.read(&**lock) {
+        // `PendingActivation` is equivalent to `Dormant` but serves as a marker
+        // indicating tasks that should be activated by `init_task`.
+
+        // Safety: CPU Lock active, the task is (essentially) in a Dormant state
+        unsafe { System::initialize_task_state(task_cb) };
+
+        // Safety: The previous state is PendingActivation (which is equivalent
+        // to Dormant) and we just initialized the task state, so this is safe
+        unsafe { make_runnable(lock, task_cb) };
+    }
+}
+
+/// Get a `ListAccessorCell` used to access a task ready queue.
+macro_rules! list_accessor {
+    (<$sys:ty>::state().task_ready_queue[$i:expr], $key:expr) => {
+        ListAccessorCell::new(
+            TaskReadyQueueHeadAccessor($i, &<$sys>::state().task_ready_queue),
+            &Static,
+            |task_cb: &TaskCb<$sys>| &task_cb.link,
+            $key,
+        )
+    };
+}
+
+/// A helper type for `list_accessor`, implementing
+/// `CellLike<StaticListHead<TaskCb<System>>>`.
+struct TaskReadyQueueHeadAccessor<System: Port, TaskReadyQueue: 'static>(
+    usize,
+    &'static utils::CpuLockCell<System, TaskReadyQueue>,
+);
+
+impl<'a, System, TaskReadyQueue> CellLike<&'a mut utils::CpuLockGuard<System>>
+    for TaskReadyQueueHeadAccessor<System, TaskReadyQueue>
+where
+    System: Kernel,
+    TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]> + 'static,
+{
+    type Target = StaticListHead<TaskCb<System>>;
+
+    fn get(&self, key: &&'a mut utils::CpuLockGuard<System>) -> Self::Target {
+        self.1.read(&***key).borrow()[self.0]
+    }
+    fn set(&self, key: &mut &'a mut utils::CpuLockGuard<System>, value: Self::Target) {
+        self.1.write(&mut ***key).borrow_mut()[self.0] = value;
+    }
+}
+
+/// Transition the task into the Runnable state. This function doesn't do any
+/// proper cleanup for a previous state. If the previous state is `Dormant`, the
+/// caller must initialize the task state first by calling
+/// `initialize_task_state`.
+unsafe fn make_runnable<System: Kernel>(
+    // FIXME: It's inefficient to pass `&mut CpuLockGuard` because it's pointer-sized
+    lock: &mut utils::CpuLockGuard<System>,
+    task_cb: &'static TaskCb<System>,
+) {
+    // Make the task runnable
+    task_cb.st.replace(&mut **lock, TaskSt::Runnable);
+
+    // Insert the task to a ready queue
+    let pri = task_cb.priority.to_usize().unwrap();
+    list_accessor!(<System>::state().task_ready_queue[pri], lock).push_back(Ident(task_cb));
+
+    // Update `task_ready_bitmap` accordingly
+    <System>::state()
+        .task_ready_bitmap
+        .write(&mut **lock)
+        .set(pri);
+}
+
+/// Implements `PortToKernel::choose_running_task`.
+pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLockGuard<System>) {
+    // The priority of `running_task`
+    let prev_running_task = System::state().running_task();
+    let prev_task_priority = if let Some(running_task) = prev_running_task {
+        running_task.priority.to_usize().unwrap()
+    } else {
+        usize::max_value()
+    };
+
+    // The priority of the next task to run
+    let next_task_priority = System::state()
+        .task_ready_bitmap
+        .read(&**lock)
+        .find_set()
+        .unwrap_or(usize::max_value());
+
+    // Return if there's no task willing to take over the current one.
+    if prev_task_priority <= next_task_priority {
+        return;
+    }
+
+    // Find the next task to run
+    let next_running_task = if next_task_priority < System::NUM_TASK_PRIORITY_LEVELS {
+        // Take the first task in the ready queue for `next_task_priority`
+        let mut accessor =
+            list_accessor!(<System>::state().task_ready_queue[next_task_priority], lock);
+        let task = accessor.pop_front().unwrap().0;
+
+        // Update `task_ready_bitmap` accordingly
+        if accessor.is_empty() {
+            <System>::state()
+                .task_ready_bitmap
+                .write(&mut **lock)
+                .clear(next_task_priority);
+        }
+
+        // Transition `next_running_task` into the Running state
+        task.st.replace(&mut **lock, TaskSt::Running);
+
+        Some(task)
+    } else {
+        None
+    };
+
+    // Put `prev_running_task` (which is currently in the Running state) into the
+    // Runnable state
+    if let Some(running_task) = prev_running_task {
+        assert!(*running_task.st.read(&**lock) == TaskSt::Running);
+
+        // Safety: The previous state is Running, so this is safe
+        unsafe { make_runnable(lock, running_task) };
+    }
+
+    System::state()
+        .running_task
+        .store(next_running_task, Ordering::Relaxed);
 }

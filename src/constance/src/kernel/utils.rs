@@ -2,7 +2,7 @@ use core::{fmt, marker::PhantomData, ops};
 use tokenlock::TokenLock;
 
 use super::{error::BadCtxError, Kernel};
-use crate::utils::Init;
+use crate::utils::{intrusive_list::CellLike, Init};
 
 pub(super) fn expect_cpu_lock_inactive<System: Kernel>() -> Result<(), BadCtxError> {
     if System::is_cpu_lock_active() {
@@ -79,6 +79,19 @@ impl<System, T> ops::Deref for CpuLockCell<System, T> {
 impl<System, T> ops::DerefMut for CpuLockCell<System, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl<'a, Element: Clone, System: Kernel> CellLike<&'a mut CpuLockGuard<System>>
+    for CpuLockCell<System, Element>
+{
+    type Target = Element;
+
+    fn get(&self, key: &&'a mut CpuLockGuard<System>) -> Self::Target {
+        self.read(&***key).clone()
+    }
+    fn set(&self, key: &mut &'a mut CpuLockGuard<System>, value: Self::Target) {
+        self.replace(&mut ***key, value);
     }
 }
 

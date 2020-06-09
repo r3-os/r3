@@ -210,7 +210,7 @@ impl State {
         task.port_task_state.yield_current(self);
     }
 
-    pub unsafe fn exit_and_dispatch<System: Kernel>(&self) -> !
+    pub unsafe fn exit_and_dispatch<System: Kernel>(&self, task: &'static TaskCb<System>) -> !
     where
         System: Port<PortTaskState = TaskState>,
         // Work-around <https://github.com/rust-lang/rust/issues/43475>
@@ -219,7 +219,6 @@ impl State {
         log::trace!("exit_and_dispatch");
         assert!(self.is_cpu_lock_active());
 
-        let task = System::state().running_task().expect("no running task");
         unsafe {
             task.port_task_state.exit_and_dispatch(self);
         }
@@ -283,8 +282,8 @@ macro_rules! use_port {
                 PORT_STATE.yield_cpu::<Self>()
             }
 
-            unsafe fn exit_and_dispatch() -> ! {
-                PORT_STATE.exit_and_dispatch::<Self>();
+            unsafe fn exit_and_dispatch(task: &'static $crate::TaskCb<Self>) -> ! {
+                PORT_STATE.exit_and_dispatch::<Self>(task);
             }
 
             unsafe fn enter_cpu_lock() {
