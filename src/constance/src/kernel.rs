@@ -60,6 +60,16 @@ pub unsafe trait KernelCfg1: Sized + 'static {
     /// Unsigned integer type capable of representing the range
     /// `0..NUM_TASK_PRIORITY_LEVELS`.
     type TaskPriority: BinUInteger;
+
+    // FIXME: This is a work-around for trait methods being uncallable in `const fn`
+    //        <https://github.com/rust-lang/rfcs/pull/2632>
+    //        <https://github.com/rust-lang/const-eval/pull/8>
+    /// All possible values of `TaskPriority`.
+    ///
+    /// `TASK_PRIORITY_LEVELS[i]` is equivalent to
+    /// `TaskPriority::try_from(i).unwrap()` except that the latter doesn't work
+    /// in `const fn`.
+    const TASK_PRIORITY_LEVELS: &'static [Self::TaskPriority];
 }
 
 /// Implemented by a port.

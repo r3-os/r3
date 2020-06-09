@@ -38,6 +38,9 @@ pub use self::vec::ComptimeVec;
 ///  - `statck_size = LEN: usize` specifies the task's stack size.
 ///  - `statck_hunk = HUNK: Hunk<System, [UnsafeCell<u8>]>` specifies the task's
 ///    hunk.
+///  - `priority = PRI: usize` specifies the task's initial priority. Tasks with
+///    lower priority values execute first. `PRI` must be in range
+///    `0..num_task_priority_levels`.
 ///
 /// # `new_hunk!(T)`
 ///
@@ -163,10 +166,18 @@ macro_rules! build {
         // The second value can be just `let`
         let id_map = $configure(CfgBuilder::new()).id_map;
 
+        // Set up task priority levels
+        type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;
+        $crate::array_item_from_fn! {
+            const TASK_PRIORITY_LEVELS: [TaskPriority; _] =
+                (0..CFG.num_task_priority_levels).map(|i| i as _);
+        };
+
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg1 for $sys {
             const NUM_TASK_PRIORITY_LEVELS: usize = CFG.num_task_priority_levels;
-            type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;
+            type TaskPriority = TaskPriority;
+            const TASK_PRIORITY_LEVELS: &'static [Self::TaskPriority] = &TASK_PRIORITY_LEVELS;
         }
 
         // Instantiiate task structures
@@ -364,6 +375,7 @@ pub struct CfgTaskBuilder<System> {
     start: Option<fn(usize)>,
     param: usize,
     stack: Option<TaskStack<System>>,
+    priority: Option<usize>,
 }
 
 enum TaskStack<System> {
@@ -380,6 +392,7 @@ impl<System: Port> CfgTaskBuilder<System> {
             start: None,
             param: 0,
             stack: None,
+            priority: None,
         }
     }
 
@@ -418,6 +431,13 @@ impl<System: Port> CfgTaskBuilder<System> {
         }
     }
 
+    pub const fn priority(self, priority: usize) -> Self {
+        Self {
+            priority: Some(priority),
+            ..self
+        }
+    }
+
     pub const fn finish(
         self,
         mut cfg: CfgBuilder<System>,
@@ -451,6 +471,11 @@ impl<System: Port> CfgTaskBuilder<System> {
             },
             param: self.param,
             stack,
+            priority: if let Some(x) = self.priority {
+                x
+            } else {
+                panic!("`priority` is not specified")
+            },
         });
 
         let task = unsafe { task::Task::from_id(NonZeroUsize::new_unchecked(cfg.tasks.len())) };
@@ -464,6 +489,7 @@ pub struct CfgBuilderTask<System> {
     start: fn(usize),
     param: usize,
     stack: task::StackHunk<System>,
+    priority: usize,
 }
 
 impl<System> Clone for CfgBuilderTask<System> {
@@ -472,6 +498,7 @@ impl<System> Clone for CfgBuilderTask<System> {
             start: self.start,
             param: self.param,
             stack: self.stack,
+            priority: self.priority,
         }
     }
 }
@@ -486,7 +513,11 @@ impl<System: Port> CfgBuilderTask<System> {
         task::TaskCb {
             port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
-            priority: Init::INIT, // TODO
+            priority: if self.priority < System::NUM_TASK_PRIORITY_LEVELS {
+                System::TASK_PRIORITY_LEVELS[self.priority]
+            } else {
+                panic!("task's `priority` must be less than `num_task_priority_levels`");
+            },
             _force_int_mut: crate::utils::RawCell::new(()),
         }
     }
