@@ -1,5 +1,5 @@
 use core::{fmt, marker::PhantomData, ops};
-use tokenlock::TokenLock;
+use tokenlock::{Token, TokenLock};
 
 use super::{error::BadCtxError, Kernel};
 use crate::utils::{intrusive_list::CellLike, Init};
@@ -30,7 +30,7 @@ impl<System> fmt::Debug for CpuLockKeyhole<System> {
 
 // This is safe because `CpuLockToken` only can be borrowed from `CpuLockGuard`,
 // and there is only one instance of `CpuLockGuard` at any point of time
-unsafe impl<System> tokenlock::Token<CpuLockKeyhole<System>> for CpuLockToken<System> {
+unsafe impl<System> Token<CpuLockKeyhole<System>> for CpuLockToken<System> {
     fn eq_id(&self, _: &CpuLockKeyhole<System>) -> bool {
         true
     }
@@ -44,12 +44,12 @@ impl<System> Init for CpuLockKeyhole<System> {
 
 /// Cell type that can be accessed by [`CpuLockToken`] (which can be obtained
 /// by [`lock_cpu`]).
-pub(super) struct CpuLockCell<System, T: ?Sized>(tokenlock::TokenLock<T, CpuLockKeyhole<System>>);
+pub(super) struct CpuLockCell<System, T: ?Sized>(TokenLock<T, CpuLockKeyhole<System>>);
 
 impl<System, T> CpuLockCell<System, T> {
     #[allow(dead_code)]
     pub(super) const fn new(x: T) -> Self {
-        Self(tokenlock::TokenLock::new(CpuLockKeyhole::INIT, x))
+        Self(TokenLock::new(CpuLockKeyhole::INIT, x))
     }
 }
 
@@ -70,7 +70,7 @@ impl<System, T: Init> Init for CpuLockCell<System, T> {
 }
 
 impl<System, T> ops::Deref for CpuLockCell<System, T> {
-    type Target = tokenlock::TokenLock<T, CpuLockKeyhole<System>>;
+    type Target = TokenLock<T, CpuLockKeyhole<System>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

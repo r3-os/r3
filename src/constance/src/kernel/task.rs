@@ -5,7 +5,7 @@ use num_traits::ToPrimitive;
 use super::{hunk::Hunk, utils, ActivateTaskError, ExitTaskError, Id, Kernel, KernelCfg1, Port};
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
-    BinInteger, Init, PrioBitmap, RawCell,
+    Init, PrioBitmap, RawCell,
 };
 
 /// Represents a single task in a system.
