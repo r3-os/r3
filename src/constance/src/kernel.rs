@@ -81,10 +81,12 @@ pub unsafe trait KernelCfg1: Sized + 'static {
 /// implementation.
 ///
 /// These methods are only meant to be called by the kernel.
+#[allow(clippy::missing_safety_doc)]
 pub unsafe trait Port: KernelCfg1 {
     type PortTaskState: Send + Sync + Init + 'static;
 
     /// The initial value of [`TaskCb::port_task_state`] for all tasks.
+    #[allow(clippy::declare_interior_mutable_const)] // it's intentional
     const PORT_TASK_STATE_INIT: Self::PortTaskState;
 
     /// The default stack size for tasks.
@@ -148,6 +150,7 @@ pub unsafe trait Port: KernelCfg1 {
 /// # Safety
 ///
 /// These are only meant to be called by the port.
+#[allow(clippy::missing_safety_doc)]
 pub trait PortToKernel {
     /// Initialize runtime structures.
     ///

@@ -28,6 +28,10 @@ impl<T: Copy> ComptimeVec<T> {
         self.len
     }
 
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
     pub const fn get(&self, i: usize) -> T {
         if i >= self.len() {
