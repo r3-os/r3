@@ -148,7 +148,7 @@ macro_rules! build {
                 CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port, State, TaskAttr,
                 TaskCb,
             },
-            utils::{AlignedStorage, FixedPrioBitmap, Init, RawCell},
+            utils::{AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound},
         };
 
         // `$configure` produces two values: a `CfgBuilder` and an ID map
@@ -163,12 +163,20 @@ macro_rules! build {
         // The second value can be just `let`
         let id_map = $configure(CfgBuilder::new()).id_map;
 
+        // Safety: We are `build!`, so it's okay to `impl` this
+        unsafe impl KernelCfg1 for $sys {
+            const NUM_TASK_PRIORITY_LEVELS: usize = CFG.num_task_priority_levels;
+            type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;
+        }
+
         // Instantiiate task structures
+        type MyTaskCb =
+            TaskCb<$sys, <$sys as Port>::PortTaskState, <$sys as KernelCfg1>::TaskPriority>;
         $crate::array_item_from_fn! {
             const TASK_ATTR_POOL: [TaskAttr<$sys>; _] =
                 (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
             static TASK_CB_POOL:
-                [TaskCb<$sys, <$sys as Port>::PortTaskState>; _] =
+                [MyTaskCb; _] =
                     (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR_POOL[i]));
         }
 
@@ -181,11 +189,13 @@ macro_rules! build {
         type TaskReadyBitmap = FixedPrioBitmap<{ CFG.num_task_priority_levels }>;
 
         // Instantiate the global state
-        type KernelState = State<$sys, <$sys as Port>::PortTaskState, TaskReadyBitmap>;
+        type KernelState = State<
+            $sys,
+            <$sys as Port>::PortTaskState,
+            TaskReadyBitmap,
+            <$sys as KernelCfg1>::TaskPriority,
+        >;
         static KERNEL_STATE: KernelState = State::INIT;
-
-        // Safety: We are `build!`, so it's okay to `impl` this
-        unsafe impl KernelCfg1 for $sys {}
 
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg2 for $sys {
@@ -201,7 +211,7 @@ macro_rules! build {
             };
 
             #[inline(always)]
-            fn task_cb_pool() -> &'static [TaskCb<$sys, <$sys as Port>::PortTaskState>] {
+            fn task_cb_pool() -> &'static [MyTaskCb] {
                 &TASK_CB_POOL
             }
         }
@@ -472,10 +482,11 @@ impl<System: Port> CfgBuilderTask<System> {
     pub const fn to_state(
         &self,
         attr: &'static task::TaskAttr<System>,
-    ) -> task::TaskCb<System, System::PortTaskState> {
+    ) -> task::TaskCb<System, System::PortTaskState, System::TaskPriority> {
         task::TaskCb {
             port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
+            priority: Init::INIT, // TODO
             _force_int_mut: crate::utils::RawCell::new(()),
         }
     }

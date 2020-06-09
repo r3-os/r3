@@ -232,7 +232,7 @@ impl State {
 
     pub unsafe fn initialize_task_state<System: Kernel>(
         &self,
-        task: &'static TaskCb<System, TaskState>,
+        task: &'static TaskCb<System, TaskState, System::TaskPriority>,
     ) where
         System: Port<PortTaskState = TaskState>,
     {
@@ -290,7 +290,7 @@ macro_rules! use_port {
                 PORT_STATE.leave_cpu_lock()
             }
 
-            unsafe fn initialize_task_state(task: &'static $crate::TaskCb<Self, Self::PortTaskState>) {
+            unsafe fn initialize_task_state(task: &'static $crate::TaskCb<Self, Self::PortTaskState, Self::TaskPriority>) {
                 PORT_STATE.initialize_task_state(task)
             }
 

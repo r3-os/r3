@@ -2,7 +2,7 @@
 use atomic_ref::AtomicRef;
 use core::{fmt, mem::forget, num::NonZeroUsize, sync::atomic::Ordering};
 
-use crate::utils::{Init, PrioBitmap};
+use crate::utils::{BinUInteger, Init, PrioBitmap};
 
 #[macro_use]
 mod cfg;
@@ -46,10 +46,21 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
 /// Associates "system" types with kernel-private data. Use [`build!`] to
 /// implement.
 ///
+/// Customizable things needed by both of `Port` and `KernelCfg2` should live
+/// here because `Port` cannot refer to an associated item defined by
+/// `KernelCfg2`.
+///
 /// # Safety
 ///
 /// This is only intended to be implemented by `build!`.
-pub unsafe trait KernelCfg1: Sized {}
+pub unsafe trait KernelCfg1: Sized + 'static {
+    /// The number of task priority levels.
+    const NUM_TASK_PRIORITY_LEVELS: usize;
+
+    /// Unsigned integer type capable of representing the range
+    /// `0..NUM_TASK_PRIORITY_LEVELS`.
+    type TaskPriority: BinUInteger;
+}
 
 /// Implemented by a port.
 ///
@@ -60,7 +71,7 @@ pub unsafe trait KernelCfg1: Sized {}
 /// implementation.
 ///
 /// These methods are only meant to be called by the kernel.
-pub unsafe trait Port: Sized {
+pub unsafe trait Port: KernelCfg1 {
     type PortTaskState: Send + Sync + Init + 'static;
 
     /// The initial value of [`TaskCb::port_task_state`] for all tasks.
@@ -116,7 +127,9 @@ pub unsafe trait Port: Sized {
     /// [`Pin`]: core::pin::Pin
     ///
     /// Precondition: CPU Lock active
-    unsafe fn initialize_task_state(task: &'static task::TaskCb<Self, Self::PortTaskState>);
+    unsafe fn initialize_task_state(
+        task: &'static task::TaskCb<Self, Self::PortTaskState, <Self as KernelCfg1>::TaskPriority>,
+    );
 
     /// Return a flag indicating whether a CPU Lock state is active.
     fn is_cpu_lock_active() -> bool;
@@ -195,34 +208,46 @@ pub unsafe trait KernelCfg2: Port + Sized {
     type TaskReadyBitmap: PrioBitmap;
 
     /// Access the kernel's global state.
-    fn state() -> &'static State<Self, Self::PortTaskState, Self::TaskReadyBitmap>;
+    fn state(
+    ) -> &'static State<Self, Self::PortTaskState, Self::TaskReadyBitmap, Self::TaskPriority>;
 
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
     //        to be resolved because `TaskCb` includes interior mutability
     //        and can't be referred to by `const`
     #[doc(hidden)]
-    fn task_cb_pool() -> &'static [TaskCb<Self, Self::PortTaskState>];
+    fn task_cb_pool() -> &'static [TaskCb<Self, Self::PortTaskState, Self::TaskPriority>];
 
     #[doc(hidden)]
     #[inline(always)]
-    fn get_task_cb(i: usize) -> Option<&'static TaskCb<Self, Self::PortTaskState>> {
+    fn get_task_cb(
+        i: usize,
+    ) -> Option<&'static TaskCb<Self, Self::PortTaskState, Self::TaskPriority>> {
         Self::task_cb_pool().get(i)
     }
 }
 
 /// Global kernel state.
-pub struct State<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap> {
+pub struct State<
+    System: 'static,
+    PortTaskState: 'static,
+    TaskReadyBitmap: PrioBitmap,
+    TaskPriority: 'static,
+> {
     // TODO: Make `running_task` non-null to simplify runtime code
     /// The currently running task.
-    running_task: AtomicRef<'static, TaskCb<System, PortTaskState>>,
+    running_task: AtomicRef<'static, TaskCb<System, PortTaskState, TaskPriority>>,
 
     /// The task ready bitmap, in which each bit indicates whether the
     /// task ready queue corresponding to that bit contains a task or not.
     task_ready_bitmap: utils::CpuLockCell<System, TaskReadyBitmap>,
 }
 
-impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap> Init
-    for State<System, PortTaskState, TaskReadyBitmap>
+impl<
+        System: 'static,
+        PortTaskState: 'static,
+        TaskReadyBitmap: PrioBitmap,
+        TaskPriority: 'static,
+    > Init for State<System, PortTaskState, TaskReadyBitmap, TaskPriority>
 {
     const INIT: Self = Self {
         running_task: AtomicRef::new(None),
@@ -230,8 +255,12 @@ impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap> Init
     };
 }
 
-impl<System: Kernel, PortTaskState: 'static + fmt::Debug, TaskReadyBitmap: PrioBitmap> fmt::Debug
-    for State<System, PortTaskState, TaskReadyBitmap>
+impl<
+        System: Kernel,
+        PortTaskState: 'static + fmt::Debug,
+        TaskReadyBitmap: PrioBitmap,
+        TaskPriority: 'static,
+    > fmt::Debug for State<System, PortTaskState, TaskReadyBitmap, TaskPriority>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("State")
@@ -241,11 +270,11 @@ impl<System: Kernel, PortTaskState: 'static + fmt::Debug, TaskReadyBitmap: PrioB
     }
 }
 
-impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap>
-    State<System, PortTaskState, TaskReadyBitmap>
+impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap, TaskPriority>
+    State<System, PortTaskState, TaskReadyBitmap, TaskPriority>
 {
     /// Get the currently running task.
-    pub fn running_task(&self) -> Option<&'static TaskCb<System, PortTaskState>> {
+    pub fn running_task(&self) -> Option<&'static TaskCb<System, PortTaskState, TaskPriority>> {
         self.running_task.load(Ordering::Relaxed)
     }
 
@@ -254,7 +283,9 @@ impl<System: 'static, PortTaskState: 'static, TaskReadyBitmap: PrioBitmap>
     /// # Safety
     ///
     /// Modifying the stored value is not allowed.
-    pub unsafe fn active_task_ref(&self) -> &AtomicRef<'static, TaskCb<System, PortTaskState>> {
+    pub unsafe fn active_task_ref(
+        &self,
+    ) -> &AtomicRef<'static, TaskCb<System, PortTaskState, TaskPriority>> {
         &self.running_task
     }
 }

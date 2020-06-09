@@ -99,7 +99,7 @@ impl<System: Kernel> StackHunk<System> {
 
 /// *Task control block* - the state data of a task.
 #[repr(C)]
-pub struct TaskCb<System: 'static, PortTaskState> {
+pub struct TaskCb<System: 'static, PortTaskState, TaskPriority> {
     /// Get a reference to `PortTaskState` in the task control block.
     ///
     /// This is guaranteed to be placed at the beginning of the struct so that
@@ -109,18 +109,25 @@ pub struct TaskCb<System: 'static, PortTaskState> {
     /// The static properties of the task.
     pub attr: &'static TaskAttr<System>,
 
+    pub priority: TaskPriority,
+
     pub(super) _force_int_mut: RawCell<()>,
 }
 
-impl<System: 'static, PortTaskState: Init> Init for TaskCb<System, PortTaskState> {
+impl<System: 'static, PortTaskState: Init, TaskPriority: Init> Init
+    for TaskCb<System, PortTaskState, TaskPriority>
+{
     const INIT: Self = Self {
         port_task_state: Init::INIT,
         attr: &TaskAttr::INIT,
+        priority: Init::INIT,
         _force_int_mut: RawCell::new(()),
     };
 }
 
-impl<System: Kernel, PortTaskState: fmt::Debug> fmt::Debug for TaskCb<System, PortTaskState> {
+impl<System: Kernel, PortTaskState: fmt::Debug, TaskPriority> fmt::Debug
+    for TaskCb<System, PortTaskState, TaskPriority>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskCb")
             .field("port_task_state", &self.port_task_state)
