@@ -31,16 +31,17 @@ pub use self::vec::ComptimeVec;
 ///
 /// # `new_task!(start = ENTRY_FN, ...)`
 ///
-/// Defines a task. The following options are available:
+/// Defines a task. The following properties can be specified:
 ///
-///  - `start = ENTRY_FN: fn(usize)` specifies the task's entry point.
+///  - `start = ENTRY_FN: fn(usize)` (**required**) specifies the task's entry
+///    point.
 ///  - `param = PARAM: usize` specifies the parameter to `start`.
-///  - `statck_size = LEN: usize` specifies the task's stack size.
-///  - `statck_hunk = HUNK: Hunk<System, [UnsafeCell<u8>]>` specifies the task's
+///  - `stack_size = LEN: usize` specifies the task's stack size.
+///  - `stack_hunk = HUNK: Hunk<System, [UnsafeCell<u8>]>` specifies the task's
 ///    hunk.
-///  - `priority = PRI: usize` specifies the task's initial priority. Tasks with
-///    lower priority values execute first. `PRI` must be in range
-///    `0..num_task_priority_levels`.
+///  - `priority = PRI: usize` (**required**) specifies the task's initial
+///    priority. Tasks with lower priority values execute first. `PRI` must be
+///    in range `0..num_task_priority_levels`.
 ///
 /// # `new_hunk!(T)`
 ///
