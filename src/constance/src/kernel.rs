@@ -19,7 +19,7 @@ pub type Id = NonZeroUsize;
 ///
 /// This trait is automatically implemented on "system" types that have
 /// sufficient trait `impl`s to instantiate the kernel.
-pub trait Kernel: Port + KernelCfg + Sized + 'static {
+pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// Terminate the current task, putting it into a Dormant state.
     ///
     /// The kernel (to be precise, the port) makes an implicit call to this
@@ -36,12 +36,20 @@ pub trait Kernel: Port + KernelCfg + Sized + 'static {
     unsafe fn exit_task() -> Result<!, ExitTaskError>;
 }
 
-impl<T: Port + KernelCfg + 'static> Kernel for T {
+impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
         // Safety: Just forwarding the function call
         unsafe { exit_current_task::<Self>() }
     }
 }
+
+/// Associates "system" types with kernel-private data. Use [`build!`] to
+/// implement.
+///
+/// # Safety
+///
+/// This is only intended to be implemented by `build!`.
+pub unsafe trait KernelCfg1: Sized {}
 
 /// Implemented by a port.
 ///
@@ -180,7 +188,7 @@ impl<System: Kernel> PortToKernel for System {
 /// # Safety
 ///
 /// This is only intended to be implemented by `build!`.
-pub unsafe trait KernelCfg: Port + Sized {
+pub unsafe trait KernelCfg2: Port + Sized {
     #[doc(hidden)]
     const HUNK_ATTR: HunkAttr;
 

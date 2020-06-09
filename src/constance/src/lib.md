@@ -12,8 +12,14 @@ The following pseudocode outlines the traits and types involved in hooking up th
 
 ```rust,ignore
 crate constance {
+    /// Associates `System` with kernel-private data. Implemented by `build!`.
+    /// The kernel-private data includes port-specific types.
+    unsafe trait KernelCfg1 {
+        /* ... */
+    }
+
     /// Implemented by a port.
-    unsafe trait Port {
+    unsafe trait Port: KernelCfg1 {
         type TaskState;
         fn dispatch();
         /* ... */
@@ -21,22 +27,23 @@ crate constance {
 
     /// Associates `System` with kernel-private data. Implemented by `build!`.
     /// The kernel-private data includes port-specific types.
-    unsafe trait KernelCfg: Port {
+    unsafe trait KernelCfg2: Port {
         const TASK_CFG: &'static [TaskCfg<Self::TaskState>];
         /* ... */
     }
 
     /// The API used by the application and the port. This is automatically
     /// implemented when a type has sufficient trait `impl`s.
-    trait Kernel: Port + KernelCfg {}
+    trait Kernel: Port + KernelCfg2 {}
 
-    impl<T: Port + KernelCfg> Kernel for T { /* ... */ }
+    impl<T: Port + KernelCfg1 + KernelCfg2> Kernel for T { /* ... */ }
 
     /// Instantiate the `static`s necessary for the kernel's operation. This is
     /// absolutely impossible to do with blanket `impl`s.
     macro_rules! build {
         ($sys:ty, $configure:expr) => {
-            unsafe impl $crate::KernelCfg for $sys {
+            unsafe impl $crate::KernelCfg1 for $sys {}
+            unsafe impl $crate::KernelCfg2 for $sys {
                 const TASK_CFG: &'static [TaskCfg<Self::TaskState>] = /* ... */;
                 /* ... */
             }

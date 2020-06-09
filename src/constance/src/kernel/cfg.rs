@@ -137,15 +137,16 @@ macro_rules! configure {
 }
 
 /// Attach a configuration function (defined by [`configure!`]) to a "system"
-/// type by implementing [`KernelCfg`] on `$sys`.
+/// type by implementing [`KernelCfg2`] on `$sys`.
 ///
-/// [`KernelCfg`]: crate::kernel::KernelCfg
+/// [`KernelCfg2`]: crate::kernel::KernelCfg2
 #[macro_export]
 macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
             kernel::{
-                CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg, Port, State, TaskAttr, TaskCb,
+                CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port, State, TaskAttr,
+                TaskCb,
             },
             utils::{AlignedStorage, FixedPrioBitmap, Init, RawCell},
         };
@@ -184,7 +185,10 @@ macro_rules! build {
         static KERNEL_STATE: KernelState = State::INIT;
 
         // Safety: We are `build!`, so it's okay to `impl` this
-        unsafe impl KernelCfg for $sys {
+        unsafe impl KernelCfg1 for $sys {}
+
+        // Safety: We are `build!`, so it's okay to `impl` this
+        unsafe impl KernelCfg2 for $sys {
             type TaskReadyBitmap = TaskReadyBitmap;
 
             fn state() -> &'static KernelState {

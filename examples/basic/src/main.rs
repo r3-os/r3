@@ -36,7 +36,7 @@ constance::configure! {
 }
 
 fn task1_body(_: usize) {
-    use constance::kernel::KernelCfg;
+    use constance::kernel::KernelCfg2;
     log::trace!("COTTAGE = {:#?}", COTTAGE);
     log::trace!("KENREL_STATE = {:#?}", System::state());
 
