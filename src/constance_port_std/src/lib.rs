@@ -190,7 +190,8 @@ impl State {
                 pts.tsm.store(TSM_RUNNING, Ordering::Release);
                 thread_cell.as_ref().unwrap().thread().unpark();
             } else {
-                // Since we don't have timers or interrupts yet, this is the end
+                // Since we don't have timers or interrupts yet, this means we
+                // are in deadlock
                 panic!("No task to schedule");
             }
         }
