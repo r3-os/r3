@@ -41,9 +41,9 @@ impl<System: Kernel> Task<System> {
 
     /// Start the execution of the task.
     pub fn activate(self) -> Result<(), ActivateTaskError> {
-        let _lock = utils::lock_cpu::<System>()?;
-
-        todo!()
+        let lock = utils::lock_cpu::<System>()?;
+        let task_cb = System::get_task_cb(self.0.get() - 1).ok_or(ActivateTaskError::BadId)?;
+        activate(lock, task_cb)
     }
 }
 
@@ -303,6 +303,28 @@ where
     }
 }
 
+/// Implements `Task::activate`.
+fn activate<System: Kernel>(
+    mut lock: utils::CpuLockGuard<System>,
+    task_cb: &'static TaskCb<System>,
+) -> Result<(), ActivateTaskError> {
+    if *task_cb.st.read(&*lock) != TaskSt::Dormant {
+        return Err(ActivateTaskError::QueueOverflow);
+    }
+
+    // Safety: CPU Lock active, the task is in a Dormant state
+    unsafe { System::initialize_task_state(task_cb) };
+
+    // Safety: The previous state is Dormant, and we just initialized the task
+    // state, so this is safe
+    unsafe { make_runnable(&mut lock, task_cb) };
+
+    // If `task_cb` has a higher priority, perform a context switch.
+    unlock_cpu_and_check_preemption(lock);
+
+    Ok(())
+}
+
 /// Transition the task into the Runnable state. This function doesn't do any
 /// proper cleanup for a previous state. If the previous state is `Dormant`, the
 /// caller must initialize the task state first by calling
@@ -324,6 +346,34 @@ unsafe fn make_runnable<System: Kernel>(
         .task_ready_bitmap
         .write(&mut **lock)
         .set(pri);
+}
+
+/// Relinquish CPU Lock. After that, if there's a higher-priority task than
+/// `running_task`, call `Port::yield_cpu`.
+///
+/// System services that transition a task into a Runnable state should call
+/// this before returning to the caller.
+fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLockGuard<System>) {
+    let prev_task_priority = if let Some(running_task) = System::state().running_task() {
+        running_task.priority.to_usize().unwrap()
+    } else {
+        usize::max_value()
+    };
+
+    // The priority of the next task to run
+    let next_task_priority = System::state()
+        .task_ready_bitmap
+        .read(&*lock)
+        .find_set()
+        .unwrap_or(usize::max_value());
+
+    // Relinquish CPU Lock
+    drop(lock);
+
+    if next_task_priority < prev_task_priority {
+        // Safety: CPU Lock inactive
+        unsafe { System::yield_cpu() };
+    }
 }
 
 /// Implements `PortToKernel::choose_running_task`.

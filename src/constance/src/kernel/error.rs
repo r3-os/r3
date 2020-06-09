@@ -62,6 +62,9 @@ pub enum ResultCode {
     BadId = -18,
     /// The current context disallows the operation.
     BadCtx = -25,
+    /// An operation or an object couldn't be enqueued because there are too
+    /// many of such things that already have been enqueued.
+    QueueOverflow = -43,
 }
 
 impl ResultCode {
@@ -87,8 +90,20 @@ define_error! {
     ///
     /// [`Task::activate`]: super::Task::activate
     pub enum ActivateTaskError {
+        /// The task ID is out of range.
         BadId,
+        /// CPU Lock is active.
         BadCtx,
+        /// The task is already active (not in a Dormant state).
+        ///
+        /// This error code originates from `E_QOVR` defined in the μITRON 4.0
+        /// specification. In this specification, the `act_tsk` (activate task)
+        /// system service works by enqueueing an activation request. `E_QOVR`
+        /// is used to report a condition in which an enqueue count limit has
+        /// been reached. Our kernel doesn't support enqueueing actvation
+        /// request (at the moment), so any attempts to activate an
+        /// already-active task will fail.
+        QueueOverflow,
     }
 }
 
