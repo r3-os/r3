@@ -252,10 +252,10 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
 
 /// Initialize a task at boot time.
 pub(super) fn init_task<System: Kernel>(
-    lock: &mut utils::CpuLockGuard<System>,
+    lock: utils::CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
 ) {
-    if let TaskSt::PendingActivation = task_cb.st.read(&**lock) {
+    if let TaskSt::PendingActivation = task_cb.st.read(&*lock) {
         // `PendingActivation` is equivalent to `Dormant` but serves as a marker
         // indicating tasks that should be activated by `init_task`.
 
@@ -287,7 +287,7 @@ struct TaskReadyQueueHeadAccessor<System: Port, TaskReadyQueue: 'static>(
     &'static utils::CpuLockCell<System, TaskReadyQueue>,
 );
 
-impl<'a, System, TaskReadyQueue> CellLike<&'a mut utils::CpuLockGuard<System>>
+impl<'a, System, TaskReadyQueue> CellLike<utils::CpuLockGuardBorrowMut<'a, System>>
     for TaskReadyQueueHeadAccessor<System, TaskReadyQueue>
 where
     System: Kernel,
@@ -295,11 +295,11 @@ where
 {
     type Target = StaticListHead<TaskCb<System>>;
 
-    fn get(&self, key: &&'a mut utils::CpuLockGuard<System>) -> Self::Target {
-        self.1.read(&***key).borrow()[self.0]
+    fn get(&self, key: &utils::CpuLockGuardBorrowMut<'a, System>) -> Self::Target {
+        self.1.read(&**key).borrow()[self.0]
     }
-    fn set(&self, key: &mut &'a mut utils::CpuLockGuard<System>, value: Self::Target) {
-        self.1.write(&mut ***key).borrow_mut()[self.0] = value;
+    fn set(&self, key: &mut utils::CpuLockGuardBorrowMut<'a, System>, value: Self::Target) {
+        self.1.write(&mut **key).borrow_mut()[self.0] = value;
     }
 }
 
@@ -317,7 +317,7 @@ fn activate<System: Kernel>(
 
     // Safety: The previous state is Dormant, and we just initialized the task
     // state, so this is safe
-    unsafe { make_runnable(&mut lock, task_cb) };
+    unsafe { make_runnable(lock.borrow_mut(), task_cb) };
 
     // If `task_cb` has a higher priority, perform a context switch.
     unlock_cpu_and_check_preemption(lock);
@@ -330,21 +330,21 @@ fn activate<System: Kernel>(
 /// caller must initialize the task state first by calling
 /// `initialize_task_state`.
 unsafe fn make_runnable<System: Kernel>(
-    // FIXME: It's inefficient to pass `&mut CpuLockGuard` because it's pointer-sized
-    lock: &mut utils::CpuLockGuard<System>,
+    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
 ) {
     // Make the task runnable
-    task_cb.st.replace(&mut **lock, TaskSt::Runnable);
+    task_cb.st.replace(&mut *lock, TaskSt::Runnable);
 
     // Insert the task to a ready queue
     let pri = task_cb.priority.to_usize().unwrap();
-    list_accessor!(<System>::state().task_ready_queue[pri], lock).push_back(Ident(task_cb));
+    list_accessor!(<System>::state().task_ready_queue[pri], lock.borrow_mut())
+        .push_back(Ident(task_cb));
 
     // Update `task_ready_bitmap` accordingly
     <System>::state()
         .task_ready_bitmap
-        .write(&mut **lock)
+        .write(&mut *lock)
         .set(pri);
 }
 
@@ -401,8 +401,10 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
     // Find the next task to run
     let next_running_task = if next_task_priority < System::NUM_TASK_PRIORITY_LEVELS {
         // Take the first task in the ready queue for `next_task_priority`
-        let mut accessor =
-            list_accessor!(<System>::state().task_ready_queue[next_task_priority], lock);
+        let mut accessor = list_accessor!(
+            <System>::state().task_ready_queue[next_task_priority],
+            lock.borrow_mut()
+        );
         let task = accessor.pop_front().unwrap().0;
 
         // Update `task_ready_bitmap` accordingly
@@ -427,7 +429,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
         assert!(*running_task.st.read(&**lock) == TaskSt::Running);
 
         // Safety: The previous state is Running, so this is safe
-        unsafe { make_runnable(lock, running_task) };
+        unsafe { make_runnable(lock.borrow_mut(), running_task) };
     }
 
     System::state()

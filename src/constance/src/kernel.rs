@@ -181,7 +181,7 @@ impl<System: Kernel> PortToKernel for System {
 
         // Initialize all tasks
         for cb in Self::task_cb_pool() {
-            task::init_task(&mut lock, cb);
+            task::init_task(lock.borrow_mut(), cb);
         }
 
         // Choose the first `runnnig_task`
