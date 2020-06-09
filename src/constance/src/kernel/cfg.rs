@@ -163,11 +163,7 @@ macro_rules! build {
         // `$configure` produces two values: a `CfgBuilder` and an ID map
         // (custom type). We need the first one to be `const` so that we can
         // calculate the values of generic parameters based on its contents.
-        const CFG: CfgBuilder<$sys> = {
-            let cfg = $configure(CfgBuilder::new()).cfg;
-            cfg.validate();
-            cfg
-        };
+        const CFG: CfgBuilder<$sys> = $configure(CfgBuilder::new()).cfg;
 
         // The second value can be just `let`
         let id_map = $configure(CfgBuilder::new()).id_map;
@@ -294,10 +290,6 @@ impl<System> CfgBuilder<System> {
 
         self.num_task_priority_levels = new_value;
         self
-    }
-
-    pub const fn validate(&self) {
-        // TODO: Panic if any task violates `num_task_priority_levels`
     }
 }
 
