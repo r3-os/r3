@@ -53,7 +53,7 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
 /// # Safety
 ///
 /// This is only intended to be implemented by `build!`.
-pub unsafe trait KernelCfg1: Sized + 'static {
+pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
     /// The number of task priority levels.
     const NUM_TASK_PRIORITY_LEVELS: usize;
 

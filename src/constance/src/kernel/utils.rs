@@ -48,7 +48,7 @@ pub(super) struct CpuLockCell<System, T: ?Sized>(tokenlock::TokenLock<T, CpuLock
 
 impl<System, T> CpuLockCell<System, T> {
     #[allow(dead_code)]
-    pub(super) fn new(x: T) -> Self {
+    pub(super) const fn new(x: T) -> Self {
         Self(tokenlock::TokenLock::new(CpuLockKeyhole::INIT, x))
     }
 }
@@ -69,14 +69,14 @@ impl<System, T: Init> Init for CpuLockCell<System, T> {
     const INIT: Self = Self(Init::INIT);
 }
 
-impl<System, T: Init> ops::Deref for CpuLockCell<System, T> {
+impl<System, T> ops::Deref for CpuLockCell<System, T> {
     type Target = tokenlock::TokenLock<T, CpuLockKeyhole<System>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<System, T: Init> ops::DerefMut for CpuLockCell<System, T> {
+impl<System, T> ops::DerefMut for CpuLockCell<System, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

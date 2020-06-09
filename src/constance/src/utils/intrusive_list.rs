@@ -22,7 +22,7 @@ impl<Index> Init for ListHead<Index> {
 }
 
 /// Links to neighbor items.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Link<Index> {
     pub prev: Index,
     pub next: Index,
