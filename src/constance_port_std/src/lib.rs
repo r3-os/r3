@@ -33,9 +33,17 @@ pub struct TaskState {
 }
 
 // Task state machine
+//
+// These don't exactly align with the task states defined in the kernel.
+//
+/// The task's context state is not initialized. The kernel has to call
+/// `initialize_task_state` first before choosing this task as `running_task`.
 const TSM_UNINIT: u8 = 0;
+/// The task's context state is initialized but hasn't started running.
 const TSM_DORMANT: u8 = 1;
+/// The task is currently running.
 const TSM_RUNNING: u8 = 2;
+/// The task is currently suspended.
 const TSM_RUNNABLE: u8 = 3;
 
 impl Init for TaskState {
@@ -150,8 +158,13 @@ impl State {
 
             // Run that task
             if let Some(task) = System::state().running_task() {
+                log::trace!("dispatching task {:p}", task);
+
                 let pts = &task.port_task_state;
-                assert_eq!(pts.tsm.load(Ordering::Relaxed), TSM_DORMANT);
+
+                // The task must be in `DORMANT` or `RUNNABLE`.
+                assert_ne!(pts.tsm.load(Ordering::Relaxed), TSM_UNINIT);
+                assert_ne!(pts.tsm.load(Ordering::Relaxed), TSM_RUNNING);
 
                 let mut thread_cell = pts.thread.lock();
                 if thread_cell.is_none() {
