@@ -16,6 +16,10 @@
 #[cfg(test)]
 extern crate core;
 
+// `configure!` requires macros from this crate
+#[doc(hidden)]
+pub extern crate parse_generics_shim;
+
 #[macro_use]
 pub mod kernel;
 pub mod sync;

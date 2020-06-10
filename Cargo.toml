@@ -12,3 +12,9 @@ members = [
 #   <https://github.com/mystor/atomic_ref/pull/2>
 git = "https://github.com/yvt/atomic_ref.git"
 rev = "37523c17a2a535f4d04c204d65d2742647abed25"
+
+[patch.crates-io.parse-generics-shim]
+# “Support Rust 2018 style imports”
+# <https://github.com/DanielKeep/rust-parse-generics/pull/5>
+git = "https://github.com/yvt/rust-parse-generics.git"
+rev = "8e8d9b296a6ff98cdc77e5bbd95b59392d4c8829"
