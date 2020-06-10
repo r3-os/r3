@@ -64,12 +64,30 @@ pub use self::vec::ComptimeVec;
 ///
 #[macro_export]
 macro_rules! configure {
+    // Internal rule - this is invoked by the top-level rule down below
     (
-        [$dollar:tt]
-        $( #[$meta:meta] )*
-        $vis:vis fn $ident:ident(_: CfgBuilder<$sys:ty>) -> $id_map:ty {
-            $($tt:tt)*
-        }
+        // This parameter is used to produce a dollar token (`$`).
+        //
+        // When you write something like `$(  )*` in a macro output, the macro
+        // transcriber interprets it as a repetition. This conflict with our
+        // intent to generate `macro_rules!` because we don't want `$(...)*`
+        // inside these generated `macro_rules!` to be processed. We need the
+        // expansion of those `$(...)*` to happen when expanding the generated
+        // `macro_rules!`, not when expanding `configure!`.
+        //
+        // We address this problem by receiving a dollar token via a
+        // metavariable. The transcriber for `configure!` doesn't interpret the
+        // contents of `$dollar` and simply copies them verbadim to the output
+        // token stream, so we can use it anywhere in the macro output without
+        // worrying about it being processed by the transcriber in an unintended
+        // way.
+        dollar: [$dollar:tt],
+        meta: $( #[$meta:meta] )*,
+        vis: $vis:vis,
+        ident: $ident:ident,
+        sys: $sys:ty,
+        id_map: $id_map:ty,
+        body: { $($tt:tt)* },
     ) => {
         // FIXME: `&mut` in `const fn` <https://github.com/rust-lang/rust/issues/57349>
         //        is not implemented yet. Receiving `CfgBuilder` by `&mut _`
@@ -141,17 +159,21 @@ macro_rules! configure {
         }
     };
 
+    // Top-level rule
     (
-        [$dollar:tt]
-        $($tt:tt)*
+        $( #[$meta:meta] )*
+        $vis:vis fn $ident:ident(_: CfgBuilder<$sys:ty>) -> $id_map:ty {
+            $($tt:tt)*
+        }
     ) => {
-        compile_error!("invalid syntax")
-    };
-
-    ($($tt:tt)*) => {
         $crate::configure! {
-            [$]
-            $($tt)*
+            dollar: [$],
+            meta: $( #[$meta] )*,
+            vis: $vis,
+            ident: $ident,
+            sys: $sys,
+            id_map: $id_map,
+            body: { $($tt)* },
         }
     };
 }
