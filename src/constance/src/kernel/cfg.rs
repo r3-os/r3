@@ -75,7 +75,7 @@ macro_rules! configure {
         $vis:vis fn $ident:ident $($gen_tokens:tt)*
     ) => {
         $crate::parse_generics_shim::parse_generics_shim! {
-            { constr, params, ltimes, tnames },
+            { constr },
             then $crate::configure! {
                 [2]
                 meta: $( #[$meta] )*,
@@ -205,8 +205,13 @@ macro_rules! configure {
         ident: $ident:ident,
         sys: $sys:ty,
         id_map: $id_map:ty,
-        gen_param: $gen_param:tt,
-        where_param: $where_param:tt,
+        gen_param: {
+            constr: [ $($gen_param_constr:tt)* ],
+        },
+        where_param: {
+            clause: [ $($where_param_clause:tt)* ],
+            preds: [ $($where_param_preds:tt)* ],
+        },
         body: { $($tt:tt)* },
     ) => {
         // FIXME: `&mut` in `const fn` <https://github.com/rust-lang/rust/issues/57349>
@@ -214,9 +219,11 @@ macro_rules! configure {
         //        would be more cleaner
         $( #[$meta] )*
         #[allow(unused_macros)]
-        $vis const fn $ident(
+        $vis const fn $ident<$($gen_param_constr)*>(
             cfg: $crate::kernel::CfgBuilder<$sys>
-        ) -> $crate::kernel::CfgOutput<$sys, $id_map> {
+        ) -> $crate::kernel::CfgOutput<$sys, $id_map>
+            $($where_param_clause)*
+        {
             #[allow(unused_mut)]
             let mut cfg = cfg;
 
