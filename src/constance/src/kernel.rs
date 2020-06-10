@@ -7,10 +7,11 @@ use crate::utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap
 #[macro_use]
 mod cfg;
 mod error;
+mod event_group;
 mod hunk;
 mod task;
 mod utils;
-pub use self::{cfg::*, error::*, hunk::*, task::*};
+pub use self::{cfg::*, error::*, event_group::*, hunk::*, task::*};
 
 /// Numeric value used to identify various kinds of kernel objects.
 pub type Id = NonZeroUsize;
@@ -234,6 +235,18 @@ pub unsafe trait KernelCfg2: Port + Sized {
     #[inline(always)]
     fn get_task_cb(i: usize) -> Option<&'static TaskCb<Self>> {
         Self::task_cb_pool().get(i)
+    }
+
+    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
+    //        to be resolved because `EventGroupCb` includes interior mutability
+    //        and can't be referred to by `const`
+    #[doc(hidden)]
+    fn event_group_cb_pool() -> &'static [EventGroupCb<Self>];
+
+    #[doc(hidden)]
+    #[inline(always)]
+    fn get_event_group_cb(i: usize) -> Option<&'static EventGroupCb<Self>> {
+        Self::event_group_cb_pool().get(i)
     }
 }
 

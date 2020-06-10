@@ -1,7 +1,7 @@
 //! Static configuration mechanism for the kernel
 use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
-use super::{hunk, task, utils::CpuLockCell, Port};
+use super::{event_group, hunk, task, utils::CpuLockCell, Port};
 use crate::utils::{Init, ZeroInit, FIXED_PRIO_BITMAP_MAX_LEN};
 
 mod vec;
@@ -44,6 +44,14 @@ pub use self::vec::ComptimeVec;
 ///    in range `0..num_task_priority_levels`.
 ///  - `active = ACTIVE: bool` specifies whether the task should be activated at
 ///    system startup.
+///
+/// # `new_event_group!(start = ENTRY_FN, ...)`
+///
+/// Defines an event group. The following properties can be specified:
+///
+///  - `initial = BITS: `[`EventGroupBits`] specifies the initial bit pattern.
+///
+/// [`EventGroupBits`]: crate::kernel::EventGroupBits
 ///
 /// # `new_hunk!(T)`
 ///
@@ -107,6 +115,12 @@ macro_rules! configure {
                 };
             }
 
+            macro_rules! new_event_group {
+                ($dollar($tt2:tt)*) => {
+                    build! { $crate::kernel::CfgEventGroupBuilder::new(), $dollar($tt2)* }
+                };
+            }
+
             macro_rules! new_hunk {
                 ([u8] $dollar(, zeroed = true)?, len = $len:expr) => {
                     new_hunk!([u8], zeroed = true, len = $len, align = 1)
@@ -151,8 +165,8 @@ macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
             kernel::{
-                CfgBuilder, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port, State, TaskAttr,
-                TaskCb,
+                CfgBuilder, EventGroupCb, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port,
+                State, TaskAttr, TaskCb,
             },
             utils::{
                 intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap, Init, RawCell,
@@ -191,6 +205,13 @@ macro_rules! build {
                     (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR_POOL[i]));
         }
 
+        // Instantiiate event group structures
+        $crate::array_item_from_fn! {
+            static EVENT_GROUP_CB_POOL:
+                [EventGroupCb<$sys>; _] =
+                    (0..CFG.event_groups.len()).map(|i| CFG.event_groups.get(i).to_state());
+        }
+
         // Instantiate hunks
         static HUNK_POOL: RawCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>> =
             Init::INIT;
@@ -220,6 +241,11 @@ macro_rules! build {
             #[inline(always)]
             fn task_cb_pool() -> &'static [TaskCb<$sys>] {
                 &TASK_CB_POOL
+            }
+
+            #[inline(always)]
+            fn event_group_cb_pool() -> &'static [EventGroupCb<$sys>] {
+                &EVENT_GROUP_CB_POOL
             }
         }
 
@@ -259,6 +285,7 @@ pub struct CfgBuilder<System> {
     pub hunk_pool_align: usize,
     pub tasks: ComptimeVec<CfgBuilderTask<System>>,
     pub num_task_priority_levels: usize,
+    pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
 }
 
 impl<System> CfgBuilder<System> {
@@ -270,6 +297,7 @@ impl<System> CfgBuilder<System> {
             hunk_pool_align: 1,
             tasks: ComptimeVec::new(),
             num_task_priority_levels: 16,
+            event_groups: ComptimeVec::new(),
         }
     }
 
@@ -539,6 +567,70 @@ impl<System: Port> CfgBuilderTask<System> {
             entry_point: self.start,
             entry_param: self.param,
             stack: self.stack,
+        }
+    }
+}
+
+/// Used by `new_event_group!` in configuraton functions
+#[doc(hidden)]
+pub struct CfgEventGroupBuilder<System> {
+    _phantom: PhantomData<System>,
+    initial_bits: event_group::EventGroupBits,
+}
+
+impl<System: Port> CfgEventGroupBuilder<System> {
+    pub const fn new() -> Self {
+        Self {
+            _phantom: PhantomData,
+            initial_bits: 0,
+        }
+    }
+
+    pub const fn initial(self, initial: event_group::EventGroupBits) -> Self {
+        Self {
+            initial_bits: initial,
+            ..self
+        }
+    }
+
+    pub const fn finish(
+        self,
+        mut cfg: CfgBuilder<System>,
+    ) -> CfgOutput<System, event_group::EventGroup<System>> {
+        cfg.event_groups = cfg.event_groups.push(CfgBuilderEventGroup {
+            initial_bits: self.initial_bits,
+        });
+
+        let event_group = unsafe {
+            event_group::EventGroup::from_id(NonZeroUsize::new_unchecked(cfg.event_groups.len()))
+        };
+
+        CfgOutput {
+            cfg,
+            id_map: event_group,
+        }
+    }
+}
+
+#[doc(hidden)]
+pub struct CfgBuilderEventGroup {
+    initial_bits: event_group::EventGroupBits,
+}
+
+impl Clone for CfgBuilderEventGroup {
+    fn clone(&self) -> Self {
+        Self {
+            initial_bits: self.initial_bits,
+        }
+    }
+}
+
+impl Copy for CfgBuilderEventGroup {}
+
+impl CfgBuilderEventGroup {
+    pub const fn to_state<System: Port>(&self) -> event_group::EventGroupCb<System> {
+        event_group::EventGroupCb {
+            bits: CpuLockCell::new(self.initial_bits),
         }
     }
 }
