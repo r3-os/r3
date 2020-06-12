@@ -105,6 +105,7 @@ pub mod kernel_tests {
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
         (mod task_misc {}, "task_misc"),
+        (mod task_queue_fifo {}, "task_queue_fifo"),
     }
 
     /// Invoke the specified macro with a description of test cases
