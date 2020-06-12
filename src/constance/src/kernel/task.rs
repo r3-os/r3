@@ -1,5 +1,5 @@
 //! Tasks
-use core::{cell::UnsafeCell, fmt, marker::PhantomData, sync::atomic::Ordering};
+use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Ordering};
 use num_traits::ToPrimitive;
 
 use super::{hunk::Hunk, utils, ActivateTaskError, ExitTaskError, Id, Kernel, KernelCfg1, Port};
@@ -9,8 +9,32 @@ use crate::utils::{
 };
 
 /// Represents a single task in a system.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Task<System>(Id, PhantomData<System>);
+
+impl<System> Clone for Task<System> {
+    fn clone(&self) -> Self {
+        Self(self.0, self.1)
+    }
+}
+
+impl<System> Copy for Task<System> {}
+
+impl<System> PartialEq for Task<System> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<System> Eq for Task<System> {}
+
+impl<System> hash::Hash for Task<System> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        hash::Hash::hash(&self.0, state);
+    }
+}
 
 impl<System> fmt::Debug for Task<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
