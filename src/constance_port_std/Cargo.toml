@@ -11,6 +11,9 @@ log = "0.4.8"
 env_logger = "0.7.1"
 parking_lot = "0.10.2"
 
+[dev-dependencies]
+constance_test_suite = { path = "../constance_test_suite" }
+
 [target."cfg(unix)".dependencies]
 libc = "0.2.71"
 

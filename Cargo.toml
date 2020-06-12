@@ -3,6 +3,7 @@ members = [
     "examples/basic",
     "src/constance",
     "src/constance_port_std",
+    "src/constance_test_suite",
 ]
 
 [patch.crates-io.atomic_ref]

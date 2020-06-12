@@ -1,9 +1,11 @@
+#![feature(const_fn)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 use atomic_ref::AtomicRef;
 use constance::{prelude::*, utils::intrusive_list::StaticListHead};
 use parking_lot::{lock_api::RawMutex, Mutex};
 use std::{
+    any::Any,
     mem::ManuallyDrop,
     sync::atomic::AtomicU8,
     thread::{self, JoinHandle},
@@ -24,6 +26,7 @@ pub struct State {
     cpu_lock: AtomicBool,
     dispatcher: AtomicRef<'static, thread::Thread>,
     dispatcher_pending: AtomicBool,
+    panic_payload: Mutex<Option<Box<dyn Any + Send>>>,
 }
 
 #[derive(Debug)]
@@ -117,6 +120,7 @@ impl State {
             cpu_lock: AtomicBool::new(true),
             dispatcher: AtomicRef::new(None),
             dispatcher_pending: AtomicBool::new(true),
+            panic_payload: Mutex::const_new(RawMutex::INIT, None),
         }
     }
 
@@ -150,6 +154,13 @@ impl State {
             // Enable CPU Lock
             self.cpu_lock.store(true, Ordering::Relaxed);
 
+            // If one of the tasks panics, resume rewinding in the dispatcher,
+            // thus ensuring the whole program is terminated or a test failure
+            // is reported.
+            if let Some(panic_payload) = self.panic_payload.lock().take() {
+                std::panic::resume_unwind(panic_payload);
+            }
+
             // Let the kernel decide the next task to run
             // Safety: CPU Lock enabled (implied by us being the dispatcher)
             unsafe {
@@ -179,9 +190,18 @@ impl State {
 
                             log::debug!("task {:p} is now running", task);
 
-                            // Safety: The port can call this
-                            unsafe {
-                                (task.attr.entry_point)(task.attr.entry_param);
+                            let result =
+                                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                    // Safety: The port can call this
+                                    unsafe {
+                                        (task.attr.entry_point)(task.attr.entry_param);
+                                    }
+                                }));
+
+                            // If the task panics, send the panic info to the
+                            // dispatcher
+                            if let Err(panic_payload) = result {
+                                *self.panic_payload.lock() = Some(panic_payload);
                             }
 
                             // Safety: To my knowledge, we have nothing on the
@@ -205,6 +225,11 @@ impl State {
             } else {
                 // Since we don't have timers or interrupts yet, this means we
                 // are in deadlock
+                //
+                // The test code currently relies on this behavior (panic on
+                // deadlock) to exit the dispatcher loop. When we have timers
+                // and interrupts, we need to devise another way to exit the
+                // dispatcher loop.
                 panic!("No task to schedule");
             }
         }

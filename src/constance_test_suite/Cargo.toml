@@ -1,0 +1,14 @@
+[package]
+name = "constance_test_suite"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+
+[features]
+default = ["tests_all"]
+tests_all = []
+tests_selective = []
+
+[dependencies]
+constance = { path = "../constance" }
+log = "0.4.8"
