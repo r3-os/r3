@@ -1,4 +1,4 @@
-//! Activates a lower-priority task.
+//! Activates a same-priority task.
 use constance::{
     kernel::{Hunk, Task},
     prelude::*,
@@ -16,7 +16,7 @@ impl<System: Kernel> App<System> {
     constance::configure! {
         pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
             new_task! { start = task1_body::<System, D>, priority = 2, active = true };
-            let task2 = new_task! { start = task2_body::<System, D>, priority = 3 };
+            let task2 = new_task! { start = task2_body::<System, D>, priority = 2 };
 
             let seq = new_hunk! { SeqTracker };
 
