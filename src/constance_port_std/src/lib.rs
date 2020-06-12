@@ -21,6 +21,12 @@ pub use std::sync::atomic::{AtomicBool, Ordering};
 #[doc(hidden)]
 pub extern crate env_logger;
 
+/// The internal state of the port.
+///
+/// # Safety
+///
+/// For the safety information of this type's methods, see the documentation of
+/// the corresponding trait methods of `Port`.
 #[doc(hidden)]
 pub struct State {
     cpu_lock: AtomicBool,
@@ -114,6 +120,7 @@ impl TaskState {
     }
 }
 
+#[allow(clippy::missing_safety_doc)]
 impl State {
     pub const fn new() -> Self {
         Self {
