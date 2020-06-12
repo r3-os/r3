@@ -12,3 +12,4 @@ tests_selective = []
 [dependencies]
 constance = { path = "../constance" }
 log = "0.4.8"
+wyhash = "0.3.0"
