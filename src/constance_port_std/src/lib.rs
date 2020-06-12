@@ -301,9 +301,7 @@ impl State {
     }
 
     pub fn is_cpu_lock_active(&self) -> bool {
-        let b = self.cpu_lock.load(Ordering::Relaxed);
-        log::trace!("is_cpu_lock_active -> {:?}", b);
-        b
+        self.cpu_lock.load(Ordering::Relaxed)
     }
 }
 
