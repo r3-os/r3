@@ -14,7 +14,12 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
-            let task1 = new_task! { start = task1_body::<System, D>, priority = 2, active = true };
+            let task1 = new_task! {
+                start = task1_body::<System, D>,
+                priority = 2,
+                active = true,
+                param = 42,
+            };
             let task2 = new_task! { start = task2_body::<System, D>, priority = 1 };
 
             App { task1, task2 }
@@ -22,7 +27,9 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
+    assert_eq!(param, 42);
+
     // `PartialEq`
     let app = D::app();
     assert_ne!(app.task1, app.task2);
