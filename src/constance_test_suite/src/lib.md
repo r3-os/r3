@@ -30,7 +30,7 @@ Cargo features `tests_all` and `tests_selective` and an environment variable `CO
 
 [`kernel_tests`] contains a set of test cases, each of which is contained in its own module such as [`basic`]. Each module contains a struct named `App<System>` and its constructor `App::new`, which is [a configuration function]. `App::new` takes exactly one generic parameter `D` taking a type implementing [`Driver`]`<App>`, which must be supplied by a test driver.
 
-```rust,skip
+```rust,ignore
 #[cfg(any(
     feature = "tests_all",
     all(feature = "tests_selective", /* ... */)

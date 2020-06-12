@@ -58,13 +58,13 @@ pub mod kernel_tests {
             ///
             /// # Example
             ///
-            /// ```rust,skip
+            /// ```rust,ignore
             /// constance_test_suite::get_kernel_tests!(aaa::bbb!(prefix));
             /// ```
             ///
             /// This expands to something like this:
             ///
-            /// ```rust,skip
+            /// ```rust,ignore
             /// aaa::bbb!(
             ///     prefix
             ///     { name_ident: test1, name_str: "test1", },
@@ -110,14 +110,14 @@ pub mod kernel_tests {
     ///
     /// # Example
     ///
-    /// ```rust,skip
+    /// ```rust,ignore
     /// constance_test_suite::get_selected_kernel_tests!(aaa::bbb!(prefix));
     /// ```
     ///
     /// If there's an environment variable `CONSTANCE_TEST=kernel_test::test1`,
     /// this expands to:
     ///
-    /// ```rust,skip
+    /// ```rust,ignore
     /// aaa::bbb!(
     ///     prefix
     ///     { name_ident: test1, name_str: "test1", },
