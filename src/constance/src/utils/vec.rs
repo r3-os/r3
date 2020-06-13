@@ -34,14 +34,14 @@ impl<T: Copy> ComptimeVec<T> {
     }
 
     // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
-    pub const fn get(&self, i: usize) -> T {
+    pub const fn get(&self, i: usize) -> &T {
         if i >= self.len() {
             panic!("out of bounds");
         }
 
         // Safety: `self.storage[0..self.len]` is initialized, and `i < self.len`
         // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
-        unsafe { *(&self.storage[i] as *const _ as *const T) }
+        unsafe { &*(&self.storage[i] as *const _ as *const T) }
     }
 }
 
@@ -80,7 +80,7 @@ mod tests {
         const VEC_LEN: usize = VEC.len();
         assert_eq!(VEC_LEN, 1);
 
-        const VEC_VAL: u32 = VEC.get(0);
+        const VEC_VAL: u32 = *VEC.get(0);
         assert_eq!(VEC_VAL, 42);
     }
 
