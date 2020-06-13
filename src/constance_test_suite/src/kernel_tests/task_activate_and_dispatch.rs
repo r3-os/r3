@@ -32,11 +32,18 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().task2.activate().unwrap();
 
     D::app().seq.expect_and_replace(2, 3);
+    D::success();
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
     log::trace!("*Rabbit noise*");
-    D::success();
+
+    if param == 0 {
+        // Safety: There's nothing on the stack unsafe to `forget`
+        unsafe { System::exit_task().unwrap() };
+    }
+
+    unreachable!();
 }
