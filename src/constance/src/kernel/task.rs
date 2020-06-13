@@ -3,7 +3,8 @@ use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Order
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, utils, wait, ActivateTaskError, ExitTaskError, Id, Kernel, KernelCfg1, Port,
+    hunk::Hunk, utils, wait, ActivateTaskError, CancelInterruptTaskError, ExitTaskError, Id,
+    InterruptTaskError, Kernel, KernelCfg1, Port,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -70,6 +71,31 @@ impl<System: Kernel> Task<System> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = System::get_task_cb(self.0.get() - 1).ok_or(ActivateTaskError::BadId)?;
         activate(lock, task_cb)
+    }
+
+    /// Interrupt any ongoing wait operations undertaken by the task.
+    ///
+    /// This method interrupt any ongoing system call that is blocking the task.
+    /// The interrupted system call will return [`WaitError::Interrupted`]. If
+    /// there is no such an ongoing system call, this method enqueues the
+    /// interrupt request (if there's already one, this method will fail with
+    /// [`InterruptTaskError::QueueOverflow`]), which will take effect the next
+    /// time when a potentially-blocking system call is called.
+    ///
+    /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
+    /// [`InterruptTaskError::QueueOverflow`]: crate::kernel::InterruptTaskError::QueueOverflow
+    pub fn interrupt(self) -> Result<(), InterruptTaskError> {
+        let _lock = utils::lock_cpu::<System>()?;
+        let _task_cb = System::get_task_cb(self.0.get() - 1).ok_or(InterruptTaskError::BadId)?;
+        todo!()
+    }
+
+    /// Cancel any pending interrupt request enqueued by [`Task::interrupt`].
+    pub fn cancel_interrupt(self) -> Result<(), CancelInterruptTaskError> {
+        let _lock = utils::lock_cpu::<System>()?;
+        let _task_cb =
+            System::get_task_cb(self.0.get() - 1).ok_or(CancelInterruptTaskError::BadId)?;
+        todo!()
     }
 }
 

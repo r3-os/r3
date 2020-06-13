@@ -4,7 +4,7 @@ use super::{
     event_group, task,
     task::TaskCb,
     utils::{CpuLockCell, CpuLockGuardBorrowMut},
-    Kernel, Port,
+    Kernel, Port, WaitError,
 };
 
 use crate::utils::{
@@ -160,7 +160,7 @@ impl<System: Kernel> WaitQueue<System> {
         &'static self,
         lock: CpuLockGuardBorrowMut<'_, System>,
         payload: WaitPayload<System>,
-    ) -> WaitPayload<System> {
+    ) -> Result<WaitPayload<System>, WaitError> {
         let task = System::state().running_task().unwrap();
         let wait = Wait {
             task,
@@ -169,9 +169,9 @@ impl<System: Kernel> WaitQueue<System> {
             payload,
         };
 
-        self.wait_inner(lock, &wait);
+        self.wait_inner(lock, &wait)?;
 
-        wait.payload
+        Ok(wait.payload)
     }
 
     /// The core portion of `Self::wait`.
@@ -179,7 +179,11 @@ impl<System: Kernel> WaitQueue<System> {
     /// Passing `WaitPayload` by value is expensive, so moving `WaitPayload`
     /// into and out of `Wait` is done in the outer function `Self::wait` with
     /// `#[inline]`.
-    fn wait_inner(&'static self, mut lock: CpuLockGuardBorrowMut<'_, System>, wait: &Wait<System>) {
+    fn wait_inner(
+        &'static self,
+        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        wait: &Wait<System>,
+    ) -> Result<(), WaitError> {
         let task = wait.task;
         let wait_ref = WaitRef(wait.into());
 
@@ -204,6 +208,8 @@ impl<System: Kernel> WaitQueue<System> {
         // `wait_ref` should have been removed from a wait queue by a wake-upper
         assert!(wait.link.read(&*lock).is_none());
         assert!(task.wait.current_wait.get(&*lock).is_none());
+
+        Ok(())
     }
 
     /// Wake up up to one waiting task. Returns `true` if it has successfully

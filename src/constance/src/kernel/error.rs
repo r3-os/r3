@@ -82,9 +82,15 @@ pub enum ResultCode {
     BadId = -18,
     /// The current context disallows the operation.
     BadCtx = -25,
+    /// A target object is in a state that disallows the operation.
+    BadObjectState = -41,
     /// An operation or an object couldn't be enqueued because there are too
     /// many of such things that already have been enqueued.
     QueueOverflow = -43,
+    /// The wait operation was interrupted by [`Task::interrupt`].
+    ///
+    /// [`Task::interrupt`]: crate::kernel::Task::interrupt
+    Interrupted = -54,
 }
 
 impl ResultCode {
@@ -140,11 +146,50 @@ define_error! {
 }
 
 define_error! {
+    /// Error type for [`Task::interrupt`].
+    ///
+    /// [`Task::interrupt`]: super::Task::interrupt
+    pub enum InterruptTaskError: BadCtxError, BadIdError {
+        /// The task ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadCtx,
+        /// The task is in a Dormant state.
+        BadObjectState,
+        /// There is already a pending interrupt request.
+        QueueOverflow,
+    }
+}
+
+define_error! {
+    /// Error type for [`Task::cancel_interrupt`].
+    ///
+    /// [`Task::cancel_interrupt`]: super::Task::cancel_interrupt
+    pub enum CancelInterruptTaskError: BadCtxError, BadIdError {
+        /// The task ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadCtx,
+        /// The task is in a Dormant state.
+        BadObjectState,
+    }
+}
+
+define_error! {
     /// Error type for [`Kernel::exit_task`].
     ///
     /// [`Kernel::exit_task`]: super::Kernel::exit_task
     pub enum ExitTaskError: BadCtxError {
         BadCtx,
+    }
+}
+
+define_error! {
+    /// Error type for wait operations such as [`EventGroup::wait`].
+    ///
+    /// [`EventGroup::wait`]: super::EventGroup::wait
+    pub enum WaitError {
+        Interrupted,
     }
 }
 
@@ -177,10 +222,11 @@ define_error! {
     /// Error type for [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
-    pub enum WaitEventGroupError: BadCtxError, BadIdError {
+    pub enum WaitEventGroupError: BadCtxError, BadIdError, WaitError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
         BadCtx,
+        Interrupted,
     }
 }

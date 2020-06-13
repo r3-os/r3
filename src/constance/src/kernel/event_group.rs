@@ -174,7 +174,7 @@ fn wait<System: Kernel>(
                 flags,
                 orig_bits: Init::INIT,
             },
-        );
+        )?;
 
         // The original value will be copied to `orig_bits`
         if let WaitPayload::EventGroupBits { orig_bits, .. } = result {
