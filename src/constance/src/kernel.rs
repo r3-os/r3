@@ -187,7 +187,7 @@ impl<System: Kernel> PortToKernel for System {
         }
 
         // Choose the first `runnnig_task`
-        task::choose_next_running_task(&mut lock);
+        task::choose_next_running_task(lock.borrow_mut());
 
         forget(lock);
 
@@ -202,7 +202,7 @@ impl<System: Kernel> PortToKernel for System {
         // active
         let mut lock = unsafe { utils::assume_cpu_lock::<Self>() };
 
-        task::choose_next_running_task(&mut lock);
+        task::choose_next_running_task(lock.borrow_mut());
 
         // Post-condition: CPU Lock active
         forget(lock);

@@ -410,11 +410,13 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLo
 }
 
 /// Implements `PortToKernel::choose_running_task`.
-pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLockGuard<System>) {
+pub(super) fn choose_next_running_task<System: Kernel>(
+    mut lock: utils::CpuLockGuardBorrowMut<System>,
+) {
     // The priority of `running_task`
     let prev_running_task = System::state().running_task();
     let prev_task_priority = if let Some(running_task) = prev_running_task {
-        if *running_task.st.read(&**lock) == TaskSt::Running {
+        if *running_task.st.read(&*lock) == TaskSt::Running {
             running_task.priority.to_usize().unwrap()
         } else {
             usize::max_value()
@@ -426,7 +428,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
     // The priority of the next task to run
     let next_task_priority = System::state()
         .task_ready_bitmap
-        .read(&**lock)
+        .read(&*lock)
         .find_set()
         .unwrap_or(usize::max_value());
 
@@ -448,12 +450,12 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
         if accessor.is_empty() {
             <System>::state()
                 .task_ready_bitmap
-                .write(&mut **lock)
+                .write(&mut *lock)
                 .clear(next_task_priority);
         }
 
         // Transition `next_running_task` into the Running state
-        task.st.replace(&mut **lock, TaskSt::Running);
+        task.st.replace(&mut *lock, TaskSt::Running);
 
         Some(task)
     } else {
@@ -462,7 +464,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
 
     // If `prev_running_task` is in a Running state, transition it into Runnable
     if let Some(running_task) = prev_running_task {
-        match running_task.st.read(&**lock) {
+        match running_task.st.read(&*lock) {
             TaskSt::Running => {
                 // Safety: The previous state is Running, so this is safe
                 unsafe { make_runnable(lock.borrow_mut(), running_task) };
