@@ -269,7 +269,7 @@ pub struct State<
     task_ready_bitmap: utils::CpuLockCell<System, TaskReadyBitmap>,
 
     /// The task ready queues, in which each queue represents the list of
-    /// runnable task at the corresponding priority level.
+    /// Ready tasks at the corresponding priority level.
     ///
     /// Invariant: `task_ready_bitmap[i].first.is_some() ==
     ///  task_ready_queue.get(i)`

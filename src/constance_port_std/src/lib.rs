@@ -53,7 +53,7 @@ const TSM_DORMANT: u8 = 1;
 /// The task is currently running.
 const TSM_RUNNING: u8 = 2;
 /// The task is currently suspended.
-const TSM_RUNNABLE: u8 = 3;
+const TSM_READY: u8 = 3;
 
 impl Init for TaskState {
     const INIT: Self = Self::new();
@@ -81,7 +81,7 @@ impl TaskState {
         log::trace!("yield_current({:p}) enter", self);
         self.assert_current_thread();
 
-        self.tsm.store(TSM_RUNNABLE, Ordering::Release);
+        self.tsm.store(TSM_READY, Ordering::Release);
 
         // Unpark the dispatcher
         state.invoke_dispatcher();
@@ -180,7 +180,7 @@ impl State {
 
                 let pts = &task.port_task_state;
 
-                // The task must be in `DORMANT` or `RUNNABLE`.
+                // The task must be in `DORMANT` or `READY`.
                 assert_ne!(pts.tsm.load(Ordering::Relaxed), TSM_UNINIT);
                 assert_ne!(pts.tsm.load(Ordering::Relaxed), TSM_RUNNING);
 
@@ -290,7 +290,7 @@ impl State {
         let pts = &task.port_task_state;
         match pts.tsm.load(Ordering::Relaxed) {
             TSM_DORMANT => {}
-            TSM_RUNNING | TSM_RUNNABLE => {
+            TSM_RUNNING | TSM_READY => {
                 todo!("terminating a thread is not implemented yet");
             }
             TSM_UNINIT => {

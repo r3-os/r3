@@ -215,7 +215,7 @@ impl<System: Kernel> WaitQueue<System> {
     /// Wake up up to one waiting task. Returns `true` if it has successfully
     /// woken up a task.
     ///
-    /// This method may make a task runnable, but doesn't yield the processor.
+    /// This method may make a task Ready, but doesn't yield the processor.
     /// Call `unlock_cpu_and_check_preemption` as needed.
     pub(super) fn wake_up_one(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
         // Get the first wait object
@@ -242,7 +242,7 @@ impl<System: Kernel> WaitQueue<System> {
     /// Wake up all waiting tasks. Returns `true` if it has successfully
     /// woken up at least one task.
     ///
-    /// This method may make a task runnable, but doesn't yield the processor.
+    /// This method may make a task Ready, but doesn't yield the processor.
     /// Call `unlock_cpu_and_check_preemption` as needed.
     pub(super) fn wake_up_all(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
         // Call `wake_up_one` repeatedly until it returns `false`. If the first
@@ -255,7 +255,7 @@ impl<System: Kernel> WaitQueue<System> {
 
     /// Conditionally wake up waiting tasks.
     ///
-    /// This method may make a task runnable, but doesn't yield the processor.
+    /// This method may make a task Ready, but doesn't yield the processor.
     /// Call `unlock_cpu_and_check_preemption` as needed.
     pub(super) fn wake_up_all_conditional(
         &self,
@@ -298,7 +298,7 @@ impl<System: Kernel> WaitQueue<System> {
 ///
 /// This method doesn't remove `wait` from `WaitQueue:waits`.
 ///
-/// This method may make a task runnable, but doesn't yield the processor.
+/// This method may make a task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` as needed.
 fn complete_wait<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>, wait: &Wait<System>) {
     let task_cb = wait.task;
@@ -312,10 +312,10 @@ fn complete_wait<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>, wa
 
     assert_eq!(*task_cb.st.read(&*lock), task::TaskSt::Waiting);
 
-    // Make the task runnable
+    // Make the task Ready
     //
     // Safety: The task is in a Waiting state, meaning the task state is valid
     // and ready to resume from the point where it was previously interrupted.
     // A proper clean up for exiting the Waiting state is already done as well.
-    unsafe { task::make_runnable(lock, task_cb) };
+    unsafe { task::make_ready(lock, task_cb) };
 }

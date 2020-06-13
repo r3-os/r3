@@ -178,7 +178,7 @@ pub struct TaskCb<
 
     /// Allows `TaskCb` to participate in one of linked lists.
     ///
-    ///  - In a `Runnable` state, this forms the linked list headed by
+    ///  - In a `Ready` state, this forms the linked list headed by
     ///    [`State::task_ready_queue`].
     ///
     /// [`State::task_ready_queue`]: crate::kernel::State::task_ready_queue
@@ -260,9 +260,7 @@ pub enum TaskSt {
     /// The task is in the Dormant state.
     Dormant,
 
-    /// The task is in the Runnable state.
-    // TODO: Rename all mentions of "Runnable" to "Ready"
-    Runnable,
+    Ready,
 
     /// The task is in the Running state.
     Running,
@@ -271,7 +269,7 @@ pub enum TaskSt {
     Waiting,
 
     /// The task should be activated at startup. This will transition into
-    /// `Runnable` or `Running` before the first task is scheduled.
+    /// `Ready` or `Running` before the first task is scheduled.
     PendingActivation,
 }
 
@@ -326,7 +324,7 @@ pub(super) fn init_task<System: Kernel>(
 
         // Safety: The previous state is PendingActivation (which is equivalent
         // to Dormant) and we just initialized the task state, so this is safe
-        unsafe { make_runnable(lock, task_cb) };
+        unsafe { make_ready(lock, task_cb) };
     }
 }
 
@@ -379,7 +377,7 @@ fn activate<System: Kernel>(
 
     // Safety: The previous state is Dormant, and we just initialized the task
     // state, so this is safe
-    unsafe { make_runnable(lock.borrow_mut(), task_cb) };
+    unsafe { make_ready(lock.borrow_mut(), task_cb) };
 
     // If `task_cb` has a higher priority, perform a context switch.
     unlock_cpu_and_check_preemption(lock);
@@ -387,16 +385,16 @@ fn activate<System: Kernel>(
     Ok(())
 }
 
-/// Transition the task into the Runnable state. This function doesn't do any
+/// Transition the task into the Ready state. This function doesn't do any
 /// proper cleanup for a previous state. If the previous state is `Dormant`, the
 /// caller must initialize the task state first by calling
 /// `initialize_task_state`.
-pub(super) unsafe fn make_runnable<System: Kernel>(
+pub(super) unsafe fn make_ready<System: Kernel>(
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
 ) {
-    // Make the task runnable
-    task_cb.st.replace(&mut *lock, TaskSt::Runnable);
+    // Make the task Ready
+    task_cb.st.replace(&mut *lock, TaskSt::Ready);
 
     // Insert the task to a ready queue
     let pri = task_cb.priority.to_usize().unwrap();
@@ -413,7 +411,7 @@ pub(super) unsafe fn make_runnable<System: Kernel>(
 /// Relinquish CPU Lock. After that, if there's a higher-priority task than
 /// `running_task`, call `Port::yield_cpu`.
 ///
-/// System services that transition a task into a Runnable state should call
+/// System services that transition a task into a Ready state should call
 /// this before returning to the caller.
 pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLockGuard<System>) {
     let prev_task_priority = if let Some(running_task) = System::state().running_task() {
@@ -491,12 +489,12 @@ pub(super) fn choose_next_running_task<System: Kernel>(
         None
     };
 
-    // If `prev_running_task` is in a Running state, transition it into Runnable
+    // If `prev_running_task` is in a Running state, transition it into Ready
     if let Some(running_task) = prev_running_task {
         match running_task.st.read(&*lock) {
             TaskSt::Running => {
                 // Safety: The previous state is Running, so this is safe
-                unsafe { make_runnable(lock.borrow_mut(), running_task) };
+                unsafe { make_ready(lock.borrow_mut(), running_task) };
             }
             TaskSt::Waiting => {}
             _ => unreachable!(),
