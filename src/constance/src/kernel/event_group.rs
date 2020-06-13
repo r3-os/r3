@@ -132,7 +132,7 @@ impl<System: Kernel> EventGroup<System> {
 }
 
 /// *Event group control block* - the state data of an event group.
-#[repr(C)]
+#[doc(hidden)]
 pub struct EventGroupCb<System: Port, EventGroupBits: 'static = self::EventGroupBits> {
     pub(super) bits: utils::CpuLockCell<System, EventGroupBits>,
 
