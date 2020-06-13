@@ -3,8 +3,8 @@ use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Order
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, utils, wait, ActivateTaskError, CancelInterruptTaskError, ExitTaskError, Id,
-    InterruptTaskError, Kernel, KernelCfg1, Port,
+    hunk::Hunk, utils, wait, ActivateTaskError, BadIdError, CancelInterruptTaskError,
+    ExitTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, Port,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -66,10 +66,14 @@ impl<System: Kernel> Task<System> {
         self.0
     }
 
+    fn task_cb(self) -> Result<&'static TaskCb<System>, BadIdError> {
+        System::get_task_cb(self.0.get() - 1).ok_or(BadIdError::BadId)
+    }
+
     /// Start the execution of the task.
     pub fn activate(self) -> Result<(), ActivateTaskError> {
         let lock = utils::lock_cpu::<System>()?;
-        let task_cb = System::get_task_cb(self.0.get() - 1).ok_or(ActivateTaskError::BadId)?;
+        let task_cb = self.task_cb()?;
         activate(lock, task_cb)
     }
 
@@ -86,15 +90,14 @@ impl<System: Kernel> Task<System> {
     /// [`InterruptTaskError::QueueOverflow`]: crate::kernel::InterruptTaskError::QueueOverflow
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
         let _lock = utils::lock_cpu::<System>()?;
-        let _task_cb = System::get_task_cb(self.0.get() - 1).ok_or(InterruptTaskError::BadId)?;
+        let _task_cb = self.task_cb()?;
         todo!()
     }
 
     /// Cancel any pending interrupt request enqueued by [`Task::interrupt`].
     pub fn cancel_interrupt(self) -> Result<(), CancelInterruptTaskError> {
         let _lock = utils::lock_cpu::<System>()?;
-        let _task_cb =
-            System::get_task_cb(self.0.get() - 1).ok_or(CancelInterruptTaskError::BadId)?;
+        let _task_cb = self.task_cb()?;
         todo!()
     }
 }

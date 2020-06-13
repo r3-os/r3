@@ -127,7 +127,7 @@ define_error! {
     /// Error type for [`Task::activate`].
     ///
     /// [`Task::activate`]: super::Task::activate
-    pub enum ActivateTaskError: BadCtxError {
+    pub enum ActivateTaskError: BadCtxError, BadIdError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
