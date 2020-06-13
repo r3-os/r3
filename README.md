@@ -11,16 +11,16 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 
 |       Core       |     Library     |       Ports       |
 | :--------------- | :-------------- | :---------------- |
-| ☑︎ Tasks         | ☐ `Mutex`       | ☑︎ `std` (Hosted) |
-| ☑︎ Hunks         | ☐ `RwLock`      | ☐ Armv7-M         |
+| ☑︎ Tasks          | ☐ `Mutex`       | ☑︎ `std` (Hosted)  |
+| ☑︎ Hunks          | ☐ `RwLock`      | ☐ Armv7-M         |
 | ☑︎ Wait Objects   | ☐ `Once`        |                   |
 | ☐ Time Events    | ☐ Logger        |                   |
 | ☐ Semaphores     | ☐ C API         |                   |
-| ☐ Event Groups   |                 |                   |
+| ☑︎ Event Groups   |                 |                   |
 | ☐ Mutexes        | **Tools**       | **Boards**        |
-| ☐ Timer          | ☑︎ Test Harness  | ☑︎ Hosted         |
+| ☐ Timer          | ☑︎ Test Harness  | ☑︎ Hosted          |
 | ☐ Alarm          | ☑︎ Test Suite    | ☐ F401RE          |
-| ☐ Interrupts     | ☑︎ Configurator |                   |
+| ☐ Interrupts     | ☑︎ Configurator  |                   |
 | ☐ CPU Exceptions |                 |                   |
 | ☐ Panicking      |                 |                   |
 
