@@ -2,6 +2,7 @@
 #![feature(const_loop)]
 #![feature(const_if_match)]
 #![feature(never_type)]
+#![feature(const_mut_refs)]
 
 use std::sync::atomic::{AtomicBool, Ordering};
 

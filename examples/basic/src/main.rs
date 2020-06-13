@@ -1,6 +1,7 @@
 #![feature(const_loop)]
 #![feature(const_fn)]
 #![feature(const_if_match)]
+#![feature(const_mut_refs)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 use constance::{kernel::Task, sync::Mutex};
