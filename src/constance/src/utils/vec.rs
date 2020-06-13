@@ -1,6 +1,7 @@
 use crate::utils::Init;
 
 /// `Vec` that can be used in a constant context.
+#[doc(hidden)]
 pub struct ComptimeVec<T: Copy> {
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/20>
     storage: [Option<T>; MAX_LEN],

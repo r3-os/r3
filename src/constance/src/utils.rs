@@ -20,8 +20,11 @@ mod int;
 pub mod intrusive_list;
 mod prio_bitmap;
 mod rawcell;
+mod vec;
 mod zeroinit;
-pub use self::{aligned_storage::*, init::*, int::*, prio_bitmap::*, rawcell::*, zeroinit::*};
+pub use self::{
+    aligned_storage::*, init::*, int::*, prio_bitmap::*, rawcell::*, vec::*, zeroinit::*,
+};
 
 /// A "type function" producing a type.
 #[doc(hidden)]

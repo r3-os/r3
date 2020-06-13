@@ -2,11 +2,7 @@
 use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
 use super::{event_group, hunk, task, utils::CpuLockCell, Port};
-use crate::utils::{Init, ZeroInit, FIXED_PRIO_BITMAP_MAX_LEN};
-
-mod vec;
-#[doc(hidden)]
-pub use self::vec::ComptimeVec;
+use crate::utils::{ComptimeVec, Init, ZeroInit, FIXED_PRIO_BITMAP_MAX_LEN};
 
 /// Define a configuration function.
 ///
