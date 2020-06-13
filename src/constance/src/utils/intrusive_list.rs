@@ -329,6 +329,33 @@ where
         self.front().map(|item| self.remove(item))
     }
 
+    /// Get the next element of the specified element.
+    pub fn next(&self, i: Index) -> Option<Index> {
+        let next = (self.map_link)(&self.pool[i])
+            .get(&self.cell_key)
+            .unwrap()
+            .next;
+        if Some(&next) == self.head().first.as_ref() {
+            None
+        } else {
+            Some(next)
+        }
+    }
+
+    /// Get the previous element of the specified element.
+    pub fn prev(&self, i: Index) -> Option<Index> {
+        if Some(&i) == self.head().first.as_ref() {
+            None
+        } else {
+            Some(
+                (self.map_link)(&self.pool[i])
+                    .get(&self.cell_key)
+                    .unwrap()
+                    .prev,
+            )
+        }
+    }
+
     pub fn iter(&self) -> Iter<&Self, Index> {
         Iter {
             next: self.head().first,
@@ -384,15 +411,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.next.take() {
-            let new_next = (self.accessor.map_link)(&self.accessor.pool[next.clone()])
-                .get(&self.accessor.cell_key)
-                .unwrap()
-                .next;
-            if Some(&new_next) == self.accessor.head().first.as_ref() {
-                self.next = None;
-            } else {
-                self.next = Some(new_next);
-            }
+            self.next = self.accessor.next(next.clone());
             Some((next.clone(), &self.accessor.pool[next]))
         } else {
             None
@@ -520,6 +539,13 @@ fn basic_cell_static() {
 
     let items: Vec<_> = accessor.iter().map(|(_, El(x, _))| *x).collect();
     assert_eq!(items, vec![3, 1, 2]);
+
+    assert_eq!(accessor.next(ptr3), Some(ptr1));
+    assert_eq!(accessor.next(ptr1), Some(ptr2));
+    assert_eq!(accessor.next(ptr2), None);
+    assert_eq!(accessor.prev(ptr3), None);
+    assert_eq!(accessor.prev(ptr1), Some(ptr3));
+    assert_eq!(accessor.prev(ptr2), Some(ptr1));
 
     accessor.remove(ptr1);
     println!("{:?}", &head);
