@@ -1,5 +1,5 @@
 //! Event groups
-use core::{fmt, marker::PhantomData};
+use core::{fmt, hash, marker::PhantomData};
 
 use super::{
     utils, GetEventGroupError, Id, Kernel, Port, UpdateEventGroupError, WaitEventGroupError,
@@ -14,8 +14,38 @@ pub type EventGroupBits = u32;
 ///
 /// An event group is a set of bits that can be updated and waited for to be
 /// set.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EventGroup<System>(Id, PhantomData<System>);
+
+impl<System> Clone for EventGroup<System> {
+    fn clone(&self) -> Self {
+        Self(self.0, self.1)
+    }
+}
+
+impl<System> Copy for EventGroup<System> {}
+
+impl<System> PartialEq for EventGroup<System> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<System> Eq for EventGroup<System> {}
+
+impl<System> hash::Hash for EventGroup<System> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        hash::Hash::hash(&self.0, state);
+    }
+}
+
+impl<System> fmt::Debug for EventGroup<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("EventGroup").field(&self.0).finish()
+    }
+}
 
 bitflags::bitflags! {
     /// Options for [`EventGroup::wait`].
