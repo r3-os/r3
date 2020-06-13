@@ -4,7 +4,7 @@ use super::{
     event_group, task,
     task::TaskCb,
     utils::{CpuLockCell, CpuLockGuardBorrowMut},
-    Kernel, KernelCfg2, Port,
+    Kernel, Port,
 };
 
 use crate::utils::{
@@ -197,8 +197,8 @@ impl<System: Kernel> WaitQueue<System> {
         // Set `task.current_wait`
         task.wait.current_wait.replace(&mut *lock, Some(wait_ref));
 
-        // Transition the task into Waiting. This completes when the task is
-        // woken up.
+        // Transition the task into Waiting. This statement will complete when
+        // the task is woken up.
         task::wait_until_woken_up(lock.borrow_mut());
 
         // `wait_ref` should have been removed from a wait queue by a wake-upper
