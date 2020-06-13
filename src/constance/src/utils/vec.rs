@@ -18,11 +18,9 @@ impl<T: Copy> ComptimeVec<T> {
         }
     }
 
-    // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/57349>
-    pub const fn push(mut self, x: T) -> Self {
+    pub const fn push(&mut self, x: T) {
         self.storage[self.len] = MaybeUninit::new(x);
         self.len += 1;
-        self
     }
 
     pub const fn len(&self) -> usize {
@@ -84,7 +82,7 @@ mod tests {
     fn push() {
         const VEC: ComptimeVec<u32> = {
             let mut v = ComptimeVec::new();
-            v = v.push(42);
+            v.push(42);
             v
         };
 
@@ -99,9 +97,9 @@ mod tests {
     fn to_array() {
         const ARRAY: [u32; 3] = {
             let mut v = ComptimeVec::new();
-            v = v.push(1);
-            v = v.push(2);
-            v = v.push(3);
+            v.push(1);
+            v.push(2);
+            v.push(3);
             v.to_array()
         };
         assert_eq!(ARRAY, [1, 2, 3]);
@@ -111,9 +109,9 @@ mod tests {
     fn get_mut() {
         const VAL: u32 = {
             let mut v = ComptimeVec::new();
-            v = v.push(1);
-            v = v.push(2);
-            v = v.push(3);
+            v.push(1);
+            v.push(2);
+            v.push(3);
             *v.get_mut(1) += 2;
             *v.get(1)
         };

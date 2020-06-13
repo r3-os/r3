@@ -475,7 +475,7 @@ pub const fn cfg_new_hunk<System, T: Init>(
 
     let start = cfg.hunk_pool_len;
 
-    cfg.hunks = cfg.hunks.push(hunk::HunkInitAttr {
+    cfg.hunks.push(hunk::HunkInitAttr {
         offset: start,
         init: |dest| unsafe {
             *(dest as *mut _) = T::INIT;
@@ -624,7 +624,7 @@ impl<System: Port> CfgTaskBuilder<System> {
             TaskStack::Hunk(hunk) => hunk,
         };
 
-        cfg.tasks = cfg.tasks.push(CfgBuilderTask {
+        cfg.tasks.push(CfgBuilderTask {
             start: if let Some(x) = self.start {
                 x
             } else {
@@ -725,7 +725,7 @@ impl<System: Port> CfgEventGroupBuilder<System> {
         self,
         mut cfg: CfgBuilder<System>,
     ) -> CfgOutput<System, event_group::EventGroup<System>> {
-        cfg.event_groups = cfg.event_groups.push(CfgBuilderEventGroup {
+        cfg.event_groups.push(CfgBuilderEventGroup {
             initial_bits: self.initial_bits,
         });
 
