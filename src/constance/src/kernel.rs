@@ -11,6 +11,7 @@ mod event_group;
 mod hunk;
 mod task;
 mod utils;
+mod wait;
 pub use self::{cfg::*, error::*, event_group::*, hunk::*, task::*};
 
 /// Numeric value used to identify various kinds of kernel objects.

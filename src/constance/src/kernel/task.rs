@@ -2,7 +2,9 @@
 use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Ordering};
 use num_traits::ToPrimitive;
 
-use super::{hunk::Hunk, utils, ActivateTaskError, ExitTaskError, Id, Kernel, KernelCfg1, Port};
+use super::{
+    hunk::Hunk, utils, wait, ActivateTaskError, ExitTaskError, Id, Kernel, KernelCfg1, Port,
+};
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
     Init, PrioBitmap, RawCell,
@@ -153,6 +155,9 @@ pub struct TaskCb<
     /// [`State::task_ready_queue`]: crate::kernel::State::task_ready_queue
     pub(super) link: utils::CpuLockCell<System, Option<StaticLink<Self>>>,
 
+    /// The wait state of the task.
+    pub(super) wait: wait::TaskWait<System>,
+
     pub(super) _force_int_mut: RawCell<()>,
 }
 
@@ -165,6 +170,7 @@ impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> 
         priority: Init::INIT,
         st: Init::INIT,
         link: Init::INIT,
+        wait: Init::INIT,
         _force_int_mut: RawCell::new(()),
     };
 }
@@ -231,6 +237,9 @@ pub enum TaskSt {
 
     /// The task is in the Running state.
     Running,
+
+    /// The task is in the Waiting state.
+    Waiting,
 
     /// The task should be activated at startup. This will transition into
     /// `Runnable` or `Running` before the first task is scheduled.
@@ -353,7 +362,7 @@ fn activate<System: Kernel>(
 /// proper cleanup for a previous state. If the previous state is `Dormant`, the
 /// caller must initialize the task state first by calling
 /// `initialize_task_state`.
-unsafe fn make_runnable<System: Kernel>(
+pub(super) unsafe fn make_runnable<System: Kernel>(
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
 ) {
@@ -377,7 +386,7 @@ unsafe fn make_runnable<System: Kernel>(
 ///
 /// System services that transition a task into a Runnable state should call
 /// this before returning to the caller.
-fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLockGuard<System>) {
+pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLockGuard<System>) {
     let prev_task_priority = if let Some(running_task) = System::state().running_task() {
         running_task.priority.to_usize().unwrap()
     } else {
@@ -459,4 +468,34 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
     System::state()
         .running_task
         .store(next_running_task, Ordering::Relaxed);
+}
+
+/// Transition the currently running task into the Waiting state. Returns when
+/// woken up.
+pub(super) fn wait_until_woken_up<System: Kernel>(
+    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+) {
+    // Transition the current task to Waiting
+    let running_task = System::state().running_task().unwrap();
+    assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
+    running_task.st.replace(&mut *lock, TaskSt::Waiting);
+
+    loop {
+        // Temporarily release the CPU Lock before calling `yield_cpu`
+        // Safety: (1) We don't access rseources protected by CPU Lock.
+        //         (2) We currently have CPU Lock.
+        //         (3) We will re-acquire a CPU Lock before returning from this
+        //             function.
+        unsafe { System::leave_cpu_lock() };
+
+        // Safety: CPU Lock inactive
+        unsafe { System::yield_cpu() };
+
+        // Re-acquire a CPU Lock
+        unsafe { System::enter_cpu_lock() };
+
+        if *running_task.st.read(&*lock) == TaskSt::Running {
+            break;
+        }
+    }
 }

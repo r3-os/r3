@@ -689,6 +689,7 @@ impl<System: Port> CfgBuilderTask<System> {
                 task::TaskSt::Dormant
             }),
             link: CpuLockCell::new(None),
+            wait: Init::INIT,
             _force_int_mut: crate::utils::RawCell::new(()),
         }
     }

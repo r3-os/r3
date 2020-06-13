@@ -13,7 +13,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | :--------------- | :-------------- | :---------------- |
 | ☑︎ Tasks         | ☐ `Mutex`       | ☑︎ `std` (Hosted) |
 | ☑︎ Hunks         | ☐ `RwLock`      | ☐ Armv7-M         |
-| ☐ Wait Objects   | ☐ `Once`        |                   |
+| ☑︎ Wait Objects   | ☐ `Once`        |                   |
 | ☐ Time Events    | ☐ Logger        |                   |
 | ☐ Semaphores     | ☐ C API         |                   |
 | ☐ Event Groups   |                 |                   |
