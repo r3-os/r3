@@ -1,5 +1,3 @@
-use crate::utils::Init;
-
 /// `Vec` that can be used in a constant context.
 #[doc(hidden)]
 pub struct ComptimeVec<T: Copy> {
@@ -48,9 +46,10 @@ impl<T: Copy> ComptimeVec<T> {
     }
 }
 
-impl<T: Copy + Init> ComptimeVec<T> {
+impl<T: Copy> ComptimeVec<T> {
     pub const fn to_array<const LEN: usize>(&self) -> [T; LEN] {
-        let mut out = [T::INIT; LEN];
+        use core::mem::{ManuallyDrop, MaybeUninit};
+        let mut out = [MaybeUninit::<T>::uninit(); LEN];
 
         // FIXME: Work-around for `assert_eq` being unsupported in `const fn`
         if self.len() != LEN {
@@ -58,16 +57,22 @@ impl<T: Copy + Init> ComptimeVec<T> {
         }
 
         // Copy `self` to `out`
-        // FIXME: Work-around for `[T]::copy_from_slice` not being `const fn`
         // FIXME: Work-around for `for` being unsupported in `const fn`
         // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
         let mut i = 0;
         while i < LEN {
-            out[i] = self.get(i);
+            out[i] = MaybeUninit::new(self.get(i));
             i += 1;
         }
 
-        out
+        // FIXME: Waiting for `MaybeUninit::assume_init` to be stabilized
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/61956>
+        // Safety: This is equivalent to `transmute(out)`. The memory layout of
+        // `[ManuallyUninit<T>; LEN]` is identical to `[T; LEN]`. We initialized
+        // all elements, so it's safe to reintrepret it as `[T; LEN]`.
+        unsafe {
+            ManuallyDrop::into_inner(*(&mut out as *const _ as *const ManuallyDrop<[T; LEN]>))
+        }
     }
 }
 

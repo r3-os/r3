@@ -203,10 +203,3 @@ pub struct HunkInitAttr {
     pub(super) offset: usize,
     pub(super) init: unsafe fn(*mut u8),
 }
-
-impl Init for HunkInitAttr {
-    const INIT: Self = Self {
-        offset: 0,
-        init: |_| {},
-    };
-}
