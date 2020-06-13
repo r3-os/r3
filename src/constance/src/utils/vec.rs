@@ -43,6 +43,17 @@ impl<T: Copy> ComptimeVec<T> {
         // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
         unsafe { &*(&self.storage[i] as *const _ as *const T) }
     }
+
+    // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
+    pub const fn get_mut(&mut self, i: usize) -> &mut T {
+        if i >= self.len() {
+            panic!("out of bounds");
+        }
+
+        // Safety: `self.storage[0..self.len]` is initialized, and `i < self.len`
+        // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
+        unsafe { &mut *(&mut self.storage[i] as *mut _ as *mut T) }
+    }
 }
 
 impl<T: Copy> ComptimeVec<T> {
@@ -94,5 +105,18 @@ mod tests {
             v.to_array()
         };
         assert_eq!(ARRAY, [1, 2, 3]);
+    }
+
+    #[test]
+    fn get_mut() {
+        const VAL: u32 = {
+            let mut v = ComptimeVec::new();
+            v = v.push(1);
+            v = v.push(2);
+            v = v.push(3);
+            *v.get_mut(1) += 2;
+            *v.get(1)
+        };
+        assert_eq!(VAL, 4);
     }
 }
