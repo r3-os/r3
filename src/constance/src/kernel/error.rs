@@ -141,6 +141,12 @@ impl From<BadCtxError> for UpdateEventGroupError {
     }
 }
 
+impl From<BadIdError> for UpdateEventGroupError {
+    fn from(_: BadIdError) -> Self {
+        Self::BadId
+    }
+}
+
 define_error! {
     /// Error type for [`EventGroup::get`].
     ///
@@ -156,6 +162,12 @@ define_error! {
 impl From<BadCtxError> for GetEventGroupError {
     fn from(_: BadCtxError) -> Self {
         Self::BadCtx
+    }
+}
+
+impl From<BadIdError> for GetEventGroupError {
+    fn from(_: BadIdError) -> Self {
+        Self::BadId
     }
 }
 
@@ -177,8 +189,20 @@ impl From<BadCtxError> for WaitEventGroupError {
     }
 }
 
+impl From<BadIdError> for WaitEventGroupError {
+    fn from(_: BadIdError) -> Self {
+        Self::BadId
+    }
+}
+
 define_error! {
     pub(super) enum BadCtxError {
         BadCtx,
+    }
+}
+
+define_error! {
+    pub(super) enum BadIdError {
+        BadId,
     }
 }

@@ -763,6 +763,7 @@ impl CfgBuilderEventGroup {
     pub const fn to_state<System: Port>(&self) -> event_group::EventGroupCb<System> {
         event_group::EventGroupCb {
             bits: CpuLockCell::new(self.initial_bits),
+            wait_queue: Init::INIT,
         }
     }
 }

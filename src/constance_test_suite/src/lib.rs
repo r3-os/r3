@@ -102,6 +102,8 @@ pub mod kernel_tests {
     define_kernel_tests! {
         [$]
         (mod basic {}, "basic"),
+        (mod event_group_set_and_dispatch {}, "event_group_set_and_dispatch"),
+        (mod event_group_wait_types {}, "event_group_wait_types"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
         (mod task_misc {}, "task_misc"),

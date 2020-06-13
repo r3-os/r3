@@ -1,14 +1,22 @@
 //! Event groups
-use core::{fmt, hash, marker::PhantomData};
+use core::{
+    fmt, hash,
+    marker::PhantomData,
+    sync::atomic::{AtomicU32, Ordering},
+};
 
 use super::{
-    utils, GetEventGroupError, Id, Kernel, Port, UpdateEventGroupError, WaitEventGroupError,
+    task, utils,
+    wait::{WaitPayload, WaitQueue},
+    BadIdError, GetEventGroupError, Id, Kernel, Port, UpdateEventGroupError, WaitEventGroupError,
 };
 use crate::utils::Init;
 
 // TODO: Support changing `EventGroupBits`?
 /// Unsigned integer type backing event groups.
 pub type EventGroupBits = u32;
+
+pub type AtomicEventGroupBits = AtomicU32;
 
 /// Represents a single event group in a system.
 ///
@@ -58,12 +66,6 @@ bitflags::bitflags! {
     }
 }
 
-impl<System> fmt::Debug for EventGroup<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("EventGroup").field(&self.0).finish()
-    }
-}
-
 impl<System> EventGroup<System> {
     /// Construct a `EventGroup` from `Id`.
     ///
@@ -85,22 +87,31 @@ impl<System: Kernel> EventGroup<System> {
         self.0
     }
 
+    fn event_group_cb(self) -> Result<&'static EventGroupCb<System>, BadIdError> {
+        System::get_event_group_cb(self.0.get() - 1).ok_or(BadIdError::BadId)
+    }
+
     /// Set the specified bits.
-    pub fn set(self, _bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        todo!()
+    pub fn set(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
+        let lock = utils::lock_cpu::<System>()?;
+        let event_group_cb = self.event_group_cb()?;
+        set(event_group_cb, lock, bits);
+        Ok(())
     }
 
     /// Clear the specified bits.
     pub fn clear(self, _bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        todo!()
+        let mut lock = utils::lock_cpu::<System>()?;
+        let event_group_cb = self.event_group_cb()?;
+        event_group_cb.bits.replace(&mut *lock, 0);
+        Ok(())
     }
 
     /// Get the currently set bits.
     pub fn get(self) -> Result<EventGroupBits, GetEventGroupError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        todo!()
+        let lock = utils::lock_cpu::<System>()?;
+        let event_group_cb = self.event_group_cb()?;
+        Ok(event_group_cb.bits.get(&*lock))
     }
 
     /// Wait for all or any of the specified bits to be set. Optionally, clear
@@ -110,11 +121,13 @@ impl<System: Kernel> EventGroup<System> {
     /// specified, this method returns the bits before clearing.
     pub fn wait(
         self,
-        _bits: EventGroupBits,
-        _flags: EventGroupWaitFlags,
+        bits: EventGroupBits,
+        flags: EventGroupWaitFlags,
     ) -> Result<EventGroupBits, WaitEventGroupError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        todo!()
+        let lock = utils::lock_cpu::<System>()?;
+        let event_group_cb = self.event_group_cb()?;
+
+        wait(event_group_cb, lock, bits, flags)
     }
 }
 
@@ -122,10 +135,15 @@ impl<System: Kernel> EventGroup<System> {
 #[repr(C)]
 pub struct EventGroupCb<System: Port, EventGroupBits: 'static = self::EventGroupBits> {
     pub(super) bits: utils::CpuLockCell<System, EventGroupBits>,
+
+    pub(super) wait_queue: WaitQueue<System>,
 }
 
 impl<System: Port, EventGroupBits: Init + 'static> Init for EventGroupCb<System, EventGroupBits> {
-    const INIT: Self = Self { bits: Init::INIT };
+    const INIT: Self = Self {
+        bits: Init::INIT,
+        wait_queue: Init::INIT,
+    };
 }
 
 impl<System: Kernel, EventGroupBits: fmt::Debug + 'static> fmt::Debug
@@ -135,5 +153,108 @@ impl<System: Kernel, EventGroupBits: fmt::Debug + 'static> fmt::Debug
         f.debug_struct("EventGroupCb")
             .field("bits", &self.bits)
             .finish()
+    }
+}
+
+fn wait<System: Kernel>(
+    event_group_cb: &'static EventGroupCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+    bits: EventGroupBits,
+    flags: EventGroupWaitFlags,
+) -> Result<EventGroupBits, WaitEventGroupError> {
+    if let Some(original_value) = poll_core(event_group_cb.bits.write(&mut *lock), bits, flags) {
+        Ok(original_value)
+    } else {
+        // The current state does not satify the wait condition. In this case,
+        // start waiting. The wake-upper is responsible for using `poll_core`.
+        let result = event_group_cb.wait_queue.wait(
+            lock.borrow_mut(),
+            WaitPayload::EventGroupBits {
+                bits,
+                flags,
+                orig_bits: Init::INIT,
+            },
+        );
+
+        // The original value will be copied to `orig_bits`
+        if let WaitPayload::EventGroupBits { orig_bits, .. } = result {
+            Ok(orig_bits.load(Ordering::Relaxed))
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+/// Given a wait condition `(bits, flags)`, check if the current state of an
+/// event group, `event_group_bits`, satisfies the wait condition.
+///
+/// If `event_group_bits` satisfies the wait condition, this function clears
+/// some bits `event_group_bits` (if requested by `flags), and returns
+/// `Some(original_value)`. Otherwise, it returns `None`.
+fn poll_core(
+    event_group_bits: &mut EventGroupBits,
+    bits: EventGroupBits,
+    flags: EventGroupWaitFlags,
+) -> Option<EventGroupBits> {
+    let success = if flags.contains(EventGroupWaitFlags::ALL) {
+        (*event_group_bits & bits) == bits
+    } else {
+        (*event_group_bits & bits) != 0
+    };
+
+    if success {
+        let original_value = *event_group_bits;
+        if flags.contains(EventGroupWaitFlags::CLEAR) {
+            *event_group_bits &= !bits;
+        }
+        Some(original_value)
+    } else {
+        None
+    }
+}
+
+fn set<System: Kernel>(
+    event_group_cb: &'static EventGroupCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+    added_bits: EventGroupBits,
+) {
+    let mut event_group_bits = event_group_cb.bits.get(&*lock);
+
+    // Return early if no bits will change
+    if (event_group_bits | added_bits) == event_group_bits {
+        return;
+    }
+
+    event_group_bits |= added_bits;
+
+    // Wake up tasks if their wake up conditions are now fulfilled.
+    //
+    // When waking up a task, some bits of `event_group_bits` might be cleared
+    // if the waiter requests clearing bits. Clearing is handled by `poll_core`.
+    let mut woke_up_any = false;
+
+    event_group_cb
+        .wait_queue
+        .wake_up_all_conditional(lock.borrow_mut(), |wait_payload| match wait_payload {
+            WaitPayload::EventGroupBits {
+                bits,
+                flags,
+                orig_bits,
+            } => {
+                if let Some(orig) = poll_core(&mut event_group_bits, *bits, *flags) {
+                    woke_up_any = true;
+                    orig_bits.store(orig, Ordering::Relaxed);
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => unreachable!(),
+        });
+
+    event_group_cb.bits.replace(&mut *lock, event_group_bits);
+
+    if woke_up_any {
+        task::unlock_cpu_and_check_preemption(lock);
     }
 }

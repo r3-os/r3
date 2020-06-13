@@ -118,8 +118,9 @@ pub(super) enum WaitPayload<System> {
     EventGroupBits {
         bits: event_group::EventGroupBits,
         flags: event_group::EventGroupWaitFlags,
-        orig_bits: CpuLockCell<System, event_group::EventGroupBits>,
+        orig_bits: event_group::AtomicEventGroupBits,
     },
+    __Nonexhaustive(System),
 }
 
 /// A queue of wait objects ([`Wait`]) waiting on a particular waitable object.
