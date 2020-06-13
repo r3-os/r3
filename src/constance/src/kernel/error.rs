@@ -1,7 +1,7 @@
 macro_rules! define_error {
     (
         $( #[$meta:meta] )*
-        $vis:vis enum $name:ident {
+        $vis:vis enum $name:ident $(: $($subty:ident),* $(,)*)? {
             $(
                 $( #[$vmeta:meta] )*
                 $vname:ident
@@ -43,6 +43,26 @@ macro_rules! define_error {
                     )*
                 }
             }
+        }
+
+        $($(
+            $subty!(impl From<_> for $name);
+        )*)?
+
+        #[allow(unused_macros)]
+        macro_rules! $name {
+            (impl From<_> for $dest_ty:ty) => {
+                impl From<$name> for $dest_ty {
+                    #[inline]
+                    fn from(x: $name) -> Self {
+                        match x {
+                            $(
+                                $name::$vname => Self::$vname,
+                            )*
+                        }
+                    }
+                }
+            };
         }
     };
 }
@@ -86,10 +106,22 @@ impl ResultCode {
 }
 
 define_error! {
+    pub(super) enum BadCtxError {
+        BadCtx,
+    }
+}
+
+define_error! {
+    pub(super) enum BadIdError {
+        BadId,
+    }
+}
+
+define_error! {
     /// Error type for [`Task::activate`].
     ///
     /// [`Task::activate`]: super::Task::activate
-    pub enum ActivateTaskError {
+    pub enum ActivateTaskError: BadCtxError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -111,14 +143,8 @@ define_error! {
     /// Error type for [`Kernel::exit_task`].
     ///
     /// [`Kernel::exit_task`]: super::Kernel::exit_task
-    pub enum ExitTaskError {
+    pub enum ExitTaskError: BadCtxError {
         BadCtx,
-    }
-}
-
-impl From<BadCtxError> for ActivateTaskError {
-    fn from(_: BadCtxError) -> Self {
-        Self::BadCtx
     }
 }
 
@@ -127,23 +153,11 @@ define_error! {
     ///
     /// [`EventGroup::set`]: super::EventGroup::set
     /// [`EventGroup::clear`]: super::EventGroup::clear
-    pub enum UpdateEventGroupError {
+    pub enum UpdateEventGroupError: BadCtxError, BadIdError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
         BadCtx,
-    }
-}
-
-impl From<BadCtxError> for UpdateEventGroupError {
-    fn from(_: BadCtxError) -> Self {
-        Self::BadCtx
-    }
-}
-
-impl From<BadIdError> for UpdateEventGroupError {
-    fn from(_: BadIdError) -> Self {
-        Self::BadId
     }
 }
 
@@ -151,23 +165,11 @@ define_error! {
     /// Error type for [`EventGroup::get`].
     ///
     /// [`EventGroup::get`]: super::EventGroup::get
-    pub enum GetEventGroupError {
+    pub enum GetEventGroupError: BadCtxError, BadIdError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
         BadCtx,
-    }
-}
-
-impl From<BadCtxError> for GetEventGroupError {
-    fn from(_: BadCtxError) -> Self {
-        Self::BadCtx
-    }
-}
-
-impl From<BadIdError> for GetEventGroupError {
-    fn from(_: BadIdError) -> Self {
-        Self::BadId
     }
 }
 
@@ -175,34 +177,10 @@ define_error! {
     /// Error type for [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
-    pub enum WaitEventGroupError {
+    pub enum WaitEventGroupError: BadCtxError, BadIdError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
         BadCtx,
-    }
-}
-
-impl From<BadCtxError> for WaitEventGroupError {
-    fn from(_: BadCtxError) -> Self {
-        Self::BadCtx
-    }
-}
-
-impl From<BadIdError> for WaitEventGroupError {
-    fn from(_: BadIdError) -> Self {
-        Self::BadId
-    }
-}
-
-define_error! {
-    pub(super) enum BadCtxError {
-        BadCtx,
-    }
-}
-
-define_error! {
-    pub(super) enum BadIdError {
-        BadId,
     }
 }
