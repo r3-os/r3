@@ -414,7 +414,11 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
     // The priority of `running_task`
     let prev_running_task = System::state().running_task();
     let prev_task_priority = if let Some(running_task) = prev_running_task {
-        running_task.priority.to_usize().unwrap()
+        if *running_task.st.read(&**lock) == TaskSt::Running {
+            running_task.priority.to_usize().unwrap()
+        } else {
+            usize::max_value()
+        }
     } else {
         usize::max_value()
     };
@@ -456,13 +460,16 @@ pub(super) fn choose_next_running_task<System: Kernel>(lock: &mut utils::CpuLock
         None
     };
 
-    // Put `prev_running_task` (which is currently in the Running state) into the
-    // Runnable state
+    // If `prev_running_task` is in a Running state, transition it into Runnable
     if let Some(running_task) = prev_running_task {
-        assert!(*running_task.st.read(&**lock) == TaskSt::Running);
-
-        // Safety: The previous state is Running, so this is safe
-        unsafe { make_runnable(lock.borrow_mut(), running_task) };
+        match running_task.st.read(&**lock) {
+            TaskSt::Running => {
+                // Safety: The previous state is Running, so this is safe
+                unsafe { make_runnable(lock.borrow_mut(), running_task) };
+            }
+            TaskSt::Waiting => {}
+            _ => unreachable!(),
+        }
     }
 
     System::state()

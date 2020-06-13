@@ -260,7 +260,8 @@ pub struct State<
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
 > {
     // TODO: Make `running_task` non-null to simplify runtime code
-    /// The currently running task.
+    /// The currently or recently running task. Can be in a Running or Waiting
+    /// state.
     running_task: AtomicRef<'static, TaskCb<System, PortTaskState, TaskPriority>>,
 
     /// The task ready bitmap, in which each bit indicates whether the
