@@ -281,8 +281,8 @@ macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
             kernel::{
-                CfgBuilder, EventGroupCb, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port,
-                State, TaskAttr, TaskCb,
+                CfgBuilder, CfgBuilderInner, EventGroupCb, HunkAttr, HunkInitAttr, KernelCfg1,
+                KernelCfg2, Port, State, TaskAttr, TaskCb,
             },
             utils::{
                 intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap, Init, RawCell,
@@ -293,14 +293,16 @@ macro_rules! build {
         // `$configure` produces two values: a `CfgBuilder` and an ID map
         // (custom type). We need the first one to be `const` so that we can
         // calculate the values of generic parameters based on its contents.
-        const CFG: CfgBuilder<$sys> = {
-            let mut cfg = CfgBuilder::new();
+        const CFG: CfgBuilderInner<$sys> = {
+            // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
+            let mut cfg = unsafe { CfgBuilder::new() };
             $configure(&mut cfg);
-            cfg
+            cfg.into_inner()
         };
 
         // The second value can be just `let`
-        let id_map = $configure(&mut CfgBuilder::new());
+        // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
+        let id_map = $configure(&mut unsafe { CfgBuilder::new() });
 
         // Set up task priority levels
         type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;
@@ -394,11 +396,18 @@ macro_rules! array_item_from_fn {
     )*};
 }
 
-// The "real" public interface ends here
-// ---------------------------------------------------------------------------
-
+/// A kernel configuration being constructed.
 #[doc(hidden)]
 pub struct CfgBuilder<System> {
+    /// Disallows the mutation of `CfgBuilderInner` by a user-defined
+    /// configuration function by making this not `pub`.
+    inner: CfgBuilderInner<System>,
+}
+
+/// The private portion of [`CfgBuilder`]. This is not a real public interface,
+/// but needs to be `pub` so [`build!`] can access the contents.
+#[doc(hidden)]
+pub struct CfgBuilderInner<System> {
     _phantom: PhantomData<System>,
     pub hunks: ComptimeVec<super::HunkInitAttr>,
     pub hunk_pool_len: usize,
@@ -409,16 +418,34 @@ pub struct CfgBuilder<System> {
 }
 
 impl<System> CfgBuilder<System> {
-    pub const fn new() -> Self {
+    /// Construct a `CfgBuilder`.
+    ///
+    /// # Safety
+    ///
+    /// This is only meant to be used by [`build!`]. For a particular system
+    /// type, there can be only one fully-constructed instance of `CfgBuilder`,
+    /// to which all defined kernel objects must belong. For example, swapping
+    /// a given `CfgBuilder` with another one can be used to circumvent the
+    /// compile-time access control of kernel objects.
+    #[doc(hidden)]
+    pub const unsafe fn new() -> Self {
         Self {
-            _phantom: PhantomData,
-            hunks: ComptimeVec::new(),
-            hunk_pool_len: 0,
-            hunk_pool_align: 1,
-            tasks: ComptimeVec::new(),
-            num_task_priority_levels: 16,
-            event_groups: ComptimeVec::new(),
+            inner: CfgBuilderInner {
+                _phantom: PhantomData,
+                hunks: ComptimeVec::new(),
+                hunk_pool_len: 0,
+                hunk_pool_align: 1,
+                tasks: ComptimeVec::new(),
+                num_task_priority_levels: 16,
+                event_groups: ComptimeVec::new(),
+            },
         }
+    }
+
+    /// Get `CfgBuilderInner`, consuming `self`.
+    #[doc(hidden)]
+    pub const fn into_inner(self) -> CfgBuilderInner<System> {
+        self.inner
     }
 
     pub const fn num_task_priority_levels(&mut self, new_value: usize) {
@@ -436,6 +463,6 @@ impl<System> CfgBuilder<System> {
             unreachable!();
         }
 
-        self.num_task_priority_levels = new_value;
+        self.inner.num_task_priority_levels = new_value;
     }
 }

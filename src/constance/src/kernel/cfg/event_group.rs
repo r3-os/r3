@@ -34,13 +34,15 @@ impl<System: Port> CfgEventGroupBuilder<System> {
     }
 
     pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> event_group::EventGroup<System> {
-        cfg.event_groups.push(CfgBuilderEventGroup {
+        let inner = &mut cfg.inner;
+
+        inner.event_groups.push(CfgBuilderEventGroup {
             initial_bits: self.initial_bits,
             queue_order: self.queue_order,
         });
 
         unsafe {
-            event_group::EventGroup::from_id(NonZeroUsize::new_unchecked(cfg.event_groups.len()))
+            event_group::EventGroup::from_id(NonZeroUsize::new_unchecked(inner.event_groups.len()))
         }
     }
 }

@@ -106,7 +106,9 @@ impl<System: Port> CfgTaskBuilder<System> {
             TaskStack::Hunk(hunk) => hunk,
         };
 
-        cfg.tasks.push(CfgBuilderTask {
+        let inner = &mut cfg.inner;
+
+        inner.tasks.push(CfgBuilderTask {
             start: if let Some(x) = self.start {
                 x
             } else {
@@ -122,7 +124,7 @@ impl<System: Port> CfgTaskBuilder<System> {
             active: self.active,
         });
 
-        unsafe { task::Task::from_id(NonZeroUsize::new_unchecked(cfg.tasks.len())) }
+        unsafe { task::Task::from_id(NonZeroUsize::new_unchecked(inner.tasks.len())) }
     }
 }
 
