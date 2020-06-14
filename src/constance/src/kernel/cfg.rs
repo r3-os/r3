@@ -56,10 +56,11 @@ pub use self::{event_group::*, hunk::*, task::*};
 ///
 /// ## `set!(prop = value)`
 ///
-/// Set a global propertry.
+/// Set a global property by calling a method of [`CfgBuilder`] such as
+/// [`num_task_priority_levels`].
 ///
-///  - `num_task_priority_levels = NUM_LEVELS: usize` specifies the number of
-///    task priority levels. The default value is `16`.
+/// [`CfgBuilder`]: crate::kernel::CfgBuilder
+/// [`num_task_priority_levels`]: crate::kernel::CfgBuilder::num_task_priority_levels
 ///
 /// ## `call!(expr, arg1, arg2, ...)`
 ///
@@ -414,7 +415,9 @@ macro_rules! array_item_from_fn {
 }
 
 /// A kernel configuration being constructed.
-#[doc(hidden)]
+///
+/// In [`configure!`], unary methods of this type can be called by
+/// `set!(method_name = value)`.
 pub struct CfgBuilder<System> {
     /// Disallows the mutation of `CfgBuilderInner` by a user-defined
     /// configuration function by making this not `pub`.
@@ -465,6 +468,7 @@ impl<System> CfgBuilder<System> {
         self.inner
     }
 
+    /// Specify the number of task priority levels. The default value is `16`.
     pub const fn num_task_priority_levels(&mut self, new_value: usize) {
         if new_value == 0 {
             panic!("`num_task_priority_levels` must be greater than zero");
