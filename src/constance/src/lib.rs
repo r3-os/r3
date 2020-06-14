@@ -9,6 +9,7 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
+#![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
 #![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)

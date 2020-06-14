@@ -14,6 +14,8 @@ macro_rules! If {
     };
 }
 
+#[macro_use]
+mod sort;
 mod aligned_storage;
 mod init;
 mod int;
