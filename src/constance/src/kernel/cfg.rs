@@ -95,6 +95,9 @@ pub use self::{event_group::*, hunk::*, task::*};
 /// Generic parameters are supported with a help of
 /// [`::parse_generics_shim`]. Not all forms of generics are supported. See its
 /// documentation to find out what limitation applies.
+///
+/// `self` parameters aren't supported yet.
+///
 #[macro_export]
 macro_rules! configure {
     (
