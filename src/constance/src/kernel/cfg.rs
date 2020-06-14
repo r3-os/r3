@@ -10,6 +10,46 @@ pub use self::{event_group::*, hunk::*, task::*};
 
 /// Makes some useful macros available inside a configuration function.
 ///
+/// # Examples
+///
+/// ```
+/// #![feature(const_fn)]
+/// use constance::kernel::{EventGroup, Kernel, Task};
+///
+/// constance::configure! {
+///     const fn configure_app<System: Kernel>(_: &mut CfgBuilder<System>)
+///         -> (Task<System>, EventGroup<System>)
+///     {
+///         set!(num_task_priority_levels = 4);
+///         let task = build! { Task<_>,
+///             start = task_body, priority = 3, active = true };
+///         let eg = build! { EventGroup<_> };
+///         (task, eg)
+///     }
+/// }
+///
+/// fn task_body(_: usize) {}
+/// ```
+///
+/// The above code is equivalent to:
+///
+/// ```
+/// #![feature(const_fn)]
+/// use constance::kernel::{CfgBuilder, EventGroup, Kernel, Task};
+///
+/// const fn configure_app<System: Kernel>(b: &mut CfgBuilder<System>)
+///     -> (Task<System>, EventGroup<System>)
+/// {
+///     b.num_task_priority_levels(4);
+///     let task = Task::build()
+///         .start(task_body).priority(3).active(true).finish(b);
+///     let eg = EventGroup::build().finish(b);
+///     (task, eg)
+/// }
+///
+/// fn task_body(_: usize) {}
+/// ```
+///
 /// # Available Macros
 ///
 /// The following macros are available inside the function:
