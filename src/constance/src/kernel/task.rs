@@ -8,7 +8,7 @@ use super::{
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
-    Init, PrioBitmap, RawCell,
+    Init, PrioBitmap,
 };
 
 /// Represents a single task in a system.
@@ -186,8 +186,6 @@ pub struct TaskCb<
 
     /// The wait state of the task.
     pub(super) wait: wait::TaskWait<System>,
-
-    pub(super) _force_int_mut: RawCell<()>,
 }
 
 impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> Init
@@ -200,7 +198,6 @@ impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> 
         st: Init::INIT,
         link: Init::INIT,
         wait: Init::INIT,
-        _force_int_mut: RawCell::new(()),
     };
 }
 

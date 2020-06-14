@@ -168,7 +168,6 @@ impl<System: Port> CfgBuilderTask<System> {
             }),
             link: CpuLockCell::new(None),
             wait: Init::INIT,
-            _force_int_mut: crate::utils::RawCell::new(()),
         }
     }
 
