@@ -1,7 +1,7 @@
 //! Static configuration mechanism for the kernel
 use core::{marker::PhantomData, mem, num::NonZeroUsize};
 
-use super::{event_group, hunk, task, utils::CpuLockCell, Port};
+use super::{event_group, hunk, task, utils::CpuLockCell, wait, Port};
 use crate::utils::{ComptimeVec, Init, ZeroInit, FIXED_PRIO_BITMAP_MAX_LEN};
 
 /// Define a configuration function.
@@ -49,8 +49,12 @@ use crate::utils::{ComptimeVec, Init, ZeroInit, FIXED_PRIO_BITMAP_MAX_LEN};
 /// Defines an event group. The following properties can be specified:
 ///
 ///  - `initial = BITS: `[`EventGroupBits`] specifies the initial bit pattern.
+///  - `queue_order = ORDER: `[`QueueOrder`] specifies how tasks are sorted in
+///    the wait queue of the event group. Defaults to `TaskPriority` when
+///    unspecified.
 ///
 /// [`EventGroupBits`]: crate::kernel::EventGroupBits
+/// [`QueueOrder`]: crate::kernel::QueueOrder
 ///
 /// # `new_hunk!(T)`
 ///
@@ -661,6 +665,7 @@ impl<System: Port> CfgBuilderTask<System> {
 pub struct CfgEventGroupBuilder<System> {
     _phantom: PhantomData<System>,
     initial_bits: event_group::EventGroupBits,
+    queue_order: wait::QueueOrder,
 }
 
 impl<System: Port> CfgEventGroupBuilder<System> {
@@ -668,6 +673,7 @@ impl<System: Port> CfgEventGroupBuilder<System> {
         Self {
             _phantom: PhantomData,
             initial_bits: 0,
+            queue_order: wait::QueueOrder::TaskPriority,
         }
     }
 
@@ -678,9 +684,17 @@ impl<System: Port> CfgEventGroupBuilder<System> {
         }
     }
 
+    pub const fn queue_order(self, queue_order: wait::QueueOrder) -> Self {
+        Self {
+            queue_order,
+            ..self
+        }
+    }
+
     pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> event_group::EventGroup<System> {
         cfg.event_groups.push(CfgBuilderEventGroup {
             initial_bits: self.initial_bits,
+            queue_order: self.queue_order,
         });
 
         unsafe {
@@ -692,12 +706,14 @@ impl<System: Port> CfgEventGroupBuilder<System> {
 #[doc(hidden)]
 pub struct CfgBuilderEventGroup {
     initial_bits: event_group::EventGroupBits,
+    queue_order: wait::QueueOrder,
 }
 
 impl Clone for CfgBuilderEventGroup {
     fn clone(&self) -> Self {
         Self {
             initial_bits: self.initial_bits,
+            queue_order: self.queue_order,
         }
     }
 }
@@ -708,7 +724,7 @@ impl CfgBuilderEventGroup {
     pub const fn to_state<System: Port>(&self) -> event_group::EventGroupCb<System> {
         event_group::EventGroupCb {
             bits: CpuLockCell::new(self.initial_bits),
-            wait_queue: Init::INIT,
+            wait_queue: wait::WaitQueue::new(self.queue_order),
         }
     }
 }

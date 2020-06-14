@@ -103,6 +103,8 @@ pub mod kernel_tests {
         [$]
         (mod basic {}, "basic"),
         (mod event_group_misc {}, "event_group_misc"),
+        (mod event_group_order_fifo {}, "event_group_order_fifo"),
+        (mod event_group_order_task_priority {}, "event_group_order_task_priority"),
         (mod event_group_set_and_dispatch {}, "event_group_set_and_dispatch"),
         (mod event_group_wait_types {}, "event_group_wait_types"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),

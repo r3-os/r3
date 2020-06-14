@@ -59,8 +59,8 @@ mod unsafe_static {
         ///
         /// All pointees to be accessed through the constructed `UnsafeStatic`
         /// must be valid.
-        pub unsafe fn new() -> Self {
-            Self { _nonexhaustive: () }
+        pub const unsafe fn new() -> &'static Self {
+            &Self { _nonexhaustive: () }
         }
     }
 
@@ -83,7 +83,7 @@ macro_rules! wait_queue_accessor {
     ($list:expr, $key:expr) => {
         ListAccessorCell::new(
             $list,
-            &UnsafeStatic::new(),
+            UnsafeStatic::new(),
             |wait: &Wait<_>| &wait.link,
             $key,
         )
@@ -131,10 +131,25 @@ pub(crate) struct WaitQueue<System: Port> {
     ///
     /// All elements of this linked list must be valid.
     waits: CpuLockCell<System, intrusive_list::ListHead<WaitRef<System>>>,
+
+    order: QueueOrder,
 }
 
 impl<System: Port> Init for WaitQueue<System> {
-    const INIT: Self = Self { waits: Init::INIT };
+    const INIT: Self = Self {
+        waits: Init::INIT,
+        order: QueueOrder::Fifo,
+    };
+}
+
+/// Specifies the sorting order of a wait queue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueueOrder {
+    /// The wait queue is processed in a FIFO order.
+    Fifo,
+    /// The wait queue is processed in a task priority order. Tasks with the
+    /// same priorities follow a FIFO order.
+    TaskPriority,
 }
 
 /// The wait state of a task.
@@ -150,6 +165,16 @@ impl<System: Port> Init for TaskWait<System> {
     const INIT: Self = Self {
         current_wait: Init::INIT,
     };
+}
+
+impl<System: Port> WaitQueue<System> {
+    /// Construct a `WaitQueue`.
+    pub(super) const fn new(order: QueueOrder) -> Self {
+        Self {
+            waits: Init::INIT,
+            order,
+        }
+    }
 }
 
 impl<System: Kernel> WaitQueue<System> {
@@ -194,9 +219,34 @@ impl<System: Kernel> WaitQueue<System> {
         debug_assert!(core::ptr::eq(wait.wait_queue, self));
 
         // Insert `wait_ref` into `self.waits`
-        // TODO: Support sorting the queue by task priority
         // Safety: All elements of `self.waits` are extant.
-        unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }.push_back(wait_ref);
+        let mut accessor = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) };
+        let insert_at = match self.order {
+            QueueOrder::Fifo => {
+                // FIFO order - insert at the back
+                None
+            }
+            QueueOrder::TaskPriority => {
+                let cur_task_pri = task.priority;
+                let mut insert_at = None;
+                let mut cursor = accessor.back();
+                while let Some(next_cursor) = cursor {
+                    // Should the new wait object inserted at this or an earlier
+                    // position?
+                    if accessor.pool()[next_cursor].task.priority > cur_task_pri {
+                        // If so, update `insert_at`. Continue searching because
+                        // there might be a viable position that is even
+                        // earlier.
+                        insert_at = Some(next_cursor);
+                        cursor = accessor.prev(next_cursor);
+                    } else {
+                        break;
+                    }
+                }
+                insert_at
+            }
+        };
+        accessor.insert(wait_ref, insert_at);
 
         // Set `task.current_wait`
         task.wait.current_wait.replace(&mut *lock, Some(wait_ref));
