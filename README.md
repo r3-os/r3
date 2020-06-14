@@ -39,9 +39,10 @@ struct Objects {
 const COTTAGE: Objects = constance::build!(System, configure_app);
 
 constance::configure! {
-    fn configure_app(_: CfgBuilder<System>) -> Objects {
+    fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
         Objects {
-            task: new_task! { start = task_body, priority = 2, active = true },
+            task: build! { Task<_>,
+                start = task_body, priority = 2, active = true },
         }
     }
 }
