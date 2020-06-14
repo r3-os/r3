@@ -8,7 +8,9 @@ mod hunk;
 mod task;
 pub use self::{event_group::*, hunk::*, task::*};
 
-/// Makes some useful macros available inside a configuration function.
+/// Makes some useful macros available inside [a configuration function].
+///
+/// [a configuration function]: crate#static-configuration
 ///
 /// # Examples
 ///
@@ -290,9 +292,10 @@ macro_rules! configure {
     };
 }
 
-/// Attach a configuration function (defined by [`configure!`]) to a "system"
-/// type by implementing [`KernelCfg2`] on `$sys`.
+/// Attach [a configuration function] to a "system" type by implementing
+/// [`KernelCfg2`].
 ///
+/// [a configuration function]: crate#static-configuration
 /// [`KernelCfg2`]: crate::kernel::KernelCfg2
 #[macro_export]
 macro_rules! build {
