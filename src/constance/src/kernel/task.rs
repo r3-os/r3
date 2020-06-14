@@ -252,6 +252,7 @@ impl<System: Kernel> fmt::Debug for TaskAttr<System> {
 }
 
 /// Task state machine
+#[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskSt {
     /// The task is in the Dormant state.
