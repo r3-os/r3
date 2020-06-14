@@ -62,7 +62,7 @@ macro_rules! configure {
         //     Pass the generic parameters to `parse_generics_shim!` and proceed
         //     to (2-1) or (2-2) with the result of `parse_generics_shim!`.
         $( #[$meta:meta] )*
-        $vis:vis fn $ident:ident $($gen_tokens:tt)*
+        $vis:vis const fn $ident:ident $($gen_tokens:tt)*
     ) => {
         $crate::parse_generics_shim::parse_generics_shim! {
             { constr },
@@ -119,7 +119,7 @@ macro_rules! configure {
         $gen_param:tt,
 
         // Remaining tokens to parse
-        (_: CfgBuilder<$sys:ty>) -> $id_map:ty { $($body:tt)* }
+        (_: &mut CfgBuilder<$sys:ty>) -> $id_map:ty { $($body:tt)* }
     ) => {
         $crate::parse_generics_shim::parse_where_shim! {
             { clause, preds },

@@ -21,7 +21,7 @@ impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
         ///
         /// This is a configuration function. Use `call!` inside `configure!` to
         /// use it.
-        pub fn new(_: CfgBuilder<System>) -> Self {
+        pub const fn new(_: &mut CfgBuilder<System>) -> Self {
             Self {
                 hunk: new_hunk!(UnsafeCell<T>),
                 _phantom: PhantomData,

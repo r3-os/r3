@@ -18,7 +18,7 @@ struct Objects {
 const COTTAGE: Objects = constance::build!(System, configure_app);
 
 constance::configure! {
-    fn configure_app(_: CfgBuilder<System>) -> Objects {
+    const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
         set!(num_task_priority_levels = 4);
 
         let task1 = build! { Task<_>, start = task1_body, priority = 2, active = true };

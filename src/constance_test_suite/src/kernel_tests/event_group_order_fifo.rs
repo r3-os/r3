@@ -24,7 +24,7 @@ pub struct App<System> {
 
 impl<System: Kernel> App<System> {
     constance::configure! {
-        pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
+        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
             build! { Task<_>, start = task0_body::<System, D>, priority = 3, active = true };
             let task1 = build! { Task<_>, start = task1_body::<System, D>, priority = 1 };
             let task2 = build! { Task<_>, start = task2_body::<System, D>, priority = 1 };

@@ -13,7 +13,7 @@ pub struct App<System> {
 
 impl<System: Kernel> App<System> {
     constance::configure! {
-        pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
+        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
             let task1 = build! {
                 Task<_>,
                 start = task1_body::<System, D>,
