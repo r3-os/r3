@@ -216,11 +216,16 @@ impl<System: Kernel> PortToKernel for System {
 ///
 /// This is only intended to be implemented by `build!`.
 pub unsafe trait KernelCfg2: Port + Sized {
+    // Most associated items are hidden because they have no use outside the
+    // kernel. `state` is not hidden because it's meant to be accessed by port
+    // code.
     #[doc(hidden)]
     const HUNK_ATTR: HunkAttr;
 
+    #[doc(hidden)]
     type TaskReadyBitmap: PrioBitmap;
 
+    #[doc(hidden)]
     type TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<Self>>]> + Init + 'static;
 
     /// Access the kernel's global state.
