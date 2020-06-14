@@ -21,8 +21,8 @@ constance::configure! {
     fn configure_app(_: CfgBuilder<System>) -> Objects {
         set!(num_task_priority_levels = 4);
 
-        let task1 = new_task! { start = task1_body, priority = 2, active = true };
-        let task2 = new_task! { start = task2_body, priority = 3 };
+        let task1 = build! { Task<_>, start = task1_body, priority = 2, active = true };
+        let task2 = build! { Task<_>, start = task2_body, priority = 3 };
 
         let mutex1 = call!(Mutex::new);
 

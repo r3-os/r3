@@ -6,7 +6,7 @@
 //!    should be unblocked in a task priority order.
 //!
 use constance::{
-    kernel::{EventGroup, EventGroupWaitFlags, Task, Hunk, QueueOrder},
+    kernel::{EventGroup, EventGroupWaitFlags, Hunk, QueueOrder, Task},
     prelude::*,
 };
 
@@ -25,13 +25,13 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
-            new_task! { start = task0_body::<System, D>, priority = 3, active = true };
-            let task1 = new_task! { start = task1_body::<System, D>, priority = 1 };
-            let task2 = new_task! { start = task2_body::<System, D>, priority = 1 };
-            let task3 = new_task! { start = task3_body::<System, D>, priority = 2 };
-            let task4 = new_task! { start = task4_body::<System, D>, priority = 2 };
+            build! { Task<_>, start = task0_body::<System, D>, priority = 3, active = true };
+            let task1 = build! { Task<_>, start = task1_body::<System, D>, priority = 1 };
+            let task2 = build! { Task<_>, start = task2_body::<System, D>, priority = 1 };
+            let task3 = build! { Task<_>, start = task3_body::<System, D>, priority = 2 };
+            let task4 = build! { Task<_>, start = task4_body::<System, D>, priority = 2 };
 
-            let eg = new_event_group! { queue_order = QueueOrder::TaskPriority };
+            let eg = build! { EventGroup<_>, queue_order = QueueOrder::TaskPriority };
             let seq = new_hunk! { SeqTracker };
 
             App { eg, task1, task2, task3, task4, seq }

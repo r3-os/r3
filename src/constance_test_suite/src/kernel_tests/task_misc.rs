@@ -14,13 +14,14 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
-            let task1 = new_task! {
+            let task1 = build! {
+                Task<_>,
                 start = task1_body::<System, D>,
                 priority = 2,
                 active = true,
                 param = 42,
             };
-            let task2 = new_task! { start = task2_body::<System, D>, priority = 1 };
+            let task2 = build! { Task<_>, start = task2_body::<System, D>, priority = 1 };
 
             App { task1, task2 }
         }

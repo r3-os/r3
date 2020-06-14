@@ -17,10 +17,10 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
-            new_task! { start = task1_body::<System, D>, priority = 2, active = true };
-            let task2 = new_task! { start = task2_body::<System, D>, priority = 2, param = 2 };
-            let task3 = new_task! { start = task2_body::<System, D>, priority = 2, param = 3 };
-            let task4 = new_task! { start = task2_body::<System, D>, priority = 2, param = 4 };
+            build! { Task<_>, start = task1_body::<System, D>, priority = 2, active = true };
+            let task2 = build! { Task<_>, start = task2_body::<System, D>, priority = 2, param = 2 };
+            let task3 = build! { Task<_>, start = task2_body::<System, D>, priority = 2, param = 3 };
+            let task4 = build! { Task<_>, start = task2_body::<System, D>, priority = 2, param = 4 };
 
             let seq = new_hunk! { SeqTracker };
 

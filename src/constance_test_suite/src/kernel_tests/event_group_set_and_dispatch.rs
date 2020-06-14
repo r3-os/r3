@@ -1,6 +1,6 @@
 //! Sets an event group, waking up a task.
 use constance::{
-    kernel::{EventGroup, EventGroupWaitFlags, Hunk},
+    kernel::{EventGroup, EventGroupWaitFlags, Hunk, Task},
     prelude::*,
 };
 
@@ -15,12 +15,12 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
-            new_task! { start = task1_body::<System, D>, priority = 2, active = true };
-            new_task! { start = task2_body::<System, D>, priority = 1, active = true };
-            new_task! { start = task3_body::<System, D>, priority = 1, active = true };
-            new_task! { start = task4_body::<System, D>, priority = 1, active = true };
+            build! { Task<_>, start = task1_body::<System, D>, priority = 2, active = true };
+            build! { Task<_>, start = task2_body::<System, D>, priority = 1, active = true };
+            build! { Task<_>, start = task3_body::<System, D>, priority = 1, active = true };
+            build! { Task<_>, start = task4_body::<System, D>, priority = 1, active = true };
 
-            let eg = new_event_group! {};
+            let eg = build! { EventGroup<_> };
             let seq = new_hunk! { SeqTracker };
 
             App { eg, seq }

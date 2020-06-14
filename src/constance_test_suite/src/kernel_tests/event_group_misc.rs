@@ -1,6 +1,9 @@
 //! Validates error codes returned by event group manipulation methods. Also,
 //! checks miscellaneous properties of `EventGroup`.
-use constance::{kernel::EventGroup, prelude::*};
+use constance::{
+    kernel::{EventGroup, Task},
+    prelude::*,
+};
 use core::num::NonZeroUsize;
 use wyhash::WyHash;
 
@@ -14,13 +17,14 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self {
-            new_task! {
+            build! {
+                Task<_>,
                 start = task_body::<System, D>,
                 priority = 2,
                 active = true,
             };
-            let eg1 = new_event_group! {};
-            let eg2 = new_event_group! {};
+            let eg1 = build! { EventGroup<_> };
+            let eg2 = build! { EventGroup<_> };
 
             App { eg1, eg2 }
         }

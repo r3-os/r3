@@ -8,67 +8,53 @@ mod hunk;
 mod task;
 pub use self::{event_group::*, hunk::*, task::*};
 
-/// Define a configuration function.
+/// Makes some useful macros available inside a configuration function.
 ///
-/// Generic parameters are supported with a help of
-/// [`parse-generics-shim`](parse_generics_shim).
+/// # Available Macros
 ///
 /// The following macros are available inside the function:
 ///
-/// # `set!(prop = value)`
+/// ## `set!(prop = value)`
 ///
 /// Set a global propertry.
 ///
 ///  - `num_task_priority_levels = NUM_LEVELS: usize` specifies the number of
 ///    task priority levels. The default value is `16`.
 ///
-/// # `call!(expr, arg1, arg2, ...)`
+/// ## `call!(expr, arg1, arg2, ...)`
 ///
 /// Invokes another configuration function `expr`.
 ///
-/// # `build!(expr, name1 = arg1, name2 = arg2, ...)`
+/// ## `build!(path, name1 = arg1, name2 = arg2, ...)`
 ///
-/// Invokes a builder method `expr`, calls modifying methods `name1, name2, ...`
-/// on the builder, and then finally calls `finish`, which is assumed to be a
-/// configuration function.
+/// Invokes a builder method `path::build`, calls modifying methods
+/// `name1, name2, ...` on the builder, and then finally calls `finish`, which
+/// is assumed to be a nullary configuration function.
 ///
-/// # `new_task!(start = ENTRY_FN, ...)`
+/// Most kernel objects can be created in this way.
 ///
-/// Defines a task. The following properties can be specified:
+///  - [`Task`] with options defined in [`CfgTaskBuilder`]
+///  - [`EventGroup`] with options defined in [`CfgEventGroupBuilder`]
 ///
-///  - `start = ENTRY_FN: fn(usize)` (**required**) specifies the task's entry
-///    point.
-///  - `param = PARAM: usize` specifies the parameter to `start`.
-///  - `stack_size = LEN: usize` specifies the task's stack size.
-///  - `stack_hunk = HUNK: Hunk<System, [UnsafeCell<u8>]>` specifies the task's
-///    hunk.
-///  - `priority = PRI: usize` (**required**) specifies the task's initial
-///    priority. Tasks with lower priority values execute first. `PRI` must be
-///    in range `0..num_task_priority_levels`.
-///  - `active = ACTIVE: bool` specifies whether the task should be activated at
-///    system startup.
+/// [`Task`]: crate::kernel::Task
+/// [`CfgTaskBuilder`]: crate::kernel::CfgTaskBuilder
+/// [`EventGroup`]: crate::kernel::EventGroup
+/// [`CfgEventGroupBuilder`]: crate::kernel::CfgEventGroupBuilder
 ///
-/// # `new_event_group!(start = ENTRY_FN, ...)`
-///
-/// Defines an event group. The following properties can be specified:
-///
-///  - `initial = BITS: `[`EventGroupBits`] specifies the initial bit pattern.
-///  - `queue_order = ORDER: `[`QueueOrder`] specifies how tasks are sorted in
-///    the wait queue of the event group. Defaults to `TaskPriority` when
-///    unspecified.
-///
-/// [`EventGroupBits`]: crate::kernel::EventGroupBits
-/// [`QueueOrder`]: crate::kernel::QueueOrder
-///
-/// # `new_hunk!(T)`
+/// ## `new_hunk!(T)`
 ///
 /// Defines a new hunk. `T` must implement [`Init`](crate::utils::Init).
 ///
-/// # `new_hunk!([T], zeroed = true, len = LEN, align = ALIGN)`
+/// ## `new_hunk!([T], zeroed = true, len = LEN, align = ALIGN)`
 ///
 /// Defines a new zero-initialized hunk of an array of the specified length and
 /// alignment.
 ///
+/// # Limitations
+///
+/// Generic parameters are supported with a help of
+/// [`::parse_generics_shim`]. Not all forms of generics are supported. See its
+/// documentation to find out what limitation applies.
 #[macro_export]
 macro_rules! configure {
     (
@@ -238,23 +224,11 @@ macro_rules! configure {
             }
 
             macro_rules! build {
-                ($path:expr $dollar(, $argname:ident = $arg:expr)* $dollar(,)*) => {{
-                    $path
+                ($path:ty $dollar(, $argname:ident = $arg:expr)* $dollar(,)*) => {{
+                    <$path>::build()
                         $dollar(. $argname($arg))*
                         .finish(cfg)
                 }};
-            }
-
-            macro_rules! new_task {
-                ($dollar($tt2:tt)*) => {
-                    build! { $crate::kernel::CfgTaskBuilder::new(), $dollar($tt2)* }
-                };
-            }
-
-            macro_rules! new_event_group {
-                ($dollar($tt2:tt)*) => {
-                    build! { $crate::kernel::CfgEventGroupBuilder::new(), $dollar($tt2)* }
-                };
             }
 
             macro_rules! new_hunk {
