@@ -111,6 +111,8 @@ pub mod kernel_tests {
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
         (mod task_misc {}, "task_misc"),
+        (mod task_park {}, "task_park"),
+        (mod task_park_reset {}, "task_park_reset"),
         (mod task_queue_fifo {}, "task_queue_fifo"),
     }
 

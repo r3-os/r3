@@ -120,6 +120,7 @@ pub(super) enum WaitPayload<System> {
         flags: event_group::EventGroupWaitFlags,
         orig_bits: event_group::AtomicEventGroupBits,
     },
+    Park,
     __Nonexhaustive(System),
 }
 

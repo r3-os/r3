@@ -186,6 +186,7 @@ impl<System: Port> CfgBuilderTask<System> {
             }),
             link: CpuLockCell::new(None),
             wait: Init::INIT,
+            park_token: CpuLockCell::new(false),
         }
     }
 

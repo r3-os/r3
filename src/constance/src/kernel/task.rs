@@ -150,9 +150,9 @@ impl<System: Kernel> Task<System> {
     /// be immediately consumed. Otherwise, it will be consumed on a next call
     /// to `Kernel::park`.
     pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        let _task_cb = self.task_cb()?;
-        todo!();
+        let lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+        unpark_exact(lock, task_cb)
     }
 }
 
@@ -240,6 +240,9 @@ pub struct TaskCb<
 
     /// The wait state of the task.
     pub(super) wait: wait::TaskWait<System>,
+
+    /// A flag indicating whether the task has a park token or not.
+    pub(super) park_token: utils::CpuLockCell<System, bool>,
 }
 
 impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> Init
@@ -252,6 +255,7 @@ impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> 
         st: Init::INIT,
         link: Init::INIT,
         wait: Init::INIT,
+        park_token: Init::INIT,
     };
 }
 
@@ -424,6 +428,9 @@ fn activate<System: Kernel>(
         return Err(ActivateTaskError::QueueOverflow);
     }
 
+    // Discard a park token if the task has one
+    task_cb.park_token.replace(&mut *lock, false);
+
     // Safety: CPU Lock active, the task is in a Dormant state
     unsafe { System::initialize_task_state(task_cb) };
 
@@ -590,7 +597,52 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
 
 /// Implements [`Kernel::park`].
 pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
-    let _lock = utils::lock_cpu::<System>()?;
+    let mut lock = utils::lock_cpu::<System>()?;
     // TODO: deny interrupt context
-    todo!()
+
+    let running_task = System::state().running_task().unwrap();
+
+    // If the task already has a park token, return immediately
+    if running_task.park_token.replace(&mut *lock, false) {
+        return Ok(());
+    }
+
+    // Wait until woken up by `unpark_exact`
+    wait::wait_no_queue(lock.borrow_mut(), wait::WaitPayload::Park)?;
+
+    Ok(())
+}
+
+/// Implements [`Task::unpark_exact`].
+fn unpark_exact<System: Kernel>(
+    mut lock: utils::CpuLockGuard<System>,
+    task_cb: &'static TaskCb<System>,
+) -> Result<(), UnparkExactError> {
+    // Is the task currently parked?
+    let is_parked = match task_cb.st.read(&*lock) {
+        TaskSt::Dormant => return Err(UnparkExactError::BadObjectState),
+        TaskSt::Waiting => wait::with_current_wait_payload(lock.borrow_mut(), task_cb, |payload| {
+            matches!(payload, Some(wait::WaitPayload::Park))
+        }),
+        _ => false,
+    };
+
+    if is_parked {
+        // Unblock the task. We confirmed that the task is in a Waiting state,
+        // so `interrupt_task` should succeed.
+        wait::interrupt_task(lock.borrow_mut(), task_cb, Ok(())).unwrap();
+
+        // The task is now awake, check dispatch
+        unlock_cpu_and_check_preemption(lock);
+
+        Ok(())
+    } else {
+        // Put a park token
+        if task_cb.park_token.replace(&mut *lock, true) {
+            // It already had a park token
+            Err(UnparkExactError::QueueOverflow)
+        } else {
+            Ok(())
+        }
+    }
 }
