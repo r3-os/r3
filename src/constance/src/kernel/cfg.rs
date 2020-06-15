@@ -77,21 +77,15 @@ pub use self::{event_group::*, hunk::*, task::*};
 /// Most kernel objects can be created in this way.
 ///
 ///  - [`Task`] with options defined in [`CfgTaskBuilder`]
+///  - [`Hunk`] with options defined in [`CfgHunkBuilder`]
 ///  - [`EventGroup`] with options defined in [`CfgEventGroupBuilder`]
 ///
 /// [`Task`]: crate::kernel::Task
 /// [`CfgTaskBuilder`]: crate::kernel::CfgTaskBuilder
+/// [`Hunk`]: crate::kernel::Hunk
+/// [`CfgHunkBuilder`]: crate::kernel::CfgHunkBuilder
 /// [`EventGroup`]: crate::kernel::EventGroup
 /// [`CfgEventGroupBuilder`]: crate::kernel::CfgEventGroupBuilder
-///
-/// ## `new_hunk!(T)`
-///
-/// Defines a new hunk. `T` must implement [`Init`](crate::utils::Init).
-///
-/// ## `new_hunk!([T], zeroed = true, len = LEN, align = ALIGN)`
-///
-/// Defines a new zero-initialized hunk of an array of the specified length and
-/// alignment.
 ///
 /// # Limitations
 ///
@@ -275,21 +269,6 @@ macro_rules! configure {
                         $dollar(. $argname( $dollar($arg)? ))*
                         .finish(cfg)
                 }};
-            }
-
-            // TODO: Remove `new_hunk`
-            macro_rules! new_hunk {
-                ([u8] $dollar(, zeroed = true)?, len = $len:expr) => {
-                    build! { $crate::kernel::Hunk::<_, [u8]>,
-                        zeroed, len = $len }
-                };
-                ([$ty:ty], zeroed = true, len = $len:expr, align = $align:expr) => {
-                    build! { $crate::kernel::Hunk::<_, [$ty]>,
-                        zeroed, len = $len, align = $align }
-                };
-                ($ty:ty) => {
-                    build! { $crate::kernel::Hunk::<_, $ty> }
-                };
             }
 
             $($tt)*

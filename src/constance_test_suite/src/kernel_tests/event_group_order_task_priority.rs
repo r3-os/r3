@@ -32,7 +32,7 @@ impl<System: Kernel> App<System> {
             let task4 = build! { Task<_>, start = task4_body::<System, D>, priority = 2 };
 
             let eg = build! { EventGroup<_>, queue_order = QueueOrder::TaskPriority };
-            let seq = new_hunk! { SeqTracker };
+            let seq = build! { Hunk<_, SeqTracker> };
 
             App { eg, task1, task2, task3, task4, seq }
         }

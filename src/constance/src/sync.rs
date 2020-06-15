@@ -23,7 +23,7 @@ impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
         /// use it.
         pub const fn new(_: &mut CfgBuilder<System>) -> Self {
             Self {
-                hunk: new_hunk!(UnsafeCell<T>),
+                hunk: build! { Hunk<_, UnsafeCell<T>> },
                 _phantom: PhantomData,
             }
         }

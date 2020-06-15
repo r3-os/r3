@@ -18,7 +18,7 @@ impl<System: Kernel> App<System> {
             build! { Task<_>, start = task1_body::<System, D>, priority = 2, active = true };
             let task2 = build! { Task<_>, start = task2_body::<System, D>, priority = 2 };
 
-            let seq = new_hunk! { SeqTracker };
+            let seq = build! { Hunk<_, SeqTracker> };
 
             App { task2, seq }
         }

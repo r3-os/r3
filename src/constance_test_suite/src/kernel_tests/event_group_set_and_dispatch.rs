@@ -21,7 +21,7 @@ impl<System: Kernel> App<System> {
             build! { Task<_>, start = task4_body::<System, D>, priority = 1, active = true };
 
             let eg = build! { EventGroup<_> };
-            let seq = new_hunk! { SeqTracker };
+            let seq = build! { Hunk<_, SeqTracker> };
 
             App { eg, seq }
         }

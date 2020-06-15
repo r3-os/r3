@@ -22,7 +22,7 @@ impl<System: Kernel> App<System> {
             let task3 = build! { Task<_>, start = task2_body::<System, D>, priority = 2, param = 3 };
             let task4 = build! { Task<_>, start = task2_body::<System, D>, priority = 2, param = 4 };
 
-            let seq = new_hunk! { SeqTracker };
+            let seq = build! { Hunk<_, SeqTracker> };
 
             App { task2, task3, task4, seq }
         }
