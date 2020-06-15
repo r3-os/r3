@@ -4,7 +4,7 @@ use num_traits::ToPrimitive;
 
 use super::{
     hunk::Hunk, utils, wait, ActivateTaskError, BadIdError, ExitTaskError, GetCurrentTaskError, Id,
-    InterruptTaskError, Kernel, KernelCfg1, Port, SleepError,
+    InterruptTaskError, Kernel, KernelCfg1, ParkError, Port, UnparkError, UnparkExactError,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -116,6 +116,41 @@ impl<System: Kernel> Task<System> {
             unlock_cpu_and_check_preemption(lock);
         }
         Ok(())
+    }
+
+    /// Make the task's token available, unblocking [`Kernel::park`] now or in
+    /// the future.
+    ///
+    /// If the token is already available, this method will return without doing
+    /// anything. Use [`Task::unpark_exact`] if you need to detect this
+    /// condition.
+    ///
+    /// If the task is currently being blocked by `Kernel::park`, the token will
+    /// be immediately consumed. Otherwise, it will be consumed on a next call
+    /// to `Kernel::park`.
+    pub fn unpark(self) -> Result<(), UnparkError> {
+        match self.unpark_exact() {
+            Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
+            Err(UnparkExactError::BadCtx) => Err(UnparkError::BadCtx),
+            Err(UnparkExactError::BadId) => Err(UnparkError::BadId),
+            Err(UnparkExactError::BadObjectState) => Err(UnparkError::BadObjectState),
+        }
+    }
+
+    /// Make *exactly* one new token available for the task, unblocking
+    /// [`Kernel::park`] now or in the future.
+    ///
+    /// If the token is already available, this method will return
+    /// [`UnparkExactError::QueueOverflow`]. Thus, this method will succeed
+    /// only if it made *exactly* one token available.
+    ///
+    /// If the task is currently being blocked by `Kernel::park`, the token will
+    /// be immediately consumed. Otherwise, it will be consumed on a next call
+    /// to `Kernel::park`.
+    pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
+        let _lock = utils::lock_cpu::<System>()?;
+        let _task_cb = self.task_cb()?;
+        todo!();
     }
 }
 
@@ -551,9 +586,9 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
     }
 }
 
-/// Implements [`Kernel::sleep_current_task`].
-pub(super) fn sleep_current_task<System: Kernel>() -> Result<(), SleepError> {
-    let lock = utils::lock_cpu::<System>()?;
+/// Implements [`Kernel::park`].
+pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
+    let _lock = utils::lock_cpu::<System>()?;
     // TODO: deny interrupt context
     todo!()
 }

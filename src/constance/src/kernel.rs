@@ -37,13 +37,14 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     ///
     unsafe fn exit_task() -> Result<!, ExitTaskError>;
 
-    /// Put the current task into a Waiting state.
+    /// Put the current task into a Waiting state until the task's token is made
+    /// available by [`Task::unpark`]. The token is initially absent when the
+    /// task is activated.
     ///
-    /// This is a wait operation, so it can be interrupted by
-    /// [`Task::interrupt`].
-    fn sleep() -> Result<(), SleepError>;
+    /// The token will be consumed when this method returns successfully.
+    fn park() -> Result<(), ParkError>;
 
-    // TODO: `sleep` with timeout
+    // TODO: `park` with timeout
 }
 
 impl<T: Port + KernelCfg2 + 'static> Kernel for T {
@@ -52,8 +53,8 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
         unsafe { exit_current_task::<Self>() }
     }
 
-    fn sleep() -> Result<(), SleepError> {
-        task::sleep_current_task::<Self>()
+    fn park() -> Result<(), ParkError> {
+        task::park_current_task::<Self>()
     }
 }
 

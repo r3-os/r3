@@ -188,12 +188,42 @@ define_error! {
 }
 
 define_error! {
-    /// Error type for [`Kernel::sleep`].
+    /// Error type for [`Kernel::park`].
     ///
-    /// [`Kernel::sleep`]: super::Kernel::sleep
-    pub enum SleepError: BadCtxError, WaitError {
+    /// [`Kernel::park`]: super::Kernel::park
+    pub enum ParkError: BadCtxError, WaitError {
         BadCtx,
         Interrupted,
+    }
+}
+
+define_error! {
+    /// Error type for [`Task::unpark`].
+    ///
+    /// [`Task::unpark`]: super::Task::unpark
+    pub enum UnparkError: BadCtxError, BadIdError {
+        /// CPU Lock is active.
+        BadCtx,
+        /// The task ID is out of range.
+        BadId,
+        /// The task is in a Dormant state.
+        BadObjectState,
+    }
+}
+
+define_error! {
+    /// Error type for [`Task::unpark_exact`].
+    ///
+    /// [`Task::unpark_exact`]: super::Task::unpark_exact
+    pub enum UnparkExactError: BadCtxError, BadIdError {
+        /// CPU Lock is active.
+        BadCtx,
+        /// The task ID is out of range.
+        BadId,
+        /// The task already has a token.
+        QueueOverflow,
+        /// The task is in a Dormant state.
+        BadObjectState,
     }
 }
 
