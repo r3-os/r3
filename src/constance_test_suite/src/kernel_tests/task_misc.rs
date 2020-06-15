@@ -60,6 +60,31 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
         Err(constance::kernel::ActivateTaskError::QueueOverflow)
     );
 
+    // The task is dormant
+    assert_eq!(
+        app.task2.interrupt(),
+        Err(constance::kernel::InterruptTaskError::BadObjectState)
+    );
+    assert_eq!(
+        app.task2.cancel_interrupt(),
+        Err(constance::kernel::CancelInterruptTaskError::BadObjectState)
+    );
+
+    // Enqueue an interrupt request
+    app.task1.interrupt().unwrap();
+
+    // An interrupt request is already enqueued
+    assert_eq!(
+        app.task1.interrupt(),
+        Err(constance::kernel::InterruptTaskError::QueueOverflow)
+    );
+
+    // Cancel an interrupt request
+    assert_eq!(app.task1.cancel_interrupt(), Ok(1));
+
+    // Cancel a non-existent interrupt request
+    assert_eq!(app.task1.cancel_interrupt(), Ok(0));
+
     // Current task
     assert_eq!(Task::current().unwrap(), Some(app.task1));
 

@@ -102,6 +102,7 @@ pub mod kernel_tests {
     define_kernel_tests! {
         [$]
         (mod basic {}, "basic"),
+        (mod event_group_interrupt {}, "event_group_interrupt"),
         (mod event_group_misc {}, "event_group_misc"),
         (mod event_group_order_fifo {}, "event_group_order_fifo"),
         (mod event_group_order_task_priority {}, "event_group_order_task_priority"),

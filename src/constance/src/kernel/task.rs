@@ -115,16 +115,23 @@ impl<System: Kernel> Task<System> {
     /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
     /// [`InterruptTaskError::QueueOverflow`]: crate::kernel::InterruptTaskError::QueueOverflow
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        let _task_cb = self.task_cb()?;
-        todo!()
+        let mut lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+        if wait::interrupt_task(lock.borrow_mut(), task_cb)? {
+            // The task is now awake, check dispatch
+            unlock_cpu_and_check_preemption(lock);
+        }
+        Ok(())
     }
 
     /// Cancel any pending interrupt request enqueued by [`Task::interrupt`].
-    pub fn cancel_interrupt(self) -> Result<(), CancelInterruptTaskError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        let _task_cb = self.task_cb()?;
-        todo!()
+    ///
+    /// On a successful call, the method returns the number of pending interrupt
+    /// requests before cancellation, which can be `0` or `1`.
+    pub fn cancel_interrupt(self) -> Result<usize, CancelInterruptTaskError> {
+        let mut lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+        wait::cancel_interrupt_task(lock.borrow_mut(), task_cb)
     }
 }
 

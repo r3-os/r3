@@ -2,9 +2,9 @@ use core::{fmt, ops, ptr::NonNull};
 
 use super::{
     event_group, task,
-    task::TaskCb,
+    task::{TaskCb, TaskSt},
     utils::{CpuLockCell, CpuLockGuardBorrowMut},
-    Kernel, Port, WaitError,
+    CancelInterruptTaskError, InterruptTaskError, Kernel, Port, WaitError,
 };
 
 use crate::utils::{
@@ -155,15 +155,25 @@ pub enum QueueOrder {
 /// The wait state of a task.
 pub(crate) struct TaskWait<System: Port> {
     /// The wait object describing the ongoing Waiting state of the task. Should
-    /// be `None` if the task is not in a Waiting state.
+    /// be `None` iff the task is not in a Waiting state.
     ///
     /// The pointee must be valid.
     current_wait: CpuLockCell<System, Option<WaitRef<System>>>,
+
+    /// The result of the last wait operation. Set by a wake-upper. Returned by
+    /// [`WaitQueue::wait`].
+    wait_result: CpuLockCell<System, Result<(), WaitError>>,
+
+    /// A flag indicating whether there's a pending interrupt request enqueued
+    /// by [`Task::interrupt`].
+    interrupt_pending: CpuLockCell<System, bool>,
 }
 
 impl<System: Port> Init for TaskWait<System> {
     const INIT: Self = Self {
         current_wait: Init::INIT,
+        wait_result: CpuLockCell::new(Ok(())),
+        interrupt_pending: Init::INIT,
     };
 }
 
@@ -218,6 +228,11 @@ impl<System: Kernel> WaitQueue<System> {
         ));
         debug_assert!(core::ptr::eq(wait.wait_queue, self));
 
+        // Check for a pending interrupt request
+        if task.wait.interrupt_pending.replace(&mut *lock, false) {
+            return Err(WaitError::Interrupted);
+        }
+
         // Insert `wait_ref` into `self.waits`
         // Safety: All elements of `self.waits` are extant.
         let mut accessor = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) };
@@ -259,7 +274,8 @@ impl<System: Kernel> WaitQueue<System> {
         assert!(wait.link.read(&*lock).is_none());
         assert!(task.wait.current_wait.get(&*lock).is_none());
 
-        Ok(())
+        // Return the wait result (`Ok(())` or `Err(Interrupted)`)
+        task.wait.wait_result.get(&*lock)
     }
 
     /// Wake up up to one waiting task. Returns `true` if it has successfully
@@ -284,7 +300,7 @@ impl<System: Kernel> WaitQueue<System> {
 
         assert!(core::ptr::eq(wait.wait_queue, self));
 
-        complete_wait(lock.borrow_mut(), wait);
+        complete_wait(lock.borrow_mut(), wait, Ok(()));
 
         true
     }
@@ -336,7 +352,7 @@ impl<System: Kernel> WaitQueue<System> {
             // Wake up the task
             // Safety: All elements of `self.waits` are extant.
             unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }.remove(wait_ref);
-            complete_wait(lock.borrow_mut(), wait);
+            complete_wait(lock.borrow_mut(), wait, Ok(()));
         }
     }
 }
@@ -350,7 +366,11 @@ impl<System: Kernel> WaitQueue<System> {
 ///
 /// This method may make a task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` as needed.
-fn complete_wait<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>, wait: &Wait<System>) {
+fn complete_wait<System: Kernel>(
+    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    wait: &Wait<System>,
+    wait_result: Result<(), WaitError>,
+) {
     let task_cb = wait.task;
 
     // Clear `TaskWait::current_wait`
@@ -360,6 +380,9 @@ fn complete_wait<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>, wa
     );
     task_cb.wait.current_wait.replace(&mut *lock, None);
 
+    // Set a wait result
+    let _ = task_cb.wait.wait_result.replace(&mut *lock, wait_result);
+
     assert_eq!(*task_cb.st.read(&*lock), task::TaskSt::Waiting);
 
     // Make the task Ready
@@ -368,4 +391,61 @@ fn complete_wait<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>, wa
     // and ready to resume from the point where it was previously interrupted.
     // A proper clean up for exiting the Waiting state is already done as well.
     unsafe { task::make_ready(lock, task_cb) };
+}
+
+/// Implements `Task::interrupt`.
+///
+/// Returns `Ok(true)` if the task was woken up.
+///
+/// This method may make the task Ready, but doesn't yield the processor.
+/// Call `unlock_cpu_and_check_preemption` as needed.
+pub(super) fn interrupt_task<System: Kernel>(
+    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    task_cb: &'static TaskCb<System>,
+) -> Result<bool, InterruptTaskError> {
+    match *task_cb.st.read(&*lock) {
+        TaskSt::Dormant => Err(InterruptTaskError::BadObjectState),
+        TaskSt::Waiting => {
+            // Interrupt the ongoing wait operation.
+            let wait_ref = task_cb.wait.current_wait.get(&*lock);
+
+            // The task is in a Waiting state, so `wait_ref` must be `Some(_)`
+            let wait_ref = wait_ref.unwrap();
+
+            // Safety: ... and `wait_ref` must point to an existing `Wait`
+            let wait = unsafe { wait_ref.0.as_ref() };
+
+            // Remove `wait` from the wait queue it belongs to
+            let wait_queue = wait.wait_queue;
+            unsafe { wait_queue_accessor!(&wait_queue.waits, lock.borrow_mut()) }.remove(wait_ref);
+
+            // Wake up the task
+            complete_wait(lock.borrow_mut(), wait, Err(WaitError::Interrupted));
+
+            Ok(true)
+        }
+        _ => {
+            // Enqueue an interrupt request
+            if task_cb.wait.interrupt_pending.replace(&mut *lock, true) {
+                Err(InterruptTaskError::QueueOverflow)
+            } else {
+                Ok(false)
+            }
+        }
+    }
+}
+
+/// Implements `Task::cancel_interrupt`.
+pub(super) fn cancel_interrupt_task<System: Kernel>(
+    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    task_cb: &'static TaskCb<System>,
+) -> Result<usize, CancelInterruptTaskError> {
+    match *task_cb.st.read(&*lock) {
+        TaskSt::Dormant => Err(CancelInterruptTaskError::BadObjectState),
+        _ => {
+            // Clear an interrupt request
+            let prev = task_cb.wait.interrupt_pending.replace(&mut *lock, false);
+            Ok(prev as usize)
+        }
+    }
 }
