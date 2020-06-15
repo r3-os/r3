@@ -79,14 +79,14 @@ impl<System> EventGroup<System> {
     pub const unsafe fn from_id(id: Id) -> Self {
         Self(id, PhantomData)
     }
-}
 
-impl<System: Kernel> EventGroup<System> {
     /// Get the raw `Id` value representing this event group.
     pub const fn id(self) -> Id {
         self.0
     }
+}
 
+impl<System: Kernel> EventGroup<System> {
     fn event_group_cb(self) -> Result<&'static EventGroupCb<System>, BadIdError> {
         System::get_event_group_cb(self.0.get() - 1).ok_or(BadIdError::BadId)
     }

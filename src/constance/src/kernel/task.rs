@@ -62,14 +62,14 @@ impl<System> Task<System> {
     pub const unsafe fn from_id(id: Id) -> Self {
         Self(id, PhantomData)
     }
-}
 
-impl<System: Kernel> Task<System> {
     /// Get the raw `Id` value representing this task.
     pub const fn id(self) -> Id {
         self.0
     }
+}
 
+impl<System: Kernel> Task<System> {
     /// Get the current task.
     ///
     /// In a task context, this method returns the currently running task. In an
