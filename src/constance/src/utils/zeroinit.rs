@@ -15,6 +15,8 @@ unsafe impl<T> ZeroInit for atomic::AtomicPtr<T> {}
 unsafe impl<T: ZeroInit> ZeroInit for UnsafeCell<T> {}
 unsafe impl<T: ZeroInit> ZeroInit for RawCell<T> {}
 
+unsafe impl<T: ZeroInit> ZeroInit for [T] {}
+
 unsafe impl<T: ?Sized> ZeroInit for *const T {}
 unsafe impl<T: ?Sized> ZeroInit for *mut T {}
 unsafe impl<T: ?Sized> ZeroInit for Option<&'_ T> {}

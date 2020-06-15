@@ -1,12 +1,7 @@
 use core::{marker::PhantomData, num::NonZeroUsize};
 
 use crate::{
-    kernel::{
-        cfg::{cfg_new_hunk_zero_array, CfgBuilder},
-        task,
-        utils::CpuLockCell,
-        Port,
-    },
+    kernel::{cfg::CfgBuilder, hunk, task, utils::CpuLockCell, Port},
     utils::Init,
 };
 
@@ -116,7 +111,11 @@ impl<System: Port> CfgTaskBuilder<System> {
         };
         let stack = match stack {
             TaskStack::Auto(size) => {
-                let hunk = cfg_new_hunk_zero_array(cfg, size, System::STACK_ALIGN);
+                let hunk = hunk::Hunk::<_, [_]>::build()
+                    .len(size)
+                    .align(System::STACK_ALIGN)
+                    .zeroed()
+                    .finish(cfg);
 
                 // Safety: We just created a hunk just for this task, and we
                 // don't use this hunk for other purposes.

@@ -277,14 +277,19 @@ macro_rules! configure {
                 }};
             }
 
+            // TODO: Remove `new_hunk`
             macro_rules! new_hunk {
                 ([u8] $dollar(, zeroed = true)?, len = $len:expr) => {
-                    new_hunk!([u8], zeroed = true, len = $len, align = 1)
+                    build! { $crate::kernel::Hunk::<_, [u8]>,
+                        zeroed, len = $len }
                 };
                 ([$ty:ty], zeroed = true, len = $len:expr, align = $align:expr) => {
-                    call!($crate::kernel::cfg_new_hunk_zero_array, $len, $align)
+                    build! { $crate::kernel::Hunk::<_, [$ty]>,
+                        zeroed, len = $len, align = $align }
                 };
-                ($ty:ty) => {call!($crate::kernel::cfg_new_hunk::<_, $ty>)};
+                ($ty:ty) => {
+                    build! { $crate::kernel::Hunk::<_, $ty> }
+                };
             }
 
             $($tt)*
