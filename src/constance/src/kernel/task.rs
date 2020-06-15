@@ -112,10 +112,11 @@ impl<System: Kernel> Task<System> {
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
-        if wait::interrupt_task(lock.borrow_mut(), task_cb, Err(WaitError::Interrupted))? {
-            // The task is now awake, check dispatch
-            unlock_cpu_and_check_preemption(lock);
-        }
+        wait::interrupt_task(lock.borrow_mut(), task_cb, Err(WaitError::Interrupted))?;
+
+        // The task is now awake, check dispatch
+        unlock_cpu_and_check_preemption(lock);
+
         Ok(())
     }
 

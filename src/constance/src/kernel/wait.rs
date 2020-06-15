@@ -460,8 +460,6 @@ fn complete_wait<System: Kernel>(
 
 /// Interrupt any ongoing wait operations on the task.
 ///
-/// Returns `Ok(true)` if the task was woken up.
-///
 /// This method may make the task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` as needed.
 ///
@@ -470,7 +468,7 @@ pub(super) fn interrupt_task<System: Kernel>(
     mut lock: CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
     wait_result: Result<(), WaitError>,
-) -> Result<bool, BadObjectStateError> {
+) -> Result<(), BadObjectStateError> {
     match *task_cb.st.read(&*lock) {
         TaskSt::Waiting => {
             // Interrupt the ongoing wait operation.
@@ -491,7 +489,7 @@ pub(super) fn interrupt_task<System: Kernel>(
             // Wake up the task
             complete_wait(lock.borrow_mut(), wait, wait_result);
 
-            Ok(true)
+            Ok(())
         }
         _ => Err(BadObjectStateError::BadObjectState),
     }
