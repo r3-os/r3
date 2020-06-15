@@ -90,7 +90,7 @@ pub enum ResultCode {
     /// The wait operation was interrupted by [`Task::interrupt`].
     ///
     /// [`Task::interrupt`]: crate::kernel::Task::interrupt
-    Interrupted = -54,
+    Interrupted = -49,
 }
 
 impl ResultCode {
