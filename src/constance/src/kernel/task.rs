@@ -4,7 +4,7 @@ use num_traits::ToPrimitive;
 
 use super::{
     hunk::Hunk, utils, wait, ActivateTaskError, BadIdError, CancelInterruptTaskError,
-    ExitTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, Port,
+    ExitTaskError, GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, Port,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -55,6 +55,9 @@ impl<System> Task<System> {
     /// manipulated except by its creator. This is usually prevented by making
     /// `Task` an opaque handle, but this safeguard can be circumvented by
     /// this method.
+    ///
+    /// Constructing a `Task` for a current task is allowed. This can be safely
+    /// done by [`Task::current`].
     pub const unsafe fn from_id(id: Id) -> Self {
         Self(id, PhantomData)
     }
@@ -64,6 +67,28 @@ impl<System: Kernel> Task<System> {
     /// Get the raw `Id` value representing this task.
     pub const fn id(self) -> Id {
         self.0
+    }
+
+    /// Get the current task.
+    ///
+    /// In a task context, this method returns the currently running task. In an
+    /// interrupt handler, this method returns the interrupted task (if any).
+    pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
+        let _lock = utils::lock_cpu::<System>()?;
+        let task_cb = if let Some(cb) = System::state().running_task() {
+            cb
+        } else {
+            return Ok(None);
+        };
+
+        // Calculate an `Id` from the task CB pointer
+        let offset =
+            (task_cb as *const TaskCb<_>).wrapping_offset_from(System::task_cb_pool().as_ptr());
+
+        // Safety: Constructing a `Task` for a current task is allowed
+        let task = unsafe { Self::from_id(Id::new(offset as usize + 1).unwrap()) };
+
+        Ok(Some(task))
     }
 
     fn task_cb(self) -> Result<&'static TaskCb<System>, BadIdError> {

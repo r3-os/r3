@@ -7,6 +7,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
+#![feature(ptr_wrapping_offset_from)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
 #![cfg_attr(test, feature(is_sorted))]

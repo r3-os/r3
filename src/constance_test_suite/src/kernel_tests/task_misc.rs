@@ -60,6 +60,9 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
         Err(constance::kernel::ActivateTaskError::QueueOverflow)
     );
 
+    // Current task
+    assert_eq!(Task::current().unwrap(), Some(app.task1));
+
     D::success();
 }
 

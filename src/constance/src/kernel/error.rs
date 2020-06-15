@@ -146,6 +146,16 @@ define_error! {
 }
 
 define_error! {
+    /// Error type for [`Task::current`].
+    ///
+    /// [`Task::current`]: super::Task::current
+    pub enum GetCurrentTaskError: BadCtxError {
+        /// CPU Lock is active.
+        BadCtx,
+    }
+}
+
+define_error! {
     /// Error type for [`Task::interrupt`].
     ///
     /// [`Task::interrupt`]: super::Task::interrupt
