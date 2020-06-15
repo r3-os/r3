@@ -204,6 +204,16 @@ define_error! {
 }
 
 define_error! {
+    /// Error type for [`Kernel::sleep`].
+    ///
+    /// [`Kernel::sleep`]: super::Kernel::sleep
+    pub enum SleepError: BadCtxError, WaitError {
+        BadCtx,
+        Interrupted,
+    }
+}
+
+define_error! {
     /// Error type for [`EventGroup::set`] and [`EventGroup::clear`].
     ///
     /// [`EventGroup::set`]: super::EventGroup::set

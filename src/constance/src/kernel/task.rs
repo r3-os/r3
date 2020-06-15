@@ -5,6 +5,7 @@ use num_traits::ToPrimitive;
 use super::{
     hunk::Hunk, utils, wait, ActivateTaskError, BadIdError, CancelInterruptTaskError,
     ExitTaskError, GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, Port,
+    SleepError,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -557,4 +558,11 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
             break;
         }
     }
+}
+
+/// Implements [`Kernel::sleep_current_task`].
+pub(super) fn sleep_current_task<System: Kernel>() -> Result<(), SleepError> {
+    let lock = utils::lock_cpu::<System>()?;
+    // TODO: deny interrupt context
+    todo!()
 }

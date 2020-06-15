@@ -36,12 +36,24 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// doesn't lead to an undefined behavior.
     ///
     unsafe fn exit_task() -> Result<!, ExitTaskError>;
+
+    /// Put the current task into a Waiting state.
+    ///
+    /// This is a wait operation, so it can be interrupted by
+    /// [`Task::interrupt`].
+    fn sleep() -> Result<(), SleepError>;
+
+    // TODO: `sleep` with timeout
 }
 
 impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
         // Safety: Just forwarding the function call
         unsafe { exit_current_task::<Self>() }
+    }
+
+    fn sleep() -> Result<(), SleepError> {
+        task::sleep_current_task::<Self>()
     }
 }
 
