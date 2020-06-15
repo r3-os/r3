@@ -1,4 +1,4 @@
-use core::{cell::UnsafeCell, sync::atomic};
+use core::{cell::UnsafeCell, mem, sync::atomic};
 
 use super::RawCell;
 
@@ -38,6 +38,10 @@ impl<T: Init> Init for RawCell<T> {
 
 impl<T: Init, I: Init> Init for tokenlock::TokenLock<T, I> {
     const INIT: Self = Self::new(I::INIT, T::INIT);
+}
+
+impl<T> Init for mem::MaybeUninit<T> {
+    const INIT: Self = mem::MaybeUninit::uninit();
 }
 
 macro_rules! impl_init {

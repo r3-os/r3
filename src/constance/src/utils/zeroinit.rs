@@ -1,4 +1,4 @@
-use core::{cell::UnsafeCell, sync::atomic};
+use core::{cell::UnsafeCell, mem, sync::atomic};
 
 use super::RawCell;
 
@@ -14,6 +14,7 @@ unsafe impl<T> ZeroInit for atomic::AtomicPtr<T> {}
 
 unsafe impl<T: ZeroInit> ZeroInit for UnsafeCell<T> {}
 unsafe impl<T: ZeroInit> ZeroInit for RawCell<T> {}
+unsafe impl<T> ZeroInit for mem::MaybeUninit<T> {}
 
 unsafe impl<T: ZeroInit> ZeroInit for [T] {}
 
