@@ -68,7 +68,7 @@ pub use self::{event_group::*, hunk::*, task::*};
 ///
 /// Invokes another configuration function `expr`.
 ///
-/// ## `build!(path, name1 = arg1, name2 = arg2, ...)`
+/// ## `build!(path, name1 = arg1, name2 = arg2, name3, ...)`
 ///
 /// Invokes a builder method `path::build`, calls modifying methods
 /// `name1, name2, ...` on the builder, and then finally calls `finish`, which
@@ -270,9 +270,9 @@ macro_rules! configure {
             }
 
             macro_rules! build {
-                ($path:ty $dollar(, $argname:ident = $arg:expr)* $dollar(,)*) => {{
+                ($path:ty $dollar(, $argname:ident $dollar(= $arg:expr)? )* $dollar(,)*) => {{
                     <$path>::build()
-                        $dollar(. $argname($arg))*
+                        $dollar(. $argname( $dollar($arg)? ))*
                         .finish(cfg)
                 }};
             }
