@@ -4,7 +4,7 @@ use super::{
     event_group, task,
     task::{TaskCb, TaskSt},
     utils::{CpuLockCell, CpuLockGuardBorrowMut},
-    CancelInterruptTaskError, InterruptTaskError, Kernel, Port, WaitError,
+    InterruptTaskError, Kernel, Port, WaitError,
 };
 
 use crate::utils::{
@@ -163,17 +163,12 @@ pub(crate) struct TaskWait<System: Port> {
     /// The result of the last wait operation. Set by a wake-upper. Returned by
     /// [`WaitQueue::wait`].
     wait_result: CpuLockCell<System, Result<(), WaitError>>,
-
-    /// A flag indicating whether there's a pending interrupt request enqueued
-    /// by [`Task::interrupt`].
-    interrupt_pending: CpuLockCell<System, bool>,
 }
 
 impl<System: Port> Init for TaskWait<System> {
     const INIT: Self = Self {
         current_wait: Init::INIT,
         wait_result: CpuLockCell::new(Ok(())),
-        interrupt_pending: Init::INIT,
     };
 }
 
@@ -227,11 +222,6 @@ impl<System: Kernel> WaitQueue<System> {
             System::state().running_task().unwrap()
         ));
         debug_assert!(core::ptr::eq(wait.wait_queue, self));
-
-        // Check for a pending interrupt request
-        if task.wait.interrupt_pending.replace(&mut *lock, false) {
-            return Err(WaitError::Interrupted);
-        }
 
         // Insert `wait_ref` into `self.waits`
         // Safety: All elements of `self.waits` are extant.
@@ -404,7 +394,6 @@ pub(super) fn interrupt_task<System: Kernel>(
     task_cb: &'static TaskCb<System>,
 ) -> Result<bool, InterruptTaskError> {
     match *task_cb.st.read(&*lock) {
-        TaskSt::Dormant => Err(InterruptTaskError::BadObjectState),
         TaskSt::Waiting => {
             // Interrupt the ongoing wait operation.
             let wait_ref = task_cb.wait.current_wait.get(&*lock);
@@ -424,28 +413,6 @@ pub(super) fn interrupt_task<System: Kernel>(
 
             Ok(true)
         }
-        _ => {
-            // Enqueue an interrupt request
-            if task_cb.wait.interrupt_pending.replace(&mut *lock, true) {
-                Err(InterruptTaskError::QueueOverflow)
-            } else {
-                Ok(false)
-            }
-        }
-    }
-}
-
-/// Implements `Task::cancel_interrupt`.
-pub(super) fn cancel_interrupt_task<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
-    task_cb: &'static TaskCb<System>,
-) -> Result<usize, CancelInterruptTaskError> {
-    match *task_cb.st.read(&*lock) {
-        TaskSt::Dormant => Err(CancelInterruptTaskError::BadObjectState),
-        _ => {
-            // Clear an interrupt request
-            let prev = task_cb.wait.interrupt_pending.replace(&mut *lock, false);
-            Ok(prev as usize)
-        }
+        _ => Err(InterruptTaskError::BadObjectState),
     }
 }

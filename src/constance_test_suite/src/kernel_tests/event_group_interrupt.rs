@@ -48,19 +48,5 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         Err(WaitEventGroupError::Interrupted),
     );
 
-    D::app().seq.expect_and_replace(2, 3);
-
-    // Enqueue an interupt request
-    D::app().task1.interrupt().unwrap();
-
-    assert_eq!(
-        D::app().eg.wait(0b1, EventGroupWaitFlags::CLEAR),
-        // this will not block becasue an interrupt request is enqueued
-        Err(WaitEventGroupError::Interrupted),
-    );
-
-    // There are no interrupt requests enqueued at this point
-    assert_eq!(D::app().task1.cancel_interrupt(), Ok(0));
-
     D::success();
 }

@@ -164,23 +164,7 @@ define_error! {
         BadId,
         /// CPU Lock is active.
         BadCtx,
-        /// The task is in a Dormant state.
-        BadObjectState,
-        /// There is already a pending interrupt request.
-        QueueOverflow,
-    }
-}
-
-define_error! {
-    /// Error type for [`Task::cancel_interrupt`].
-    ///
-    /// [`Task::cancel_interrupt`]: super::Task::cancel_interrupt
-    pub enum CancelInterruptTaskError: BadCtxError, BadIdError {
-        /// The task ID is out of range.
-        BadId,
-        /// CPU Lock is active.
-        BadCtx,
-        /// The task is in a Dormant state.
+        /// The task is not in a Waiting state.
         BadObjectState,
     }
 }

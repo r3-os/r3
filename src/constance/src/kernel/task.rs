@@ -3,9 +3,8 @@ use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Order
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, utils, wait, ActivateTaskError, BadIdError, CancelInterruptTaskError,
-    ExitTaskError, GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, Port,
-    SleepError,
+    hunk::Hunk, utils, wait, ActivateTaskError, BadIdError, ExitTaskError, GetCurrentTaskError, Id,
+    InterruptTaskError, Kernel, KernelCfg1, Port, SleepError,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -106,14 +105,9 @@ impl<System: Kernel> Task<System> {
     /// Interrupt any ongoing wait operations undertaken by the task.
     ///
     /// This method interrupt any ongoing system call that is blocking the task.
-    /// The interrupted system call will return [`WaitError::Interrupted`]. If
-    /// there is no such an ongoing system call, this method enqueues the
-    /// interrupt request (if there's already one, this method will fail with
-    /// [`InterruptTaskError::QueueOverflow`]), which will take effect the next
-    /// time when a potentially-blocking system call is called.
+    /// The interrupted system call will return [`WaitError::Interrupted`].
     ///
     /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
-    /// [`InterruptTaskError::QueueOverflow`]: crate::kernel::InterruptTaskError::QueueOverflow
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
@@ -122,16 +116,6 @@ impl<System: Kernel> Task<System> {
             unlock_cpu_and_check_preemption(lock);
         }
         Ok(())
-    }
-
-    /// Cancel any pending interrupt request enqueued by [`Task::interrupt`].
-    ///
-    /// On a successful call, the method returns the number of pending interrupt
-    /// requests before cancellation, which can be `0` or `1`.
-    pub fn cancel_interrupt(self) -> Result<usize, CancelInterruptTaskError> {
-        let mut lock = utils::lock_cpu::<System>()?;
-        let task_cb = self.task_cb()?;
-        wait::cancel_interrupt_task(lock.borrow_mut(), task_cb)
     }
 }
 
