@@ -4,7 +4,7 @@ use super::{
     event_group, task,
     task::{TaskCb, TaskSt},
     utils::{CpuLockCell, CpuLockGuardBorrowMut},
-    InterruptTaskError, Kernel, Port, WaitError,
+    BadObjectStateError, Kernel, Port, WaitError,
 };
 
 use crate::utils::{
@@ -107,7 +107,7 @@ struct Wait<System: Port> {
     link: CpuLockCell<System, Option<intrusive_list::Link<WaitRef<System>>>>,
 
     /// The containing [`WaitQueue`].
-    wait_queue: &'static WaitQueue<System>,
+    wait_queue: Option<&'static WaitQueue<System>>,
 
     payload: WaitPayload<System>,
 }
@@ -195,7 +195,7 @@ impl<System: Kernel> WaitQueue<System> {
         let wait = Wait {
             task,
             link: CpuLockCell::new(None),
-            wait_queue: self,
+            wait_queue: Some(self),
             payload,
         };
 
@@ -221,7 +221,7 @@ impl<System: Kernel> WaitQueue<System> {
             wait.task,
             System::state().running_task().unwrap()
         ));
-        debug_assert!(core::ptr::eq(wait.wait_queue, self));
+        debug_assert!(core::ptr::eq(wait.wait_queue.unwrap(), self));
 
         // Insert `wait_ref` into `self.waits`
         // Safety: All elements of `self.waits` are extant.
@@ -288,7 +288,7 @@ impl<System: Kernel> WaitQueue<System> {
         // in `self.waits` at the beginning of this function call.
         let wait = unsafe { wait_ref.0.as_ref() };
 
-        assert!(core::ptr::eq(wait.wait_queue, self));
+        assert!(core::ptr::eq(wait.wait_queue.unwrap(), self));
 
         complete_wait(lock.borrow_mut(), wait, Ok(()));
 
@@ -332,7 +332,7 @@ impl<System: Kernel> WaitQueue<System> {
             // in `self.waits`.
             let wait = unsafe { wait_ref.0.as_ref() };
 
-            assert!(core::ptr::eq(wait.wait_queue, self));
+            assert!(core::ptr::eq(wait.wait_queue.unwrap(), self));
 
             // Should this task be woken up?
             if !cond(&wait.payload) {
@@ -345,6 +345,81 @@ impl<System: Kernel> WaitQueue<System> {
             complete_wait(lock.borrow_mut(), wait, Ok(()));
         }
     }
+}
+
+/// Call the given closure with a reference to the current wait payload object
+/// of the specified task as the closure's parameter.
+///
+/// The wait object might get deallocated when the task starts running. This
+/// function allows access to the wait object while ensuring the reference to
+/// the wait object doesn't escape from the scope.
+pub(super) fn with_current_wait_payload<System: Kernel, R>(
+    lock: CpuLockGuardBorrowMut<'_, System>,
+    task_cb: &TaskCb<System>,
+    f: impl FnOnce(Option<&WaitPayload<System>>) -> R,
+) -> R {
+    let wait_ref = task_cb.wait.current_wait.get(&*lock);
+
+    // Safety: ... and `wait_ref` must point to an existing `Wait`
+    let wait = wait_ref.map(|r| &unsafe { &*r.0.as_ptr() }.payload);
+
+    f(wait)
+}
+
+/// Insert a wait object pertaining to the currently running task to `self` but
+/// not pertainiing to any wait queue, transitioning the task into a Waiting
+/// state.
+///
+/// The only way to end such a wait operation is to call [`interrupt_task`].
+#[inline]
+pub(super) fn wait_no_queue<System: Kernel>(
+    lock: CpuLockGuardBorrowMut<'_, System>,
+    payload: WaitPayload<System>,
+) -> Result<WaitPayload<System>, WaitError> {
+    let task = System::state().running_task().unwrap();
+    let wait = Wait {
+        task,
+        link: CpuLockCell::new(None),
+        wait_queue: None,
+        payload,
+    };
+
+    wait_no_queue_inner(lock, &wait)?;
+
+    Ok(wait.payload)
+}
+
+/// The core portion of [`wait_no_queue`].
+///
+/// Passing `WaitPayload` by value is expensive, so moving `WaitPayload`
+/// into and out of `Wait` is done in the outer function `Self::wait` with
+/// `#[inline]`.
+fn wait_no_queue_inner<System: Kernel>(
+    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    wait: &Wait<System>,
+) -> Result<(), WaitError> {
+    let task = wait.task;
+    let wait_ref = WaitRef(wait.into());
+
+    debug_assert!(core::ptr::eq(
+        wait.task,
+        System::state().running_task().unwrap()
+    ));
+    debug_assert!(wait.wait_queue.is_none());
+    debug_assert!(wait.link.read(&*lock).is_none());
+
+    // Set `task.current_wait`
+    task.wait.current_wait.replace(&mut *lock, Some(wait_ref));
+
+    // Transition the task into Waiting. This statement will complete when
+    // the task is woken up.
+    task::wait_until_woken_up(lock.borrow_mut());
+
+    // `wait_ref` should have been removed `current_wait` by a wake-upper
+    assert!(task.wait.current_wait.get(&*lock).is_none());
+
+    // Return the wait result (`Ok(())` or `Err(Interrupted)`)
+    task.wait.wait_result.get(&*lock)
 }
 
 /// Deassociate the specified wait object from its waiting task (`wait.task`)
@@ -383,16 +458,19 @@ fn complete_wait<System: Kernel>(
     unsafe { task::make_ready(lock, task_cb) };
 }
 
-/// Implements `Task::interrupt`.
+/// Interrupt any ongoing wait operations on the task.
 ///
 /// Returns `Ok(true)` if the task was woken up.
 ///
 /// This method may make the task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` as needed.
+///
+/// Returns `Err(BadObjectState)` if the task is not in a Waiting state.
 pub(super) fn interrupt_task<System: Kernel>(
     mut lock: CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
-) -> Result<bool, InterruptTaskError> {
+    wait_result: Result<(), WaitError>,
+) -> Result<bool, BadObjectStateError> {
     match *task_cb.st.read(&*lock) {
         TaskSt::Waiting => {
             // Interrupt the ongoing wait operation.
@@ -405,14 +483,16 @@ pub(super) fn interrupt_task<System: Kernel>(
             let wait = unsafe { wait_ref.0.as_ref() };
 
             // Remove `wait` from the wait queue it belongs to
-            let wait_queue = wait.wait_queue;
-            unsafe { wait_queue_accessor!(&wait_queue.waits, lock.borrow_mut()) }.remove(wait_ref);
+            if let Some(wait_queue) = wait.wait_queue {
+                unsafe { wait_queue_accessor!(&wait_queue.waits, lock.borrow_mut()) }
+                    .remove(wait_ref);
+            }
 
             // Wake up the task
-            complete_wait(lock.borrow_mut(), wait, Err(WaitError::Interrupted));
+            complete_wait(lock.borrow_mut(), wait, wait_result);
 
             Ok(true)
         }
-        _ => Err(InterruptTaskError::BadObjectState),
+        _ => Err(BadObjectStateError::BadObjectState),
     }
 }

@@ -124,6 +124,12 @@ define_error! {
 }
 
 define_error! {
+    pub(super) enum BadObjectStateError {
+        BadObjectState,
+    }
+}
+
+define_error! {
     /// Error type for [`Task::activate`].
     ///
     /// [`Task::activate`]: super::Task::activate
@@ -159,7 +165,7 @@ define_error! {
     /// Error type for [`Task::interrupt`].
     ///
     /// [`Task::interrupt`]: super::Task::interrupt
-    pub enum InterruptTaskError: BadCtxError, BadIdError {
+    pub enum InterruptTaskError: BadCtxError, BadIdError, BadObjectStateError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
