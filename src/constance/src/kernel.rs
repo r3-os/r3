@@ -5,14 +5,14 @@ use core::{borrow::BorrowMut, fmt, mem::forget, num::NonZeroUsize, sync::atomic:
 use crate::utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap};
 
 #[macro_use]
-mod cfg;
+pub mod cfg;
 mod error;
 mod event_group;
 mod hunk;
 mod task;
 mod utils;
 mod wait;
-pub use self::{cfg::*, error::*, event_group::*, hunk::*, task::*, wait::*};
+pub use self::{error::*, event_group::*, hunk::*, task::*, wait::*};
 
 /// Numeric value used to identify various kinds of kernel objects.
 pub type Id = NonZeroUsize;

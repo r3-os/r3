@@ -37,7 +37,7 @@ pub use self::{event_group::*, hunk::*, task::*};
 ///
 /// ```
 /// #![feature(const_fn)]
-/// use constance::kernel::{CfgBuilder, EventGroup, Kernel, Task};
+/// use constance::kernel::{cfg::CfgBuilder, EventGroup, Kernel, Task};
 ///
 /// const fn configure_app<System: Kernel>(b: &mut CfgBuilder<System>)
 ///     -> (Task<System>, EventGroup<System>)
@@ -61,8 +61,8 @@ pub use self::{event_group::*, hunk::*, task::*};
 /// Set a global property by calling a method of [`CfgBuilder`] such as
 /// [`num_task_priority_levels`].
 ///
-/// [`CfgBuilder`]: crate::kernel::CfgBuilder
-/// [`num_task_priority_levels`]: crate::kernel::CfgBuilder::num_task_priority_levels
+/// [`CfgBuilder`]: crate::kernel::cfg::CfgBuilder
+/// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
 ///
 /// ## `call!(expr, arg1, arg2, ...)`
 ///
@@ -81,11 +81,11 @@ pub use self::{event_group::*, hunk::*, task::*};
 ///  - [`EventGroup`] with options defined in [`CfgEventGroupBuilder`]
 ///
 /// [`Task`]: crate::kernel::Task
-/// [`CfgTaskBuilder`]: crate::kernel::CfgTaskBuilder
+/// [`CfgTaskBuilder`]: crate::kernel::cfg::CfgTaskBuilder
 /// [`Hunk`]: crate::kernel::Hunk
-/// [`CfgHunkBuilder`]: crate::kernel::CfgHunkBuilder
+/// [`CfgHunkBuilder`]: crate::kernel::cfg::CfgHunkBuilder
 /// [`EventGroup`]: crate::kernel::EventGroup
-/// [`CfgEventGroupBuilder`]: crate::kernel::CfgEventGroupBuilder
+/// [`CfgEventGroupBuilder`]: crate::kernel::cfg::CfgEventGroupBuilder
 ///
 /// # Limitations
 ///
@@ -247,7 +247,7 @@ macro_rules! configure {
         $( #[$meta] )*
         #[allow(unused_macros)]
         $vis const fn $ident<$($gen_param_constr)*>(
-            cfg: &mut $crate::kernel::CfgBuilder<$sys>
+            cfg: &mut $crate::kernel::cfg::CfgBuilder<$sys>
         ) -> $id_map
             $($where_param_clause)*
         {
@@ -286,8 +286,9 @@ macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
             kernel::{
-                CfgBuilder, CfgBuilderInner, EventGroupCb, HunkAttr, HunkInitAttr, KernelCfg1,
-                KernelCfg2, Port, State, TaskAttr, TaskCb,
+                cfg::{CfgBuilder, CfgBuilderInner},
+                EventGroupCb, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port, State,
+                TaskAttr, TaskCb,
             },
             utils::{
                 intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap, Init, RawCell,

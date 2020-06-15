@@ -87,7 +87,7 @@ impl<System: Port> CfgTaskBuilder<System> {
     /// priority values execute first. The value must be in range
     /// `0..`[`num_task_priority_levels`].
     ///
-    /// [`num_task_priority_levels`]: crate::kernel::CfgBuilder::num_task_priority_levels
+    /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
     pub const fn priority(self, priority: usize) -> Self {
         Self {
             priority: Some(priority),
