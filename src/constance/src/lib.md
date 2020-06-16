@@ -105,3 +105,33 @@ Configuration functions can call other configuration functions. This is useful t
 The constructors of kernel objects are configuration functions by themselves, but they are different from normal configuration functions in that they can actually mutate the contents of `CfgBuilder` (which `build!` will use to create kernel structures in the final form), ultimately shaping the outcome of the configuration process. Therefore, they are the smallest building blocks of configuration functions.
 
 It's possible to write a configuration function directly. However, [`configure!`] can make this process easier by providing macros that offer more concise syntaxes for common patterns.
+
+# Interrupt Handling Framework
+
+A port may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it's supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. It's **port-defined** whether a port supports managing or *not* managing interrupt lines and interrupt handlers.
+
+The benefits of providing a standardized interface for interrupts include: (1) increased portability of applications and libraries across target platforms, (2) well-defined semantics of system calls inside an interrupt handler, and (3) decoupling hardware driver components on a system with a non-vectorized interrupt controller or multiplexed interrupt lines. The downsides include: (1) obscuring non-standard hardware features, (2) interference with other ways of managing interrupts (e.g., board support packages, IDEs), (3) additional layer of abstraction that makes the system mechanism unclear.
+
+> **Port Implementation Note:** System calls can provide well-defined semantics inside an interrupt handler only if the port adheres to this interrupt handling framework. If a port developer chooses not to follow this, they are responsible to properly explain the interaction between interrupts and the kernel.
+
+An interrupt request is delivered to a processor by sending a hardware signal to an interrupt controller through **an interrupt line**. It's possible that more than one interrupt sources are connected to a single interrupt line. Upon receiving an interrupt request, the interrupt controller translates the interrupt line to **an interrupt number** and transfers the control to **the interrupt handler** associated with that interrupt number.
+
+Each interrupt line has configurable attributes such as **an interrupt priority**. The interpretation of interrupt priority values is up to a port, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time, or allowing a higher-priority interrupt handler to preempt another.
+
+The kernel occasionally disables interrupts by activating CPU Lock. The additional interrupt latency introduced by this can pose a problem for time-sensitive applications. To resolve this problem, a port may implement CPU Lock in a way that doesn't disable interrupt lines with a certain priority value and higher. The interrupt handlers for such interrupt lines are said to be **unmanaged**. The behavior of system calls inside unmanaged interrupt handlers is undefined. Interrupt handlers that aren't unmanaged are said to be **managed**.
+
+An application can register one or more **interrupt service routines** to an interrupt number. They execute in a serial fashion inside an interrupt handler for the interrupt number. The static configuration system automatically combine multiple interrupt service routines into one (thus taking care of the “execute in a serial fashion” part). It's up to a port to generate an interrupt handler that executes in an appropriate situation, takes care of low-level tasks such as saving and restoring registers, and calls the (combined) interrupt service routine.
+
+Interrupt service routines execute with CPU Lock inactive and may return with CPU Lock either active or inactive. Some system calls are not allowed in there and will return [`BadCtx`].
+
+> **Relation to Other Specifications:** The interrupt handling framework was largely inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html).
+
+[`BadCtx`]: crate::kernel::ResultCode::BadCtx
+
+<style type="text/css">
+blockquote { /* poor man's admonition */
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em !important;
+    color: inherit !important;
+}
+</style>
