@@ -313,7 +313,7 @@ macro_rules! build {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut cfg = unsafe { CfgBuilder::new() };
             $configure(&mut cfg);
-            cfg.validate();
+            cfg.finalize();
             cfg.into_inner()
         };
 
@@ -490,17 +490,20 @@ impl<System> CfgBuilder<System> {
         self.inner.num_task_priority_levels = new_value;
     }
 
-    /// Validate the configuration.
+    /// Finalize the configuration.
     #[doc(hidden)]
-    pub const fn validate(&self)
+    pub const fn finalize(&mut self)
     where
         System: Port,
     {
-        let inner = &self.inner;
+        let inner = &mut self.inner;
 
         interrupt::panic_if_unmanaged_safety_is_violated::<System>(
             &inner.interrupt_lines,
             &inner.interrupt_handlers,
         );
+
+        // Sort handlers by (interrupt number, priority)
+        interrupt::sort_handlers(&mut inner.interrupt_handlers);
     }
 }

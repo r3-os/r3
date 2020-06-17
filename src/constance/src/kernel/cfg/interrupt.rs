@@ -192,6 +192,13 @@ impl<System: Port> CfgInterruptHandlerBuilder<System> {
     }
 
     /// Specify the priority. Defaults to `0` when unspecified.
+    ///
+    /// When multiple handlers are registered to a single interrupt line, those
+    /// with smaller priority values will execute earlier.
+    ///
+    /// This should not be confused with [an interrupt line's priority].
+    ///
+    /// [an interrupt line's priority]: CfgInterruptLineBuilder::priority
     pub const fn priority(self, priority: i32) -> Self {
         Self { priority, ..self }
     }
@@ -286,4 +293,21 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: Port>(
             );
         }
     }
+}
+
+/// Sort interrupt handlers by (interrupt number, priority).
+pub(super) const fn sort_handlers(
+    interrupt_handlers: &mut ComptimeVec<CfgBuilderInterruptHandler>,
+) {
+    sort_by!(
+        interrupt_handlers.len(),
+        |i| interrupt_handlers.get_mut(i),
+        |x, y| x.priority < y.priority
+    );
+
+    sort_by!(
+        interrupt_handlers.len(),
+        |i| interrupt_handlers.get_mut(i),
+        |x, y| x.line < y.line
+    );
 }
