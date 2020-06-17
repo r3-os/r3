@@ -1,6 +1,9 @@
 use core::marker::PhantomData;
 
-use crate::kernel::{cfg::CfgBuilder, interrupt, Port};
+use crate::{
+    kernel::{cfg::CfgBuilder, interrupt, Port},
+    utils::ComptimeVec,
+};
 
 impl<System: Port> interrupt::InterruptLine<System> {
     /// Construct a `CfgInterruptLineBuilder` to configure an interrupt line in
@@ -115,6 +118,19 @@ pub struct CfgBuilderInterruptLine {
     num: interrupt::InterruptNum,
     priority: Option<interrupt::InterruptPriority>,
     enabled: bool,
+}
+
+impl CfgBuilderInterruptLine {
+    /// Return `true` if the interrupt line is configured with a priority value
+    /// that falls within a managed range.
+    pub(super) const fn is_initially_managed<System: Port>(&self) -> bool {
+        if let Some(priority) = self.priority {
+            let range = System::MANAGED_INTERRUPT_PRIORITY_RANGE;
+            priority >= range.start && priority < range.end
+        } else {
+            false
+        }
+    }
 }
 
 impl<System: Port> interrupt::InterruptServiceRoutine<System> {
@@ -239,4 +255,36 @@ pub struct CfgBuilderInterruptServiceRoutine {
     param: usize,
     priority: i32,
     unmanaged: bool,
+}
+
+/// Panic if a non-unmanaged-safe interrupt service routine is attached to an
+/// interrupt line that is not known to be managed.
+pub(super) const fn panic_if_unmanaged_safety_is_violated<System: Port>(
+    interrupt_lines: &ComptimeVec<CfgBuilderInterruptLine>,
+    isrs: &ComptimeVec<CfgBuilderInterruptServiceRoutine>,
+) {
+    // FIXME: Work-around for `for` being unsupported in `const fn`
+    let mut i = 0;
+    while i < isrs.len() {
+        let isr = isrs.get(i);
+        i += 1;
+        if isr.unmanaged {
+            continue;
+        }
+
+        // FIXME: Work-around for `Option::is_none` not being `const fn`
+        let line_unmanaged = matches!(
+            vec_position!(interrupt_lines, |line| line.num == isr.line
+                && line.is_initially_managed::<System>()),
+            None
+        );
+
+        if line_unmanaged {
+            panic!(
+                "An interrupt service routine that is not marked with `unmanaged` \
+                is attached to an interrupt line whose priority value is \
+                unspecified or doesn't fall within a managed range."
+            );
+        }
+    }
 }

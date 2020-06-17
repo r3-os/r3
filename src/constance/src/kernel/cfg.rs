@@ -1,7 +1,10 @@
 //! Static configuration mechanism for the kernel
 use core::marker::PhantomData;
 
-use crate::utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN};
+use crate::{
+    kernel::Port,
+    utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN},
+};
 
 mod event_group;
 mod hunk;
@@ -310,6 +313,7 @@ macro_rules! build {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut cfg = unsafe { CfgBuilder::new() };
             $configure(&mut cfg);
+            cfg.validate();
             cfg.into_inner()
         };
 
@@ -484,5 +488,19 @@ impl<System> CfgBuilder<System> {
         }
 
         self.inner.num_task_priority_levels = new_value;
+    }
+
+    /// Validate the configuration.
+    #[doc(hidden)]
+    pub const fn validate(&self)
+    where
+        System: Port,
+    {
+        let inner = &self.inner;
+
+        interrupt::panic_if_unmanaged_safety_is_violated::<System>(
+            &inner.interrupt_lines,
+            &inner.isrs,
+        );
     }
 }

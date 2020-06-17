@@ -1,6 +1,8 @@
 //! The RTOS kernel
 use atomic_ref::AtomicRef;
-use core::{borrow::BorrowMut, fmt, mem::forget, num::NonZeroUsize, sync::atomic::Ordering};
+use core::{
+    borrow::BorrowMut, fmt, mem::forget, num::NonZeroUsize, ops::Range, sync::atomic::Ordering,
+};
 
 use crate::utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap};
 
@@ -110,6 +112,11 @@ pub unsafe trait Port: KernelCfg1 {
 
     /// The alignment requirement for task stack regions.
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
+
+    /// The range of interrupt priority values considered managed.
+    ///
+    /// Defaults to `0..0` (empty) when unspecified.
+    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<usize> = 0..0;
 
     /// Transfer the control to [`State::running_task`], discarding the current
     /// (startup) context.
