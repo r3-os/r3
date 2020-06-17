@@ -124,7 +124,13 @@ An application can register one or more **interrupt service routines** to an int
 
 Interrupt service routines execute with CPU Lock inactive and may return with CPU Lock either active or inactive. Some system calls are not allowed in there and will return [`BadCtx`].
 
-> **Relation to Other Specifications:** The interrupt handling framework was largely inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html).
+The behavior of system calls is undefined inside an unmanaged interrupt handler. The property of being protected from programming errors caused by making system calls inside an unmanaged interrupt handler is called **unmanaged safety**. Most system services are not marked as `unsafe`, so in order to ensure unmanaged safety, safe code shouldn't be allowed to register an interrupt service routine that potentially executes in an unmanaged interrupt handler. On the other hand, the number of `unsafe` blocks in application code should be minimized in common use cases. To meet this goal, this framework employs several safeguards: (1) Interrupt service routines can be [explicitly marked] as **unmanaged-safe** (safe to use in an unmanaged interrupt handler), but this requires an `unsafe` block. (2) An interrupt line must be initialized with a priority value that falls within a managed range if it has an non-unmanaged-safe interrupt service routine. (3) When [changing] the priority of an interrupt line, the new priority must be in a managed range. It's possible to [bypass] this check, but this requires an `unsafe` block.
+
+[explicitly marked]: crate::kernel::cfg::CfgInterruptServiceRoutineBuilder::unmanaged
+[changing]: crate::kernel::InterruptLine::set_priority
+[bypass]: crate::kernel::InterruptLine::set_priority_unchecked
+
+> **Relation to Other Specifications:** The interrupt handling framework was largely inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). The method of leveraging Rust's `unsafe` system to ensure unmanaged safety is obviously Rust-specific and novel.
 
 [`BadCtx`]: crate::kernel::ResultCode::BadCtx
 

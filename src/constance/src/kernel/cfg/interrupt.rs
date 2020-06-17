@@ -197,12 +197,15 @@ impl<System: Port> CfgInterruptServiceRoutineBuilder<System> {
         Self { priority, ..self }
     }
 
-    /// Indicate that the entry point function is allowed to execute in
-    /// [an unmanaged interrupt handler].
+    /// Indicate that the entry point function is unmanaged-safe (allowed
+    /// to execute in [an unmanaged interrupt handler]).
     ///
-    /// If an interrupt line is not configured with a managed priority value,
-    /// configuration will fail unless `unmanaged` is specified for all of its
-    /// attached interrupt service routines.
+    /// If an interrupt line is not configured with an initial priority value
+    /// that falls within [a managed range], configuration will fail unless
+    /// all of its attached interrupt service routines are marked as
+    /// unmanaged-safe.
+    ///
+    /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
     /// # Safety
     ///
