@@ -5,8 +5,9 @@ use crate::utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN};
 
 mod event_group;
 mod hunk;
+mod interrupt;
 mod task;
-pub use self::{event_group::*, hunk::*, task::*};
+pub use self::{event_group::*, hunk::*, interrupt::*, task::*};
 
 /// Makes some useful macros available inside [a configuration function].
 ///
@@ -78,12 +79,18 @@ pub use self::{event_group::*, hunk::*, task::*};
 ///
 ///  - [`Task`] with options defined in [`CfgTaskBuilder`]
 ///  - [`Hunk`] with options defined in [`CfgHunkBuilder`]
+///  - [`InterruptLine`] with options defined in [`CfgInterruptLineBuilder`]
+///  - [`InterruptServiceRoutine`] with options defined in [`CfgInterruptServiceRoutineBuilder`]
 ///  - [`EventGroup`] with options defined in [`CfgEventGroupBuilder`]
 ///
 /// [`Task`]: crate::kernel::Task
 /// [`CfgTaskBuilder`]: crate::kernel::cfg::CfgTaskBuilder
 /// [`Hunk`]: crate::kernel::Hunk
 /// [`CfgHunkBuilder`]: crate::kernel::cfg::CfgHunkBuilder
+/// [`InterruptLine`]: crate::kernel::InterruptLine
+/// [`CfgInterruptLineBuilder`]: crate::kernel::cfg::CfgInterruptLineBuilder
+/// [`InterruptServiceRoutine`]: crate::kernel::InterruptServiceRoutine
+/// [`CfgInterruptServiceRoutineBuilder`]: crate::kernel::cfg::CfgInterruptServiceRoutineBuilder
 /// [`EventGroup`]: crate::kernel::EventGroup
 /// [`CfgEventGroupBuilder`]: crate::kernel::cfg::CfgEventGroupBuilder
 ///
@@ -422,6 +429,8 @@ pub struct CfgBuilderInner<System> {
     pub hunk_pool_align: usize,
     pub tasks: ComptimeVec<CfgBuilderTask<System>>,
     pub num_task_priority_levels: usize,
+    pub interrupt_lines: ComptimeVec<CfgBuilderInterruptLine>,
+    pub isrs: ComptimeVec<CfgBuilderInterruptServiceRoutine>,
     pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
 }
 
@@ -445,6 +454,8 @@ impl<System> CfgBuilder<System> {
                 hunk_pool_align: 1,
                 tasks: ComptimeVec::new(),
                 num_task_priority_levels: 16,
+                interrupt_lines: ComptimeVec::new(),
+                isrs: ComptimeVec::new(),
                 event_groups: ComptimeVec::new(),
             },
         }

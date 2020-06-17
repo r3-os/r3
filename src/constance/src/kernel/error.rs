@@ -124,6 +124,12 @@ define_error! {
 }
 
 define_error! {
+    pub(super) enum BadParamError {
+        BadParam,
+    }
+}
+
+define_error! {
     pub(super) enum BadObjectStateError {
         BadObjectState,
     }
@@ -268,5 +274,32 @@ define_error! {
         /// CPU Lock is active.
         BadCtx,
         Interrupted,
+    }
+}
+
+define_error! {
+    /// Error type for [`InterruptLine::set_priority`] and
+    /// [`InterruptLine::set_priority_unchecked`].
+    ///
+    /// [`InterruptLine::set_priority`]: super::InterruptLine::set_priority
+    /// [`InterruptLine::set_priority_unchecked`]: super::InterruptLine::set_priority_unchecked
+    pub enum SetInterruptLinePriorityError: BadCtxError, BadParamError {
+        /// CPU Lock is active, or the processor is currently running in a
+        /// non-task context.
+        BadCtx,
+        /// The specified interrupt number or the specfied priority value is
+        /// out of range.
+        BadParam,
+    }
+}
+
+define_error! {
+    /// Error type for [`InterruptLine::enable`] and [`InterruptLine::disable`].
+    ///
+    /// [`InterruptLine::enable`]: super::InterruptLine::enable
+    /// [`InterruptLine::disable`]: super::InterruptLine::disable
+    pub enum EnableInterruptLineError: BadParamError {
+        /// Enabling or disabling the specifeid interrupt line is not supported.
+        BadParam,
     }
 }
