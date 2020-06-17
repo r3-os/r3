@@ -133,19 +133,18 @@ impl CfgBuilderInterruptLine {
     }
 }
 
-impl<System: Port> interrupt::InterruptServiceRoutine<System> {
-    /// Construct a `CfgInterruptServiceRoutineBuilder` to register an interrupt
-    /// service routine in
-    /// [a configuration function](crate#static-configuration).
-    pub const fn build() -> CfgInterruptServiceRoutineBuilder<System> {
-        CfgInterruptServiceRoutineBuilder::new()
+impl<System: Port> interrupt::InterruptHandler<System> {
+    /// Construct a `CfgInterruptHandlerBuilder` to register an interrupt
+    /// handler in [a configuration function](crate#static-configuration).
+    pub const fn build() -> CfgInterruptHandlerBuilder<System> {
+        CfgInterruptHandlerBuilder::new()
     }
 }
 
-/// Configuration builder type for [`InterruptServiceRoutine`].
+/// Configuration builder type for [`InterruptHandler`].
 ///
-/// [`InterruptServiceRoutine`]: crate::kernel::InterruptServiceRoutine
-pub struct CfgInterruptServiceRoutineBuilder<System> {
+/// [`InterruptHandler`]: crate::kernel::InterruptHandler
+pub struct CfgInterruptHandlerBuilder<System> {
     _phantom: PhantomData<System>,
     line: Option<interrupt::InterruptNum>,
     start: Option<fn(usize)>,
@@ -154,7 +153,7 @@ pub struct CfgInterruptServiceRoutineBuilder<System> {
     unmanaged: bool,
 }
 
-impl<System: Port> CfgInterruptServiceRoutineBuilder<System> {
+impl<System: Port> CfgInterruptHandlerBuilder<System> {
     const fn new() -> Self {
         Self {
             _phantom: PhantomData,
@@ -180,7 +179,7 @@ impl<System: Port> CfgInterruptServiceRoutineBuilder<System> {
     }
 
     /// [**Required**] Specify the interrupt line to attach the interrupt
-    /// service routine to.
+    /// handler to.
     pub const fn line(self, line: interrupt::InterruptNum) -> Self {
         // FIXME: `Option::is_some` is not `const fn` yet
         if let Some(_) = self.line {
@@ -197,12 +196,12 @@ impl<System: Port> CfgInterruptServiceRoutineBuilder<System> {
         Self { priority, ..self }
     }
 
-    /// Indicate that the entry point function is unmanaged-safe (allowed
-    /// to execute in [an unmanaged interrupt handler]).
+    /// Indicate that the entry point function is unmanaged-safe (designed to
+    /// execute as [an unmanaged interrupt handler]).
     ///
     /// If an interrupt line is not configured with an initial priority value
     /// that falls within [a managed range], configuration will fail unless
-    /// all of its attached interrupt service routines are marked as
+    /// all of its attached interrupt handlers are marked as
     /// unmanaged-safe.
     ///
     /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
@@ -220,12 +219,9 @@ impl<System: Port> CfgInterruptServiceRoutineBuilder<System> {
         }
     }
 
-    /// Complete the registration of an interrupt service routine, returning an
-    /// `InterruptServiceRoutine` object.
-    pub const fn finish(
-        self,
-        cfg: &mut CfgBuilder<System>,
-    ) -> interrupt::InterruptServiceRoutine<System> {
+    /// Complete the registration of an interrupt handler, returning an
+    /// `InterruptHandler` object.
+    pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> interrupt::InterruptHandler<System> {
         let inner = &mut cfg.inner;
 
         let line_num = if let Some(line) = self.line {
@@ -234,7 +230,7 @@ impl<System: Port> CfgInterruptServiceRoutineBuilder<System> {
             panic!("`line` is not specified");
         };
 
-        inner.isrs.push(CfgBuilderInterruptServiceRoutine {
+        inner.interrupt_handlers.push(CfgBuilderInterruptHandler {
             line: line_num,
             start: if let Some(x) = self.start {
                 x
@@ -246,13 +242,13 @@ impl<System: Port> CfgInterruptServiceRoutineBuilder<System> {
             unmanaged: self.unmanaged,
         });
 
-        interrupt::InterruptServiceRoutine::new()
+        interrupt::InterruptHandler::new()
     }
 }
 
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy)]
-pub struct CfgBuilderInterruptServiceRoutine {
+pub struct CfgBuilderInterruptHandler {
     line: interrupt::InterruptNum,
     start: fn(usize),
     param: usize,
@@ -260,31 +256,31 @@ pub struct CfgBuilderInterruptServiceRoutine {
     unmanaged: bool,
 }
 
-/// Panic if a non-unmanaged-safe interrupt service routine is attached to an
+/// Panic if a non-unmanaged-safe interrupt handler is attached to an
 /// interrupt line that is not known to be managed.
 pub(super) const fn panic_if_unmanaged_safety_is_violated<System: Port>(
     interrupt_lines: &ComptimeVec<CfgBuilderInterruptLine>,
-    isrs: &ComptimeVec<CfgBuilderInterruptServiceRoutine>,
+    interrupt_handlers: &ComptimeVec<CfgBuilderInterruptHandler>,
 ) {
     // FIXME: Work-around for `for` being unsupported in `const fn`
     let mut i = 0;
-    while i < isrs.len() {
-        let isr = isrs.get(i);
+    while i < interrupt_handlers.len() {
+        let handler = interrupt_handlers.get(i);
         i += 1;
-        if isr.unmanaged {
+        if handler.unmanaged {
             continue;
         }
 
         // FIXME: Work-around for `Option::is_none` not being `const fn`
         let line_unmanaged = matches!(
-            vec_position!(interrupt_lines, |line| line.num == isr.line
+            vec_position!(interrupt_lines, |line| line.num == handler.line
                 && line.is_initially_managed::<System>()),
             None
         );
 
         if line_unmanaged {
             panic!(
-                "An interrupt service routine that is not marked with `unmanaged` \
+                "An interrupt handler that is not marked with `unmanaged` \
                 is attached to an interrupt line whose priority value is \
                 unspecified or doesn't fall within a managed range."
             );

@@ -83,7 +83,7 @@ pub use self::{event_group::*, hunk::*, interrupt::*, task::*};
 ///  - [`Task`] with options defined in [`CfgTaskBuilder`]
 ///  - [`Hunk`] with options defined in [`CfgHunkBuilder`]
 ///  - [`InterruptLine`] with options defined in [`CfgInterruptLineBuilder`]
-///  - [`InterruptServiceRoutine`] with options defined in [`CfgInterruptServiceRoutineBuilder`]
+///  - [`InterruptHandler`] with options defined in [`CfgInterruptHandlerBuilder`]
 ///  - [`EventGroup`] with options defined in [`CfgEventGroupBuilder`]
 ///
 /// [`Task`]: crate::kernel::Task
@@ -92,8 +92,8 @@ pub use self::{event_group::*, hunk::*, interrupt::*, task::*};
 /// [`CfgHunkBuilder`]: crate::kernel::cfg::CfgHunkBuilder
 /// [`InterruptLine`]: crate::kernel::InterruptLine
 /// [`CfgInterruptLineBuilder`]: crate::kernel::cfg::CfgInterruptLineBuilder
-/// [`InterruptServiceRoutine`]: crate::kernel::InterruptServiceRoutine
-/// [`CfgInterruptServiceRoutineBuilder`]: crate::kernel::cfg::CfgInterruptServiceRoutineBuilder
+/// [`InterruptHandler`]: crate::kernel::InterruptHandler
+/// [`CfgInterruptHandlerBuilder`]: crate::kernel::cfg::CfgInterruptHandlerBuilder
 /// [`EventGroup`]: crate::kernel::EventGroup
 /// [`CfgEventGroupBuilder`]: crate::kernel::cfg::CfgEventGroupBuilder
 ///
@@ -434,7 +434,7 @@ pub struct CfgBuilderInner<System> {
     pub tasks: ComptimeVec<CfgBuilderTask<System>>,
     pub num_task_priority_levels: usize,
     pub interrupt_lines: ComptimeVec<CfgBuilderInterruptLine>,
-    pub isrs: ComptimeVec<CfgBuilderInterruptServiceRoutine>,
+    pub interrupt_handlers: ComptimeVec<CfgBuilderInterruptHandler>,
     pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
 }
 
@@ -459,7 +459,7 @@ impl<System> CfgBuilder<System> {
                 tasks: ComptimeVec::new(),
                 num_task_priority_levels: 16,
                 interrupt_lines: ComptimeVec::new(),
-                isrs: ComptimeVec::new(),
+                interrupt_handlers: ComptimeVec::new(),
                 event_groups: ComptimeVec::new(),
             },
         }
@@ -500,7 +500,7 @@ impl<System> CfgBuilder<System> {
 
         interrupt::panic_if_unmanaged_safety_is_violated::<System>(
             &inner.interrupt_lines,
-            &inner.isrs,
+            &inner.interrupt_handlers,
         );
     }
 }

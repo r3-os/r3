@@ -100,13 +100,13 @@ impl<System: Kernel> InterruptLine<System> {
     // TODO: port-specific attributes
 }
 
-/// Represents a registered interrupt service routine in a system.
+/// Represents a registered (second-level) interrupt handler in a system.
 ///
-/// There are no operations defined for interrupt service routines, so this type
+/// There are no operations defined for interrupt handlers, so this type
 /// is only used for static configuration.
-pub struct InterruptServiceRoutine<System>(PhantomData<System>);
+pub struct InterruptHandler<System>(PhantomData<System>);
 
-impl<System> InterruptServiceRoutine<System> {
+impl<System> InterruptHandler<System> {
     pub(super) const fn new() -> Self {
         Self(PhantomData)
     }
