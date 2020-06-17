@@ -24,9 +24,10 @@ extern crate core;
 pub extern crate parse_generics_shim;
 
 #[macro_use]
+pub mod utils;
+#[macro_use]
 pub mod kernel;
 pub mod sync;
-pub mod utils;
 
 /// The prelude module.
 pub mod prelude {

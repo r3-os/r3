@@ -22,6 +22,7 @@ mod int;
 pub mod intrusive_list;
 mod prio_bitmap;
 mod rawcell;
+#[macro_use]
 mod vec;
 mod zeroinit;
 pub use self::{

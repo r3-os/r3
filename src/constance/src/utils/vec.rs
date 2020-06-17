@@ -69,9 +69,32 @@ impl<T: Copy> ComptimeVec<T> {
     }
 }
 
+// FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
+// FIXME: Waiting for `Iterator` to be usable in `const fn`
+// FIXME: Waiting for `FnMut` to be usable in `const fn`
+/// An implementation of `$vec.iter().position(|$item| $predicate)` that is
+/// compatible with a const context.
+macro_rules! vec_position {
+    ($vec:expr, |$item:ident| $predicate:expr) => {{
+        let mut i = 0;
+        loop {
+            if i >= $vec.len() {
+                break None;
+            }
+            let $item = $vec.get(i);
+            if $predicate {
+                break Some(i);
+            }
+            i += 1;
+        }
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::TestResult;
+    use quickcheck_macros::quickcheck;
 
     #[test]
     fn new() {
@@ -116,5 +139,46 @@ mod tests {
             *v.get(1)
         };
         assert_eq!(VAL, 4);
+    }
+
+    #[test]
+    fn const_vec_position() {
+        const POS: [Option<usize>; 2] = {
+            let mut v = ComptimeVec::new();
+            v.push(42);
+            v.push(43);
+            v.push(44);
+            [
+                vec_position!(v, |i| *i == 43),
+                vec_position!(v, |i| *i == 50),
+            ]
+        };
+        assert_eq!(POS, [Some(1), None]);
+    }
+
+    #[quickcheck]
+    fn vec_position(values: Vec<u8>, expected_index: usize) -> TestResult {
+        if values.len() > MAX_LEN {
+            return TestResult::discard();
+        }
+
+        let needle = if values.is_empty() {
+            42
+        } else {
+            values[expected_index % values.len()]
+        };
+
+        // Convert `values` into `ComptimeVec`
+        let mut vec = ComptimeVec::new();
+        for &e in values.iter() {
+            vec.push(e);
+        }
+
+        let got = vec_position!(vec, |i| *i == needle);
+        let expected = values.iter().position(|i| *i == needle);
+
+        assert_eq!(got, expected);
+
+        TestResult::passed()
     }
 }
