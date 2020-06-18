@@ -4,6 +4,7 @@
 #![feature(const_panic)]
 #![feature(const_loop)]
 #![feature(const_generics)]
+#![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]

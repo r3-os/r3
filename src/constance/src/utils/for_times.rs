@@ -166,6 +166,71 @@ macro_rules! const_for_times {
     }};
 }
 
+/// Construct an array by evaluating a piece of code for each element. The
+/// iteration counter is available as a constant expression.
+macro_rules! const_array_from_fn {
+    (
+        // The iterated code cannot reference outer generic parameters.
+        // Instead, all outer generic parameter should be repeated in
+        // `$iter_gparam`. `$iter_ctx_ty` should use generic parameters from
+        // `$iter_gparam`.
+        //
+        // A value parameter can be passed through `$ctx_param` of type
+        // `$iter_ctx_ty`.
+        ///
+        // THe iteration position can be read by `$i::N`.
+        fn iter<
+            $(  [  $iter_gparam:ident $($iter_gparam_bounds:tt)*  ],  )*
+            $i:ident: Nat
+        >(ref mut $ctx_param:ident: $iter_ctx_ty:ty) -> $ty:ty {
+            $($iter:tt)*
+        }
+
+        // `$len` must be a constant expression.
+        (0..).map(|i| iter::<[$($ctx_t:ty),*], i>($ctx:expr)).collect::<[_; $len:expr]>()
+    ) => {{
+        use core::mem::MaybeUninit;
+        let array: [MaybeUninit<_>; $len] = [MaybeUninit::uninit(); $len];
+
+        const_for_times! {
+            fn iter<
+                $(  [  $iter_gparam $($iter_gparam_bounds)*  ],  )*
+                $i: Nat
+            >(ctx_param: &mut ($iter_ctx_ty, *mut MaybeUninit<$ty>)) {
+                let $ctx_param = &mut ctx_param.0;
+                let value = {
+                    $($iter)*
+                };
+
+                // Safety: `$i::N` is in range `0..$len`, so
+                // `ctx_param.1 + $i::N` points to a location inside `array`.
+                unsafe {
+                    *ctx_param.1.add($i::N) = MaybeUninit::new(value);
+                }
+            }
+
+            (0..$len).for_each(|i| iter::<[$($ctx_t),*], i>(
+                // FIXME: `[T]::as_mut_ptr` is not `const fn` yet
+                &mut ($ctx, array.as_ptr() as *mut _)
+            ))
+        }
+
+        const unsafe fn __assume_init<
+            $($iter_gparam $($iter_gparam_bounds)*,)*
+            const LEN: usize
+        >(array: [MaybeUninit<$ty>; LEN]) -> [$ty; LEN] {
+            // Safety: This is equivalent to `transmute_copy(&array)`. The
+            // memory layout of `[MaybeUninit<T>; $len]` is identical to `[T; $len]`.
+            // We initialized all elements in `array[0..$len]`, so it's safe to
+            // reinterpret that range as `[T; $len]`.
+            unsafe { *(array.as_ptr() as *const _ as *const [$ty; LEN]) }
+        }
+
+        // Safety: See the body of `__assume_init`.
+        unsafe { __assume_init::<$($ctx_t,)* {$len}>(array) }
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -193,5 +258,36 @@ mod tests {
         };
 
         assert_eq!(expected, GOT);
+    }
+
+    #[test]
+    fn const_array_from_fn() {
+        struct Cell<T>(T, u128);
+        const GOT: [u128; 20] = {
+            let mut cell = Cell("unused", 0);
+            const_array_from_fn! {
+                fn iter<[T], I: Nat>(ref mut cell: &mut Cell<T>) -> u128 {
+                    cell.1 = cell.1 * 10 + I::N as u128;
+                    cell.1
+                }
+
+                (0..).map(|i| iter::<[&'static str], i>(&mut cell)).collect::<[_; 20]>()
+            }
+        };
+
+        let expected = {
+            let mut cell = Cell("unused", 0);
+
+            fn iter<T>(cell: &mut Cell<T>, i: usize) -> u128 {
+                cell.1 = cell.1 * 10 + i as u128;
+                cell.1
+            }
+
+            (0..20)
+                .map(|i| iter::<&'static str>(&mut cell, i))
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(GOT[..], *expected);
     }
 }
