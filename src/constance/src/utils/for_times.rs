@@ -2,13 +2,13 @@ use core::marker::PhantomData;
 
 // FIXME: An elaborate work-around for limitations such as
 //        <https://github.com/rust-lang/rust/issues/72821>.
-struct U0;
-struct UInt<U, B>(PhantomData<(U, B)>);
+pub struct U0;
+pub struct UInt<U, B>(PhantomData<(U, B)>);
 
-struct B0;
-struct B1;
+pub struct B0;
+pub struct B1;
 
-/// Natural number
+/// Natural number. Use [`U`] to get a type implementing this.
 pub trait Nat {
     type Succ: Nat;
     const N: usize;
@@ -36,7 +36,9 @@ impl<U: Nat> Nat for UInt<U, B1> {
 type Bn<const I: usize> = If! { if (I == 0) { B0 } else { B1 } };
 
 /// Convert a value to a binary integer type.
-type U<const I: usize> = UInt<
+///
+/// `I` must be less than or equal to [`U_MAX`].
+pub type U<const I: usize> = UInt<
     UInt<
         UInt<
             UInt<
@@ -83,6 +85,9 @@ type U<const I: usize> = UInt<
     Bn<{ I & 1 }>,
 >;
 
+/// Maximum input value for [`U`].
+pub const U_MAX: usize = 65535;
+
 /// Type-level function producing a `Nat`.
 pub trait NatFn {
     type Output: Nat;
@@ -125,8 +130,8 @@ macro_rules! const_for_times {
             $($iter:tt)*
         }
 
-        // `$len` must be a constant expression.
-        (0..$len:expr).for_each(|i| iter::<[$($ctx_t:ty),*], i>($ctx:expr))
+        // `$len` must be `U<ITERATION_COUNT>`.
+        (0..$len:ty).for_each(|i| iter::<[$($ctx_t:ty),*], i>($ctx:expr))
     ) => {{
         use $crate::utils::for_times::{Nat, U, IncrSat};
 
@@ -158,11 +163,7 @@ macro_rules! const_for_times {
             }
         }
 
-        if $len >= 65536 {
-            panic!("length is too large");
-        }
-
-        iter_outer::<$($ctx_t,)* U<0>, U<$len>>($ctx);
+        iter_outer::<$($ctx_t,)* U<0>, $len>($ctx);
     }};
 }
 
@@ -186,17 +187,23 @@ macro_rules! const_array_from_fn {
             $($iter:tt)*
         }
 
-        // `$len` must be a constant expression.
-        (0..).map(|i| iter::<[$($ctx_t:ty),*], i>($ctx:expr)).collect::<[_; $len:expr]>()
+        // `$len` must be `U<$len_value>`
+        (0..$len_value:expr).map(|i| iter::<[$($ctx_t:ty),*], i>($ctx:expr)).collect::<[_; $len:ty]>()
     ) => {{
         use core::mem::MaybeUninit;
-        let array: [MaybeUninit<_>; $len] = [MaybeUninit::uninit(); $len];
+        use $crate::utils::for_times::Nat;
+        let array = [MaybeUninit::uninit(); $len_value];
+
+        if array.len() != <$len as Nat>::N {
+            unreachable!();
+        }
 
         const_for_times! {
             fn iter<
                 $(  [  $iter_gparam $($iter_gparam_bounds)*  ],  )*
                 $i: Nat
             >(ctx_param: &mut ($iter_ctx_ty, *mut MaybeUninit<$ty>)) {
+                #[allow(unused_variables)]
                 let $ctx_param = &mut ctx_param.0;
                 let value = {
                     $($iter)*
@@ -227,12 +234,14 @@ macro_rules! const_array_from_fn {
         }
 
         // Safety: See the body of `__assume_init`.
-        unsafe { __assume_init::<$($ctx_t,)* {$len}>(array) }
+        unsafe { __assume_init::<$($ctx_t,)* {$len_value}>(array) }
     }};
 }
 
 #[cfg(test)]
 mod tests {
+    use super::U;
+
     #[test]
     fn test() {
         struct Cell<T>(T, u128);
@@ -244,7 +253,7 @@ mod tests {
                     cell.1 = cell.1 * 10 + I::N as u128;
                 }
 
-                (0..20).for_each(|i| iter::<[_], i>(&mut cell))
+                (0..U<20>).for_each(|i| iter::<[_], i>(&mut cell))
             }
             cell.1
         };
@@ -271,7 +280,7 @@ mod tests {
                     cell.1
                 }
 
-                (0..).map(|i| iter::<[&'static str], i>(&mut cell)).collect::<[_; 20]>()
+                (0..20).map(|i| iter::<[&'static str], i>(&mut cell)).collect::<[_; U<20>]>()
             }
         };
 
