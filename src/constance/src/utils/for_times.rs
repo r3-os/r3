@@ -37,8 +37,19 @@ type Bn<const I: usize> = If! { if (I == 0) { B0 } else { B1 } };
 
 /// Convert a value to a binary integer type.
 ///
-/// `I` must be less than or equal to [`U_MAX`].
-pub type U<const I: usize> = UInt<
+/// `I` should be less than or equal to [`U_MAX`]. If it's larger than `U_MAX`,
+/// this type alias will “evaluate” to [`Overflow`].
+pub type U<const I: usize> = If! {
+    if (I <= U_MAX) { WrappingU<I> } else { Overflow }
+};
+
+/// Returned by [`U`] if the given value is larger than [`U_MAX`].
+pub struct Overflow;
+
+/// Convert a value to a binary integer type.
+///
+/// Upper bits will be truncated if `I` is larger than [`U_MAX`].
+pub type WrappingU<const I: usize> = UInt<
     UInt<
         UInt<
             UInt<
