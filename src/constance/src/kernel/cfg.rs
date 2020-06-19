@@ -296,13 +296,16 @@ macro_rules! build {
     ($sys:ty, $configure:expr) => {{
         use $crate::{
             kernel::{
-                cfg::{CfgBuilder, CfgBuilderInner},
+                cfg::{
+                    CfgBuilder, CfgBuilderInner, CfgBuilderInterruptHandler, InterruptHandlerFn,
+                    InterruptHandlerTable,
+                },
                 EventGroupCb, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port, State,
                 TaskAttr, TaskCb,
             },
             utils::{
-                intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap, Init, RawCell,
-                UIntegerWithBound,
+                for_times::U, intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap,
+                Init, RawCell, UIntegerWithBound,
             },
         };
 
@@ -363,6 +366,28 @@ macro_rules! build {
         type KernelState = State<$sys>;
         static KERNEL_STATE: KernelState = State::INIT;
 
+        // Consturct a table of combined second-level interrupt handlers
+        const INTERRUPT_HANDLERS: [CfgBuilderInterruptHandler; { CFG.interrupt_handlers.len() }] =
+            CFG.interrupt_handlers.to_array();
+        const NUM_INTERRUPT_HANDLERS: usize = INTERRUPT_HANDLERS.len();
+        const NUM_INTERRUPT_LINES: usize =
+            $crate::kernel::cfg::num_required_interrupt_line_slots(&INTERRUPT_HANDLERS);
+        const INTERRUPT_HANDLERS_SIZED: InterruptHandlerTable<
+            [Option<InterruptHandlerFn>; NUM_INTERRUPT_LINES],
+        > = unsafe {
+            // Safety: (1) We are `build!`, so it's okay to call this.
+            //         (2) `INTERRUPT_HANDLERS` contains at least
+            //             `NUM_INTERRUPT_HANDLERS` elements.
+            $crate::kernel::cfg::new_interrupt_handler_table::<
+                $sys,
+                U<NUM_INTERRUPT_LINES>,
+                U<NUM_INTERRUPT_HANDLERS>,
+                { INTERRUPT_HANDLERS.as_ptr() },
+                NUM_INTERRUPT_HANDLERS,
+                NUM_INTERRUPT_LINES,
+            >()
+        };
+
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg2 for $sys {
             type TaskReadyBitmap = TaskReadyBitmap;
@@ -376,6 +401,8 @@ macro_rules! build {
                 hunk_pool: || HUNK_POOL.get() as *const u8,
                 inits: &HUNK_INITS,
             };
+
+            const INTERRUPT_HANDLERS: &'static InterruptHandlerTable = &INTERRUPT_HANDLERS_SIZED;
 
             #[inline(always)]
             fn task_cb_pool() -> &'static [TaskCb<$sys>] {

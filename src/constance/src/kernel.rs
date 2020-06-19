@@ -238,7 +238,7 @@ impl<System: Kernel> PortToKernel for System {
 /// This is only intended to be implemented by `build!`.
 pub unsafe trait KernelCfg2: Port + Sized {
     // Most associated items are hidden because they have no use outside the
-    // kernel. `state` is not hidden because it's meant to be accessed by port
+    // kernel. The rest is not hidden because it's meant to be accessed by port
     // code.
     #[doc(hidden)]
     const HUNK_ATTR: HunkAttr;
@@ -248,6 +248,11 @@ pub unsafe trait KernelCfg2: Port + Sized {
 
     #[doc(hidden)]
     type TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<Self>>]> + Init + 'static;
+
+    /// The table of combined second-level interrupt handlers.
+    ///
+    /// A port should generate first-level interrupt handlers that call them.
+    const INTERRUPT_HANDLERS: &'static cfg::InterruptHandlerTable;
 
     /// Access the kernel's global state.
     fn state() -> &'static State<Self>;

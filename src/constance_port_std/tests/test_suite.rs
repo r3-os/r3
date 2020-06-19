@@ -89,3 +89,6 @@ macro_rules! instantiate_kernel_tests {
 }
 
 constance_test_suite::get_kernel_tests!(instantiate_kernel_tests!());
+
+// TODO: This would be a good place to add semi-whitebox tests for e.g.,
+//       2nd-level interrupt handler generation

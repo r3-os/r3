@@ -2,6 +2,15 @@ The Constance RTOS
 
 [![Constance and Fluttershy](https://derpicdn.net/img/2018/5/25/1740985/medium.png)](http://derpibooru.org/1740985)
 
+# Note to Application Developers
+
+The implementation code heavily relies on constant propagation, dead code elimination, and “zero-cost” abstractions. Without optimization, it might exhibit a massive code bloat and excessive stack consumption. To change the optimization level for debug builds, add the following lines to your Cargo workspace's `Cargo.toml`:
+
+```toml
+[profile.dev]
+opt-level = 2
+```
+
 # Design
 
 ## Trait-based Composition
