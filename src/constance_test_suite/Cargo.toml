@@ -1,6 +1,6 @@
 [package]
 name = "constance_test_suite"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 
