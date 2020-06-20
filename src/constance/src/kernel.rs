@@ -119,7 +119,7 @@ pub unsafe trait Port: KernelCfg1 {
     ///
     /// [managed]: crate#interrupt-handling-framework
     #[allow(clippy::reversed_empty_ranges)] // on purpose
-    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<usize> = 0..0;
+    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
 
     /// Transfer the control to [`State::running_task`], discarding the current
     /// (startup) context.

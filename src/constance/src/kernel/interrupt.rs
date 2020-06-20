@@ -9,7 +9,7 @@ use super::{utils, EnableInterruptLineError, Kernel, SetInterruptLinePriorityErr
 pub type InterruptNum = usize;
 
 /// Priority value for an interrupt line.
-pub type InterruptPriority = usize;
+pub type InterruptPriority = i16;
 
 /// Refers to an interrupt line in a system.
 pub struct InterruptLine<System>(InterruptNum, PhantomData<System>);
