@@ -127,11 +127,27 @@ It's possible to write a configuration function directly. However, [`configure!`
 
 # System States
 
-*To be filled* CPU Lock, suspending dispatch
+A system can be in some of the system states described in this section at any point.
+
+**CPU Lock** disables all managed interrupts and dispatching. On a uniprocessor system (which this kernel targets), this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active, and will return [`BadCtx`].
+
+[`BadCtx`]: crate::kernel::ResultCode::BadCtx
+
+Like a lock guard of a mutex, CPU Lock can be thought of as something to be “owned” by a current execution path. This conception allows it to be seemlessly integrated with Rust's vocabulary and mental model around the ownership model.
+
+**Priority Boost** temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost only can be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active, and will return [`BadCtx`].
+
+[`BadCtx`]: crate::kernel::ResultCode::BadCtx
+
+> **To be implemented:** Supporting acquring CPU Lock in user code, supporting priority boost
+
+> **Relation to Other Specifications:** Inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the Constance RTOS. This means phrases like “when the CPU is locked” are not allowed.
 
 # Contexts
 
 *To be filled* Task context, interrupt context
+
+> **To be implemented:** Detecting an interrupt context and return `BadCtx`
 
 # Interrupt Handling Framework
 
