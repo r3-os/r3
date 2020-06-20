@@ -13,6 +13,9 @@ use crate::utils::{
 };
 
 /// Represents a single task in a system.
+///
+/// This type is ABI-compatible with [`Id`].
+#[repr(transparent)]
 pub struct Task<System>(Id, PhantomData<System>);
 
 impl<System> Clone for Task<System> {

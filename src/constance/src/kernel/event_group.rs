@@ -22,6 +22,9 @@ pub type AtomicEventGroupBits = AtomicU32;
 ///
 /// An event group is a set of bits that can be updated and waited for to be
 /// set.
+///
+/// This type is ABI-compatible with [`Id`].
+#[repr(transparent)]
 pub struct EventGroup<System>(Id, PhantomData<System>);
 
 impl<System> Clone for EventGroup<System> {
