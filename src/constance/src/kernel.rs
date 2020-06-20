@@ -116,6 +116,7 @@ pub unsafe trait Port: KernelCfg1 {
     /// The range of interrupt priority values considered managed.
     ///
     /// Defaults to `0..0` (empty) when unspecified.
+    #[allow(clippy::reversed_empty_ranges)] // on purpose
     const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<usize> = 0..0;
 
     /// Transfer the control to [`State::running_task`], discarding the current
