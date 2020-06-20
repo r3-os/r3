@@ -131,6 +131,25 @@ impl CfgBuilderInterruptLine {
             false
         }
     }
+
+    pub const fn to_init<System>(&self) -> interrupt::InterruptLineInit<System> {
+        interrupt::InterruptLineInit {
+            line: interrupt::InterruptLine::from_num(self.num),
+            // FIXME: `Option::unwrap_or` is not `const fn` yet
+            priority: if let Some(i) = self.priority { i } else { 0 },
+            flags: {
+                let mut f = 0;
+                // FIXME: `Option::is_some` is not `const fn` yet
+                if let Some(_) = self.priority {
+                    f |= interrupt::InterruptLineInitFlags::SET_PRIORITY.bits();
+                }
+                if self.enabled {
+                    f |= interrupt::InterruptLineInitFlags::ENABLE.bits();
+                }
+                interrupt::InterruptLineInitFlags::from_bits_truncate(f)
+            },
+        }
+    }
 }
 
 impl<System: Port> interrupt::InterruptHandler<System> {

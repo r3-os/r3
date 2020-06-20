@@ -125,7 +125,10 @@ The benefits of providing a standardized interface for interrupts include: (1) i
 
 An interrupt request is delivered to a processor by sending a hardware signal to an interrupt controller through **an interrupt line**. It's possible that more than one interrupt sources are connected to a single interrupt line. Upon receiving an interrupt request, the interrupt controller translates the interrupt line to **an interrupt number** and transfers the control to **the first-level interrupt handler** associated with that interrupt number.
 
-Each interrupt line has configurable attributes such as **an interrupt priority**. The interpretation of interrupt priority values is up to a port, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time, or allowing a higher-priority interrupt handler to preempt another.
+Each interrupt line has configurable attributes such as **an interrupt priority**. An application can instruct the kernel to configure them at boot time by [`CfgInterruptLineBuilder`] or at runtime by [`InterruptLine`]. The interpretation of interrupt priority values is up to a port, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time, or allowing a higher-priority interrupt handler to preempt another.
+
+[`CfgInterruptLineBuilder`]: crate::kernel::cfg::CfgInterruptLineBuilder
+[`InterruptLine`]: crate::kernel::InterruptLine
 
 The kernel occasionally disables interrupts by activating CPU Lock. The additional interrupt latency introduced by this can pose a problem for time-sensitive applications. To resolve this problem, a port may implement CPU Lock in a way that doesn't disable interrupt lines with a certain priority value and higher. Such priority values and the first-/second-level interrupt handlers for such interrupt lines are said to be **unmanaged**. The behavior of system calls inside unmanaged interrupt handlers is undefined. Interrupt handlers that aren't unmanaged are said to be **managed**.
 

@@ -300,8 +300,8 @@ macro_rules! build {
                     CfgBuilder, CfgBuilderInner, CfgBuilderInterruptHandler, InterruptHandlerFn,
                     InterruptHandlerTable,
                 },
-                EventGroupCb, HunkAttr, HunkInitAttr, KernelCfg1, KernelCfg2, Port, State,
-                TaskAttr, TaskCb,
+                EventGroupCb, HunkAttr, HunkInitAttr, InterruptAttr, InterruptLineInit, KernelCfg1,
+                KernelCfg2, Port, State, TaskAttr, TaskCb,
             },
             utils::{
                 for_times::U, intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap,
@@ -388,6 +388,13 @@ macro_rules! build {
             >()
         };
 
+        // Construct a table of interrupt line initiializers
+        $crate::array_item_from_fn! {
+            static INTERRUPT_LINE_INITS:
+                [InterruptLineInit<$sys>; _] =
+                    (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines.get(i).to_init());
+        }
+
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg2 for $sys {
             type TaskReadyBitmap = TaskReadyBitmap;
@@ -403,6 +410,10 @@ macro_rules! build {
             };
 
             const INTERRUPT_HANDLERS: &'static InterruptHandlerTable = &INTERRUPT_HANDLERS_SIZED;
+
+            const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
+                line_inits: &INTERRUPT_LINE_INITS,
+            };
 
             #[inline(always)]
             fn task_cb_pool() -> &'static [TaskCb<$sys>] {

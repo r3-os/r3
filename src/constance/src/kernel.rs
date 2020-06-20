@@ -213,6 +213,15 @@ impl<System: Kernel> PortToKernel for System {
         // Choose the first `runnnig_task`
         task::choose_next_running_task(lock.borrow_mut());
 
+        // Initialize all interrupt lines
+        // Safety: The contents of `INTERRUPT_ATTR` has been generated and
+        // verified by `panic_if_unmanaged_safety_is_violated` for *unsafe
+        // safety*. Thus the use of unmanaged priority values has been already
+        // authorized.
+        unsafe {
+            System::INTERRUPT_ATTR.init();
+        }
+
         forget(lock);
 
         // Safety: CPU Lock is active, Startup phase
@@ -256,6 +265,9 @@ pub unsafe trait KernelCfg2: Port + Sized {
     ///
     /// A port should generate first-level interrupt handlers that call them.
     const INTERRUPT_HANDLERS: &'static cfg::InterruptHandlerTable;
+
+    #[doc(hidden)]
+    const INTERRUPT_ATTR: InterruptAttr<Self>;
 
     /// Access the kernel's global state.
     fn state() -> &'static State<Self>;

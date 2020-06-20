@@ -1,6 +1,6 @@
 use core::{fmt, hash, marker::PhantomData};
 
-use super::{utils, EnableInterruptLineError, Kernel, SetInterruptLinePriorityError};
+use super::{utils, EnableInterruptLineError, Kernel, Port, SetInterruptLinePriorityError};
 
 /// Numeric value used to identify interrupt lines.
 ///
@@ -121,5 +121,58 @@ pub struct InterruptHandler<System>(PhantomData<System>);
 impl<System> InterruptHandler<System> {
     pub(super) const fn new() -> Self {
         Self(PhantomData)
+    }
+}
+
+/// Initialization parameter for an interrupt line.
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy)]
+pub struct InterruptLineInit<System> {
+    pub(super) line: InterruptLine<System>,
+    pub(super) priority: InterruptPriority,
+    pub(super) flags: InterruptLineInitFlags,
+}
+
+bitflags::bitflags! {
+    /// Flags for [`InterruptLineInit`].
+    #[doc(hidden)]
+    pub struct InterruptLineInitFlags: u32 {
+        const ENABLE = 1 << 0;
+        const SET_PRIORITY = 1 << 1;
+    }
+}
+
+/// Initialization parameter for interrupt lines.
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy)]
+pub struct InterruptAttr<System: Port> {
+    pub(super) line_inits: &'static [InterruptLineInit<System>],
+}
+
+impl<System: Kernel> InterruptAttr<System> {
+    /// Initialize interrupt lines.
+    ///
+    /// # Safety
+    ///
+    /// This method may call `InterruptLine::set_priority_unchecked`. The caller
+    /// is responsible for ensuring *unmanaged safety*.
+    pub(super) unsafe fn init(&self) {
+        for line_init in self.line_inits {
+            if line_init
+                .flags
+                .contains(InterruptLineInitFlags::SET_PRIORITY)
+            {
+                // Safety: The caller is responsible for making sure this is safe
+                unsafe {
+                    line_init
+                        .line
+                        .set_priority_unchecked(line_init.priority)
+                        .unwrap()
+                };
+            }
+            if line_init.flags.contains(InterruptLineInitFlags::ENABLE) {
+                line_init.line.enable().unwrap();
+            }
+        }
     }
 }
