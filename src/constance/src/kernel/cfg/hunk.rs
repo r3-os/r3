@@ -90,6 +90,11 @@ impl<System: Port, T: ?Sized, InitTag> CfgHunkBuilder<System, T, InitTag> {
     }
 
     /// Zero-initialize the hunk even if it might be unsafe.
+    ///
+    /// # Safety
+    ///
+    /// If zero initialization is not a valid bit pattern for `T`, accessing the
+    /// hunk's contents may result in an undefined behavior.
     pub const unsafe fn zeroed_unchecked(self) -> CfgHunkBuilder<System, T, ZeroInitTag> {
         CfgHunkBuilder {
             _phantom: PhantomData,

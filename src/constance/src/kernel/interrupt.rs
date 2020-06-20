@@ -63,10 +63,11 @@ impl<System: Kernel> InterruptLine<System> {
     ///
     /// Turning a managed interrupt handler into an unmanaged one is unsafe
     /// because the behavior of system calls is undefined inside an unmanaged
-    /// interrupt handler. This method prevents this from happening and returns
-    /// [`SetInterruptLinePriorityError::BadParam`].
+    /// interrupt handler. This method checks the new priority to prevent this
+    /// from happening and returns [`SetInterruptLinePriorityError::BadParam`]
+    /// if the operation is unsafe.
     ///
-    /// [a managed range]: crate#interrupt-handling-framework
+    /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
     pub fn set_priority(
         self,
         _value: InterruptPriority,
@@ -78,7 +79,18 @@ impl<System: Kernel> InterruptLine<System> {
     /// Set the priority of the interrupt line without checking if the new
     /// priority falls within [a managed range].
     ///
-    /// [a managed range]: crate#interrupt-handling-framework
+    /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+    ///
+    /// # Safety
+    ///
+    /// If a non-[unmanaged-safe] interrupt handler is attached to the interrupt
+    /// line, changing the priority of the interrupt line to outside of the
+    /// managed range (thus turning the handler into an unmanaged handler) may
+    /// allow the interrupt handler to invoke an undefined behavior, for
+    /// example, by making system calls, which are disallowed in an unmanaged
+    /// interrupt handler.
+    ///
+    /// [unmanaged-safe]: crate::kernel::cfg::CfgInterruptHandlerBuilder::unmanaged
     pub unsafe fn set_priority_unchecked(
         self,
         _value: InterruptPriority,
