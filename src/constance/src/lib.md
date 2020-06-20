@@ -2,6 +2,16 @@ The Constance RTOS
 
 [![Constance and Fluttershy](https://derpicdn.net/img/2018/5/25/1740985/medium.png)](http://derpibooru.org/1740985)
 
+<div class="toc-header"></div>
+
+- [Note to Application Developers](#note-to-application-developers)
+- [Configuring the Kernel](#configuring-the-kernel)
+    - [Trait-based Composition](#trait-based-composition)
+    - [Static Configuration](#static-configuration)
+- [System States](#system-states)
+- [Contexts](#contexts)
+- [Interrupt Handling Framework](#interrupt-handling-framework)
+
 # Note to Application Developers
 
 The implementation code heavily relies on constant propagation, dead code elimination, and “zero-cost” abstractions. Without optimization, it might exhibit a massive code bloat and excessive stack consumption. To change the optimization level for debug builds, add the following lines to your Cargo workspace's `Cargo.toml`:
@@ -11,7 +21,7 @@ The implementation code heavily relies on constant propagation, dead code elimin
 opt-level = 2
 ```
 
-# Design
+# Configuring the Kernel
 
 ## Trait-based Composition
 
@@ -115,6 +125,14 @@ The constructors of kernel objects are configuration functions by themselves, bu
 
 It's possible to write a configuration function directly. However, [`configure!`] can make this process easier by providing macros that offer more concise syntaxes for common patterns.
 
+# System States
+
+*To be filled* CPU Lock, suspending dispatch
+
+# Contexts
+
+*To be filled* Task context, interrupt context
+
 # Interrupt Handling Framework
 
 A port may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it's supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. It's **port-defined** whether a port supports managing or *not* managing interrupt lines and interrupt handlers.
@@ -151,9 +169,27 @@ The behavior of system calls is undefined inside an unmanaged interrupt handler.
 [the Wikipedia article]: https://en.wikipedia.org/w/index.php?title=Interrupt_handler&oldid=934917582
 
 <style type="text/css">
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
 blockquote { /* poor man's admonition */
     background: rgba(128, 128, 128, 0.1) !important;
-    margin: 1em !important; padding: 1em !important;
-    color: inherit !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
 }
 </style>
