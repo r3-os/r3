@@ -69,8 +69,8 @@ pub mod kernel_tests {
             /// ```rust,ignore
             /// aaa::bbb!(
             ///     prefix
-            ///     { name_ident: test1, name_str: "test1", },
-            ///     { name_ident: test2, name_str: "test2", },
+            ///     { path: constance_test::suite::test1, name_ident: test1, name_str: "test1", },
+            ///     { path: constance_test::suite::test2, name_ident: test2, name_str: "test2", },
             /// );
             /// ```
             ///
@@ -89,6 +89,7 @@ pub mod kernel_tests {
                         $(
                             // The test info
                             {
+                                path: $crate::kernel_tests::$name_ident,
                                 name_ident: $name_ident,
                                 name_str: $name_str,
                             },
@@ -134,7 +135,7 @@ pub mod kernel_tests {
     /// ```rust,ignore
     /// aaa::bbb!(
     ///     prefix
-    ///     { name_ident: test1, name_str: "test1", },
+    ///     { path: constance_test::suite::test1, name_ident: test1, name_str: "test1", },
     /// );
     /// ```
     ///

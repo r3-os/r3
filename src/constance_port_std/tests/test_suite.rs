@@ -50,10 +50,11 @@ impl KernelTestUtil {
 
 macro_rules! instantiate_kernel_tests {
     ($(
-        { name_ident: $name_ident:ident, $($rest:tt)* },
+        { path: $path:path, name_ident: $name_ident:ident, $($rest:tt)* },
     )*) => {$(
         mod $name_ident {
-            use constance_test_suite::kernel_tests::{self, $name_ident as test_case};
+            use constance_test_suite::kernel_tests;
+            use $path as test_case;
 
             constance_port_std::use_port!(unsafe struct System);
 

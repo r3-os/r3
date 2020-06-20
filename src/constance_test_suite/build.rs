@@ -74,7 +74,11 @@ struct TestMeta<'a>(&'a str);
 
 impl fmt::Display for TestMeta<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{{ name_ident: {0}, name_str: \"{0}\", }}", self.0)
+        write!(
+            f,
+            "{{ path: $crate::kernel_tests::{0}, name_ident: {0}, name_str: \"{0}\", }}",
+            self.0
+        )
     }
 }
 
