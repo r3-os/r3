@@ -139,7 +139,11 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
 [`BadCtx`]: crate::kernel::ResultCode::BadCtx
 
+<div class="admonition-follows"></div>
+
 > **To be implemented:** Supporting acquiring CPU Lock in user code, supporting priority boost
+
+<div class="admonition-follows"></div>
 
 > **Relation to Other Specifications:** Inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the Constance RTOS. This means phrases like “when the CPU is locked” are not allowed.
 >
@@ -165,7 +169,11 @@ A context is a general term which is often used to describe the “environment�
 [parking]: crate::kernel::Task::unpark
 [activating]: crate::kernel::Task::activate
 
+<div class="admonition-follows"></div>
+
 > **To be implemented:** Detecting an interrupt handler context and returning `BadCtx`
+
+<div class="admonition-follows"></div>
 
 > **Relation to Other Specifications:** Not many kernel designs use the word “thread” to describe the concept that applies to both of interrupts and tasks (one notable exception being [TI-RTOS]), most likely because threads are used to refer to a specific concept in general-purpose operating systems, or they are simply considered synonymous with tasks. Despite that, it was decided that “thread” was an appropriate term to refer to this concept. The primary factors that drove this decision include: (1) the need for a conceptual entity that can “own” locks, and (2) that this concept is important for discussing thread safety without substituting every mention of “thread” with “task or interrupt handler”.
 >
@@ -181,6 +189,8 @@ A context is a general term which is often used to describe the “environment�
 A port may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it's supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. It's **port-defined** whether a port supports managing or *not* managing interrupt lines and interrupt handlers.
 
 The benefits of providing a standardized interface for interrupts include: (1) increased portability of applications and libraries across target platforms, (2) well-defined semantics of system calls inside an interrupt handler, and (3) decoupling hardware driver components on a system with a non-vectorized interrupt controller or multiplexed interrupt lines. The downsides include: (1) obscuring non-standard hardware features, (2) interference with other ways of managing interrupts (e.g., board support packages, IDEs), (3) additional layer of abstraction that makes the system mechanism unclear.
+
+<div class="admonition-follows"></div>
 
 > **Port Implementation Note:** System calls can provide well-defined semantics inside an interrupt handler only if the port adheres to this interrupt handling framework. If a port developer chooses not to follow this, they are responsible to properly explain the interaction between interrupts and the kernel.
 
@@ -203,6 +213,8 @@ The behavior of system calls is undefined inside an unmanaged interrupt handler.
 [changing]: crate::kernel::InterruptLine::set_priority
 [bypass]: crate::kernel::InterruptLine::set_priority_unchecked
 [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+
+<div class="admonition-follows"></div>
 
 > **Relation to Other Specifications:** The interrupt handling framework was largely inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). The method of leveraging Rust's `unsafe` system to ensure unmanaged safety is obviously Rust-specific and novel.
 >
@@ -229,12 +241,13 @@ The behavior of system calls is undefined inside an unmanaged interrupt handler.
 .toc-header + ul ul { margin-bottom: 0; }
 .toc-header + ul li { list-style: none; }
 
-blockquote { /* poor man's admonition */
+/* Poor man's admonition */
+.admonition-follows + blockquote {
     background: rgba(128, 128, 128, 0.1) !important;
     margin: 1em !important; padding: 1em 1em 0 !important;
     color: inherit !important; overflow: hidden;
 }
-blockquote::after { /* collapsible padding */
+.admonition-follows + blockquote::after { /* collapsible padding */
     content: ""; display: block; margin-top: 1em;
 }
 </style>
