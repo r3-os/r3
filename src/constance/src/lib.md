@@ -142,6 +142,8 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 > **To be implemented:** Supporting acquring CPU Lock in user code, supporting priority boost
 
 > **Relation to Other Specifications:** Inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the Constance RTOS. This means phrases like “when the CPU is locked” are not allowed.
+>
+> CPU Lock corresponds to `SuspendOSInterrupts` and `ResumeOSInterrupts` from the OSEK/VDX specification.
 
 # Contexts
 
@@ -180,6 +182,8 @@ The behavior of system calls is undefined inside an unmanaged interrupt handler.
 > **Relation to Other Specifications:** The interrupt handling framework was largely inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). The method of leveraging Rust's `unsafe` system to ensure unmanaged safety is obviously Rust-specific and novel.
 >
 > Interrupt handlers and interrupt service routines (terms from μITRON4.0) have been renamed to first-level interrupt handlers and (second-level) interrupt handlers, respectively, because “interrupt service routine” was way too long to type and abbreviating it would result in a set of type names which is either excessively inconsistent (`InterruptLine`, `Irq`) or bizarre (`InterruptLine`, `InterruptRq`). Removing the term “interrupt service routine” should also remove a source of confusion because interrupt handlers and interrupt service routines are often regarded as synonymous to each other (as evident in [the Wikipedia article] on interrupt handler), whereas there is a clear sequential relationship between first-level and second-level.
+>
+> The OSEK/VDX specification divides interrupt service routines into category 1 and 2 similarly to our managed and unmanaged interrupt handlers.
 
 [`BadCtx`]: crate::kernel::ResultCode::BadCtx
 [the Wikipedia article]: https://en.wikipedia.org/w/index.php?title=Interrupt_handler&oldid=934917582
