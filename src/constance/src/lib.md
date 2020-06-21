@@ -9,7 +9,7 @@ The Constance RTOS
     - [Trait-based Composition](#trait-based-composition)
     - [Static Configuration](#static-configuration)
 - [System States](#system-states)
-- [Contexts](#contexts)
+- [Threads](#threads)
 - [Interrupt Handling Framework](#interrupt-handling-framework)
 
 # Note to Application Developers
@@ -145,11 +145,36 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 >
 > CPU Lock corresponds to `SuspendOSInterrupts` and `ResumeOSInterrupts` from the OSEK/VDX specification.
 
-# Contexts
+# Threads
 
-*To be filled* Task context, interrupt context
+**An (execution) thread** is a sequence of instructions executed by a processor. There can be multiple threads existing at the same time and the kernel is responsible for scheduling the execution of threads. The location in a program where a thread starts execution is called **an entry point function** for the thread. A thread exits when it returns from its entry point function¹ or calls [`exit_task`](crate::kernel::Kernel::exit_task) (valid only for tasks).
 
-> **To be implemented:** Detecting an interrupt context and return `BadCtx`
+ ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.
+
+There are two types of kernel objects that define the properties of threads such as how and when they are created and whether they can block or not. (To be precise, they are not threads by themselves but often treated as such for brevity. Matching them to threads doesn't cause much confusion in practice because each of them can only map to up to one thread at any moment.)
+
+ - **Interrupt handlers** start execution in response to asynchronous external events (interrupts). They always run to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler.
+
+ - **[Tasks]** are kernel objects whose execution is controlled by application code. Each task encapsulates a variety of state data necessary for the execution and scheduling of the associated thread, such as [a stack region] to store local variables and activation frames, the current [priority], the [parking] state of the task, and a memory region used to save the state of CPU registers when the task is blocked or preempted. The associated thread can be started by **[activating]** that task. A task-based thread can make blocking system calls, which will temporarily block the execution of the thread until certain conditions are met. Task-based threads can be preempted by any kinds of threads.
+
+A context is a general term which is often used to describe the “environment” a function executes in. Terms like **a task context** are used to specify the type of thread a calling thread is expected to be.
+
+[Tasks]: crate::kernel::Task
+[a stack region]: crate::kernel::cfg::CfgTaskBuilder::stack_size
+[priority]: crate::kernel::cfg::CfgTaskBuilder::priority
+[parking]: crate::kernel::Task::unpark
+[activating]: crate::kernel::Task::activate
+
+> **To be implemented:** Detecting an interrupt handler context and returning `BadCtx`
+
+> **Relation to Other Specifications:** Not many kernel designs use the word “thread” to describe the concept that applies to both of interrupts and tasks (one notable exception being [TI-RTOS]), most likely because threads are used to refer to a specific concept in general-purpose operating systems, or they are simply considered synonymous with tasks. Despite that, it was decided that “thread” was an appropriate term to refer to this concept. The primary factors that drove this decision include: (1) the need for a conceptual entity that can “own” locks, and (2) that this concept is important for discussing thread safety without substituting every mention of “thread” with “task or interrupt handler”.
+>
+> The closest concept in [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html) is *processing units* and *contexts*, the latter of which we use as well.
+>
+> [The AUTOSAR OS specification] uses the term “context” in a similar way.
+
+[TI-RTOS]: http://software-dl.ti.com/lprf/simplelink_cc13x0_sdk/1_30_00_06/exports/docs/ti154stack/ti154stack-sdg/ti154stack-sdg/tirtos/rtos-overview.html
+[The AUTOSAR OS specification]: https://www.autosar.org/fileadmin/user_upload/standards/classic/4-3/AUTOSAR_SWS_OS.pdf
 
 # Interrupt Handling Framework
 
