@@ -133,13 +133,13 @@ A system can be in some of the system states described in this section at any po
 
 [`BadCtx`]: crate::kernel::ResultCode::BadCtx
 
-Like a lock guard of a mutex, CPU Lock can be thought of as something to be “owned” by a current execution path. This conception allows it to be seemlessly integrated with Rust's vocabulary and mental model around the ownership model.
+Like a lock guard of a mutex, CPU Lock can be thought of as something to be “owned” by a current thread. This conception allows it to be seamlessly integrated with Rust's vocabulary and mental model around the ownership model.
 
-**Priority Boost** temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost only can be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active, and will return [`BadCtx`].
+**Priority Boost** temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost can only be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active, and will return [`BadCtx`].
 
 [`BadCtx`]: crate::kernel::ResultCode::BadCtx
 
-> **To be implemented:** Supporting acquring CPU Lock in user code, supporting priority boost
+> **To be implemented:** Supporting acquiring CPU Lock in user code, supporting priority boost
 
 > **Relation to Other Specifications:** Inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the Constance RTOS. This means phrases like “when the CPU is locked” are not allowed.
 >
