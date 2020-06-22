@@ -85,6 +85,8 @@ macro_rules! define_error {
 pub enum ResultCode {
     /// The operation was successful. No additional information is available.
     Success = 0,
+    /// The operation is not supported.
+    NotSupported = -9,
     /// A parameter is invalid in a way that is no covered by any other error
     /// codes.
     BadParam = -17,
@@ -343,6 +345,8 @@ define_error! {
     /// [`InterruptLine::enable`]: super::InterruptLine::enable
     /// [`InterruptLine::disable`]: super::InterruptLine::disable
     pub enum EnableInterruptLineError: BadParamError {
+        /// The operation is not supported by the port.
+        NotSupported,
         /// Enabling or disabling the specifeid interrupt line is not supported.
         BadParam,
     }
