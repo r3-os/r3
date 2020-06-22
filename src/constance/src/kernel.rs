@@ -197,7 +197,7 @@ pub unsafe trait Port: KernelCfg1 {
     ///
     /// <div class="admonition-follows"></div>
     ///
-    /// > **Port Implementation Node:** One way to handle the interrupt context
+    /// > **Port Implementation Note:** One way to handle the interrupt context
     /// > case is to set a flag variable and check it in the epilogue of a
     /// > first-level interrupt handler. Another way is to raise a low-priority
     /// > interrupt (such as PendSV in Arm-M) and implement dispatching in the
