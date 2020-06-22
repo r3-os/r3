@@ -351,3 +351,41 @@ define_error! {
         BadParam,
     }
 }
+
+define_error! {
+    /// Error type for [`InterruptLine::pend`].
+    ///
+    /// [`InterruptLine::pend`]: super::InterruptLine::pend
+    pub enum PendInterruptLineError: BadParamError {
+        /// Setting a pending flag is not supported by the port.
+        NotSupported,
+        /// Setting the pending flag of the specified interrupt line is not
+        /// supported.
+        BadParam,
+        /// The interrupt line is not configured to allow this operation. For
+        /// example, this operation is invalid for an level-triggered interrupt
+        /// line.
+        ///
+        /// A port is not required to detect this condition.
+        BadObjectState,
+    }
+}
+
+define_error! {
+    /// Error type for [`InterruptLine::clear`].
+    ///
+    /// [`InterruptLine::clear`]: super::InterruptLine::clear
+    pub enum ClearInterruptLineError: BadParamError {
+        /// Clearing a pending flag is not supported by the port.
+        NotSupported,
+        /// Clearing the pending flag of the specified interrupt line is not
+        /// supported.
+        BadParam,
+        /// The interrupt line is not configured to allow this operation. For
+        /// example, this operation is invalid for an level-triggered interrupt
+        /// line.
+        ///
+        /// A port is not required to detect this condition.
+        BadObjectState,
+    }
+}

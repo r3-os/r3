@@ -1,6 +1,9 @@
 use core::{fmt, hash, marker::PhantomData};
 
-use super::{utils, EnableInterruptLineError, Kernel, Port, SetInterruptLinePriorityError};
+use super::{
+    utils, ClearInterruptLineError, EnableInterruptLineError, Kernel, PendInterruptLineError, Port,
+    SetInterruptLinePriorityError,
+};
 use crate::utils::Init;
 
 /// Numeric value used to identify interrupt lines.
@@ -111,6 +114,18 @@ impl<System: Kernel> InterruptLine<System> {
     pub fn disable(self) -> Result<(), EnableInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { System::disable_interrupt_line(self.0) }
+    }
+
+    /// Set the pending flag of the interrupt line.
+    pub fn pend(self) -> Result<(), PendInterruptLineError> {
+        // Safety: We are the kernel, so it's okay to call `Port`'s methods
+        unsafe { System::pend_interrupt_line(self.0) }
+    }
+
+    /// Clear the pending flag of the interrupt line.
+    pub fn clear(self) -> Result<(), ClearInterruptLineError> {
+        // Safety: We are the kernel, so it's okay to call `Port`'s methods
+        unsafe { System::clear_interrupt_line(self.0) }
     }
 
     // TODO: port-specific attributes
