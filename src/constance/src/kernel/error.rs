@@ -164,7 +164,7 @@ define_error! {
         /// specification. In this specification, the `act_tsk` (activate task)
         /// system service works by enqueueing an activation request. `E_QOVR`
         /// is used to report a condition in which an enqueue count limit has
-        /// been reached. Our kernel doesn't support enqueueing actvation
+        /// been reached. Our kernel doesn't support enqueueing activation
         /// request (at the moment), so any attempts to activate an
         /// already-active task will fail.
         QueueOverflow,
@@ -333,7 +333,7 @@ define_error! {
         ///
         /// [a task context]: crate#contexts
         BadContext,
-        /// The specified interrupt number or the specfied priority value is
+        /// The specified interrupt number or the specified priority value is
         /// out of range.
         BadParam,
     }
@@ -347,7 +347,7 @@ define_error! {
     pub enum EnableInterruptLineError: BadParamError {
         /// The operation is not supported by the port.
         NotSupported,
-        /// Enabling or disabling the specifeid interrupt line is not supported.
+        /// Enabling or disabling the specified interrupt line is not supported.
         BadParam,
     }
 }
