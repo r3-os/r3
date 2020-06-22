@@ -25,6 +25,28 @@ pub type Id = NonZeroUsize;
 /// This trait is automatically implemented on "system" types that have
 /// sufficient trait `impl`s to instantiate the kernel.
 pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
+    /// Activate [CPU Lock].
+    ///
+    /// Returns [`BadContext`] if CPU Lock is already active.
+    ///
+    /// [CPU Lock]: crate#system-states
+    /// [`BadContext`]: CpuLockError::BadContext
+    fn acquire_cpu_lock() -> Result<(), CpuLockError>;
+
+    /// Deactivate [CPU Lock].
+    ///
+    /// Returns [`BadContext`] if CPU Lock is already inactive.
+    ///
+    /// [CPU Lock]: crate#system-states
+    /// [`BadContext`]: CpuLockError::BadContext
+    ///
+    /// # Safety
+    ///
+    /// CPU Lock is useful for creating a critical section. By making this
+    /// method `unsafe`, safe code is prevented from interfering with a critical
+    /// section.
+    unsafe fn release_cpu_lock() -> Result<(), CpuLockError>;
+
     /// Terminate the current task, putting it into a Dormant state.
     ///
     /// The kernel (to be precise, the port) makes an implicit call to this
@@ -56,6 +78,26 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
 }
 
 impl<T: Port + KernelCfg2 + 'static> Kernel for T {
+    fn acquire_cpu_lock() -> Result<(), CpuLockError> {
+        if Self::is_cpu_lock_active() {
+            Err(CpuLockError::BadContext)
+        } else {
+            // Safety: CPU Lock inactive
+            unsafe { Self::enter_cpu_lock() };
+            Ok(())
+        }
+    }
+
+    unsafe fn release_cpu_lock() -> Result<(), CpuLockError> {
+        if !Self::is_cpu_lock_active() {
+            Err(CpuLockError::BadContext)
+        } else {
+            // Safety: CPU Lock active
+            unsafe { Self::leave_cpu_lock() };
+            Ok(())
+        }
+    }
+
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
         // Safety: Just forwarding the function call
         unsafe { exit_current_task::<Self>() }

@@ -55,5 +55,26 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         Err(constance::kernel::GetEventGroupError::BadId)
     );
 
+    // CPU Lock active
+    System::acquire_cpu_lock().unwrap();
+    assert_eq!(
+        app.eg1.get(),
+        Err(constance::kernel::GetEventGroupError::BadContext)
+    );
+    assert_eq!(
+        app.eg1.set(0),
+        Err(constance::kernel::UpdateEventGroupError::BadContext)
+    );
+    assert_eq!(
+        app.eg1.clear(0),
+        Err(constance::kernel::UpdateEventGroupError::BadContext)
+    );
+    assert_eq!(
+        app.eg1
+            .wait(0, constance::kernel::EventGroupWaitFlags::empty()),
+        Err(constance::kernel::WaitEventGroupError::BadContext)
+    );
+    unsafe { System::release_cpu_lock().unwrap() };
+
     D::success();
 }

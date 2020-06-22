@@ -132,8 +132,9 @@ It's possible to write a configuration function directly. However, [`configure!`
 
 A system can be in some of the system states described in this section at any point.
 
-**CPU Lock** disables all managed interrupts and dispatching. On a uniprocessor system (which this kernel targets), this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active, and will return [`BadContext`].
+**CPU Lock** disables all managed interrupts and dispatching. On a uniprocessor system (which this kernel targets), this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active, and will return [`BadContext`]. Application code can use [`acquire_cpu_lock`] to activate CPU Lock.
 
+[`acquire_cpu_lock`]: crate::kernel::Kernel::acquire_cpu_lock
 [`BadContext`]: crate::kernel::ResultCode::BadContext
 
 Like a lock guard of a mutex, CPU Lock can be thought of as something to be “owned” by a current thread. This conception allows it to be seamlessly integrated with Rust's vocabulary and mental model around the ownership model.
@@ -144,7 +145,7 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
 <div class="admonition-follows"></div>
 
-> **To be implemented:** Supporting acquiring CPU Lock in user code, supporting priority boost
+> **To be implemented:** Supporting priority boost
 
 <div class="admonition-follows"></div>
 

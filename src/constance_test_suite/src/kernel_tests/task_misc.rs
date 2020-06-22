@@ -75,6 +75,26 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     // Current task
     assert_eq!(Task::current().unwrap(), Some(app.task1));
 
+    // CPU Lock active
+    System::acquire_cpu_lock().unwrap();
+    assert_eq!(
+        app.task1.activate(),
+        Err(constance::kernel::ActivateTaskError::BadContext)
+    );
+    assert_eq!(
+        app.task1.interrupt(),
+        Err(constance::kernel::InterruptTaskError::BadContext)
+    );
+    assert_eq!(
+        app.task1.unpark(),
+        Err(constance::kernel::UnparkError::BadContext)
+    );
+    assert_eq!(
+        System::park(),
+        Err(constance::kernel::ParkError::BadContext)
+    );
+    unsafe { System::release_cpu_lock().unwrap() };
+
     D::success();
 }
 

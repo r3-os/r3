@@ -204,6 +204,18 @@ define_error! {
 }
 
 define_error! {
+    /// Error type for [`Kernel::acquire_cpu_lock`] and
+    /// [`Kernel::release_cpu_lock`].
+    ///
+    /// [`Kernel::acquire_cpu_lock`]: super::Kernel::acquire_cpu_lock
+    /// [`Kernel::release_cpu_lock`]: super::Kernel::release_cpu_lock
+    pub enum CpuLockError: BadContextError {
+        /// CPU Lock is already active or inactive.
+        BadContext,
+    }
+}
+
+define_error! {
     /// Error type for wait operations such as [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
