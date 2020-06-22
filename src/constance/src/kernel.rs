@@ -297,10 +297,14 @@ pub unsafe trait Port: KernelCfg1 {
     fn is_interrupt_context() -> bool;
 
     /// Enable the specified interrupt line.
-    unsafe fn enable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError>;
+    unsafe fn enable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
+        Err(EnableInterruptLineError::NotSupported)
+    }
 
     /// Disable the specified interrupt line.
-    unsafe fn disable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError>;
+    unsafe fn disable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
+        Err(EnableInterruptLineError::NotSupported)
+    }
 }
 
 /// Methods intended to be called by a port.

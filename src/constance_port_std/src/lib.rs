@@ -307,20 +307,6 @@ impl State {
     pub fn is_interrupt_context(&self) -> bool {
         false
     }
-
-    pub fn enable_interrupt_line(
-        &self,
-        _line: InterruptNum,
-    ) -> Result<(), EnableInterruptLineError> {
-        todo!()
-    }
-
-    pub fn disable_interrupt_line(
-        &self,
-        _line: InterruptNum,
-    ) -> Result<(), EnableInterruptLineError> {
-        todo!()
-    }
 }
 
 #[macro_export]
@@ -365,14 +351,6 @@ macro_rules! use_port {
 
             fn is_interrupt_context() -> bool {
                 PORT_STATE.is_interrupt_context()
-            }
-
-            unsafe fn enable_interrupt_line(line: $crate::InterruptNum) -> Result<(), $crate::EnableInterruptLineError> {
-                PORT_STATE.enable_interrupt_line(line)
-            }
-
-            unsafe fn disable_interrupt_line(line: $crate::InterruptNum) -> Result<(), $crate::EnableInterruptLineError> {
-                PORT_STATE.disable_interrupt_line(line)
             }
         }
 
