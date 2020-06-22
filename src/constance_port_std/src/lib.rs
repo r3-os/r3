@@ -303,6 +303,10 @@ impl State {
     pub fn is_cpu_lock_active(&self) -> bool {
         self.cpu_lock.load(Ordering::Relaxed)
     }
+
+    pub fn is_interrupt_context(&self) -> bool {
+        false
+    }
 }
 
 #[macro_export]
@@ -343,6 +347,10 @@ macro_rules! use_port {
 
             fn is_cpu_lock_active() -> bool {
                 PORT_STATE.is_cpu_lock_active()
+            }
+
+            fn is_interrupt_context() -> bool {
+                PORT_STATE.is_interrupt_context()
             }
         }
 

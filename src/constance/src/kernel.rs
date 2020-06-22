@@ -217,6 +217,12 @@ pub unsafe trait Port: KernelCfg1 {
 
     /// Return a flag indicating whether a CPU Lock state is active.
     fn is_cpu_lock_active() -> bool;
+
+    /// Return a flag indicating whether the current context is
+    /// [an interrupt context].
+    ///
+    /// [an interrupt context]: crate#contexts
+    fn is_interrupt_context() -> bool;
 }
 
 /// Methods intended to be called by a port.
