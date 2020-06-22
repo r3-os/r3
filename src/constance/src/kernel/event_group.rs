@@ -131,7 +131,7 @@ impl<System: Kernel> EventGroup<System> {
     /// Returns the currently set bits. If `EventGroupWaitFlags::CLEAR` is
     /// specified, this method returns the bits before clearing.
     ///
-    /// This system service may block. Consequently, calling this method is not
+    /// This system service may block. Therefore, calling this method is not
     /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
     ///
     /// [a non-waitable context]: crate#contexts
