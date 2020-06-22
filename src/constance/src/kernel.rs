@@ -1,7 +1,12 @@
 //! The RTOS kernel
 use atomic_ref::AtomicRef;
 use core::{
-    borrow::BorrowMut, fmt, mem::forget, num::NonZeroUsize, ops::Range, sync::atomic::Ordering,
+    borrow::BorrowMut,
+    fmt,
+    mem::forget,
+    num::NonZeroUsize,
+    ops::Range,
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 use crate::utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap};
@@ -50,6 +55,35 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
 
     /// Return a flag indicating whether CPU Lock is currently active.
     fn has_cpu_lock() -> bool;
+
+    /// Activate [Priority Boost].
+    ///
+    /// Returns [`BadContext`] if Priority Boost is already active, the
+    /// calling context is not a task context, or CPU Lock is active.
+    ///
+    /// [Priority Boost]: crate#system-states
+    /// [`BadContext`]: CpuLockError::BadContext
+    fn boost_priority() -> Result<(), BoostPriorityError>;
+
+    /// Deactivate [Priority Boost].
+    ///
+    /// Returns [`BadContext`] if Priority Boost is already inactive, the
+    /// calling context is not a task context, or CPU Lock is active.
+    ///
+    /// [Priority Boost]: crate#system-states
+    /// [`BadContext`]: CpuLockError::BadContext
+    ///
+    /// # Safety
+    ///
+    /// Priority Boost is useful for creating a critical section. By making this
+    /// method `unsafe`, safe code is prevented from interfering with a critical
+    /// section.
+    unsafe fn unboost_priority() -> Result<(), BoostPriorityError>;
+
+    /// Return a flag indicating whether [Priority Boost] is currently active.
+    ///
+    /// [Priority Boost]: crate#system-states
+    fn is_priority_boost_active() -> bool;
 
     /// Terminate the current task, putting it into a Dormant state.
     ///
@@ -104,6 +138,18 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
 
     fn has_cpu_lock() -> bool {
         Self::is_cpu_lock_active()
+    }
+
+    fn boost_priority() -> Result<(), BoostPriorityError> {
+        state::boost_priority::<Self>()
+    }
+
+    unsafe fn unboost_priority() -> Result<(), BoostPriorityError> {
+        state::unboost_priority::<Self>()
+    }
+
+    fn is_priority_boost_active() -> bool {
+        Self::state().priority_boost.load(Ordering::Relaxed)
     }
 
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
@@ -399,6 +445,9 @@ pub struct State<
     /// Invariant: `task_ready_bitmap[i].first.is_some() ==
     ///  task_ready_queue.get(i)`
     task_ready_queue: utils::CpuLockCell<System, TaskReadyQueue>,
+
+    /// `true` if Priority Boost is active.
+    priority_boost: AtomicBool,
 }
 
 impl<
@@ -413,6 +462,7 @@ impl<
         running_task: AtomicRef::new(None),
         task_ready_bitmap: Init::INIT,
         task_ready_queue: Init::INIT,
+        priority_boost: AtomicBool::new(false),
     };
 }
 
@@ -429,6 +479,7 @@ impl<
             .field("running_task", &self.running_task)
             .field("task_ready_bitmap", &self.task_ready_bitmap)
             .field("task_ready_queue", &self.task_ready_queue)
+            .field("priority_boost", &self.priority_boost)
             .finish()
     }
 }

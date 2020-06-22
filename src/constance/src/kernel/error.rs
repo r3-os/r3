@@ -216,6 +216,19 @@ define_error! {
 }
 
 define_error! {
+    /// Error type for [`Kernel::boost_priority`] and
+    /// [`Kernel::unboost_priority`].
+    ///
+    /// [`Kernel::boost_priority`]: super::Kernel::boost_priority
+    /// [`Kernel::unboost_priority`]: super::Kernel::unboost_priority
+    pub enum BoostPriorityError: BadContextError {
+        /// Priority Boost is already active or inactive, the current
+        /// context is not a task context, or CPU Lock is active.
+        BadContext,
+    }
+}
+
+define_error! {
     /// Error type for wait operations such as [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait

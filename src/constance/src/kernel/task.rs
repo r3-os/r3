@@ -357,6 +357,11 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
         utils::assume_cpu_lock::<System>()
     };
 
+    // If Priority Boost is active, deacrivate it.
+    System::state()
+        .priority_boost
+        .store(false, Ordering::Release);
+
     // Transition the current task to Dormant
     let running_task = System::state().running_task().unwrap();
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
@@ -482,6 +487,16 @@ pub(super) unsafe fn make_ready<System: Kernel>(
 /// System services that transition a task into a Ready state should call
 /// this before returning to the caller.
 pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLockGuard<System>) {
+    // If Priority Boost is active, treat the currently running task as the
+    // highest-priority task.
+    if System::is_priority_boost_active() {
+        debug_assert_eq!(
+            *System::state().running_task().unwrap().st.read(&*lock),
+            TaskSt::Running
+        );
+        return;
+    }
+
     let prev_task_priority = if let Some(running_task) = System::state().running_task() {
         running_task.priority.to_usize().unwrap()
     } else {
@@ -508,6 +523,17 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLo
 pub(super) fn choose_next_running_task<System: Kernel>(
     mut lock: utils::CpuLockGuardBorrowMut<System>,
 ) {
+    // If Priority Boost is active, treat the currently running task as the
+    // highest-priority task.
+    if System::is_priority_boost_active() {
+        // Blocking system calls aren't allowed when Priority Boost is active
+        debug_assert_eq!(
+            *System::state().running_task().unwrap().st.read(&*lock),
+            TaskSt::Running
+        );
+        return;
+    }
+
     // The priority of `running_task`
     let prev_running_task = System::state().running_task();
     let prev_task_priority = if let Some(running_task) = prev_running_task {

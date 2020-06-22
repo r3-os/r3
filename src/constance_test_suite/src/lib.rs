@@ -110,12 +110,15 @@ pub mod kernel_tests {
         (mod event_group_order_task_priority {}, "event_group_order_task_priority"),
         (mod event_group_set_and_dispatch {}, "event_group_set_and_dispatch"),
         (mod event_group_wait_types {}, "event_group_wait_types"),
+        (mod priority_boost {}, "priority_boost"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
         (mod task_cpu_lock_reset {}, "task_cpu_lock_reset"),
         (mod task_misc {}, "task_misc"),
         (mod task_park {}, "task_park"),
+        (mod task_park_priority_boost {}, "task_park_priority_boost"),
         (mod task_park_reset {}, "task_park_reset"),
+        (mod task_priority_boost_reset {}, "task_priority_boost_reset"),
         (mod task_queue_fifo {}, "task_queue_fifo"),
     }
 

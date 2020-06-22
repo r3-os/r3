@@ -139,13 +139,10 @@ A system can be in some of the system states described in this section at any po
 
 Like a lock guard of a mutex, CPU Lock can be thought of as something to be “owned” by a current thread. This conception allows it to be seamlessly integrated with Rust's vocabulary and mental model around the ownership model.
 
-**Priority Boost** temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost can only be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active, and will return [`BadContext`].
+**Priority Boost** temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost can only be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active, and will return [`BadContext`]. Application code can use [`boost_priority`] to activate Priority Boost.
 
+[`boost_priority`]: crate::kernel::Kernel::boost_priority
 [`BadContext`]: crate::kernel::ResultCode::BadContext
-
-<div class="admonition-follows"></div>
-
-> **To be implemented:** Supporting priority boost
 
 <div class="admonition-follows"></div>
 
