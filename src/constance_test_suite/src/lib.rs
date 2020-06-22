@@ -103,6 +103,7 @@ pub mod kernel_tests {
     define_kernel_tests! {
         [$]
         (mod basic {}, "basic"),
+        (mod cpu_lock {}, "cpu_lock"),
         (mod event_group_interrupt {}, "event_group_interrupt"),
         (mod event_group_misc {}, "event_group_misc"),
         (mod event_group_order_fifo {}, "event_group_order_fifo"),
@@ -111,6 +112,7 @@ pub mod kernel_tests {
         (mod event_group_wait_types {}, "event_group_wait_types"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
+        (mod task_cpu_lock_reset {}, "task_cpu_lock_reset"),
         (mod task_misc {}, "task_misc"),
         (mod task_park {}, "task_park"),
         (mod task_park_reset {}, "task_park_reset"),
