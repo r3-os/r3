@@ -390,7 +390,7 @@ macro_rules! build {
 
         // Construct a table of interrupt line initiializers
         $crate::array_item_from_fn! {
-            static INTERRUPT_LINE_INITS:
+            const INTERRUPT_LINE_INITS:
                 [InterruptLineInit<$sys>; _] =
                     (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines.get(i).to_init());
         }

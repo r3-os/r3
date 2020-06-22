@@ -1,6 +1,7 @@
 use core::{fmt, hash, marker::PhantomData};
 
 use super::{utils, EnableInterruptLineError, Kernel, Port, SetInterruptLinePriorityError};
+use crate::utils::Init;
 
 /// Numeric value used to identify interrupt lines.
 ///
@@ -133,6 +134,14 @@ pub struct InterruptLineInit<System> {
     pub(super) flags: InterruptLineInitFlags,
 }
 
+impl<System> Init for InterruptLineInit<System> {
+    const INIT: Self = Self {
+        line: InterruptLine::from_num(0),
+        priority: Init::INIT,
+        flags: InterruptLineInitFlags::empty(),
+    };
+}
+
 bitflags::bitflags! {
     /// Flags for [`InterruptLineInit`].
     #[doc(hidden)]
@@ -146,7 +155,7 @@ bitflags::bitflags! {
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy)]
 pub struct InterruptAttr<System: Port> {
-    pub(super) line_inits: &'static [InterruptLineInit<System>],
+    pub line_inits: &'static [InterruptLineInit<System>],
 }
 
 impl<System: Kernel> InterruptAttr<System> {
