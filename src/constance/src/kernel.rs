@@ -315,6 +315,13 @@ pub unsafe trait Port: KernelCfg1 {
     unsafe fn clear_interrupt_line(_line: InterruptNum) -> Result<(), ClearInterruptLineError> {
         Err(ClearInterruptLineError::NotSupported)
     }
+
+    /// Read the pending flag of the specified interrupt line.
+    unsafe fn is_interrupt_line_pending(
+        _line: InterruptNum,
+    ) -> Result<bool, QueryInterruptLineError> {
+        Err(QueryInterruptLineError::NotSupported)
+    }
 }
 
 /// Methods intended to be called by a port.

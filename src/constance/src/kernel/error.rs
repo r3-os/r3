@@ -389,3 +389,16 @@ define_error! {
         BadObjectState,
     }
 }
+
+define_error! {
+    /// Error type for [`InterruptLine::is_pending`].
+    ///
+    /// [`InterruptLine::is_pending`]: super::InterruptLine::is_pending
+    pub enum QueryInterruptLineError: BadParamError {
+        /// Reading a pending flag is not supported by the port.
+        NotSupported,
+        /// Reading the pending flag of the specified interrupt line is not
+        /// supported.
+        BadParam,
+    }
+}
