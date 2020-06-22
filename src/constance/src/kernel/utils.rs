@@ -1,12 +1,12 @@
 use core::{fmt, marker::PhantomData, ops};
 use tokenlock::{Token, TokenLock};
 
-use super::{error::BadCtxError, Kernel};
+use super::{error::BadContextError, Kernel};
 use crate::utils::{intrusive_list::CellLike, Init};
 
-pub(super) fn expect_cpu_lock_inactive<System: Kernel>() -> Result<(), BadCtxError> {
+pub(super) fn expect_cpu_lock_inactive<System: Kernel>() -> Result<(), BadContextError> {
     if System::is_cpu_lock_active() {
-        Err(BadCtxError::BadCtx)
+        Err(BadContextError::BadContext)
     } else {
         Ok(())
     }
@@ -109,8 +109,8 @@ impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockGuardBorrowMut<'a, Syst
 }
 
 /// Attempt to enter a CPU Lock state and get an RAII guard.
-/// Return `BadCtx` if the kernel is already in a CPU Lock state.
-pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadCtxError> {
+/// Return `BadContext` if the kernel is already in a CPU Lock state.
+pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadContextError> {
     expect_cpu_lock_inactive::<System>()?;
 
     // Safety: CPU Lock is currently inactive, and it's us (the kernel) who

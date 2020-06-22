@@ -132,15 +132,15 @@ It's possible to write a configuration function directly. However, [`configure!`
 
 A system can be in some of the system states described in this section at any point.
 
-**CPU Lock** disables all managed interrupts and dispatching. On a uniprocessor system (which this kernel targets), this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active, and will return [`BadCtx`].
+**CPU Lock** disables all managed interrupts and dispatching. On a uniprocessor system (which this kernel targets), this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active, and will return [`BadContext`].
 
-[`BadCtx`]: crate::kernel::ResultCode::BadCtx
+[`BadContext`]: crate::kernel::ResultCode::BadContext
 
 Like a lock guard of a mutex, CPU Lock can be thought of as something to be “owned” by a current thread. This conception allows it to be seamlessly integrated with Rust's vocabulary and mental model around the ownership model.
 
-**Priority Boost** temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost can only be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active, and will return [`BadCtx`].
+**Priority Boost** temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost can only be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active, and will return [`BadContext`].
 
-[`BadCtx`]: crate::kernel::ResultCode::BadCtx
+[`BadContext`]: crate::kernel::ResultCode::BadContext
 
 <div class="admonition-follows"></div>
 
@@ -218,7 +218,7 @@ The kernel occasionally disables interrupts by activating CPU Lock. The addition
 
 An application can register one or more **(second-level) interrupt handlers** to an interrupt number. They execute in a serial fashion inside a first-level interrupt handler for the interrupt number. The static configuration system automatically combine multiple second-level interrupt handlers into one (thus taking care of the “execute in a serial fashion” part). **It's up to a port to generate a first-level interrupt handler** that executes in an appropriate situation, takes care of low-level tasks such as saving and restoring registers, and calls the (combined) second-level interrupt handler.
 
-Interrupt handlers execute with CPU Lock inactive and may return with CPU Lock either active or inactive. Some system calls are not allowed in there and will return [`BadCtx`].
+Interrupt handlers execute with CPU Lock inactive and may return with CPU Lock either active or inactive. Some system calls are not allowed in there and will return [`BadContext`].
 
 The behavior of system calls is undefined inside an unmanaged interrupt handler. The property of being protected from programming errors caused by making system calls inside an unmanaged interrupt handler is called **unmanaged safety**. Most system services are not marked as `unsafe`, so in order to ensure unmanaged safety, safe code shouldn't be allowed to register an interrupt handler that potentially executes as an unmanaged interrupt handler. On the other hand, the number of `unsafe` blocks in application code should be minimized in common use cases. To meet this goal, this framework employs several safeguards: (1) Interrupt handlers can be [explicitly marked] as **unmanaged-safe** (safe to use as an unmanaged interrupt handler), but this requires an `unsafe` block. (2) An interrupt line must be initialized with a priority value that falls within [a managed range] if it has an non-unmanaged-safe interrupt service handler. (3) When [changing] the priority of an interrupt line, the new priority must be in a managed range. It's possible to [bypass] this check, but this requires an `unsafe` block.
 
@@ -235,5 +235,5 @@ The behavior of system calls is undefined inside an unmanaged interrupt handler.
 >
 > The OSEK/VDX specification divides interrupt service routines into category 1 and 2 similarly to our managed and unmanaged interrupt handlers.
 
-[`BadCtx`]: crate::kernel::ResultCode::BadCtx
+[`BadContext`]: crate::kernel::ResultCode::BadContext
 [the Wikipedia article]: https://en.wikipedia.org/w/index.php?title=Interrupt_handler&oldid=934917582

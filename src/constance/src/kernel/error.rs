@@ -93,7 +93,7 @@ pub enum ResultCode {
     /// [`Id`]: super::Id
     BadId = -18,
     /// The current context disallows the operation.
-    BadCtx = -25,
+    BadContext = -25,
     /// A target object is in a state that disallows the operation.
     BadObjectState = -41,
     /// An operation or an object couldn't be enqueued because there are too
@@ -124,8 +124,8 @@ impl ResultCode {
 }
 
 define_error! {
-    pub(super) enum BadCtxError {
-        BadCtx,
+    pub(super) enum BadContextError {
+        BadContext,
     }
 }
 
@@ -151,11 +151,11 @@ define_error! {
     /// Error type for [`Task::activate`].
     ///
     /// [`Task::activate`]: super::Task::activate
-    pub enum ActivateTaskError: BadCtxError, BadIdError {
+    pub enum ActivateTaskError: BadContextError, BadIdError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
         /// The task is already active (not in a Dormant state).
         ///
         /// This error code originates from `E_QOVR` defined in the μITRON 4.0
@@ -173,9 +173,9 @@ define_error! {
     /// Error type for [`Task::current`].
     ///
     /// [`Task::current`]: super::Task::current
-    pub enum GetCurrentTaskError: BadCtxError {
+    pub enum GetCurrentTaskError: BadContextError {
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
     }
 }
 
@@ -183,11 +183,11 @@ define_error! {
     /// Error type for [`Task::interrupt`].
     ///
     /// [`Task::interrupt`]: super::Task::interrupt
-    pub enum InterruptTaskError: BadCtxError, BadIdError, BadObjectStateError {
+    pub enum InterruptTaskError: BadContextError, BadIdError, BadObjectStateError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
         /// The task is not in a Waiting state.
         BadObjectState,
     }
@@ -197,9 +197,9 @@ define_error! {
     /// Error type for [`Kernel::exit_task`].
     ///
     /// [`Kernel::exit_task`]: super::Kernel::exit_task
-    pub enum ExitTaskError: BadCtxError {
+    pub enum ExitTaskError: BadContextError {
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
     }
 }
 
@@ -216,11 +216,11 @@ define_error! {
     /// Error type for [`Kernel::park`].
     ///
     /// [`Kernel::park`]: super::Kernel::park
-    pub enum ParkError: BadCtxError, WaitError {
+    pub enum ParkError: BadContextError, WaitError {
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
-        BadCtx,
+        BadContext,
         Interrupted,
     }
 }
@@ -229,9 +229,9 @@ define_error! {
     /// Error type for [`Task::unpark`].
     ///
     /// [`Task::unpark`]: super::Task::unpark
-    pub enum UnparkError: BadCtxError, BadIdError {
+    pub enum UnparkError: BadContextError, BadIdError {
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
         /// The task ID is out of range.
         BadId,
         /// The task is in a Dormant state.
@@ -243,9 +243,9 @@ define_error! {
     /// Error type for [`Task::unpark_exact`].
     ///
     /// [`Task::unpark_exact`]: super::Task::unpark_exact
-    pub enum UnparkExactError: BadCtxError, BadIdError {
+    pub enum UnparkExactError: BadContextError, BadIdError {
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
         /// The task ID is out of range.
         BadId,
         /// The task already has a token.
@@ -260,11 +260,11 @@ define_error! {
     ///
     /// [`EventGroup::set`]: super::EventGroup::set
     /// [`EventGroup::clear`]: super::EventGroup::clear
-    pub enum UpdateEventGroupError: BadCtxError, BadIdError {
+    pub enum UpdateEventGroupError: BadContextError, BadIdError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
     }
 }
 
@@ -272,11 +272,11 @@ define_error! {
     /// Error type for [`EventGroup::get`].
     ///
     /// [`EventGroup::get`]: super::EventGroup::get
-    pub enum GetEventGroupError: BadCtxError, BadIdError {
+    pub enum GetEventGroupError: BadContextError, BadIdError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
-        BadCtx,
+        BadContext,
     }
 }
 
@@ -284,13 +284,13 @@ define_error! {
     /// Error type for [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
-    pub enum WaitEventGroupError: BadCtxError, BadIdError, WaitError {
+    pub enum WaitEventGroupError: BadContextError, BadIdError, WaitError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
-        BadCtx,
+        BadContext,
         Interrupted,
     }
 }
@@ -301,11 +301,11 @@ define_error! {
     ///
     /// [`InterruptLine::set_priority`]: super::InterruptLine::set_priority
     /// [`InterruptLine::set_priority_unchecked`]: super::InterruptLine::set_priority_unchecked
-    pub enum SetInterruptLinePriorityError: BadCtxError, BadParamError {
+    pub enum SetInterruptLinePriorityError: BadContextError, BadParamError {
         /// CPU Lock is active, or the current context is not [a task context].
         ///
         /// [a task context]: crate#contexts
-        BadCtx,
+        BadContext,
         /// The specified interrupt number or the specfied priority value is
         /// out of range.
         BadParam,

@@ -142,7 +142,7 @@ impl<System: Kernel> Task<System> {
     pub fn unpark(self) -> Result<(), UnparkError> {
         match self.unpark_exact() {
             Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
-            Err(UnparkExactError::BadCtx) => Err(UnparkError::BadCtx),
+            Err(UnparkExactError::BadContext) => Err(UnparkError::BadContext),
             Err(UnparkExactError::BadId) => Err(UnparkError::BadId),
             Err(UnparkExactError::BadObjectState) => Err(UnparkError::BadObjectState),
         }
