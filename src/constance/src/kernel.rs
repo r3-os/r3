@@ -146,6 +146,7 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
 /// implementation.
 ///
 /// These methods are only meant to be called by the kernel.
+#[doc(include = "./common.md")]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe trait Port: KernelCfg1 {
     type PortTaskState: Send + Sync + Init + 'static;
@@ -176,7 +177,24 @@ pub unsafe trait Port: KernelCfg1 {
 
     /// Yield the processor.
     ///
+    /// In a task context, this method immediately transfers the control to
+    /// a dispatcher. The dispatcher should call
+    /// [`PortToKernel::choose_running_task`] to find the next task to run and
+    /// transfer the control to that task.
+    ///
+    /// In an interrupt context, the effect of this method will be deferred
+    /// until the processor completes the execution of all active interrupt
+    /// handler threads.
+    ///
     /// Precondition: CPU Lock inactive
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Port Implementation Node:** One way to handle the interrupt context
+    /// > case is to set a flag variable and check it in the epilogue of a
+    /// > first-level interrupt handler. Another way is to raise a low-priority
+    /// > interrupt (such as PendSV in Arm-M) and implement dispatching in the
+    /// > handler.
     unsafe fn yield_cpu();
 
     /// Destroy the state of the previously running task (`task`, which might
