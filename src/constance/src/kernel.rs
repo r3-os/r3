@@ -47,6 +47,9 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// section.
     unsafe fn release_cpu_lock() -> Result<(), CpuLockError>;
 
+    /// Return a flag indicating whether CPU Lock is currently active.
+    fn has_cpu_lock() -> bool;
+
     /// Terminate the current task, putting it into a Dormant state.
     ///
     /// The kernel (to be precise, the port) makes an implicit call to this
@@ -96,6 +99,10 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
             unsafe { Self::leave_cpu_lock() };
             Ok(())
         }
+    }
+
+    fn has_cpu_lock() -> bool {
+        Self::is_cpu_lock_active()
     }
 
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
