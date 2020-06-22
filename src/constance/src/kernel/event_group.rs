@@ -24,6 +24,14 @@ pub type AtomicEventGroupBits = AtomicU32;
 /// set.
 ///
 /// This type is ABI-compatible with [`Id`].
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Relation to Other Specifications:** Eventflag (μITRON4.0),
+/// > `EventFlags` (Mbed OS), event group (FreeRTOS), event (RT-Thread),
+/// > event group (Freescale MQX), event set (RTEMS, assigned to each task),
+/// > events (OSEK/VDX, assigned to each extended task)
+#[doc(include = "../common.md")]
 #[repr(transparent)]
 pub struct EventGroup<System>(Id, PhantomData<System>);
 

@@ -10,6 +10,17 @@ use crate::utils::Init;
 /// configuration. They come in handy when you are designing a component that
 /// can be instantiated by a kernel configuration and wanting each instance to
 /// have its own separate state data.
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Relation to Other Specifications:** None. The need for programmatically
+/// > defining static regions has been traditionally fulfilled by code
+/// > generation and preprocessor-based composition. The closest thing might be
+/// > cell internal variables in the component system that comes with
+/// > [the TOPPERS kernels].
+///
+/// [the TOPPERS kernels]: https://www.toppers.jp/index.html
+#[doc(include = "../common.md")]
 pub struct Hunk<System, T: ?Sized> {
     start: usize,
     len: usize,

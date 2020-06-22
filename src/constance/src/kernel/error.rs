@@ -68,6 +68,18 @@ macro_rules! define_error {
 }
 
 /// All result codes (including success) that the C API can return.
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Relation to Other Specifications:** All error codes are intentionally
+/// > matched to their equivalents in μITRON4.0 for no particular reasons.
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Rationale:** Using the C API result codes internally reduces the
+/// > interop overhead at an API surface.
+///
+#[doc(include = "../common.md")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(i8)]
 pub enum ResultCode {

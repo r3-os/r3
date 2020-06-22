@@ -15,6 +15,12 @@ use crate::utils::{
 /// Represents a single task in a system.
 ///
 /// This type is ABI-compatible with [`Id`].
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Relation to Other Specifications:** Present in almost every real-time
+/// > operating system.
+#[doc(include = "../common.md")]
 #[repr(transparent)]
 pub struct Task<System>(Id, PhantomData<System>);
 
