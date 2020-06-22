@@ -25,14 +25,14 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            build! { Task<_>, start = task0_body::<System, D>, priority = 3, active = true };
-            let task1 = build! { Task<_>, start = task1_body::<System, D>, priority = 1 };
-            let task2 = build! { Task<_>, start = task2_body::<System, D>, priority = 1 };
-            let task3 = build! { Task<_>, start = task3_body::<System, D>, priority = 2 };
-            let task4 = build! { Task<_>, start = task4_body::<System, D>, priority = 2 };
+            new! { Task<_>, start = task0_body::<System, D>, priority = 3, active = true };
+            let task1 = new! { Task<_>, start = task1_body::<System, D>, priority = 1 };
+            let task2 = new! { Task<_>, start = task2_body::<System, D>, priority = 1 };
+            let task3 = new! { Task<_>, start = task3_body::<System, D>, priority = 2 };
+            let task4 = new! { Task<_>, start = task4_body::<System, D>, priority = 2 };
 
-            let eg = build! { EventGroup<_>, queue_order = QueueOrder::Fifo };
-            let seq = build! { Hunk<_, SeqTracker> };
+            let eg = new! { EventGroup<_>, queue_order = QueueOrder::Fifo };
+            let seq = new! { Hunk<_, SeqTracker> };
 
             App { eg, task1, task2, task3, task4, seq }
         }

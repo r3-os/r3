@@ -17,14 +17,14 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            build! {
+            new! {
                 Task<_>,
                 start = task_body::<System, D>,
                 priority = 2,
                 active = true,
             };
-            let eg1 = build! { EventGroup<_> };
-            let eg2 = build! { EventGroup<_> };
+            let eg1 = new! { EventGroup<_> };
+            let eg2 = new! { EventGroup<_> };
 
             App { eg1, eg2 }
         }

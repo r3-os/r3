@@ -22,11 +22,11 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            build! { Task<_>, start = task0_body::<System, D>, priority = 2, active = true };
-            let task1 = build! { Task<_>, start = task1_body::<System, D>, priority = 1, active = true };
+            new! { Task<_>, start = task0_body::<System, D>, priority = 2, active = true };
+            let task1 = new! { Task<_>, start = task1_body::<System, D>, priority = 1, active = true };
 
-            let eg = build! { EventGroup<_>, queue_order = QueueOrder::Fifo };
-            let seq = build! { Hunk<_, SeqTracker> };
+            let eg = new! { EventGroup<_>, queue_order = QueueOrder::Fifo };
+            let seq = new! { Hunk<_, SeqTracker> };
 
             App { eg, task1, seq }
         }
