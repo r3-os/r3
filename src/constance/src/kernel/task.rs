@@ -3,7 +3,7 @@ use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Order
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, utils, wait, ActivateTaskError, BadContextError, BadIdError, ExitTaskError,
+    hunk::Hunk, state, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
     GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, Port, UnparkError,
     UnparkExactError, WaitError,
 };
@@ -584,7 +584,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
 pub(super) fn wait_until_woken_up<System: Kernel>(
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
 ) {
-    debug_assert_eq!(expect_waitable_context::<System>(), Ok(()));
+    debug_assert_eq!(state::expect_waitable_context::<System>(), Ok(()));
 
     // Transition the current task to Waiting
     let running_task = System::state().running_task().unwrap();
@@ -614,7 +614,7 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
 /// Implements [`Kernel::park`].
 pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
     let mut lock = utils::lock_cpu::<System>()?;
-    expect_waitable_context::<System>()?;
+    state::expect_waitable_context::<System>()?;
 
     let running_task = System::state().running_task().unwrap();
 
@@ -660,15 +660,5 @@ fn unpark_exact<System: Kernel>(
         } else {
             Ok(())
         }
-    }
-}
-
-/// If the current context is not waitable, return `Err(BadContext)`.
-pub(super) fn expect_waitable_context<System: Kernel>() -> Result<(), BadContextError> {
-    if System::is_interrupt_context() {
-        Err(BadContextError::BadContext)
-    } else {
-        // TODO: priority boost
-        Ok(())
     }
 }

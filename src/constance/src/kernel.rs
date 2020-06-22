@@ -12,6 +12,7 @@ mod error;
 mod event_group;
 mod hunk;
 mod interrupt;
+mod state;
 mod task;
 mod utils;
 mod wait;

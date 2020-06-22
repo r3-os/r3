@@ -6,7 +6,7 @@ use core::{
 };
 
 use super::{
-    task, utils,
+    state, task, utils,
     wait::{WaitPayload, WaitQueue},
     BadIdError, GetEventGroupError, Id, Kernel, Port, UpdateEventGroupError, WaitEventGroupError,
 };
@@ -141,7 +141,7 @@ impl<System: Kernel> EventGroup<System> {
         flags: EventGroupWaitFlags,
     ) -> Result<EventGroupBits, WaitEventGroupError> {
         let lock = utils::lock_cpu::<System>()?;
-        task::expect_waitable_context::<System>()?;
+        state::expect_waitable_context::<System>()?;
         let event_group_cb = self.event_group_cb()?;
 
         wait(event_group_cb, lock, bits, flags)
