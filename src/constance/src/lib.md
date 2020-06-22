@@ -182,7 +182,7 @@ A context is a general term which is often used to describe the â€œenvironmentâ€
 
  - **A task context** means the current [thread] pertains to a task.
  - **An interrupt context** means the current thread pertains to an interrupt handler.
- - **A waitable context** equates to a task context given that [Priority Boost] is inactive.
+ - **A waitable context** means a task context and that [Priority Boost] is inactive.
 
 [thread]: #threads
 [Priority Boost]: #system-states
