@@ -3,9 +3,9 @@ use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Order
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, utils, wait, ActivateTaskError, BadIdError, ExitTaskError, GetCurrentTaskError, Id,
-    InterruptTaskError, Kernel, KernelCfg1, ParkError, Port, UnparkError, UnparkExactError,
-    WaitError,
+    hunk::Hunk, utils, wait, ActivateTaskError, BadContextError, BadIdError, ExitTaskError,
+    GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, Port, UnparkError,
+    UnparkExactError, WaitError,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -607,7 +607,7 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
 /// Implements [`Kernel::park`].
 pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
     let mut lock = utils::lock_cpu::<System>()?;
-    // TODO: deny non-waitable context
+    expect_waitable_context::<System>()?;
 
     let running_task = System::state().running_task().unwrap();
 
@@ -654,4 +654,11 @@ fn unpark_exact<System: Kernel>(
             Ok(())
         }
     }
+}
+
+/// If the current context is not waitable, return `Err(BadContext)`.
+pub(super) fn expect_waitable_context<System: Kernel>() -> Result<(), BadContextError> {
+    // TODO: interrupt context
+    // TODO: priority boost
+    Ok(())
 }

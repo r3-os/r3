@@ -141,7 +141,7 @@ impl<System: Kernel> EventGroup<System> {
         flags: EventGroupWaitFlags,
     ) -> Result<EventGroupBits, WaitEventGroupError> {
         let lock = utils::lock_cpu::<System>()?;
-        // TODO: deny non-waitable context
+        task::expect_waitable_context::<System>()?;
         let event_group_cb = self.event_group_cb()?;
 
         wait(event_group_cb, lock, bits, flags)

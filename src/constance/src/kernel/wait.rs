@@ -186,6 +186,11 @@ impl<System: Port> WaitQueue<System> {
 impl<System: Kernel> WaitQueue<System> {
     /// Insert a wait object pertaining to the currently running task to `self`,
     /// transitioning the task into a Waiting state.
+    ///
+    /// The current context must be [waitable] (This function doesn't check
+    /// that). The caller should use `expect_waitable_context` to do that.
+    ///
+    /// [waitable]: crate#contets
     #[inline]
     pub(super) fn wait(
         &'static self,
@@ -372,6 +377,11 @@ pub(super) fn with_current_wait_payload<System: Kernel, R>(
 /// state.
 ///
 /// The only way to end such a wait operation is to call [`interrupt_task`].
+///
+/// The current context must be [waitable] (This function doesn't check
+/// that). The caller should use `expect_waitable_context` to do that.
+///
+/// [waitable]: crate#contets
 #[inline]
 pub(super) fn wait_no_queue<System: Kernel>(
     lock: CpuLockGuardBorrowMut<'_, System>,
