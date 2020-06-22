@@ -295,6 +295,12 @@ pub unsafe trait Port: KernelCfg1 {
     ///
     /// [an interrupt context]: crate#contexts
     fn is_interrupt_context() -> bool;
+
+    /// Enable the specified interrupt line.
+    unsafe fn enable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError>;
+
+    /// Disable the specified interrupt line.
+    unsafe fn disable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError>;
 }
 
 /// Methods intended to be called by a port.

@@ -103,12 +103,14 @@ impl<System: Kernel> InterruptLine<System> {
 
     /// Enable the interrupt line.
     pub fn enable(self) -> Result<(), EnableInterruptLineError> {
-        todo!()
+        // Safety: We are the kernel, so it's okay to call `Port`'s methods
+        unsafe { System::enable_interrupt_line(self.0) }
     }
 
     /// Disable the interrupt line.
     pub fn disable(self) -> Result<(), EnableInterruptLineError> {
-        todo!()
+        // Safety: We are the kernel, so it's okay to call `Port`'s methods
+        unsafe { System::disable_interrupt_line(self.0) }
     }
 
     // TODO: port-specific attributes
