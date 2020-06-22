@@ -576,9 +576,16 @@ pub(super) fn choose_next_running_task<System: Kernel>(
 
 /// Transition the currently running task into the Waiting state. Returns when
 /// woken up.
+///
+/// The current context must be [waitable] (This function doesn't check
+/// that). The caller should use `expect_waitable_context` to do that.
+///
+/// [waitable]: crate#contets
 pub(super) fn wait_until_woken_up<System: Kernel>(
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
 ) {
+    debug_assert_eq!(expect_waitable_context::<System>(), Ok(()));
+
     // Transition the current task to Waiting
     let running_task = System::state().running_task().unwrap();
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
