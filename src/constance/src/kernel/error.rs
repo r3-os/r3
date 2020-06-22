@@ -198,6 +198,7 @@ define_error! {
     ///
     /// [`Kernel::exit_task`]: super::Kernel::exit_task
     pub enum ExitTaskError: BadCtxError {
+        /// CPU Lock is active.
         BadCtx,
     }
 }
@@ -216,6 +217,9 @@ define_error! {
     ///
     /// [`Kernel::park`]: super::Kernel::park
     pub enum ParkError: BadCtxError, WaitError {
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
         BadCtx,
         Interrupted,
     }
@@ -283,7 +287,9 @@ define_error! {
     pub enum WaitEventGroupError: BadCtxError, BadIdError, WaitError {
         /// The event group ID is out of range.
         BadId,
-        /// CPU Lock is active.
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
         BadCtx,
         Interrupted,
     }
@@ -296,8 +302,9 @@ define_error! {
     /// [`InterruptLine::set_priority`]: super::InterruptLine::set_priority
     /// [`InterruptLine::set_priority_unchecked`]: super::InterruptLine::set_priority_unchecked
     pub enum SetInterruptLinePriorityError: BadCtxError, BadParamError {
-        /// CPU Lock is active, or the processor is currently running in a
-        /// non-task context.
+        /// CPU Lock is active, or the current context is not [a task context].
+        ///
+        /// [a task context]: crate#contexts
         BadCtx,
         /// The specified interrupt number or the specfied priority value is
         /// out of range.

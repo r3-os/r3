@@ -45,6 +45,11 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// task is activated.
     ///
     /// The token will be consumed when this method returns successfully.
+    ///
+    /// This system service may block. Consequently, calling this method is not
+    /// allowed in [a non-waitable context] and will return `Err(BadCtx)`.
+    ///
+    /// [a non-waitable context]: crate#contexts
     fn park() -> Result<(), ParkError>;
 
     // TODO: `park` with timeout

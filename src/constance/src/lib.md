@@ -191,10 +191,6 @@ A context is a general term which is often used to describe the “environment�
 
 <div class="admonition-follows"></div>
 
-> **To be implemented:** Detecting an interrupt context and returning `BadCtx`
-
-<div class="admonition-follows"></div>
-
 > **Relation to Other Specifications:** [The μITRON4.0 specification], [the AUTOSAR OS specification], and [RTEMS]'s user manuals use the term “context” in a similar way.
 
 [The μITRON4.0 specification]: http://www.ertl.jp/ITRON/SPEC/mitron4-e.html

@@ -607,7 +607,7 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
 /// Implements [`Kernel::park`].
 pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
     let mut lock = utils::lock_cpu::<System>()?;
-    // TODO: deny interrupt context
+    // TODO: deny non-waitable context
 
     let running_task = System::state().running_task().unwrap();
 

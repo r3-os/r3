@@ -97,6 +97,7 @@ impl<System: Kernel> InterruptLine<System> {
         _value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
         let _lock = utils::lock_cpu::<System>()?;
+        // TODO: deny non-task context
         todo!()
     }
 

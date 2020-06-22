@@ -130,12 +130,18 @@ impl<System: Kernel> EventGroup<System> {
     ///
     /// Returns the currently set bits. If `EventGroupWaitFlags::CLEAR` is
     /// specified, this method returns the bits before clearing.
+    ///
+    /// This system service may block. Consequently, calling this method is not
+    /// allowed in [a non-waitable context] and will return `Err(BadCtx)`.
+    ///
+    /// [a non-waitable context]: crate#contexts
     pub fn wait(
         self,
         bits: EventGroupBits,
         flags: EventGroupWaitFlags,
     ) -> Result<EventGroupBits, WaitEventGroupError> {
         let lock = utils::lock_cpu::<System>()?;
+        // TODO: deny non-waitable context
         let event_group_cb = self.event_group_cb()?;
 
         wait(event_group_cb, lock, bits, flags)
