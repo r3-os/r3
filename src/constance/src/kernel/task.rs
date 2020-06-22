@@ -665,7 +665,10 @@ fn unpark_exact<System: Kernel>(
 
 /// If the current context is not waitable, return `Err(BadContext)`.
 pub(super) fn expect_waitable_context<System: Kernel>() -> Result<(), BadContextError> {
-    // TODO: interrupt context
-    // TODO: priority boost
-    Ok(())
+    if System::is_interrupt_context() {
+        Err(BadContextError::BadContext)
+    } else {
+        // TODO: priority boost
+        Ok(())
+    }
 }
