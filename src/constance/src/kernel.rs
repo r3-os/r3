@@ -296,6 +296,18 @@ pub unsafe trait Port: KernelCfg1 {
     /// [an interrupt context]: crate#contexts
     fn is_interrupt_context() -> bool;
 
+    /// Set the priority of the specified interrupt line.
+    ///
+    /// Precondition: CPU Lock active
+    ///
+    /// Postcondition: CPU Lock active
+    unsafe fn set_interrupt_line_priority(
+        _line: InterruptNum,
+        _priority: InterruptPriority,
+    ) -> Result<(), SetInterruptLinePriorityError> {
+        Err(SetInterruptLinePriorityError::NotSupported)
+    }
+
     /// Enable the specified interrupt line.
     unsafe fn enable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
         Err(EnableInterruptLineError::NotSupported)

@@ -329,6 +329,8 @@ define_error! {
     /// [`InterruptLine::set_priority`]: super::InterruptLine::set_priority
     /// [`InterruptLine::set_priority_unchecked`]: super::InterruptLine::set_priority_unchecked
     pub enum SetInterruptLinePriorityError: BadContextError, BadParamError {
+        /// The operation is not supported by the port.
+        NotSupported,
         /// CPU Lock is active, or the current context is not [a task context].
         ///
         /// [a task context]: crate#contexts

@@ -97,11 +97,13 @@ impl<System: Kernel> InterruptLine<System> {
     /// [unmanaged-safe]: crate::kernel::cfg::CfgInterruptHandlerBuilder::unmanaged
     pub unsafe fn set_priority_unchecked(
         self,
-        _value: InterruptPriority,
+        value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
         let _lock = utils::lock_cpu::<System>()?;
-        // TODO: deny non-task context
-        todo!()
+
+        // Safety: (1) We are the kernel, so it's okay to call `Port`'s methods.
+        //         (2) CPU Lock active
+        unsafe { System::set_interrupt_line_priority(self.0, value) }
     }
 
     /// Enable the interrupt line.
