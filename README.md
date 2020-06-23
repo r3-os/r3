@@ -27,6 +27,10 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 ## Example
 
 ```rust
+#![feature(const_loop)]
+#![feature(const_fn)]
+#![feature(const_if_match)]
+#![feature(const_mut_refs)]
 use constance::kernel::Task;
 
 // Use the simulator port
@@ -39,7 +43,7 @@ struct Objects {
 const COTTAGE: Objects = constance::build!(System, configure_app);
 
 constance::configure! {
-    fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
+    const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
         Objects {
             task: new! { Task<_>,
                 start = task_body, priority = 2, active = true },
