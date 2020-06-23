@@ -1,5 +1,7 @@
 #![feature(const_fn)]
+#![feature(external_doc)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
+#![doc(include = "./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
 use atomic_ref::AtomicRef;
 use constance::{prelude::*, utils::intrusive_list::StaticListHead};
