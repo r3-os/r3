@@ -14,6 +14,7 @@ include!(concat!(env!("OUT_DIR"), "/selective_tests.rs"));
 
 /// Kernel tests
 pub mod kernel_tests {
+    use constance::kernel::{InterruptNum, InterruptPriority};
     /// Instantiation parameters of a test case.
     ///
     /// This trait has two purposes: (1) It serves as an interface to a test driver.
@@ -28,6 +29,40 @@ pub mod kernel_tests {
 
         /// Signal to the test runner that a test has failed.
         fn fail();
+
+        /// The list of interrupt lines that can be used by test programs.
+        ///
+        ///  - The list can have an arbitrary number of elements. Some tests
+        ///    will be silently skipped if it's not enough. There should be at
+        ///    least two for all test cases to run.
+        ///
+        ///  - There must be no duplicates.
+        ///
+        ///  - The port must support [`enable_interrupt_line`],
+        ///    [`disable_interrupt_line`], [`pend_interrupt_line`] for all of
+        ///    the specified interrupt lines.
+        ///
+        /// [`enable_interrupt_line`]: constance::kernel::Port::enable_interrupt_line
+        /// [`disable_interrupt_line`]: constance::kernel::Port::disable_interrupt_line
+        /// [`pend_interrupt_line`]: constance::kernel::Port::pend_interrupt_line
+        const INTERRUPT_LINES: &'static [InterruptNum] = &[];
+
+        /// A low priority value.
+        ///
+        /// Ignored if `INTERRUPT_LINES` is empty.
+        ///
+        /// Must be in range [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        ///
+        /// [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+        const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0;
+        /// A high priority value.
+        ///
+        /// Ignored if `INTERRUPT_LINES` is empty.
+        ///
+        /// Must be in range [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        ///
+        /// [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+        const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;
     }
 
     macro_rules! define_kernel_tests {
@@ -110,6 +145,8 @@ pub mod kernel_tests {
         (mod event_group_order_task_priority {}, "event_group_order_task_priority"),
         (mod event_group_set_and_dispatch {}, "event_group_set_and_dispatch"),
         (mod event_group_wait_types {}, "event_group_wait_types"),
+        (mod interrupt_misc {}, "interrupt_misc"),
+        (mod interrupt_priority {}, "interrupt_priority"),
         (mod priority_boost {}, "priority_boost"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
