@@ -325,9 +325,10 @@ impl State {
             //
 
             // Check pending interrupts
-            while let Some((num, pri, f)) =
-                (self.int_state.lock().as_mut().unwrap()).take_highest_pended_priority()
-            {
+            while let Some((num, pri, f)) = {
+                let mut int_state = self.int_state.lock();
+                int_state.as_mut().unwrap().take_highest_pended_priority()
+            } {
                 *self.active_int_priority.lock() = pri;
 
                 log::trace!(
