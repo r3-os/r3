@@ -344,7 +344,9 @@ impl Init for TaskSt {
 
 /// Implements [`Kernel::exit_task`].
 pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskError> {
-    // TODO: Deny interrupt context
+    if System::is_interrupt_context() {
+        return Err(ExitTaskError::BadContext);
+    }
 
     // If CPU Lock is inactive, activate it.
     // TODO: If `is_cpu_lock_active() == true`, assert that it was an

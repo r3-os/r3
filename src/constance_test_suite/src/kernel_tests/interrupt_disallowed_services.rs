@@ -59,6 +59,13 @@ fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
         System::boost_priority(),
         Err(kernel::BoostPriorityError::BadContext),
     );
+    assert_eq!(
+        unsafe { System::exit_task() },
+        Err(kernel::ExitTaskError::BadContext),
+    );
+
+    // Blocking system services
+    assert_eq!(System::park(), Err(kernel::ParkError::BadContext));
 
     D::success();
 }
