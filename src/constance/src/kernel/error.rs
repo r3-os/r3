@@ -158,7 +158,7 @@ define_error! {
         BadId,
         /// CPU Lock is active.
         BadContext,
-        /// The task is already active (not in a Dormant state).
+        /// The task is already active (not in the Dormant state).
         ///
         /// This error code originates from `E_QOVR` defined in the μITRON 4.0
         /// specification. In this specification, the `act_tsk` (activate task)
@@ -190,7 +190,7 @@ define_error! {
         BadId,
         /// CPU Lock is active.
         BadContext,
-        /// The task is not in a Waiting state.
+        /// The task is not in the Waiting state.
         BadObjectState,
     }
 }
@@ -261,7 +261,7 @@ define_error! {
         BadContext,
         /// The task ID is out of range.
         BadId,
-        /// The task is in a Dormant state.
+        /// The task is in the Dormant state.
         BadObjectState,
     }
 }
@@ -277,7 +277,7 @@ define_error! {
         BadId,
         /// The task already has a token.
         QueueOverflow,
-        /// The task is in a Dormant state.
+        /// The task is in the Dormant state.
         BadObjectState,
     }
 }

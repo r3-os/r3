@@ -20,6 +20,16 @@ use crate::utils::{
 ///
 /// > **Relation to Other Specifications:** Present in almost every real-time
 /// > operating system.
+///
+/// # Task States
+///
+/// A task may be in one of the following states:
+///
+///  - **Dormant**
+///  - **Ready**
+///  - **Running**
+///  - **Waiting**
+///
 #[doc(include = "../common.md")]
 #[repr(transparent)]
 pub struct Task<System>(Id, PhantomData<System>);
@@ -82,7 +92,7 @@ impl<System: Kernel> Task<System> {
     /// Get the current task.
     ///
     /// In a task context, this method returns the currently running task. In an
-    /// interrupt handler, this method returns the interrupted task (if any).
+    /// interrupt context, this method returns the interrupted task (if any).
     pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
         let _lock = utils::lock_cpu::<System>()?;
         let task_cb = if let Some(cb) = System::state().running_task() {
@@ -391,7 +401,7 @@ pub(super) fn init_task<System: Kernel>(
         // `PendingActivation` is equivalent to `Dormant` but serves as a marker
         // indicating tasks that should be activated by `init_task`.
 
-        // Safety: CPU Lock active, the task is (essentially) in a Dormant state
+        // Safety: CPU Lock active, the task is (essentially) in the Dormant state
         unsafe { System::initialize_task_state(task_cb) };
 
         // Safety: The previous state is PendingActivation (which is equivalent
@@ -447,7 +457,7 @@ fn activate<System: Kernel>(
     // Discard a park token if the task has one
     task_cb.park_token.replace(&mut *lock, false);
 
-    // Safety: CPU Lock active, the task is in a Dormant state
+    // Safety: CPU Lock active, the task is in the Dormant state
     unsafe { System::initialize_task_state(task_cb) };
 
     // Safety: The previous state is Dormant, and we just initialized the task
@@ -486,7 +496,7 @@ pub(super) unsafe fn make_ready<System: Kernel>(
 /// Relinquish CPU Lock. After that, if there's a higher-priority task than
 /// `running_task`, call `Port::yield_cpu`.
 ///
-/// System services that transition a task into a Ready state should call
+/// System services that transition a task into the Ready state should call
 /// this before returning to the caller.
 pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLockGuard<System>) {
     // If Priority Boost is active, treat the currently running task as the
@@ -585,7 +595,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
         None
     };
 
-    // If `prev_running_task` is in a Running state, transition it into Ready
+    // If `prev_running_task` is in the Running state, transition it into Ready
     if let Some(running_task) = prev_running_task {
         match running_task.st.read(&*lock) {
             TaskSt::Running => {
@@ -672,7 +682,7 @@ fn unpark_exact<System: Kernel>(
     };
 
     if is_parked {
-        // Unblock the task. We confirmed that the task is in a Waiting state,
+        // Unblock the task. We confirmed that the task is in the Waiting state,
         // so `interrupt_task` should succeed.
         wait::interrupt_task(lock.borrow_mut(), task_cb, Ok(())).unwrap();
 

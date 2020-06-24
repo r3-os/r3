@@ -85,7 +85,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// [Priority Boost]: crate#system-states
     fn is_priority_boost_active() -> bool;
 
-    /// Terminate the current task, putting it into a Dormant state.
+    /// Terminate the current task, putting it into the Dormant state.
     ///
     /// The kernel (to be precise, the port) makes an implicit call to this
     /// function when a task entry point function returns.
@@ -100,9 +100,9 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     ///
     unsafe fn exit_task() -> Result<!, ExitTaskError>;
 
-    /// Put the current task into a Waiting state until the task's token is made
-    /// available by [`Task::unpark`]. The token is initially absent when the
-    /// task is activated.
+    /// Put the current task into the Waiting state until the task's token is
+    /// made available by [`Task::unpark`]. The token is initially absent when
+    /// the task is activated.
     ///
     /// The token will be consumed when this method returns successfully.
     ///

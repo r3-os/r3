@@ -156,7 +156,7 @@ pub enum QueueOrder {
 /// The wait state of a task.
 pub(crate) struct TaskWait<System: Port> {
     /// The wait object describing the ongoing Waiting state of the task. Should
-    /// be `None` iff the task is not in a Waiting state.
+    /// be `None` iff the task is not in the Waiting state.
     ///
     /// The pointee must be valid.
     current_wait: CpuLockCell<System, Option<WaitRef<System>>>,
@@ -185,7 +185,7 @@ impl<System: Port> WaitQueue<System> {
 
 impl<System: Kernel> WaitQueue<System> {
     /// Insert a wait object pertaining to the currently running task to `self`,
-    /// transitioning the task into a Waiting state.
+    /// transitioning the task into the Waiting state.
     ///
     /// The current context must be [waitable] (This function doesn't check
     /// that). The caller should use `expect_waitable_context` to do that.
@@ -463,7 +463,7 @@ fn complete_wait<System: Kernel>(
 
     // Make the task Ready
     //
-    // Safety: The task is in a Waiting state, meaning the task state is valid
+    // Safety: The task is in the Waiting state, meaning the task state is valid
     // and ready to resume from the point where it was previously interrupted.
     // A proper clean up for exiting the Waiting state is already done as well.
     unsafe { task::make_ready(lock, task_cb) };
@@ -474,7 +474,7 @@ fn complete_wait<System: Kernel>(
 /// This method may make the task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` as needed.
 ///
-/// Returns `Err(BadObjectState)` if the task is not in a Waiting state.
+/// Returns `Err(BadObjectState)` if the task is not in the Waiting state.
 pub(super) fn interrupt_task<System: Kernel>(
     mut lock: CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
@@ -485,7 +485,7 @@ pub(super) fn interrupt_task<System: Kernel>(
             // Interrupt the ongoing wait operation.
             let wait_ref = task_cb.wait.current_wait.get(&*lock);
 
-            // The task is in a Waiting state, so `wait_ref` must be `Some(_)`
+            // The task is in the Waiting state, so `wait_ref` must be `Some(_)`
             let wait_ref = wait_ref.unwrap();
 
             // Safety: ... and `wait_ref` must point to an existing `Wait`
