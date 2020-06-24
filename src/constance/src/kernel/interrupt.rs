@@ -76,16 +76,22 @@ impl<System: Kernel> InterruptLine<System> {
         self,
         value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
-        let _lock = utils::lock_cpu::<System>()?;
+        let mut lock = utils::lock_cpu::<System>()?;
+
+        // Deny a non-task context
+        if System::is_interrupt_context() {
+            return Err(SetInterruptLinePriorityError::BadContext);
+        }
 
         // Deny unmanaged priority
         if !System::MANAGED_INTERRUPT_PRIORITY_RANGE.contains(&value) {
             return Err(SetInterruptLinePriorityError::BadParam);
         }
 
-        // Safety: (1) We are the kernel, so it's okay to call `Port`'s methods.
-        //         (2) CPU Lock active
-        unsafe { System::set_interrupt_line_priority(self.0, value) }
+        // Safety: (1) Some of the preconditions of `set_priority_unchecked`,
+        //         which are upheld by the caller.
+        //         (2) A task context.
+        unsafe { self.set_priority_unchecked_inner(value, lock.borrow_mut()) }
     }
 
     /// Set the priority of the interrupt line without checking if the new
@@ -109,6 +115,7 @@ impl<System: Kernel> InterruptLine<System> {
     ) -> Result<(), SetInterruptLinePriorityError> {
         let mut lock = utils::lock_cpu::<System>()?;
 
+        // Deny a non-task context
         if System::is_interrupt_context() {
             return Err(SetInterruptLinePriorityError::BadContext);
         }
