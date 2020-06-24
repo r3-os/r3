@@ -53,6 +53,7 @@ macro_rules! instantiate_kernel_tests {
         { path: $path:path, name_ident: $name_ident:ident, $($rest:tt)* },
     )*) => {$(
         mod $name_ident {
+            use constance::kernel::{InterruptNum, InterruptPriority};
             use constance_test_suite::kernel_tests;
             use $path as test_case;
 
@@ -71,6 +72,9 @@ macro_rules! instantiate_kernel_tests {
                 fn fail() {
                     TEST_UTIL.fail();
                 }
+                const INTERRUPT_LINES: &'static [InterruptNum] = &[0, 1, 2, 3];
+                const INTERRUPT_PRIORITY_LOW: InterruptPriority = 4;
+                const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;
             }
 
             static COTTAGE: test_case::App<System> =
@@ -79,6 +83,8 @@ macro_rules! instantiate_kernel_tests {
             #[test]
             fn run() {
                 TEST_UTIL.run(|| {
+                    PORT_STATE.init::<System>();
+
                     // Safety: We are a port, so it's okay to call this
                     unsafe {
                         <System as constance::kernel::PortToKernel>::boot();
