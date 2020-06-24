@@ -12,6 +12,7 @@ use crate::utils::{
     Init, PrioBitmap,
 };
 
+#[cfg_attr(doc, svgbobdoc::transform)]
 /// Represents a single task in a system.
 ///
 /// This type is ABI-compatible with [`Id`].
@@ -25,15 +26,43 @@ use crate::utils::{
 ///
 /// A task may be in one of the following states:
 ///
-///  - **Dormant**
-///  - **Ready**
-///  - **Running**
-///  - **Waiting**
+///  - **Dormant** — The task is not executing, doesn't have an associated
+///    execution [thread], and can be [activated].
 ///
-#[doc(include = "../common.md")]
+///  - **Ready** — The task has an associated execution thread, which is ready to
+///    be scheduled to the CPU
+///
+///  - **Running** — The task has an associated execution thread, which is
+///    currently scheduled to the CPU
+///
+///  - **Waiting** — The task has an associated execution thread, which is
+///    currently blocked by a blocking operation
+///
+/// ```svgbob
+///                     ,-------,
+///    ,--------------->| Ready |<--------------,
+///    |                '-------'               |
+///    |          dispatch | ^                  |
+///    |                   | |                  |
+///    | release           | |                  | activate
+/// ,---------,            | |           ,---------,
+/// | Waiting |            | |           | Dormant |
+/// '---------'            | |           '---------'
+///    ^                   | |                  ^
+///    |                   | |                  |
+///    |                   v | preempt          |
+///    |          wait ,---------,              |
+///    '---------------| Running |--------------'
+///                    '---------' exit
+/// ```
+///
+/// [thread]: crate#threads
+/// [activated]: Task::activate
 #[repr(transparent)]
 pub struct Task<System>(Id, PhantomData<System>);
 
+// FIXME: `svgbobdoc` doesn't like `#[doc(include = ...)]`
+#[doc(include = "../common.md")]
 impl<System> Clone for Task<System> {
     fn clone(&self) -> Self {
         Self(self.0, self.1)
