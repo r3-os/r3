@@ -298,9 +298,7 @@ pub unsafe trait Port: KernelCfg1 {
 
     /// Set the priority of the specified interrupt line.
     ///
-    /// Precondition: CPU Lock active
-    ///
-    /// Postcondition: CPU Lock active
+    /// Precondition: CPU Lock active. Task context or boot phase.
     unsafe fn set_interrupt_line_priority(
         _line: InterruptNum,
         _priority: InterruptPriority,
@@ -383,7 +381,7 @@ impl<System: Kernel> PortToKernel for System {
         // safety*. Thus the use of unmanaged priority values has been already
         // authorized.
         unsafe {
-            System::INTERRUPT_ATTR.init();
+            System::INTERRUPT_ATTR.init(lock.borrow_mut());
         }
 
         forget(lock);

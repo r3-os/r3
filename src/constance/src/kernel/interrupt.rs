@@ -107,8 +107,29 @@ impl<System: Kernel> InterruptLine<System> {
         self,
         value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
-        let _lock = utils::lock_cpu::<System>()?;
+        let mut lock = utils::lock_cpu::<System>()?;
 
+        if System::is_interrupt_context() {
+            return Err(SetInterruptLinePriorityError::BadContext);
+        }
+
+        // Safety: (1) Some of the preconditions of `set_priority_unchecked`,
+        //         which are upheld by the caller.
+        //         (2) A task context.
+        unsafe { self.set_priority_unchecked_inner(value, lock.borrow_mut()) }
+    }
+
+    /// Like `set_priority_unchecked` but assumes a task context or a boot
+    /// phase.
+    ///
+    /// # Safety
+    ///
+    /// In addition to `set_priority_unchecked`,
+    unsafe fn set_priority_unchecked_inner(
+        self,
+        value: InterruptPriority,
+        _lock: utils::CpuLockGuardBorrowMut<System>,
+    ) -> Result<(), SetInterruptLinePriorityError> {
         // Safety: (1) We are the kernel, so it's okay to call `Port`'s methods.
         //         (2) CPU Lock active
         unsafe { System::set_interrupt_line_priority(self.0, value) }
@@ -199,17 +220,21 @@ impl<System: Kernel> InterruptAttr<System> {
     ///
     /// This method may call `InterruptLine::set_priority_unchecked`. The caller
     /// is responsible for ensuring *unmanaged safety*.
-    pub(super) unsafe fn init(&self) {
+    ///
+    /// Can be called only during a boot phase.
+    pub(super) unsafe fn init(&self, mut lock: utils::CpuLockGuardBorrowMut<System>) {
         for line_init in self.line_inits {
             if line_init
                 .flags
                 .contains(InterruptLineInitFlags::SET_PRIORITY)
             {
-                // Safety: The caller is responsible for making sure this is safe
+                // Safety: (1) The caller is responsible for ensuring unmanaged
+                //             safety.
+                //         (2) Boot phase
                 unsafe {
                     line_init
                         .line
-                        .set_priority_unchecked(line_init.priority)
+                        .set_priority_unchecked_inner(line_init.priority, lock.borrow_mut())
                         .unwrap()
                 };
             }
