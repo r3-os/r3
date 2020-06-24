@@ -74,10 +74,18 @@ impl<System: Kernel> InterruptLine<System> {
     /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
     pub fn set_priority(
         self,
-        _value: InterruptPriority,
+        value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
         let _lock = utils::lock_cpu::<System>()?;
-        todo!()
+
+        // Deny unmanaged priority
+        if !System::MANAGED_INTERRUPT_PRIORITY_RANGE.contains(&value) {
+            return Err(SetInterruptLinePriorityError::BadParam);
+        }
+
+        // Safety: (1) We are the kernel, so it's okay to call `Port`'s methods.
+        //         (2) CPU Lock active
+        unsafe { System::set_interrupt_line_priority(self.0, value) }
     }
 
     /// Set the priority of the interrupt line without checking if the new
