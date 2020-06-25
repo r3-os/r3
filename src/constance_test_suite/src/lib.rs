@@ -146,6 +146,7 @@ pub mod kernel_tests {
         (mod event_group_set_and_dispatch {}, "event_group_set_and_dispatch"),
         (mod event_group_wait_types {}, "event_group_wait_types"),
         (mod interrupt_disallowed_services {}, "interrupt_disallowed_services"),
+        (mod interrupt_handler_priority {}, "interrupt_handler_priority"),
         (mod interrupt_misc {}, "interrupt_misc"),
         (mod interrupt_priority {}, "interrupt_priority"),
         (mod interrupt_task_activate {}, "interrupt_task_activate"),

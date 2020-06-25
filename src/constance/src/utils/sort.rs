@@ -1,4 +1,8 @@
 // FIXME: Work-around for `[T]::sort` being unsupported in `const fn`
+/// Sort the provided abstract random-accessible sequence using the specified
+/// comparator pseudo-function.
+///
+/// This sort is stable.
 macro_rules! sort_by {
     ($len:expr, |$i:ident| $accessor:expr, |$x:ident, $y: ident| $less_than:expr) => {{
         // FIXME: Work-around for closures being uncallable in `const fn`
@@ -28,7 +32,7 @@ macro_rules! sort_by {
             while j > 0 {
                 let x = *index_mut!(j - 1);
                 let y = *index_mut!(j);
-                if less_than!(x, y) {
+                if !less_than!(y, x) {
                     break;
                 }
 
@@ -60,11 +64,11 @@ mod tests {
 
     #[quickcheck]
     fn sort(values: Vec<u8>) {
-        let mut got = values.clone();
-        let mut expected = values;
+        let mut got: Vec<_> = values.into_iter().enumerate().collect();
+        let mut expected = got.clone();
 
-        sort_by!(got.len(), |i| &mut got[i], |x, y| x < y);
-        expected.sort();
+        sort_by!(got.len(), |i| &mut got[i], |x, y| x.1 < y.1);
+        expected.sort_by_key(|x| x.1);
 
         assert_eq!(got, expected);
     }
