@@ -383,6 +383,11 @@ macro_rules! build {
         const NUM_INTERRUPT_HANDLERS: usize = INTERRUPT_HANDLERS.len();
         const NUM_INTERRUPT_LINES: usize =
             $crate::kernel::cfg::num_required_interrupt_line_slots(&INTERRUPT_HANDLERS);
+        struct Handlers;
+        impl $crate::kernel::cfg::CfgBuilderInterruptHandlerList for Handlers {
+            type NumHandlers = U<NUM_INTERRUPT_HANDLERS>;
+            const HANDLERS: &'static [CfgBuilderInterruptHandler] = &INTERRUPT_HANDLERS;
+        }
         const INTERRUPT_HANDLERS_SIZED: InterruptHandlerTable<
             [Option<InterruptHandlerFn>; NUM_INTERRUPT_LINES],
         > = unsafe {
@@ -392,10 +397,9 @@ macro_rules! build {
             $crate::kernel::cfg::new_interrupt_handler_table::<
                 $sys,
                 U<NUM_INTERRUPT_LINES>,
-                U<NUM_INTERRUPT_HANDLERS>,
-                { &INTERRUPT_HANDLERS },
-                NUM_INTERRUPT_HANDLERS,
+                Handlers,
                 NUM_INTERRUPT_LINES,
+                NUM_INTERRUPT_HANDLERS,
             >()
         };
 

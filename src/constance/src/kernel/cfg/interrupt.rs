@@ -402,15 +402,23 @@ impl InterruptHandlerTable {
 /// ```
 type ProtoCombinedHandlerFn = fn(interrupt::InterruptNum, bool);
 
+// FIXME: Passing `&'static [_]` as a const generic parameter causes ICE:
+//        <https://github.com/rust-lang/rust/issues/73727>
+//       `CfgBuilderInterruptHandlerList` is a work-around for this issue.
+/// A static list of [`CfgBuilderInterruptHandler`]s.
+#[doc(hidden)]
+pub trait CfgBuilderInterruptHandlerList {
+    /// `U<Self::NUM_HANDLERS>`
+    type NumHandlers: Nat;
+    const HANDLERS: &'static [CfgBuilderInterruptHandler];
+}
+
 /// The ultimate purpose of this type is to make `PROTO_COMBINED_HANDLERS`
 /// (a list of `ProtoCombinedHandlerFn`s) and `FIRST_PROTO_COMBINED_HANDLER`
 /// available to `new_interrupt_handler_table`.
-struct MakeProtoCombinedHandlers<
-    System,
-    NumHandlers,
-    const HANDLERS: &'static [CfgBuilderInterruptHandler],
-    const NUM_HANDLERS: usize,
->(PhantomData<(System, NumHandlers)>);
+struct MakeProtoCombinedHandlers<System, Handlers, const NUM_HANDLERS: usize>(
+    PhantomData<(System, Handlers)>,
+);
 
 trait MakeProtoCombinedHandlersTrait {
     type System: Port;
@@ -421,17 +429,12 @@ trait MakeProtoCombinedHandlersTrait {
     const FIRST_PROTO_COMBINED_HANDLER: Option<ProtoCombinedHandlerFn>;
 }
 
-impl<
-        System: Port,
-        NumHandlers: Nat,
-        const HANDLERS: &'static [CfgBuilderInterruptHandler],
-        const NUM_HANDLERS: usize,
-    > MakeProtoCombinedHandlersTrait
-    for MakeProtoCombinedHandlers<System, NumHandlers, HANDLERS, NUM_HANDLERS>
+impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS: usize>
+    MakeProtoCombinedHandlersTrait for MakeProtoCombinedHandlers<System, Handlers, NUM_HANDLERS>
 {
     type System = System;
-    type NumHandlers = NumHandlers;
-    const HANDLERS: &'static [CfgBuilderInterruptHandler] = HANDLERS;
+    type NumHandlers = Handlers::NumHandlers;
+    const HANDLERS: &'static [CfgBuilderInterruptHandler] = Handlers::HANDLERS;
     const NUM_HANDLERS: usize = NUM_HANDLERS;
     const PROTO_COMBINED_HANDLERS: &'static [ProtoCombinedHandlerFn] =
         &Self::PROTO_COMBINED_HANDLERS_ARRAY;
@@ -442,12 +445,8 @@ impl<
     };
 }
 
-impl<
-        System: Port,
-        NumHandlers: Nat,
-        const HANDLERS: &'static [CfgBuilderInterruptHandler],
-        const NUM_HANDLERS: usize,
-    > MakeProtoCombinedHandlers<System, NumHandlers, HANDLERS, NUM_HANDLERS>
+impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS: usize>
+    MakeProtoCombinedHandlers<System, Handlers, NUM_HANDLERS>
 {
     const PROTO_COMBINED_HANDLERS_ARRAY: [ProtoCombinedHandlerFn; NUM_HANDLERS] =
         Self::proto_combined_handlers_array();
@@ -488,30 +487,19 @@ impl<
 
             // `Self: MakeProtoCombinedHandlersTrait` is used as the context type
             // for the iteration
-            (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; NumHandlers]>()
+            (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; Handlers::NumHandlers]>()
         }
     }
 }
-
-// TODO: ICE results because this has type `&'static [_]`.
-//       Pointer generic parameters entail raw pointer comparison
-//       (<https://github.com/rust-lang/rust/issues/53020>), which has
-//       unclear aspects, thus they are forbidden in const generic parameters,
-//       meaning the work-around with `*const CfgBuilderInterruptHandler`
-//       doesn't work anymore.
-// FIXME: ↑ This was meant to be inserted before `const HANDLERS: ...`, but when
-//        I did that, rustfmt tried to destroy the code
-//        <https://github.com/rust-lang/rustfmt/issues/4263>
 
 /// Construct `InterruptHandlerTable`. Only meant to be used by `build!`
 #[doc(hidden)]
 pub const unsafe fn new_interrupt_handler_table<
     System: Port,
     NumLines: Nat,
-    NumHandlers: Nat,
-    const HANDLERS: &'static [CfgBuilderInterruptHandler],
-    const NUM_HANDLERS: usize,
+    Handlers: CfgBuilderInterruptHandlerList,
     const NUM_LINES: usize,
+    const NUM_HANDLERS: usize,
 >() -> InterruptHandlerTable<[Option<InterruptHandlerFn>; NUM_LINES]> {
     // Check generic parameters
 
@@ -522,14 +510,14 @@ pub const unsafe fn new_interrupt_handler_table<
     if NumLines::N != NUM_LINES {
         panic!("`NumLines::N != NUM_LINES`");
     }
-    if NumHandlers::N != NUM_HANDLERS {
+    if Handlers::NumHandlers::N != NUM_HANDLERS {
         panic!("`NumHandlers::N != NUM_HANDLERS`");
     }
 
     // FIXME: Work-around for `for` being unsupported in `const fn`
     let mut i = 0;
     while i < NUM_HANDLERS {
-        let handler = HANDLERS[i];
+        let handler = Handlers::HANDLERS[i];
         if handler.line >= NUM_LINES {
             panic!("`handler.line >= NUM_LINES`");
         }
@@ -553,9 +541,8 @@ pub const unsafe fn new_interrupt_handler_table<
 
         (0..NUM_LINES).map(|i| iter::<[MakeProtoCombinedHandlers<
             System,
-            NumHandlers,
-            HANDLERS,
-            NUM_HANDLERS
+            Handlers,
+            NUM_HANDLERS,
         >], i>(MakeProtoCombinedHandlers(PhantomData))).collect::<[_; NumLines]>()
     };
 
