@@ -1,5 +1,5 @@
 //! Tasks
-use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, sync::atomic::Ordering};
+use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, mem, sync::atomic::Ordering};
 use num_traits::ToPrimitive;
 
 use super::{
@@ -131,8 +131,9 @@ impl<System: Kernel> Task<System> {
         };
 
         // Calculate an `Id` from the task CB pointer
-        let offset =
-            (task_cb as *const TaskCb<_>).wrapping_offset_from(System::task_cb_pool().as_ptr());
+        let offset_bytes =
+            task_cb as *const TaskCb<_> as usize - System::task_cb_pool().as_ptr() as usize;
+        let offset = offset_bytes / mem::size_of::<TaskCb<System>>();
 
         // Safety: Constructing a `Task` for a current task is allowed
         let task = unsafe { Self::from_id(Id::new(offset as usize + 1).unwrap()) };
