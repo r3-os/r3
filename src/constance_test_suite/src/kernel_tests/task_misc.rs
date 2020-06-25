@@ -9,6 +9,7 @@ use super::Driver;
 pub struct App<System> {
     task1: Task<System>,
     task2: Task<System>,
+    task3: Task<System>,
 }
 
 impl<System: Kernel> App<System> {
@@ -22,8 +23,9 @@ impl<System: Kernel> App<System> {
                 param = 42,
             };
             let task2 = new! { Task<_>, start = task2_body::<System, D>, priority = 1 };
+            let task3 = new! { Task<_>, start = task3_body::<System, D>, priority = 1 };
 
-            App { task1, task2 }
+            App { task1, task2, task3 }
         }
     }
 }
@@ -73,6 +75,10 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     );
 
     // Current task
+    // This assertion might not be useful because `task1` always has ID 0, so
+    // it's unlikely to catch errors such as dividing a pointer difference by a
+    // wrong divisor. For this reason, we check this again in a different
+    // task.
     assert_eq!(Task::current().unwrap(), Some(app.task1));
 
     // CPU Lock active
@@ -95,9 +101,17 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     );
     unsafe { System::release_cpu_lock().unwrap() };
 
-    D::success();
+    // Go to `task3_body`
+    app.task3.activate().unwrap();
 }
 
 fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     unreachable!();
+}
+
+fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    // Current task (again)
+    assert_eq!(Task::current().unwrap(), Some(D::app().task3));
+
+    D::success();
 }
