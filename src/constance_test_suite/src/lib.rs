@@ -148,6 +148,7 @@ pub mod kernel_tests {
         (mod interrupt_disallowed_services {}, "interrupt_disallowed_services"),
         (mod interrupt_misc {}, "interrupt_misc"),
         (mod interrupt_priority {}, "interrupt_priority"),
+        (mod interrupt_task_activate {}, "interrupt_task_activate"),
         (mod priority_boost {}, "priority_boost"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),

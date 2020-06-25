@@ -445,6 +445,12 @@ impl State {
         log::trace!("yield_cpu");
         assert!(!self.is_cpu_lock_active());
 
+        // The dispatcher will automatically run when the current interrupt
+        // handler returns the control to it
+        if self.is_interrupt_context() {
+            return;
+        }
+
         self.yield_cpu_inner::<System>();
     }
 
