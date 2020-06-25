@@ -103,11 +103,14 @@ mod tests {
 
     #[test]
     fn push() {
-        const VEC: ComptimeVec<u32> = {
+        const fn vec() -> ComptimeVec<u32> {
+            // FIXME: Unable to do this inside a `const` item because of
+            //        <https://github.com/rust-lang/rust/pull/72934>
             let mut v = ComptimeVec::new();
             v.push(42);
             v
-        };
+        }
+        const VEC: ComptimeVec<u32> = vec();
 
         const VEC_LEN: usize = VEC.len();
         assert_eq!(VEC_LEN, 1);
@@ -118,32 +121,32 @@ mod tests {
 
     #[test]
     fn to_array() {
-        const ARRAY: [u32; 3] = {
+        const fn array() -> [u32; 3] {
             let mut v = ComptimeVec::new();
             v.push(1);
             v.push(2);
             v.push(3);
             v.to_array()
-        };
-        assert_eq!(ARRAY, [1, 2, 3]);
+        }
+        assert_eq!(array(), [1, 2, 3]);
     }
 
     #[test]
     fn get_mut() {
-        const VAL: u32 = {
+        const fn val() -> u32 {
             let mut v = ComptimeVec::new();
             v.push(1);
             v.push(2);
             v.push(3);
             *v.get_mut(1) += 2;
             *v.get(1)
-        };
-        assert_eq!(VAL, 4);
+        }
+        assert_eq!(val(), 4);
     }
 
     #[test]
     fn const_vec_position() {
-        const POS: [Option<usize>; 2] = {
+        const fn pos() -> [Option<usize>; 2] {
             let mut v = ComptimeVec::new();
             v.push(42);
             v.push(43);
@@ -152,8 +155,8 @@ mod tests {
                 vec_position!(v, |i| *i == 43),
                 vec_position!(v, |i| *i == 50),
             ]
-        };
-        assert_eq!(POS, [Some(1), None]);
+        }
+        assert_eq!(pos(), [Some(1), None]);
     }
 
     #[quickcheck]

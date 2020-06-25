@@ -257,7 +257,7 @@ mod tests {
     fn test() {
         struct Cell<T>(T, u128);
 
-        const GOT: u128 = {
+        const fn got() -> u128 {
             let mut cell = Cell("unused", 0);
             const_for_times! {
                 fn iter<[T], I: Nat>(cell: &mut Cell<T>) {
@@ -267,7 +267,7 @@ mod tests {
                 (0..U<20>).for_each(|i| iter::<[_], i>(&mut cell))
             }
             cell.1
-        };
+        }
 
         let expected = {
             let mut cell = 0;
@@ -277,13 +277,13 @@ mod tests {
             cell
         };
 
-        assert_eq!(expected, GOT);
+        assert_eq!(expected, got());
     }
 
     #[test]
     fn const_array_from_fn() {
         struct Cell<T>(T, u128);
-        const GOT: [u128; 20] = {
+        const fn got() -> [u128; 20] {
             let mut cell = Cell("unused", 0);
             const_array_from_fn! {
                 fn iter<[T], I: Nat>(ref mut cell: &mut Cell<T>) -> u128 {
@@ -293,7 +293,7 @@ mod tests {
 
                 (0..20).map(|i| iter::<[&'static str], i>(&mut cell)).collect::<[_; U<20>]>()
             }
-        };
+        }
 
         let expected = {
             let mut cell = Cell("unused", 0);
@@ -308,6 +308,6 @@ mod tests {
                 .collect::<Vec<_>>()
         };
 
-        assert_eq!(GOT[..], *expected);
+        assert_eq!(got()[..], *expected);
     }
 }

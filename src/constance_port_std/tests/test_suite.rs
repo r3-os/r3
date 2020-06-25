@@ -78,7 +78,7 @@ macro_rules! instantiate_kernel_tests {
             }
 
             static COTTAGE: test_case::App<System> =
-                constance::build!(System, test_case::App::new::<Driver>);
+                constance::build!(System, test_case::App::new::<Driver> => test_case::App<System>);
 
             #[test]
             fn run() {

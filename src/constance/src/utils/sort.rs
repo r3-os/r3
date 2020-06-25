@@ -49,13 +49,13 @@ mod tests {
 
     #[test]
     fn const_sort() {
-        const RESULT: [u32; 14] = {
+        const fn result() -> [u32; 14] {
             let mut array = [2, 6, 1, 9, 13, 3, 8, 12, 5, 11, 14, 7, 4, 10];
             sort_by!(14, |i| &mut array[i], |x, y| x < y);
             array
-        };
+        }
 
-        assert_eq!(RESULT, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+        assert_eq!(result(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
     }
 
     #[quickcheck]

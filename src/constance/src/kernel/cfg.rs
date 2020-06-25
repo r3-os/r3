@@ -293,7 +293,7 @@ macro_rules! configure {
 /// [`KernelCfg2`]: crate::kernel::KernelCfg2
 #[macro_export]
 macro_rules! build {
-    ($sys:ty, $configure:expr) => {{
+    ($sys:ty, $configure:expr => $id_map_ty:ty) => {{
         use $crate::{
             kernel::{
                 cfg::{
@@ -312,17 +312,28 @@ macro_rules! build {
         // `$configure` produces two values: a `CfgBuilder` and an ID map
         // (custom type). We need the first one to be `const` so that we can
         // calculate the values of generic parameters based on its contents.
-        const CFG: CfgBuilderInner<$sys> = {
+        const CFG: CfgBuilderInner<$sys> = get_cfg();
+
+        const fn get_cfg() -> CfgBuilderInner<$sys> {
+            // FIXME: Unable to do this inside a `const` item because of
+            //        <https://github.com/rust-lang/rust/pull/72934>
+
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut cfg = unsafe { CfgBuilder::new() };
             $configure(&mut cfg);
             cfg.finalize();
             cfg.into_inner()
-        };
+        }
 
         // The second value can be just `let`
         // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
-        let id_map = $configure(&mut unsafe { CfgBuilder::new() });
+        const fn id_map() -> $id_map_ty {
+            // FIXME: Unable to do this inside a `const` item because of
+            //        <https://github.com/rust-lang/rust/pull/72934>
+            //        This is also why `$id_map_ty` has to be given.
+
+            $configure(&mut unsafe { CfgBuilder::new() })
+        }
 
         // Set up task priority levels
         type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;
@@ -382,7 +393,7 @@ macro_rules! build {
                 $sys,
                 U<NUM_INTERRUPT_LINES>,
                 U<NUM_INTERRUPT_HANDLERS>,
-                { INTERRUPT_HANDLERS.as_ptr() },
+                { &INTERRUPT_HANDLERS },
                 NUM_INTERRUPT_HANDLERS,
                 NUM_INTERRUPT_LINES,
             >()
@@ -426,7 +437,7 @@ macro_rules! build {
             }
         }
 
-        id_map
+        id_map()
     }};
 }
 

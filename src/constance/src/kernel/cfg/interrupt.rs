@@ -408,14 +408,14 @@ type ProtoCombinedHandlerFn = fn(interrupt::InterruptNum, bool);
 struct MakeProtoCombinedHandlers<
     System,
     NumHandlers,
-    const HANDLERS: *const CfgBuilderInterruptHandler,
+    const HANDLERS: &'static [CfgBuilderInterruptHandler],
     const NUM_HANDLERS: usize,
 >(PhantomData<(System, NumHandlers)>);
 
 trait MakeProtoCombinedHandlersTrait {
     type System: Port;
     type NumHandlers: Nat;
-    const HANDLERS: *const CfgBuilderInterruptHandler;
+    const HANDLERS: &'static [CfgBuilderInterruptHandler];
     const NUM_HANDLERS: usize;
     const PROTO_COMBINED_HANDLERS: &'static [ProtoCombinedHandlerFn];
     const FIRST_PROTO_COMBINED_HANDLER: Option<ProtoCombinedHandlerFn>;
@@ -424,14 +424,14 @@ trait MakeProtoCombinedHandlersTrait {
 impl<
         System: Port,
         NumHandlers: Nat,
-        const HANDLERS: *const CfgBuilderInterruptHandler,
+        const HANDLERS: &'static [CfgBuilderInterruptHandler],
         const NUM_HANDLERS: usize,
     > MakeProtoCombinedHandlersTrait
     for MakeProtoCombinedHandlers<System, NumHandlers, HANDLERS, NUM_HANDLERS>
 {
     type System = System;
     type NumHandlers = NumHandlers;
-    const HANDLERS: *const CfgBuilderInterruptHandler = HANDLERS;
+    const HANDLERS: &'static [CfgBuilderInterruptHandler] = HANDLERS;
     const NUM_HANDLERS: usize = NUM_HANDLERS;
     const PROTO_COMBINED_HANDLERS: &'static [ProtoCombinedHandlerFn] =
         &Self::PROTO_COMBINED_HANDLERS_ARRAY;
@@ -445,68 +445,71 @@ impl<
 impl<
         System: Port,
         NumHandlers: Nat,
-        const HANDLERS: *const CfgBuilderInterruptHandler,
+        const HANDLERS: &'static [CfgBuilderInterruptHandler],
         const NUM_HANDLERS: usize,
     > MakeProtoCombinedHandlers<System, NumHandlers, HANDLERS, NUM_HANDLERS>
 {
-    const PROTO_COMBINED_HANDLERS_ARRAY: [ProtoCombinedHandlerFn; NUM_HANDLERS] = const_array_from_fn! {
-        fn iter<[T: MakeProtoCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> ProtoCombinedHandlerFn {
-            #[inline(always)]
-            fn proto_combined_handler<T: MakeProtoCombinedHandlersTrait, I: Nat>(cur_line: interrupt::InterruptNum, mut should_unlock_cpu: bool) {
-                // Safety: `I::N < NUM_HANDLERS`
-                let handler = unsafe { &*T::HANDLERS.wrapping_add(I::N) };
+    const PROTO_COMBINED_HANDLERS_ARRAY: [ProtoCombinedHandlerFn; NUM_HANDLERS] =
+        Self::proto_combined_handlers_array();
 
-                if cur_line == handler.line {
-                    if should_unlock_cpu {
-                        // Relinquish CPU Lock before calling the next handler
-                        if T::System::is_cpu_lock_active() {
-                            // Safety: CPU Lock active, we have the ownership
-                            // of the current CPU Lock (because a previously
-                            // called handler left it active)
-                            unsafe { T::System::leave_cpu_lock() };
+    const fn proto_combined_handlers_array() -> [ProtoCombinedHandlerFn; NUM_HANDLERS] {
+        // FIXME: Unable to do this inside a `const` item because of
+        //        <https://github.com/rust-lang/rust/pull/72934>
+        const_array_from_fn! {
+            fn iter<[T: MakeProtoCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> ProtoCombinedHandlerFn {
+                #[inline(always)]
+                fn proto_combined_handler<T: MakeProtoCombinedHandlersTrait, I: Nat>(cur_line: interrupt::InterruptNum, mut should_unlock_cpu: bool) {
+                    let handler = T::HANDLERS[I::N];
+
+                    if cur_line == handler.line {
+                        if should_unlock_cpu {
+                            // Relinquish CPU Lock before calling the next handler
+                            if T::System::is_cpu_lock_active() {
+                                // Safety: CPU Lock active, we have the ownership
+                                // of the current CPU Lock (because a previously
+                                // called handler left it active)
+                                unsafe { T::System::leave_cpu_lock() };
+                            }
                         }
+
+                        (handler.start)(handler.param);
+
+                        should_unlock_cpu = true;
                     }
 
-                    (handler.start)(handler.param);
-
-                    should_unlock_cpu = true;
+                    // Call the next proto combined handler
+                    let i = I::N + 1;
+                    if i < T::NUM_HANDLERS {
+                        T::PROTO_COMBINED_HANDLERS[i](cur_line, should_unlock_cpu);
+                    }
                 }
-
-                // Call the next proto combined handler
-                let i = I::N + 1;
-                if i < T::NUM_HANDLERS {
-                    T::PROTO_COMBINED_HANDLERS[i](cur_line, should_unlock_cpu);
-                }
+                proto_combined_handler::<T, I>
             }
-            proto_combined_handler::<T, I>
-        }
 
-        // `Self: MakeProtoCombinedHandlersTrait` is used as the context type
-        // for the iteration
-        (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; NumHandlers]>()
-    };
+            // `Self: MakeProtoCombinedHandlersTrait` is used as the context type
+            // for the iteration
+            (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; NumHandlers]>()
+        }
+    }
 }
 
-// FIXME: ICE results if this has type `&'static [_]`.
-//        Pointer generic parameters entail raw pointer comparison
-//        (<https://github.com/rust-lang/rust/issues/53020>), which has
-//        unclear aspects and thus is unstable at this point.
+// TODO: ICE results because this has type `&'static [_]`.
+//       Pointer generic parameters entail raw pointer comparison
+//       (<https://github.com/rust-lang/rust/issues/53020>), which has
+//       unclear aspects, thus they are forbidden in const generic parameters,
+//       meaning the work-around with `*const CfgBuilderInterruptHandler`
+//       doesn't work anymore.
 // FIXME: ↑ This was meant to be inserted before `const HANDLERS: ...`, but when
 //        I did that, rustfmt tried to destroy the code
 //        <https://github.com/rust-lang/rustfmt/issues/4263>
 
 /// Construct `InterruptHandlerTable`. Only meant to be used by `build!`
-///
-/// # Safety
-///
-/// `std::slice::from_raw_parts(HANDLERS, NUM_HANDLERS)` must be a valid
-/// reference.
 #[doc(hidden)]
 pub const unsafe fn new_interrupt_handler_table<
     System: Port,
     NumLines: Nat,
     NumHandlers: Nat,
-    const HANDLERS: *const CfgBuilderInterruptHandler,
+    const HANDLERS: &'static [CfgBuilderInterruptHandler],
     const NUM_HANDLERS: usize,
     const NUM_LINES: usize,
 >() -> InterruptHandlerTable<[Option<InterruptHandlerFn>; NUM_LINES]> {
@@ -526,9 +529,7 @@ pub const unsafe fn new_interrupt_handler_table<
     // FIXME: Work-around for `for` being unsupported in `const fn`
     let mut i = 0;
     while i < NUM_HANDLERS {
-        // Safety: `i < NUM_HANDLERS`. MIRI (the compile-time interpreter)
-        // actually can catch unsafe pointer references.
-        let handler = unsafe { &*HANDLERS.wrapping_add(i) };
+        let handler = HANDLERS[i];
         if handler.line >= NUM_LINES {
             panic!("`handler.line >= NUM_LINES`");
         }

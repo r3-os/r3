@@ -102,7 +102,7 @@ crate your_app {
         task1: constance::Task<System>,
     }
 
-    static COTTAGE: Objects = constance::build!(System, configure_app);
+    static COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
     // The configuration function. See "Static Configuration" for details.
     fn configure_app(b: &mut constance::CfgBuilder<System>) -> Objects {

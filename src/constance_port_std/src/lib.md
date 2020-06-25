@@ -17,7 +17,7 @@ use constance::kernel::Task;
 // Use the simulator port
 constance_port_std::use_port!(unsafe struct System);
 
-const COTTAGE: () = constance::build!(System, configure_app);
+const COTTAGE: () = constance::build!(System, configure_app => ());
 
 constance::configure! {
     const fn configure_app(_: &mut CfgBuilder<System>) -> () {

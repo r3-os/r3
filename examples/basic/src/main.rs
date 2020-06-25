@@ -15,7 +15,7 @@ struct Objects {
     mutex1: Mutex<System, u32>,
 }
 
-const COTTAGE: Objects = constance::build!(System, configure_app);
+const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
 constance::configure! {
     const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
