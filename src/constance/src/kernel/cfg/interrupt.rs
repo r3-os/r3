@@ -335,13 +335,13 @@ pub(super) const fn sort_handlers(
 ///
 /// # Safety
 ///
-/// Only meant to be called from a first-level interrupt context. CPU Lock must
+/// Only meant to be called from a first-level interrupt handler. CPU Lock must
 /// be inactive.
 pub type InterruptHandlerFn = unsafe extern "C" fn();
 
 /// A table of combined second-level interrupt handlers.
 ///
-/// The generic parameter is not a part of a public interface.
+/// The generic parameter is not a part of the public interface.
 pub struct InterruptHandlerTable<T: ?Sized = [Option<InterruptHandlerFn>]> {
     storage: T,
 }
