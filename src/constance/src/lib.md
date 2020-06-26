@@ -30,86 +30,121 @@ opt-level = 2
 
 The Constance RTOS utilizes Rust's trait system to allow system designers to construct a system in a modular way.
 
-The following pseudocode outlines the traits and types involved in hooking up the kernel, port, and application to each other.
+An application crate uses the following macros to realize each part of the system:
+
+ - A port-provided macro like **`constance_xxx_port::use_port!`** (named in this way by convention) instantiates port-specfific items.
+ - **[`constance::build!`]** instantiates the kernel and kernel-private static data based on the kernel configuration supplied in the form of **[a configuration function]**.
 
 ```rust,ignore
-crate constance {
-    /// Associates `System` with kernel-private data. Implemented by `build!`.
-    /// The kernel-private data includes port-specific types.
-    unsafe trait KernelCfg1 {
+constance_port_std::use_port!(unsafe struct System);
+
+struct Objects { /* ... */ }
+const fn configure_app(_: &mut CfgBuilder<System>) -> Objects { /* ... */
+
+const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
+```
+
+These macros generate various `impl`s interconnected under a complex relationship, with an ultimate goal of building a working system.
+
+[`constance::build!`]: crate::build
+[a configuration function]: #static-configuration
+
+### `use_port!` → System Type
+
+The composition process revolves around the application-defined type called **a system type**. The first thing to do is to define a system type. It could be defined directly, but instead it's defined by `use_port!` purely for convenience. A system type is named `System` by convention.
+
+```rust,ignore
+constance_xxx_port::use_port!(unsafe struct System);
+
+// ----- The above macro invocation expands to: -----
+struct System;
+```
+
+### `use_port!` → `impl Port`
+
+The first important role of `use_port!` is to implement the trait [`Port`] on the system type. `Port` describes the properties of the target hardware and provides target-dependent low-level functions such as a context switcher. `use_port!` can define `static` items to store internal state data (this would be inconvenient and messy without a macro).
+
+```rust,ignore
+constance_xxx_port::use_port!(unsafe struct System);
+
+// ----- The above macro invocation also produces: -----
+unsafe impl constance::Port for System { /* ... */ }
+```
+
+The job of `use_port!` doesn't end here, but before we move on, we must first explain what `build!` does.
+
+[`Port`]: crate::kernel::Port
+
+### `build!` → `impl KernelCfgN`
+
+`build!` assembles a database of statically defined kernel objects using a supplied [configuration function]. Using this database, it does things such as determining the optimal data type to represent all allowed task priority values and defining `static` items to store kernel-private data structures such as task control blocks. The result is attached to a supplied system type by implementing [`KernelCfg1`] and [`KernelCfg2`] on it.
+
+```rust,ignore
+static COTTAGE: Objects = constance::build!(System, configure_app => Objects);
+
+// ----- The above macro invocation produces: -----
+static COTTAGE: Objects = {
+    use constance::kernel::TaskCb;
+
+    const CFG: /* ... */ = {
+        let mut cfg = constance::kernel::cfg::CfgBuilder::new();
+        configure_app(&mut cfg);
+        cfg
+    };
+
+    static TASK_CB_POOL: [TaskCb<System>; _] = /* ... */;
+
+    // Things needed by both of `Port` and `KernelCfg2` should live in
+    // `KernelCfg1` because `Port` cannot refer to an associated item defined
+    // by `KernelCfg2`.
+    unsafe impl constance::kernel::KernelCfg1 for System {
+        type TaskPriority = /* ... */;
+    }
+
+    // Things dependent on data types defined by `Port` should live in
+    // `KernelCfg2`.
+    unsafe impl constance::kernel::KernelCfg2 for System {
+        fn task_cb_pool() -> &'static [TaskCb<System>] {
+            &TASK_CB_POOL
+        }
         /* ... */
     }
 
-    /// Implemented by a port.
-    unsafe trait Port: KernelCfg1 {
-        type TaskState;
-        fn dispatch();
-        /* ... */
-    }
+    // Make the generated object IDs available to the application
+    configure_app(&mut constance::kernel::cfg::CfgBuilder::new())
+};
+```
 
-    /// Associates `System` with kernel-private data. Implemented by `build!`.
-    /// The kernel-private data includes port-specific types.
-    unsafe trait KernelCfg2: Port {
-        const TASK_CFG: &'static [TaskCfg<Self::TaskState>];
-        /* ... */
-    }
+[configuration function]: #static-configuration
+[`KernelCfg1`]: crate::kernel::KernelCfg1
+[`KernelCfg2`]: crate::kernel::KernelCfg2
 
-    /// The API used by the application and the port. This is automatically
-    /// implemented when a type has sufficient trait `impl`s.
-    trait Kernel: Port + KernelCfg2 {}
+### `impl Kernel`
 
-    impl<T: Port + KernelCfg1 + KernelCfg2> Kernel for T { /* ... */ }
+The traits introduced so far are enough to instantiate the target-independent portion of the RTOS kernel. To reflect this, [`Kernel`] and [`PortToKernel`] are automatically implemented on the system type by a blanket `impl`.
 
-    /// Instantiate the `static`s necessary for the kernel's operation. This is
-    /// absolutely impossible to do with blanket `impl`s.
-    macro_rules! build {
-        ($sys:ty, $configure:expr) => {
-            unsafe impl $crate::KernelCfg1 for $sys {}
-            unsafe impl $crate::KernelCfg2 for $sys {
-                const TASK_CFG: &'static [TaskCfg<Self::TaskState>] = /* ... */;
-                /* ... */
-            }
-        };
-    }
-}
+```rust,ignore
+impl<System: Port + KernelCfg1 + KernelCfg2> Kernel for System { /* ... */ }
+impl<System: Kernel> PortToKernel for System { /* ... */ }
+```
 
-crate constance_xxx_port {
-    // The following approach doesn't work because of a circular dependency in
-    // blanket `impl`s:
-    //
-    // impl<T: constance::Kernel> constance::Port for T {}
+[`Kernel`]: crate::kernel::Kernel
+[`PortToKernel`]: crate::kernel::PortToKernel
 
-    // Instead, `Port` should be implemented specifically for a type. This is
-    // facilitated by a macro, which also has an advantage of giving the port an
-    // opportunity to insert port-specific code (such as `static`s and inline
-    // assembler) referencing `$sys` to the application.
-    macro_rules! use_port {
-        (unsafe struct $sys:ident) => {
-            struct $sys;
+### `use_port!` → Entry Points
 
-            // Assume `$sys: Kernel`
-            unsafe impl constance::Port for $sys {
-                /* ... */
-            }
-        };
-    }
-}
+The remaining task of `use_port!` is to generate entry points to the kernel. The most important one is for booting the kernel. The other ones are [interrupt handlers].
 
-crate your_app {
-    constance_xxx_port::use_port!(unsafe struct System);
+```rust,ignore
+constance_xxx_port::use_port!(unsafe struct System);
 
-    struct Objects {
-        task1: constance::Task<System>,
-    }
-
-    static COTTAGE: Objects = constance::build!(System, configure_app => Objects);
-
-    // The configuration function. See "Static Configuration" for details.
-    fn configure_app(b: &mut constance::CfgBuilder<System>) -> Objects {
-        Objects { task1: /* ... */ }
-    }
+// ----- The above macro invocation lastly produces: -----
+fn main() {
+    <System as constance::kernel::PortToKernel>::boot();
 }
 ```
+
+[interrupt handlers]: (#interrupt-handling-framework)
 
 ## Static Configuration
 
