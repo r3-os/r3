@@ -38,6 +38,7 @@ use crate::utils::{
 ///  - **Waiting** — The task has an associated execution thread, which is
 ///    currently blocked by a blocking operation
 ///
+/// <center>
 /// ```svgbob
 ///                     ,-------,
 ///    ,--------------->| Ready |<--------------,
@@ -55,6 +56,7 @@ use crate::utils::{
 ///    '---------------| Running |--------------'
 ///                    '---------' exit
 /// ```
+/// </center>
 ///
 /// [thread]: crate#threads
 /// [activated]: Task::activate

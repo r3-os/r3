@@ -46,7 +46,7 @@ const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
 These macros generate various `impl`s interconnected under a complex relationship, with an ultimate goal of building a working system.
 
-![kernel-traits]
+<span class="center">![kernel-traits]</span>
 
 [`constance::build!`]: crate::build
 [a configuration function]: #static-configuration
