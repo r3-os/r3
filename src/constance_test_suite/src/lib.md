@@ -1,7 +1,6 @@
 A collection of tests that can be used to verify the correct operation of [the Constance RTOS] and a port implementation.
 
-<a href="https://derpibooru.org/593273" title="She passed!">
-<img src="https://derpicdn.net/img/2014/4/5/593273/medium.png"></a>
+<div class="distractor"><a style="background-image: url(https://derpicdn.net/img/2014/4/5/593273/medium.png); padding-bottom: 66.66%" href="http://derpibooru.org/593273" title="She passed!"></a></div>
 
 [the Constance RTOS]: constance
 

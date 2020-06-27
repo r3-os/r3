@@ -1,4 +1,16 @@
 <style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
 /* Table of contents */
 .toc-header + ul {
     background: rgba(128, 128, 128, 0.1);

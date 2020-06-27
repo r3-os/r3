@@ -1,6 +1,6 @@
 The Constance RTOS
 
-[![Constance and Fluttershy](https://derpicdn.net/img/2018/5/25/1740985/medium.png)](http://derpibooru.org/1740985)
+<div class="distractor"><a style="background-image: url(https://derpicdn.net/img/2018/5/25/1740985/medium.png); padding-bottom: 56.25%" href="http://derpibooru.org/1740985" title="Constance and Fluttershy"></a></div>
 
 <div class="toc-header"></div>
 

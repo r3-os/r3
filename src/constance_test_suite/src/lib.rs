@@ -5,6 +5,7 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
+#![doc(include = "../../constance/src/common.md")]
 #![no_std]
 
 mod utils;
