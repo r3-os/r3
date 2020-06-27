@@ -39,7 +39,7 @@ An application crate uses the following macros to realize each part of the syste
 constance_port_std::use_port!(unsafe struct System);
 
 struct Objects { /* ... */ }
-const fn configure_app(_: &mut CfgBuilder<System>) -> Objects { /* ... */
+const fn configure_app(_: &mut CfgBuilder<System>) -> Objects { /* ... */ }
 
 const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 ```
