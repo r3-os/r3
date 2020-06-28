@@ -14,7 +14,7 @@ Simulator for running [`::constance`] on a hosted environment
 
 use constance::kernel::Task;
 
-// Use the simulator port
+// Use the simulator port. This macro generates `fn main()`.
 constance_port_std::use_port!(unsafe struct System);
 
 const COTTAGE: () = constance::build!(System, configure_app => ());
@@ -28,7 +28,13 @@ constance::configure! {
 fn task_body(_: usize) {
     // The simulator initializes `env_logger` automatically
     log::warn!("yay");
+#   // Make sure the program doesn't panic after stalling
+#   std::process::exit(0);
 }
+
+# // `use_port!` generates `fn main()`, but the test harness cannot detect that
+# #[cfg(any())]
+# fn main() {}
 ```
 
 # Interrupts

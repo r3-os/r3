@@ -4,7 +4,15 @@
 #![doc(include = "./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
 use atomic_ref::AtomicRef;
-use constance::{prelude::*, utils::intrusive_list::StaticListHead};
+use constance::{
+    kernel::{
+        self, ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
+        PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
+        SetInterruptLinePriorityError, TaskCb,
+    },
+    prelude::*,
+    utils::intrusive_list::StaticListHead,
+};
 use parking_lot::{lock_api::RawMutex, Mutex};
 use std::{
     any::Any,
@@ -17,15 +25,13 @@ use std::{
 
 mod threading;
 
+/// Used by `use_port!`
 #[doc(hidden)]
-pub use constance::kernel::{
-    self, ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-    PendInterruptLineError, Port, PortInterrupts, PortThreading, PortToKernel,
-    QueryInterruptLineError, SetInterruptLinePriorityError, TaskCb,
-};
+pub extern crate constance;
 /// Used by `use_port!`
 #[doc(hidden)]
 pub use std::sync::atomic::{AtomicBool, Ordering};
+/// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate env_logger;
 
@@ -702,88 +708,100 @@ macro_rules! use_port {
     (unsafe $vis:vis struct $sys:ident) => {
         $vis struct $sys;
 
-        static PORT_STATE: $crate::State = $crate::State::new();
+        mod port_std_impl {
+            use super::$sys;
+            use $crate::constance::kernel::{
+                ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
+                PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
+                TaskCb, PortToKernel, PortInterrupts, PortThreading,
+            };
+            use $crate::{State, TaskState};
 
-        // Assume `$sys: Kernel`
-        unsafe impl $crate::PortThreading for $sys {
-            type PortTaskState = $crate::TaskState;
-            const PORT_TASK_STATE_INIT: Self::PortTaskState = $crate::TaskState::new();
+            pub(super) static PORT_STATE: State = State::new();
 
-            unsafe fn dispatch_first_task() -> ! {
-                PORT_STATE.dispatch_first_task::<Self>()
+            // Assume `$sys: Kernel`
+            unsafe impl PortThreading for $sys {
+                type PortTaskState = TaskState;
+                const PORT_TASK_STATE_INIT: Self::PortTaskState = TaskState::new();
+
+                unsafe fn dispatch_first_task() -> ! {
+                    PORT_STATE.dispatch_first_task::<Self>()
+                }
+
+                unsafe fn yield_cpu() {
+                    PORT_STATE.yield_cpu::<Self>()
+                }
+
+                unsafe fn exit_and_dispatch(task: &'static TaskCb<Self>) -> ! {
+                    PORT_STATE.exit_and_dispatch::<Self>(task);
+                }
+
+                unsafe fn enter_cpu_lock() {
+                    PORT_STATE.enter_cpu_lock()
+                }
+
+                unsafe fn leave_cpu_lock() {
+                    PORT_STATE.leave_cpu_lock::<Self>()
+                }
+
+                unsafe fn initialize_task_state(task: &'static TaskCb<Self>) {
+                    PORT_STATE.initialize_task_state(task)
+                }
+
+                fn is_cpu_lock_active() -> bool {
+                    PORT_STATE.is_cpu_lock_active()
+                }
+
+                fn is_interrupt_context() -> bool {
+                    PORT_STATE.is_interrupt_context()
+                }
             }
 
-            unsafe fn yield_cpu() {
-                PORT_STATE.yield_cpu::<Self>()
-            }
+            unsafe impl PortInterrupts for $sys {
+                const MANAGED_INTERRUPT_PRIORITY_RANGE:
+                    ::std::ops::Range<InterruptPriority> = 0..InterruptPriority::max_value();
 
-            unsafe fn exit_and_dispatch(task: &'static $crate::TaskCb<Self>) -> ! {
-                PORT_STATE.exit_and_dispatch::<Self>(task);
-            }
+                unsafe fn set_interrupt_line_priority(
+                    line: InterruptNum,
+                    priority: InterruptPriority,
+                ) -> Result<(), SetInterruptLinePriorityError> {
+                    PORT_STATE.set_interrupt_line_priority::<Self>(line, priority)
+                }
 
-            unsafe fn enter_cpu_lock() {
-                PORT_STATE.enter_cpu_lock()
-            }
+                unsafe fn enable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError> {
+                    PORT_STATE.enable_interrupt_line::<Self>(line)
+                }
 
-            unsafe fn leave_cpu_lock() {
-                PORT_STATE.leave_cpu_lock::<Self>()
-            }
+                unsafe fn disable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError> {
+                    PORT_STATE.disable_interrupt_line(line)
+                }
 
-            unsafe fn initialize_task_state(task: &'static $crate::TaskCb<Self>) {
-                PORT_STATE.initialize_task_state(task)
-            }
+                unsafe fn pend_interrupt_line(line: InterruptNum) -> Result<(), PendInterruptLineError> {
+                    PORT_STATE.pend_interrupt_line::<Self>(line)
+                }
 
-            fn is_cpu_lock_active() -> bool {
-                PORT_STATE.is_cpu_lock_active()
-            }
+                unsafe fn clear_interrupt_line(line: InterruptNum) -> Result<(), ClearInterruptLineError> {
+                    PORT_STATE.clear_interrupt_line(line)
+                }
 
-            fn is_interrupt_context() -> bool {
-                PORT_STATE.is_interrupt_context()
-            }
-        }
-
-        unsafe impl $crate::PortInterrupts for $sys {
-            const MANAGED_INTERRUPT_PRIORITY_RANGE:
-                ::std::ops::Range<$crate::InterruptPriority> = 0..$crate::InterruptPriority::max_value();
-
-            unsafe fn set_interrupt_line_priority(
-                line: $crate::InterruptNum,
-                priority: $crate::InterruptPriority,
-            ) -> Result<(), $crate::SetInterruptLinePriorityError> {
-                PORT_STATE.set_interrupt_line_priority::<Self>(line, priority)
-            }
-
-            unsafe fn enable_interrupt_line(line: $crate::InterruptNum) -> Result<(), $crate::EnableInterruptLineError> {
-                PORT_STATE.enable_interrupt_line::<Self>(line)
-            }
-
-            unsafe fn disable_interrupt_line(line: $crate::InterruptNum) -> Result<(), $crate::EnableInterruptLineError> {
-                PORT_STATE.disable_interrupt_line(line)
-            }
-
-            unsafe fn pend_interrupt_line(line: $crate::InterruptNum) -> Result<(), $crate::PendInterruptLineError> {
-                PORT_STATE.pend_interrupt_line::<Self>(line)
-            }
-
-            unsafe fn clear_interrupt_line(line: $crate::InterruptNum) -> Result<(), $crate::ClearInterruptLineError> {
-                PORT_STATE.clear_interrupt_line(line)
-            }
-
-            unsafe fn is_interrupt_line_pending(
-                line: $crate::InterruptNum,
-            ) -> Result<bool, $crate::QueryInterruptLineError> {
-                PORT_STATE.is_interrupt_line_pending(line)
+                unsafe fn is_interrupt_line_pending(
+                    line: InterruptNum,
+                ) -> Result<bool, QueryInterruptLineError> {
+                    PORT_STATE.is_interrupt_line_pending(line)
+                }
             }
         }
 
         fn main() {
+            use $crate::constance::kernel::PortToKernel;
+
             $crate::env_logger::init();
 
-            PORT_STATE.init::<$sys>();
+            port_std_impl::PORT_STATE.init::<$sys>();
 
             // Safety: We are a port, so it's okay to call these
             unsafe {
-                <$sys as $crate::PortToKernel>::boot();
+                <$sys as PortToKernel>::boot();
             }
         }
     };
