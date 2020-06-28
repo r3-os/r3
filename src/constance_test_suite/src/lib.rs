@@ -43,26 +43,26 @@ pub mod kernel_tests {
         ///    [`disable_interrupt_line`], [`pend_interrupt_line`] for all of
         ///    the specified interrupt lines.
         ///
-        /// [`enable_interrupt_line`]: constance::kernel::Port::enable_interrupt_line
-        /// [`disable_interrupt_line`]: constance::kernel::Port::disable_interrupt_line
-        /// [`pend_interrupt_line`]: constance::kernel::Port::pend_interrupt_line
+        /// [`enable_interrupt_line`]: constance::kernel::PortInterrupts::enable_interrupt_line
+        /// [`disable_interrupt_line`]: constance::kernel::PortInterrupts::disable_interrupt_line
+        /// [`pend_interrupt_line`]: constance::kernel::PortInterrupts::pend_interrupt_line
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
         /// A low priority value.
         ///
         /// Ignored if `INTERRUPT_LINES` is empty.
         ///
-        /// Must be in range [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
         ///
-        /// [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0;
         /// A high priority value.
         ///
         /// Ignored if `INTERRUPT_LINES` is empty.
         ///
-        /// Must be in range [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
         ///
-        /// [`Port::MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;
     }
 

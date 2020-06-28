@@ -66,16 +66,23 @@ struct System;
 
 The first important role of `use_port!` is to implement the trait [`Port`] on the system type. `Port` describes the properties of the target hardware and provides target-dependent low-level functions such as a context switcher. `use_port!` can define `static` items to store internal state data (this would be inconvenient and messy without a macro).
 
+`Port` is actually a group of several supertraits (such as [`PortThreading`]), each of which can be implemented in a separate location.
+
 ```rust,ignore
 constance_xxx_port::use_port!(unsafe struct System);
 
 // ----- The above macro invocation also produces: -----
-unsafe impl constance::Port for System { /* ... */ }
+unsafe impl constance::PortThreading for System { /* ... */ }
+unsafe impl constance::PortInterrupts for System { /* ... */ }
+
+// `Port` gets implemented automatically when
+// all required supertraits are implemented.
 ```
 
 The job of `use_port!` doesn't end here, but before we move on, we must first explain what `build!` does.
 
 [`Port`]: crate::kernel::Port
+[`PortThreading`]: crate::kernel::PortThreading
 
 ### `build!` → `impl KernelCfgN`
 
@@ -335,7 +342,7 @@ The behavior of system calls is undefined inside an unmanaged interrupt handler.
 [explicitly marked]: crate::kernel::cfg::CfgInterruptHandlerBuilder::unmanaged
 [changing]: crate::kernel::InterruptLine::set_priority
 [bypass]: crate::kernel::InterruptLine::set_priority_unchecked
-[a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+[a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
 
 <div class="admonition-follows"></div>
 

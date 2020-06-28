@@ -4,7 +4,7 @@ use super::{
     event_group, task,
     task::{TaskCb, TaskSt},
     utils::{CpuLockCell, CpuLockGuardBorrowMut},
-    BadObjectStateError, Kernel, Port, WaitError,
+    BadObjectStateError, Kernel, Port, PortThreading, WaitError,
 };
 
 use crate::utils::{
@@ -16,33 +16,33 @@ use crate::utils::{
 // ---------------------------------------------------------------------------
 
 /// A reference to a [`Wait`].
-struct WaitRef<System: Port>(NonNull<Wait<System>>);
+struct WaitRef<System: PortThreading>(NonNull<Wait<System>>);
 
 // Safety: `Wait` is `Send + Sync`
-unsafe impl<System: Port> Send for WaitRef<System> {}
-unsafe impl<System: Port> Sync for WaitRef<System> {}
+unsafe impl<System: PortThreading> Send for WaitRef<System> {}
+unsafe impl<System: PortThreading> Sync for WaitRef<System> {}
 
-impl<System: Port> Clone for WaitRef<System> {
+impl<System: PortThreading> Clone for WaitRef<System> {
     fn clone(&self) -> Self {
         Self(self.0)
     }
 }
 
-impl<System: Port> Copy for WaitRef<System> {}
+impl<System: PortThreading> Copy for WaitRef<System> {}
 
-impl<System: Port> fmt::Debug for WaitRef<System> {
+impl<System: PortThreading> fmt::Debug for WaitRef<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("WaitRef").field(&self.0).finish()
     }
 }
 
-impl<System: Port> PartialEq for WaitRef<System> {
+impl<System: PortThreading> PartialEq for WaitRef<System> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl<System: Port> Eq for WaitRef<System> {}
+impl<System: PortThreading> Eq for WaitRef<System> {}
 
 use self::unsafe_static::UnsafeStatic;
 mod unsafe_static {
@@ -99,7 +99,7 @@ macro_rules! wait_queue_accessor {
 /// This object is constructed by `WaitQueue::wait` on a waiting task's stack,
 /// and only survives until the method returns. This means that `Wait` can
 /// expire only when the waiting task is not waiting anymore.
-struct Wait<System: Port> {
+struct Wait<System: PortThreading> {
     /// The task that is waiting for something.
     task: &'static TaskCb<System>,
 
@@ -125,7 +125,7 @@ pub(super) enum WaitPayload<System> {
 }
 
 /// A queue of wait objects ([`Wait`]) waiting on a particular waitable object.
-pub(crate) struct WaitQueue<System: Port> {
+pub(crate) struct WaitQueue<System: PortThreading> {
     /// Wait objects waiting on the waitable object associated with this
     /// instance of `WaitQueue`. The waiting tasks (`Wait::task`) must be in a
     /// Waiting state.
@@ -136,7 +136,7 @@ pub(crate) struct WaitQueue<System: Port> {
     order: QueueOrder,
 }
 
-impl<System: Port> Init for WaitQueue<System> {
+impl<System: PortThreading> Init for WaitQueue<System> {
     const INIT: Self = Self {
         waits: Init::INIT,
         order: QueueOrder::Fifo,
@@ -154,7 +154,7 @@ pub enum QueueOrder {
 }
 
 /// The wait state of a task.
-pub(crate) struct TaskWait<System: Port> {
+pub(crate) struct TaskWait<System: PortThreading> {
     /// The wait object describing the ongoing Waiting state of the task. Should
     /// be `None` iff the task is not in the Waiting state.
     ///
@@ -166,14 +166,14 @@ pub(crate) struct TaskWait<System: Port> {
     wait_result: CpuLockCell<System, Result<(), WaitError>>,
 }
 
-impl<System: Port> Init for TaskWait<System> {
+impl<System: PortThreading> Init for TaskWait<System> {
     const INIT: Self = Self {
         current_wait: Init::INIT,
         wait_result: CpuLockCell::new(Ok(())),
     };
 }
 
-impl<System: Port> WaitQueue<System> {
+impl<System: PortThreading> WaitQueue<System> {
     /// Construct a `WaitQueue`.
     pub(super) const fn new(order: QueueOrder) -> Self {
         Self {

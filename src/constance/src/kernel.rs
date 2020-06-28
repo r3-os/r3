@@ -191,7 +191,8 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
     const TASK_PRIORITY_LEVELS: &'static [Self::TaskPriority];
 }
 
-/// Implemented by a port.
+/// Implemented by a port. This trait contains items related to low-level
+/// operations for controlling CPU states and context switching.
 ///
 /// # Safety
 ///
@@ -202,7 +203,7 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
 /// These methods are only meant to be called by the kernel.
 #[doc(include = "./common.md")]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe trait Port: KernelCfg1 {
+pub unsafe trait PortThreading: KernelCfg1 {
     type PortTaskState: Send + Sync + Init + 'static;
 
     /// The initial value of [`TaskCb::port_task_state`] for all tasks.
@@ -214,14 +215,6 @@ pub unsafe trait Port: KernelCfg1 {
 
     /// The alignment requirement for task stack regions.
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
-
-    /// The range of interrupt priority values considered [managed].
-    ///
-    /// Defaults to `0..0` (empty) when unspecified.
-    ///
-    /// [managed]: crate#interrupt-handling-framework
-    #[allow(clippy::reversed_empty_ranges)] // on purpose
-    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
 
     /// Transfer the control to [`State::running_task`], discarding the current
     /// (startup) context.
@@ -295,6 +288,28 @@ pub unsafe trait Port: KernelCfg1 {
     ///
     /// [an interrupt context]: crate#contexts
     fn is_interrupt_context() -> bool;
+}
+
+/// Implemented by a port. This trait contains items related to controlling
+/// interrupt lines.
+///
+/// # Safety
+///
+/// Implementing a port is inherently unsafe because it's responsible for
+/// initializing the execution environment and providing a dispatcher
+/// implementation.
+///
+/// These methods are only meant to be called by the kernel.
+#[doc(include = "./common.md")]
+#[allow(clippy::missing_safety_doc)]
+pub unsafe trait PortInterrupts: KernelCfg1 {
+    /// The range of interrupt priority values considered [managed].
+    ///
+    /// Defaults to `0..0` (empty) when unspecified.
+    ///
+    /// [managed]: crate#interrupt-handling-framework
+    #[allow(clippy::reversed_empty_ranges)] // on purpose
+    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
 
     /// Set the priority of the specified interrupt line.
     ///
@@ -333,6 +348,11 @@ pub unsafe trait Port: KernelCfg1 {
         Err(QueryInterruptLineError::NotSupported)
     }
 }
+
+/// Represents a particular group of traits that a port should implement.
+pub trait Port: PortThreading + PortInterrupts {}
+
+impl<T: PortThreading + PortInterrupts> Port for T {}
 
 /// Methods intended to be called by a port.
 ///
@@ -462,7 +482,7 @@ pub unsafe trait KernelCfg2: Port + Sized {
 /// Global kernel state.
 pub struct State<
     System: KernelCfg2,
-    PortTaskState: 'static = <System as Port>::PortTaskState,
+    PortTaskState: 'static = <System as PortThreading>::PortTaskState,
     TaskReadyBitmap: 'static = <System as KernelCfg2>::TaskReadyBitmap,
     TaskReadyQueue: 'static = <System as KernelCfg2>::TaskReadyQueue,
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,

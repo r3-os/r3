@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
 use crate::{
-    kernel::{cfg::CfgBuilder, interrupt, Port},
+    kernel::{cfg::CfgBuilder, interrupt, Port, PortThreading},
     utils::{for_times::Nat, ComptimeVec},
 };
 
@@ -230,7 +230,7 @@ impl<System: Port> CfgInterruptHandlerBuilder<System> {
     /// all of its attached interrupt handlers are marked as
     /// unmanaged-safe.
     ///
-    /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
     /// # Safety
     ///

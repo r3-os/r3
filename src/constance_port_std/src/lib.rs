@@ -20,8 +20,8 @@ mod threading;
 #[doc(hidden)]
 pub use constance::kernel::{
     self, ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-    PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
-    SetInterruptLinePriorityError, TaskCb,
+    PendInterruptLineError, Port, PortInterrupts, PortThreading, PortToKernel,
+    QueryInterruptLineError, SetInterruptLinePriorityError, TaskCb,
 };
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -38,7 +38,7 @@ pub const NUM_INTERRUPT_LINES: usize = 1024;
 /// # Safety
 ///
 /// For the safety information of this type's methods, see the documentation of
-/// the corresponding trait methods of `Port`.
+/// the corresponding trait methods of `Port*`.
 #[doc(hidden)]
 pub struct State {
     cpu_lock: AtomicBool,
@@ -705,7 +705,7 @@ macro_rules! use_port {
         static PORT_STATE: $crate::State = $crate::State::new();
 
         // Assume `$sys: Kernel`
-        unsafe impl $crate::Port for $sys {
+        unsafe impl $crate::PortThreading for $sys {
             type PortTaskState = $crate::TaskState;
             const PORT_TASK_STATE_INIT: Self::PortTaskState = $crate::TaskState::new();
 
@@ -737,12 +737,14 @@ macro_rules! use_port {
                 PORT_STATE.is_cpu_lock_active()
             }
 
-            const MANAGED_INTERRUPT_PRIORITY_RANGE:
-                ::std::ops::Range<$crate::InterruptPriority> = 0..$crate::InterruptPriority::max_value();
-
             fn is_interrupt_context() -> bool {
                 PORT_STATE.is_interrupt_context()
             }
+        }
+
+        unsafe impl $crate::PortInterrupts for $sys {
+            const MANAGED_INTERRUPT_PRIORITY_RANGE:
+                ::std::ops::Range<$crate::InterruptPriority> = 0..$crate::InterruptPriority::max_value();
 
             unsafe fn set_interrupt_line_priority(
                 line: $crate::InterruptNum,

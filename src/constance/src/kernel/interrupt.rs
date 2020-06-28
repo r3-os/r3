@@ -71,7 +71,7 @@ impl<System: Kernel> InterruptLine<System> {
     /// from happening and returns [`SetInterruptLinePriorityError::BadParam`]
     /// if the operation is unsafe.
     ///
-    /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
     pub fn set_priority(
         self,
         value: InterruptPriority,
@@ -97,7 +97,7 @@ impl<System: Kernel> InterruptLine<System> {
     /// Set the priority of the interrupt line without checking if the new
     /// priority falls within [a managed range].
     ///
-    /// [a managed range]: crate::kernel::Port::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
     /// # Safety
     ///

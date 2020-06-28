@@ -4,8 +4,8 @@ use num_traits::ToPrimitive;
 
 use super::{
     hunk::Hunk, state, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
-    GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, Port, UnparkError,
-    UnparkExactError, WaitError,
+    GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, Port,
+    PortThreading, UnparkError, UnparkExactError, WaitError,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -264,8 +264,8 @@ impl<System: Kernel> StackHunk<System> {
 /// *Task control block* - the state data of a task.
 #[repr(C)]
 pub struct TaskCb<
-    System: Port,
-    PortTaskState: 'static = <System as Port>::PortTaskState,
+    System: PortThreading,
+    PortTaskState: 'static = <System as PortThreading>::PortTaskState,
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
 > {
     /// Get a reference to `PortTaskState` in the task control block.
