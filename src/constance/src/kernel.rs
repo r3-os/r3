@@ -9,7 +9,10 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use crate::utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap};
+use crate::{
+    time::{Duration, Time},
+    utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap},
+};
 
 #[macro_use]
 pub mod cfg;
@@ -85,6 +88,32 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// [Priority Boost]: crate#system-states
     fn is_priority_boost_active() -> bool;
 
+    /// Get the current [system time].
+    ///
+    /// [system time]: crate#kernel-timing
+    fn time() -> Result<Time, TimeError>;
+
+    /// Set the current [system time].
+    ///
+    /// This method *does not change* the relative arrival times of outstanding
+    /// timed events.
+    ///
+    /// [system time]: crate#kernel-timing
+    fn set_time(time: Time) -> Result<(), TimeError>;
+
+    /// Move the current [system time] forward or backward by the specified
+    /// amount.
+    ///
+    /// This method *changes* the relative arrival times of outstanding
+    /// timed events.
+    ///
+    /// **TODO:** Describe the condition in which `BadObjectState` is returned
+    ///
+    /// [system time]: crate#kernel-timing
+    fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>;
+
+    // TODO: get time resolution?
+
     /// Terminate the current task, putting it into the Dormant state.
     ///
     /// The kernel (to be precise, the port) makes an implicit call to this
@@ -112,7 +141,16 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// [a non-waitable context]: crate#contexts
     fn park() -> Result<(), ParkError>;
 
-    // TODO: `park` with timeout
+    /// [`park`](Self::park) with timeout.
+    ///
+    /// This system service may block. Therefore, calling this method is not
+    /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
+    ///
+    /// [a non-waitable context]: crate#contexts
+    fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError>;
+
+    /// Block the current task for the specified duration.
+    fn sleep(duration: Duration) -> Result<(), SleepError>;
 }
 
 impl<T: Port + KernelCfg2 + 'static> Kernel for T {
@@ -152,6 +190,16 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
         Self::state().priority_boost.load(Ordering::Relaxed)
     }
 
+    fn time() -> Result<Time, TimeError> {
+        todo!()
+    }
+    fn set_time(_time: Time) -> Result<(), TimeError> {
+        todo!()
+    }
+    fn adjust_time(_delta: Duration) -> Result<(), AdjustTimeError> {
+        todo!()
+    }
+
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
         // Safety: Just forwarding the function call
         unsafe { exit_current_task::<Self>() }
@@ -159,6 +207,13 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
 
     fn park() -> Result<(), ParkError> {
         task::park_current_task::<Self>()
+    }
+
+    fn park_timeout(_timeout: Duration) -> Result<(), ParkTimeoutError> {
+        todo!()
+    }
+    fn sleep(_duration: Duration) -> Result<(), SleepError> {
+        todo!()
     }
 }
 
@@ -349,10 +404,91 @@ pub unsafe trait PortInterrupts: KernelCfg1 {
     }
 }
 
-/// Represents a particular group of traits that a port should implement.
-pub trait Port: PortThreading + PortInterrupts {}
+/// Implemented by a port. This trait contains items related to controlling
+/// a system timer.
+///
+/// # Safety
+///
+/// These methods are only meant to be called by the kernel.
+#[doc(include = "./common.md")]
+#[allow(clippy::missing_safety_doc)]
+pub trait PortTimer {
+    /// The maximum value that [`tick_count`] can return. Must be greater
+    /// than zero.
+    ///
+    /// [`tick_count`]: Self::tick_count
+    const MAX_TICK_COUNT: UTicks;
 
-impl<T: PortThreading + PortInterrupts> Port for T {}
+    /// The maximum value that can be passed to [`pend_tick_after`]. Must be
+    /// greater than zero.
+    ///
+    /// This value should be somewhat smaller than `MAX_TICK_COUNT`. The
+    /// difference determines the kernel's resilience against late-arriving
+    /// timer interrupts.
+    ///
+    /// [`pend_tick_after`]: Self::pend_tick_after
+    const MAX_TIMEOUT: UTicks;
+
+    /// Read the current tick count (timer value).
+    ///
+    /// This value steadily increases over time. When it goes past
+    /// `MAX_TICK_COUNT`, it “wraps around” to `0`.
+    ///
+    /// The returned value must be in range `0..=`[`MAX_TICK_COUNT`].
+    ///
+    /// Precondition: CPU Lock active
+    ///
+    /// [`MAX_TICK_COUNT`]: Self::MAX_TICK_COUNT
+    unsafe fn tick_count() -> UTicks;
+
+    /// Indicate that `tick_count_delta` ticks may elapse before the kernel
+    /// should receive a call to [`PortToKernel::timer_tick`].
+    ///
+    /// “`tick_count_delta` ticks” include the current (ongoing) tick. For
+    /// example, `tick_count_delta == 1` means `timer_tick` should be
+    /// preferably called right after the next tick boundary.
+    ///
+    /// The driver might track time in a coarser granularity than microseconds.
+    /// In this case, the driver should wait until the earliest moment when
+    /// `tick_count() >= current_tick_count + tick_count_delta` (where
+    /// `current_tick_count` is the current value of `tick_count()`; not taking
+    /// the wrap-around behavior into account) is fulfilled and call
+    /// `timer_tick`.
+    ///
+    /// It's legal to ignore the calls to this method entirely and call
+    /// `timer_tick` at a steady rate, resulting in something similar to a
+    /// “tickful” kernel. The default implementation does nothing assuming that
+    /// the port driver is implemented in this way.
+    ///
+    /// `tick_count_delta` must be in range `1..=`[`MAX_TIMEOUT`].
+    ///
+    /// Precondition: CPU Lock active
+    ///
+    /// [`MAX_TIMEOUT`]: Self::MAX_TIMEOUT
+    unsafe fn pend_tick_after(tick_count_delta: UTicks) {
+        let _ = tick_count_delta;
+    }
+
+    /// Pend a call to [`PortToKernel::timer_tick`] as soon as possible.
+    ///
+    /// The default implementation calls `pend_tick_after(1)`.
+    ///
+    /// Precondition: CPU Lock active
+    unsafe fn pend_tick() {
+        unsafe { Self::pend_tick_after(1) };
+    }
+}
+
+/// Unsigned integer type representing a tick count used by
+/// [a port timer driver]. The period of each tick is fixed at one microsecond.
+///
+/// [a port timer driver]: PortTimer
+pub type UTicks = u32;
+
+/// Represents a particular group of traits that a port should implement.
+pub trait Port: PortThreading + PortInterrupts + PortTimer {}
+
+impl<T: PortThreading + PortInterrupts + PortTimer> Port for T {}
 
 /// Methods intended to be called by a port.
 ///
@@ -374,6 +510,20 @@ pub trait PortToKernel {
     ///
     /// Precondition: CPU Lock active / Postcondition: CPU Lock active
     unsafe fn choose_running_task();
+
+    /// Called by [a port timer driver] to “announce” new ticks.
+    ///
+    /// This method can be called anytime, but the driver is expected to attempt
+    /// to ensure the calls occur near tick boundaries. For an optimal
+    /// operation, the driver should implement [`pend_tick_after`] and handle
+    /// the calls made by the kernel to figure out the optimal moment to call
+    /// `timer_tick`.
+    ///
+    /// [a port timer driver]: PortTimer
+    /// [`pend_tick_after`]: PortTimer::pend_tick_after
+    ///
+    /// Precondition: CPU Lock inactive, an interrupt context
+    unsafe fn timer_tick();
 }
 
 impl<System: Kernel> PortToKernel for System {
@@ -421,6 +571,10 @@ impl<System: Kernel> PortToKernel for System {
 
         // Post-condition: CPU Lock active
         forget(lock);
+    }
+
+    unsafe fn timer_tick() {
+        todo!()
     }
 }
 

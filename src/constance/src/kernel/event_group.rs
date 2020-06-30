@@ -9,8 +9,9 @@ use super::{
     state, task, utils,
     wait::{WaitPayload, WaitQueue},
     BadIdError, GetEventGroupError, Id, Kernel, Port, UpdateEventGroupError, WaitEventGroupError,
+    WaitEventGroupTimeoutError,
 };
-use crate::utils::Init;
+use crate::{time::Duration, utils::Init};
 
 // TODO: Support changing `EventGroupBits`?
 /// Unsigned integer type backing event groups.
@@ -145,6 +146,16 @@ impl<System: Kernel> EventGroup<System> {
         let event_group_cb = self.event_group_cb()?;
 
         wait(event_group_cb, lock, bits, flags)
+    }
+
+    /// [`wait`](Self::wait) with timeout.
+    pub fn wait_timeout(
+        self,
+        _bits: EventGroupBits,
+        _flags: EventGroupWaitFlags,
+        _timeout: Duration,
+    ) -> Result<EventGroupBits, WaitEventGroupTimeoutError> {
+        todo!()
     }
 }
 

@@ -105,6 +105,8 @@ pub enum ResultCode {
     ///
     /// [`Task::interrupt`]: crate::kernel::Task::interrupt
     Interrupted = -49,
+    /// The operation timed out.
+    Timeout = -50,
 }
 
 impl ResultCode {
@@ -231,11 +233,47 @@ define_error! {
 }
 
 define_error! {
+    /// Error type for [`Kernel::time`] and
+    /// [`Kernel::set_time`].
+    ///
+    /// [`Kernel::time`]: super::Kernel::time
+    /// [`Kernel::set_time`]: super::Kernel::set_time
+    pub enum TimeError: BadContextError {
+        /// The current context is not a task context, or CPU Lock is active.
+        BadContext,
+    }
+}
+
+define_error! {
+    /// Error type for [`Kernel::adjust_time`].
+    ///
+    /// [`Kernel::adjust_time`]: super::Kernel::adjust_time
+    pub enum AdjustTimeError: BadContextError {
+        /// CPU Lock is active.
+        BadContext,
+        /// The requested adjustment is not possible under the current system
+        /// state.
+        BadObjectState,
+    }
+}
+
+define_error! {
     /// Error type for wait operations such as [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
     pub enum WaitError {
         Interrupted,
+    }
+}
+
+define_error! {
+    /// Error type for wait operations with timeout such as
+    /// [`EventGroup::wait_timeout`].
+    ///
+    /// [`EventGroup::wait_timeout`]: super::EventGroup::wait_timeout
+    pub enum WaitTimeoutError: WaitError {
+        Interrupted,
+        Timeout,
     }
 }
 
@@ -249,6 +287,22 @@ define_error! {
         /// [waitable]: crate#contexts
         BadContext,
         Interrupted,
+    }
+}
+
+define_error! {
+    /// Error type for [`Kernel::park_timeout`].
+    ///
+    /// [`Kernel::park_timeout`]: super::Kernel::park_timeout
+    pub enum ParkTimeoutError: BadContextError, WaitTimeoutError {
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        Interrupted,
+        Timeout,
+        /// The timeout duration is negative.
+        BadParam,
     }
 }
 
@@ -282,6 +336,20 @@ define_error! {
     }
 }
 
+define_error! {
+    /// Error type for [`Kernel::sleep`].
+    ///
+    /// [`Kernel::sleep`]: super::Kernel::sleep
+    pub enum SleepError: BadContextError {
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        Interrupted,
+        /// The duration is negative.
+        BadParam,
+    }
+}
 define_error! {
     /// Error type for [`EventGroup::set`] and [`EventGroup::clear`].
     ///
@@ -319,6 +387,24 @@ define_error! {
         /// [waitable]: crate#contexts
         BadContext,
         Interrupted,
+    }
+}
+
+define_error! {
+    /// Error type for [`EventGroup::wait_timeout`].
+    ///
+    /// [`EventGroup::wait_timeout`]: super::EventGroup::wait_timeout
+    pub enum WaitEventGroupTimeoutError: BadContextError, BadIdError, WaitTimeoutError {
+        /// The event group ID is out of range.
+        BadId,
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        Interrupted,
+        Timeout,
+        /// The timeout duration is negative.
+        BadParam,
     }
 }
 

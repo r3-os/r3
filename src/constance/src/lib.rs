@@ -8,6 +8,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
+#![feature(const_checked_int_methods)]
 #![feature(ptr_wrapping_offset_from)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
@@ -31,6 +32,7 @@ pub mod utils;
 #[macro_use]
 pub mod kernel;
 pub mod sync;
+pub mod time;
 
 /// The prelude module.
 pub mod prelude {
