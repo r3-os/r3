@@ -8,7 +8,7 @@ use constance::{
     kernel::{
         self, ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
         PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
-        SetInterruptLinePriorityError, TaskCb,
+        SetInterruptLinePriorityError, TaskCb, UTicks,
     },
     prelude::*,
     utils::intrusive_list::StaticListHead,
@@ -21,6 +21,7 @@ use std::{
     mem::{replace, ManuallyDrop},
     sync::atomic::AtomicU8,
     thread::{self, JoinHandle},
+    time::Instant,
 };
 
 mod threading;
@@ -54,6 +55,7 @@ pub struct State {
     int_state: Mutex<Option<IntState>>,
     /// When handling an interrupt, this field tracks the interrupt priority.
     active_int_priority: Mutex<InterruptPriority>,
+    origin: AtomicRef<'static, Instant>,
 }
 
 #[derive(Debug)]
@@ -277,6 +279,7 @@ impl State {
             panic_payload: Mutex::const_new(RawMutex::INIT, None),
             int_state: Mutex::const_new(RawMutex::INIT, None),
             active_int_priority: Mutex::const_new(RawMutex::INIT, 0),
+            origin: AtomicRef::new(None),
         }
     }
 
@@ -701,6 +704,61 @@ impl State {
             .is_line_pended(num)
             .map_err(|BadIntLineError| QueryInterruptLineError::BadParam)
     }
+
+    // TODO: Make these customizable to test the kernel under multiple conditions
+    pub const MAX_TICK_COUNT: UTicks = UTicks::MAX;
+    pub const MAX_TIMEOUT: UTicks = UTicks::MAX / 2;
+
+    pub fn tick_count(&self) -> UTicks {
+        let origin = if let Some(x) = self.origin.load(Ordering::Acquire) {
+            x
+        } else {
+            // Establish an origin point.
+            let origin = Box::leak(Box::new(Instant::now()));
+
+            // Store `origin` to `self.origin`.
+            //
+            // 1. If `self.origin` is already initialized at this point, discard
+            //    `origin`. Use `Acquire` to synchronize with the canonical
+            //    initializing thread.
+            //
+            // 2. Otherwise, `origin` is now the canonical origin. Use `Release`
+            //    to synchronize with other threads, ensuring the initialized
+            //    contents of `origin` is visible to them.
+            //
+            // (Actually, this really doesn't matter because it's a kernel for
+            // a uniprocessor system, anyway.)
+            match self.origin.compare_exchange(
+                None,
+                Some(origin),
+                Ordering::Release, // case 2
+                Ordering::Acquire, // case 1
+            ) {
+                Ok(_) => origin,      // case 2
+                Err(x) => x.unwrap(), // case 1
+            }
+        };
+
+        let micros = Instant::now().duration_since(*origin).as_micros();
+
+        /// Implementation of <https://xkcd.com/221/> with a different magic
+        /// number
+        fn get_random_number() -> UTicks {
+            0x00c0ffee
+        }
+
+        // Calculate `micros % MAX_TICK_COUNT + 1` by truncating upper bits. Add
+        // some random number so that the kernel doesn't depend on zero-start.
+        (micros as UTicks).wrapping_add(get_random_number())
+    }
+
+    pub fn pend_tick_after(&self, tick_count_delta: UTicks) {
+        // TODO
+    }
+
+    pub fn pend_tick(&self) {
+        // TODO
+    }
 }
 
 #[macro_export]
@@ -713,7 +771,7 @@ macro_rules! use_port {
             use $crate::constance::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
                 PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
-                TaskCb, PortToKernel, PortInterrupts, PortThreading,
+                TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
             use $crate::{State, TaskState};
 
@@ -788,6 +846,23 @@ macro_rules! use_port {
                     line: InterruptNum,
                 ) -> Result<bool, QueryInterruptLineError> {
                     PORT_STATE.is_interrupt_line_pending(line)
+                }
+            }
+
+            impl PortTimer for $sys {
+                const MAX_TICK_COUNT: UTicks = State::MAX_TICK_COUNT;
+                const MAX_TIMEOUT: UTicks = State::MAX_TIMEOUT;
+
+                unsafe fn tick_count() -> UTicks {
+                    PORT_STATE.tick_count()
+                }
+
+                unsafe fn pend_tick_after(tick_count_delta: UTicks) {
+                    PORT_STATE.pend_tick_after(tick_count_delta)
+                }
+
+                unsafe fn pend_tick() {
+                    PORT_STATE.pend_tick()
                 }
             }
         }
