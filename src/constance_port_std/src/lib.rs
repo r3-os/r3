@@ -726,12 +726,16 @@ impl State {
             //    to synchronize with other threads, ensuring the initialized
             //    contents of `origin` is visible to them.
             //
+            //    `compare_exchange` requires that the success ordering is
+            //    stronger than the failure ordering, so we actually have to use
+            //    `AcqRel` here.
+            //
             // (Actually, this really doesn't matter because it's a kernel for
             // a uniprocessor system, anyway.)
             match self.origin.compare_exchange(
                 None,
                 Some(origin),
-                Ordering::Release, // case 2
+                Ordering::AcqRel,  // case 2
                 Ordering::Acquire, // case 1
             ) {
                 Ok(_) => origin,      // case 2
