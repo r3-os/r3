@@ -149,6 +149,24 @@ pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
     Ok(sys_time_from_time64(cur_sys_time))
 }
 
+/// Implements [`Kernel::set_time`].
+pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), TimeError> {
+    let mut lock = lock_cpu::<System>()?;
+
+    let (duration_since_last_tick, _) = duration_since_last_tick(lock.borrow_mut());
+
+    // Adjust `last_tick_sys_time` so that `system_time` will return the value
+    // equal to `new_sys_time`
+    let new_last_tick_sys_time =
+        time64_from_sys_time(new_sys_time).wrapping_sub(duration_since_last_tick as Time64);
+
+    System::g_timeout()
+        .last_tick_sys_time
+        .replace(&mut *lock.borrow_mut(), new_last_tick_sys_time);
+
+    Ok(())
+}
+
 /// Calculate the elapsed time since the last tick.
 ///
 /// Returns two values:

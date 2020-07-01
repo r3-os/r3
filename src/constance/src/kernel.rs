@@ -194,8 +194,8 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     fn time() -> Result<Time, TimeError> {
         timeout::system_time::<Self>()
     }
-    fn set_time(_time: Time) -> Result<(), TimeError> {
-        todo!()
+    fn set_time(time: Time) -> Result<(), TimeError> {
+        timeout::set_system_time::<Self>(time)
     }
     fn adjust_time(_delta: Duration) -> Result<(), AdjustTimeError> {
         todo!()
