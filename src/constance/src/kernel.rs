@@ -22,6 +22,7 @@ mod hunk;
 mod interrupt;
 mod state;
 mod task;
+mod timeout;
 mod utils;
 mod wait;
 pub use self::{error::*, event_group::*, hunk::*, interrupt::*, task::*, wait::*};
@@ -191,7 +192,7 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     }
 
     fn time() -> Result<Time, TimeError> {
-        todo!()
+        timeout::system_time::<Self>()
     }
     fn set_time(_time: Time) -> Result<(), TimeError> {
         todo!()
@@ -545,6 +546,9 @@ impl<System: Kernel> PortToKernel for System {
         // Choose the first `runnnig_task`
         task::choose_next_running_task(lock.borrow_mut());
 
+        // Initialize the timekeeping system
+        System::state().timeout.init(lock.borrow_mut());
+
         // Initialize all interrupt lines
         // Safety: The contents of `INTERRUPT_ATTR` has been generated and
         // verified by `panic_if_unmanaged_safety_is_violated` for *unsafe
@@ -574,7 +578,7 @@ impl<System: Kernel> PortToKernel for System {
     }
 
     unsafe fn timer_tick() {
-        todo!()
+        timeout::handle_tick::<Self>();
     }
 }
 
@@ -659,6 +663,9 @@ pub struct State<
 
     /// `true` if Priority Boost is active.
     priority_boost: AtomicBool,
+
+    /// The global state of the timekeeping system.
+    timeout: timeout::TimeoutGlobals<System>,
 }
 
 impl<
@@ -674,6 +681,7 @@ impl<
         task_ready_bitmap: Init::INIT,
         task_ready_queue: Init::INIT,
         priority_boost: AtomicBool::new(false),
+        timeout: Init::INIT,
     };
 }
 
@@ -691,6 +699,7 @@ impl<
             .field("task_ready_bitmap", &self.task_ready_bitmap)
             .field("task_ready_queue", &self.task_ready_queue)
             .field("priority_boost", &self.priority_boost)
+            .field("timeout", &self.timeout)
             .finish()
     }
 }

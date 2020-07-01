@@ -161,6 +161,7 @@ pub mod kernel_tests {
         (mod task_park_reset {}, "task_park_reset"),
         (mod task_priority_boost_reset {}, "task_priority_boost_reset"),
         (mod task_queue_fifo {}, "task_queue_fifo"),
+        (mod time_misc {}, "time_misc"),
     }
 
     /// Invoke the specified macro with a description of test cases
