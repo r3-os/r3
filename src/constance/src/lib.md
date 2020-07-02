@@ -365,11 +365,14 @@ The kernel uses **microseconds** as the system time unit. A span of time ([`Dura
 
 [`Duration`]: crate::time::Duration
 
-**The system clock** is a feature of the kernel that manages and exposes a global **system time** ([`Time`]), which is represented by a 64-bit integer. The system time starts at zero, thus behaving like uptime, but it can be updated by an application to represent a real calender time.
+**The system clock** is a feature of the kernel that manages and exposes a global **system time** ([`Time`]), which is represented by a 64-bit integer. The system time starts at zero, thus behaving like uptime, but it can be updated by an application to represent a real calender time. The method [`set_time`] updates the global system time with a new value.
 
 [`Time`]: crate::time::Time
+[`set_time`]: crate::kernel::Kernel::set_time
 
-Another way to update the system time is to move it forward or back by a specified delta. This update method *preserves the absolute (w.r.t. the system time) arrival times of existing timed events*. This means that if you have an event scheduled to occur in 10 seconds and you move the system time forward by 2 seconds, the event is now scheduled to occur in 8 seconds.
+Another way to update the system time is to move it forward or back by a specified delta by calling [`adjust_time`]. This update method *preserves the absolute (w.r.t. the system time) arrival times of existing timed events*. This means that if you have an event scheduled to occur in 10 seconds and you move the system time forward by 2 seconds, the event is now scheduled to occur in 8 seconds.
+
+[`adjust_time`]: crate::kernel::Kernel::adjust_time
 
 The kernel timing is driven by **a port timer driver**, which is part of a port. The kernel and the driver communicate through the traits [`PortTimer`]​ (kernel → driver) and [`PortToKernel`]​ (driver → kernel).
 
