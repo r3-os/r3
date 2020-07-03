@@ -1,4 +1,4 @@
-//! Binary heap with a contextful comparator
+//! Binary heap with a contextful comparator and position tracking
 //!
 //! The implementation is mostly based on the Rust standard library's
 //! `BinaryHeap`.
@@ -13,9 +13,7 @@ pub trait BinaryHeapCtx<Element> {
     /// Return `true` iff `x < y`.
     fn lt(&mut self, x: &Element, y: &Element) -> bool;
 
-    // TODO: Call `on_move`
-    /// Called when the existing element `e` is moved to the new position
-    /// `new_index`.
+    /// Called when the element `e` is moved to the new position `new_index`.
     fn on_move(&mut self, e: &mut Element, new_index: usize) {
         let _ = (e, new_index);
     }
@@ -91,7 +89,9 @@ impl<T: VecLike> BinaryHeap for T {
         assert!(i < slice.len());
 
         // Safety: `i` points to an element within `slice`.
-        unsafe { sift_up(slice, 0, i, ctx) }
+        let pos = unsafe { sift_up(slice, 0, i, ctx) };
+
+        pos
     }
 }
 
@@ -123,9 +123,19 @@ unsafe fn sift_up<Element>(
             if !ctx.lt(hole.element(), hole.get(parent)) {
                 break;
             }
+
+            let prev_pos = hole.pos();
             hole.move_to(parent);
+
+            // `[prev_pos]` is now filled with the element moved from `[parent]`
+            ctx.on_move(hole.get_mut(prev_pos), prev_pos);
         }
-        hole.pos()
+
+        // Report the final position of the newly-inserted element
+        let pos = hole.pos();
+        ctx.on_move(hole.element_mut(), pos);
+
+        pos
     }
 }
 
@@ -154,7 +164,13 @@ unsafe fn sift_down_to_bottom<Element>(
             if right < end && !ctx.lt(hole.get(child), hole.get(right)) {
                 child = right;
             }
+
+            let prev_pos = hole.pos();
             hole.move_to(child);
+
+            // `[prev_pos]` is now filled with the element moved from `[child]`
+            ctx.on_move(hole.get_mut(prev_pos), prev_pos);
+
             child = 2 * hole.pos() + 1;
         }
         pos = hole.pos();

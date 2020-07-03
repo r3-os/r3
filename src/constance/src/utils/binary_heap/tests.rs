@@ -103,3 +103,69 @@ fn test1() {
         usize::MAX,
     );
 }
+
+#[derive(Debug, Clone, Copy)]
+struct El {
+    value: usize,
+    id: usize,
+}
+
+struct TrackingCtx<'a> {
+    el_position: &'a mut [Option<usize>],
+}
+
+impl BinaryHeapCtx<El> for TrackingCtx<'_> {
+    fn lt(&mut self, x: &El, y: &El) -> bool {
+        x.value < y.value
+    }
+
+    fn on_move(&mut self, e: &mut El, new_index: usize) {
+        self.el_position[e.id] = Some(new_index);
+        log::trace!("         on_move{:?}", (e, new_index));
+    }
+}
+
+#[quickcheck]
+fn position_tracking(bytecode: Vec<u8>) {
+    // Expected Invariant: `subject[el_position[i]].id == i`
+    let mut el_position: Vec<Option<usize>> = Vec::new();
+    let el_position = &mut el_position;
+
+    let mut subject: Vec<El> = Vec::new(); // : `BinaryHeap`
+
+    log::debug!("bytecode len = {}", bytecode.len());
+
+    for cmd in interpret(&bytecode, usize::MAX) {
+        log::trace!("    {:?}", cmd);
+        match cmd {
+            Cmd::Insert(value) => {
+                let id = el_position.len();
+                el_position.push(None);
+                let i = subject.heap_push(El { value, id }, TrackingCtx { el_position });
+                log::trace!("     → {}", i);
+
+                // `on_move` should have reported the position for the
+                // newly-inserted element
+                assert_eq!(el_position[id], Some(i));
+            }
+            Cmd::Remove(i) => {
+                let out_subject = subject.heap_remove(i, TrackingCtx { el_position }).unwrap();
+                log::trace!("     → {:?}", out_subject);
+
+                // For a removed element, we must modify `el_position` manually
+                el_position[out_subject.id] = None;
+            }
+        }
+
+        log::trace!("[subject: {:?}]", subject);
+        log::trace!("[el_position: {:?}]", el_position);
+
+        // Check if `el_position` correctly represents
+        // the current state of `subject`
+        for (id, &pos) in el_position.iter().enumerate() {
+            if let Some(pos) = pos {
+                assert_eq!(subject[pos].id, id);
+            }
+        }
+    }
+}

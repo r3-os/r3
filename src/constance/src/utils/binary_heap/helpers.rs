@@ -39,6 +39,12 @@ impl<'a, T> Hole<'a, T> {
         &self.elt
     }
 
+    /// Returns a mutable reference to the element removed.
+    #[inline]
+    pub(super) fn element_mut(&mut self) -> &mut T {
+        &mut self.elt
+    }
+
     /// Returns a reference to the element at `index`.
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
@@ -47,6 +53,16 @@ impl<'a, T> Hole<'a, T> {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
         unsafe { self.data.get_unchecked(index) }
+    }
+
+    /// Returns a mutable reference to the element at `index`.
+    ///
+    /// Unsafe because index must be within the data slice and not equal to pos.
+    #[inline]
+    pub(super) unsafe fn get_mut(&mut self, index: usize) -> &mut T {
+        debug_assert!(index != self.pos);
+        debug_assert!(index < self.data.len());
+        unsafe { self.data.get_unchecked_mut(index) }
     }
 
     /// Move hole to new location
