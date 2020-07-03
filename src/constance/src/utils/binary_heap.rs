@@ -70,7 +70,7 @@ impl<T: VecLike> BinaryHeap for T {
                     if should_sift_up {
                         sift_up(slice, 0, i, ctx);
                     } else {
-                        sift_down_to_bottom(slice, i, ctx);
+                        sift_down(slice, i, ctx);
                     }
                 }
             }
@@ -139,22 +139,18 @@ unsafe fn sift_up<Element>(
     }
 }
 
-/// Take an element at `pos` and move it all the way down the heap,
-/// then sift it up to its position.
-///
-/// Note: This is faster when the element is known to be large / should
-/// be closer to the bottom.
+/// Take an element at `pos` and move it down the heap,
+/// while its children are larger.
 ///
 /// # Safety
 ///
 /// `pos` must point to an element within `this`.
-unsafe fn sift_down_to_bottom<Element>(
+unsafe fn sift_down<Element>(
     this: &mut [Element],
-    mut pos: usize,
+    pos: usize,
     mut ctx: impl BinaryHeapCtx<Element>,
 ) {
     let end = this.len();
-    let start = pos;
     unsafe {
         let mut hole = helpers::Hole::new(this, pos);
         let mut child = 2 * pos + 1;
@@ -165,6 +161,11 @@ unsafe fn sift_down_to_bottom<Element>(
                 child = right;
             }
 
+            // if we are already in order, stop.
+            if !ctx.lt(hole.get(child), hole.element()) {
+                break;
+            }
+
             let prev_pos = hole.pos();
             hole.move_to(child);
 
@@ -173,9 +174,9 @@ unsafe fn sift_down_to_bottom<Element>(
 
             child = 2 * hole.pos() + 1;
         }
-        pos = hole.pos();
-    }
 
-    // Safety: `pos` points to an element within `this`.
-    unsafe { sift_up(this, start, pos, ctx) };
+        // Report the final position of `hole.element_mut()`
+        let pos = hole.pos();
+        ctx.on_move(hole.element_mut(), pos);
+    }
 }
