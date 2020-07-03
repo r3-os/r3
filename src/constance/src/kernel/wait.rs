@@ -190,7 +190,7 @@ impl<System: Kernel> WaitQueue<System> {
     /// The current context must be [waitable] (This function doesn't check
     /// that). The caller should use `expect_waitable_context` to do that.
     ///
-    /// [waitable]: crate#contets
+    /// [waitable]: crate#contexts
     #[inline]
     pub(super) fn wait(
         &'static self,
@@ -381,7 +381,7 @@ pub(super) fn with_current_wait_payload<System: Kernel, R>(
 /// The current context must be [waitable] (This function doesn't check
 /// that). The caller should use `expect_waitable_context` to do that.
 ///
-/// [waitable]: crate#contets
+/// [waitable]: crate#contexts
 #[inline]
 pub(super) fn wait_no_queue<System: Kernel>(
     lock: CpuLockGuardBorrowMut<'_, System>,
