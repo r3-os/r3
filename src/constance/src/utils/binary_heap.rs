@@ -30,22 +30,26 @@ impl<T: Ord> BinaryHeapCtx<T> for () {
 /// Min-heap.
 pub trait BinaryHeap: VecLike {
     /// Remove the least item from the heap and return it.
-    fn remove_min(&mut self, ctx: impl BinaryHeapCtx<Self::Element>) -> Option<Self::Element>;
+    fn heap_pop(&mut self, ctx: impl BinaryHeapCtx<Self::Element>) -> Option<Self::Element>;
 
     /// Remove the item at the specified position and return it.
-    fn remove(&mut self, i: usize, ctx: impl BinaryHeapCtx<Self::Element>)
-        -> Option<Self::Element>;
+    fn heap_remove(
+        &mut self,
+        i: usize,
+        ctx: impl BinaryHeapCtx<Self::Element>,
+    ) -> Option<Self::Element>;
 
     /// Push an item onto the heap and return its position.
-    fn insert(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>) -> usize;
+    fn heap_push(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>)
+        -> usize;
 }
 
 impl<T: VecLike> BinaryHeap for T {
-    fn remove_min(&mut self, ctx: impl BinaryHeapCtx<Self::Element>) -> Option<Self::Element> {
-        self.remove(0, ctx)
+    fn heap_pop(&mut self, ctx: impl BinaryHeapCtx<Self::Element>) -> Option<Self::Element> {
+        self.heap_remove(0, ctx)
     }
 
-    fn remove(
+    fn heap_remove(
         &mut self,
         i: usize,
         mut ctx: impl BinaryHeapCtx<Self::Element>,
@@ -72,7 +76,11 @@ impl<T: VecLike> BinaryHeap for T {
         }
     }
 
-    fn insert(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>) -> usize {
+    fn heap_push(
+        &mut self,
+        item: Self::Element,
+        ctx: impl BinaryHeapCtx<Self::Element>,
+    ) -> usize {
         let i = self.len();
         self.push(item);
 

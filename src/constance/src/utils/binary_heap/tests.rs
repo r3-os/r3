@@ -53,12 +53,12 @@ fn test_inner<T: BinaryHeap + Default + super::VecLike<Element = usize>>(
         log::trace!("    {:?}", cmd);
         match cmd {
             Cmd::Insert(value) => {
-                subject.insert(value, Ctx);
+                subject.heap_push(value, Ctx);
                 let i = reference.binary_search(&value).unwrap_or_else(|x| x);
                 reference.insert(i, value);
             }
             Cmd::Remove(i) => {
-                let out_subject = subject.remove(i, Ctx).unwrap();
+                let out_subject = subject.heap_remove(i, Ctx).unwrap();
                 let i_ref = reference.binary_search(&out_subject).unwrap();
                 reference.remove(i_ref);
             }
