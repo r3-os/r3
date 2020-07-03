@@ -151,6 +151,9 @@ pub(super) struct TimeoutGlobals<System> {
     /// The current system time is always greater than or equal to
     /// `last_tick_sys_time`.
     last_tick_sys_time: CpuLockCell<System, Time64>,
+
+    /// The gap between the frontier and the previous tick.
+    frontier_gap: CpuLockCell<System, Time32>,
 }
 
 impl<System> Init for TimeoutGlobals<System> {
@@ -158,6 +161,7 @@ impl<System> Init for TimeoutGlobals<System> {
         last_tick_count: Init::INIT,
         last_tick_time: Init::INIT,
         last_tick_sys_time: Init::INIT,
+        frontier_gap: Init::INIT,
     };
 }
 
@@ -167,6 +171,7 @@ impl<System: Kernel> fmt::Debug for TimeoutGlobals<System> {
             .field("last_tick_count", &self.last_tick_count)
             .field("last_tick_time", &self.last_tick_time)
             .field("last_tick_sys_time", &self.last_tick_sys_time)
+            .field("frontier_gap", &self.frontier_gap)
             .finish()
     }
 }
@@ -341,6 +346,12 @@ fn mark_tick<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>) {
         .last_tick_sys_time
         .replace_with(&mut *lock, |old_value| {
             old_value.wrapping_add(duration_since_last_tick as Time64)
+        });
+
+    g_timeout
+        .frontier_gap
+        .replace_with(&mut *lock, |old_value| {
+            old_value.saturating_sub(duration_since_last_tick)
         });
 }
 
