@@ -40,7 +40,7 @@ impl BinaryHeapCtx<usize> for Ctx {
     }
 }
 
-fn test_inner<T: BinaryHeap + Default + super::VecLike<Element = usize>>(
+fn test_inner<T: BinaryHeap + Default + super::VecLike<Element = usize> + std::fmt::Debug>(
     bytecode: Vec<u8>,
     max_len: usize,
 ) {
@@ -53,16 +53,22 @@ fn test_inner<T: BinaryHeap + Default + super::VecLike<Element = usize>>(
         log::trace!("    {:?}", cmd);
         match cmd {
             Cmd::Insert(value) => {
-                subject.heap_push(value, Ctx);
+                let i = subject.heap_push(value, Ctx);
+                log::trace!("     → {}", i);
+
                 let i = reference.binary_search(&value).unwrap_or_else(|x| x);
                 reference.insert(i, value);
             }
             Cmd::Remove(i) => {
                 let out_subject = subject.heap_remove(i, Ctx).unwrap();
+                log::trace!("     → {}", out_subject);
+
                 let i_ref = reference.binary_search(&out_subject).unwrap();
                 reference.remove(i_ref);
             }
         }
+        log::trace!("[sorted: {:?}]", reference);
+        log::trace!("[subject: {:?}]", subject);
         if subject.len() > 0 {
             assert_eq!(subject[0], reference[0]);
         }
@@ -82,4 +88,18 @@ fn test_staticvec_256(bytecode: Vec<u8>) {
 #[quickcheck]
 fn test_vec(bytecode: Vec<u8>) {
     test_inner::<Vec<usize>>(bytecode, usize::MAX);
+}
+
+#[test]
+fn test1() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    test_inner::<Vec<usize>>(
+        vec![
+            0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 15, 47, 50, 0, 50, 15, 0, 0, 0, 0, 63,
+            13, 48, 32, 72,
+        ],
+        usize::MAX,
+    );
 }

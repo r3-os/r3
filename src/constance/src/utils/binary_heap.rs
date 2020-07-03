@@ -40,8 +40,7 @@ pub trait BinaryHeap: VecLike {
     ) -> Option<Self::Element>;
 
     /// Push an item onto the heap and return its position.
-    fn heap_push(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>)
-        -> usize;
+    fn heap_push(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>) -> usize;
 }
 
 impl<T: VecLike> BinaryHeap for T {
@@ -65,9 +64,17 @@ impl<T: VecLike> BinaryHeap for T {
                 core::mem::swap(&mut slice[i], &mut item);
                 ctx.on_move(&mut slice[i], i);
 
-                // Sift down the item at `i`, restoring the invariant
+                let should_sift_up = i > 0 && ctx.lt(&slice[i], &slice[(i - 1) / 2]);
+
+                // Sift down or up the item at `i`, restoring the invariant
                 // Safety: `i` points to an element within `slice`.
-                unsafe { sift_down_to_bottom(slice, i, ctx) };
+                unsafe {
+                    if should_sift_up {
+                        sift_up(slice, 0, i, ctx);
+                    } else {
+                        sift_down_to_bottom(slice, i, ctx);
+                    }
+                }
             }
             Some(item)
         } else {
@@ -76,11 +83,7 @@ impl<T: VecLike> BinaryHeap for T {
         }
     }
 
-    fn heap_push(
-        &mut self,
-        item: Self::Element,
-        ctx: impl BinaryHeapCtx<Self::Element>,
-    ) -> usize {
+    fn heap_push(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>) -> usize {
         let i = self.len();
         self.push(item);
 
