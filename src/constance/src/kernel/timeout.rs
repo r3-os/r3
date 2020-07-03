@@ -15,9 +15,11 @@
 //!
 //! **A tick** is a point of time that can be used as a reference to represent
 //! points of time in proximity. The first tick is [created] at boot time. A new
-//! tick is created whenever [`PortToKernel::timer_tick`] is called. The system
-//! tracks the latest tick that was created, which the system will use to
-//! [derive] the latest system or event time by comparing
+//! tick is created whenever [`PortToKernel::timer_tick`] is called. It's also
+//! created when a new timeout is registered.
+//!
+//! The system tracks the latest tick that was created, which the system will
+//! use to [derive] the latest system or event time by comparing
 //! [the `tick_count` associated with the tick] to [the current `tick_count`].
 //!
 //! [created]: TimeoutGlobals::init
@@ -32,13 +34,107 @@
 //! too far away.
 //!
 //! [`MAX_TICK_COUNT`]: super::PortTimer::MAX_TICK_COUNT
+//!
+//! # Event Times
+//!
+//! This line represents the value range of [`Time32`]. A current event time
+//! (CET) is a mobile point on the line, constantly moving left to right. When
+//! it reaches the end of the line, it goes back to the other end and keeps
+//! moving. The arrival times of timeouts are immobile points on the line.
+//!
+//! ```text
+//! ═════╤══════════════════════════════════════════════════════════
+//!      │
+//!     CET
+//! ```
+//!
+//! There are some *zones* defined around CET (they move along with CET):
+//!
+//! ```text
+//!                                       critical point
+//!                                              │     overdue
+//! ▃▃▃▃▃▃                                       │▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+//! ═════╤═══════════════════════════════════════╧══════════════════
+//! ▓▓▓▓▓│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓
+//!     CET         enqueueable    user headroom   hard headroom
+//! ```
+//!
+//!  - `CET ..= CET + DURATION_MAX`: Newly registered timeouts always belong to
+//!    this **enqueueable zone**.
+//!
+//!  - `CET - USER_HEADROOM ..= CET + DURATION_MAX + USER_HEADROOM`:
+//!    The **user headroom zone** surrounds the enqueueable zone. `adjust_time`
+//!    may move timeouts to this zone. `adjust_time` does not allow adjustment
+//!    that would move timeouts outside of this zone.
+//!
+//!    Timeouts can also move to this zone because of overdue timer interrupts.
+//!
+//!  - `CET - USER_HEADROOM - HARD_HEADROOM .. CET - USER_HEADROOM`:
+//!    Timeouts can enter the **hard headroom zone** only because of overdue
+//!    timer interrupts.
+//!
+//!  - `CET - USER_HEADROOM - HARD_HEADROOM ..= CET`: Timeouts in this **overdue
+//!    zone** are said to be overdue. They will be processed the next time
+//!    [`handle_tick`] is called.
+//!
+//! **Note 1:** `DURATION_MAX` is defined as `Duration::MAX.as_micros()` and is
+//! equal to `0x80000000`.
+//!
+//! **Note 2:** `CET - USER_HEADROOM - HARD_HEADROOM + (Time32::MAX + 1)` is
+//! equal to `CET + DURATION_MAX + USER_HEADROOM + 1`. In other words,
+//! `HARD_HEADROOM` is defined for the hard headroom zone to fill the remaining
+//! area.
+//!
+//! The earlier endpoint of the hard headroom zone is called **the critical
+//! point**. No timeouts shall go past this point. It's an application's
+//! responsibility to ensure this does not happen. Event times `x` and `y`
+//! can have their chronological order determined by
+//! `(x as Time32).wrapping_sub(critical_point).cmp(&(y as Time32).wrapping_sub(critical_point))`.
+//!
+//! ## Frontier
+//!
+//! We need to cap the amount of backward time adjustment so that
+//! timeouts won't move past the critical point (from left).
+//! We use the frontier-based method to enforce this in lieu of checking every
+//! outstanding timeout for reasons explained in [`Kernel::adjust_time`].
+//! The frontier (a concept used in the definition of [`Kernel::adjust_time`])
+//! is a mobile point on the line that moves in the same way as the original
+//! definition - it represents the most advanced CET the system has ever
+//! observed. Timeouts are always created in relative to CET. This means the
+//! arrival times of all registered timeouts are bounded by
+//! `frontier + DURATION_MAX`, and thus enforcing `frontier - CET <=
+//! USER_HEADROOM` is sufficient to achieve our goal here.
+//!
+//! ```text
+//!                                    (CET + DURATION_MAX
+//!                                 == frontier + DURATION_MAX)
+//!           frontier                        event
+//! ▃▃▃▃▃▃▃▃▃▃▃▃▃v                              v        │▃▃▃▃▃▃▃▃▃▃
+//! ═════════════╤═══════════════════════════════════════╧══════════
+//! ▒▒▒▒▒▒▓▓▓▓▓▓▓│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒
+//!             CET         enqueueable       user headroom
+//!
+//! After adjust_time(-USER_HEADROOM):
+//!
+//!                             (CET + DURATION_MAX + USER_HEADROOM
+//!                                 == frontier + DURATION_MAX)
+//!           frontier                        event
+//! ▃▃▃▃▃▃       v                              v│▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+//! ═════╤═══════════════════════════════════════╧══════════════════
+//! ▓▓▓▓▓│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓
+//!     CET         enqueueable       user headroom
+//! ```
+//!
 use core::fmt;
 
 use super::{
     utils::{lock_cpu, CpuLockCell, CpuLockGuardBorrowMut},
     Kernel, TimeError, UTicks,
 };
-use crate::{time::Time, utils::Init};
+use crate::{
+    time::{Duration, Time},
+    utils::Init,
+};
 
 /// A kernel-global state for timed event management.
 pub(super) struct TimeoutGlobals<System> {
@@ -107,6 +203,26 @@ fn time64_from_sys_time(sys_time: Time) -> Time64 {
 fn sys_time_from_time64(sys_time: Time64) -> Time {
     Time::from_micros(sys_time)
 }
+
+const USER_HEADROOM: Time32 = 1 << 29;
+
+const HARD_HEADROOM: Time32 = 1 << 30;
+
+/// The extent of how overdue a timed event can be made or how far a timed event
+/// can be delayed past `Duration::MAX` by a call to [`adjust_time`].
+///
+/// [`adjust_time`]: crate::kernel::Kernel::adjust_time
+///
+/// The value is `1 << 29` microseconds.
+pub const TIME_USER_HEADROOM: Duration = Duration::from_micros(USER_HEADROOM as i32);
+
+/// The extent of how overdue the firing of [`timer_tick`] can be without
+/// breaking the kernel timing algorithm.
+///
+/// [`timer_tick`]: crate::kernel::PortToKernel::timer_tick
+///
+/// The value is `1 << 30` microseconds.
+pub const TIME_HARD_HEADROOM: Duration = Duration::from_micros(HARD_HEADROOM as i32);
 
 // ---------------------------------------------------------------------------
 

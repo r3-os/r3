@@ -25,7 +25,7 @@ mod task;
 mod timeout;
 mod utils;
 mod wait;
-pub use self::{error::*, event_group::*, hunk::*, interrupt::*, task::*, wait::*};
+pub use self::{error::*, event_group::*, hunk::*, interrupt::*, task::*, timeout::*, wait::*};
 
 /// Numeric value used to identify various kinds of kernel objects.
 pub type Id = NonZeroUsize;
@@ -34,6 +34,7 @@ pub type Id = NonZeroUsize;
 ///
 /// This trait is automatically implemented on "system" types that have
 /// sufficient trait `impl`s to instantiate the kernel.
+#[doc(include = "./common.md")]
 pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// Activate [CPU Lock].
     ///
@@ -97,20 +98,103 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// Set the current [system time].
     ///
     /// This method *does not change* the relative arrival times of outstanding
-    /// timed events.
+    /// timed events nor the relative time of the frontier (a concept used in
+    /// the definition of [`adjust_time`]).
     ///
     /// [system time]: crate#kernel-timing
+    /// [`adjust_time`]: Self::adjust_time
     fn set_time(time: Time) -> Result<(), TimeError>;
 
+    #[cfg_attr(doc, svgbobdoc::transform)]
     /// Move the current [system time] forward or backward by the specified
     /// amount.
     ///
     /// This method *changes* the relative arrival times of outstanding
     /// timed events.
     ///
-    /// **TODO:** Describe the condition in which `BadObjectState` is returned
+    /// The kernel uses a limited number of bits to represent the arrival times
+    /// of outstanding timed events. This means that there's some upper bound
+    /// on how far the system time can be moved away without breaking internal
+    /// invariants. This method ensures this bound is not violated by the
+    /// methods described below. This method will return `BadObjectState` if
+    /// this check fails.
+    ///
+    /// **Moving Forward (`delta > 0`):** If there are no outstanding time
+    /// events, adjustment in this direction is unbounded. Otherwise, let
+    /// `t` be the relative arrival time (in relation to the current time) of
+    /// the earliest outstanding time event.
+    /// If `t - delta < -`[`TIME_USER_HEADROOM`] (i.e., if the adjustment would
+    /// make the event overdue by more than `TIME_USER_HEADROOM`), the check
+    /// will fail.
+    ///
+    /// **Moving Backward (`delta < 0`):** First, we introduce the concept of
+    /// **a frontier**. The frontier represents the point of time at which the
+    /// system time advanced the most. Usually, the frontier is identical to
+    /// the current system time because the system time keeps moving forward
+    /// (a). However, adjusting the system time to past makes them temporarily
+    /// separate from each other (b). In this case, the frontier stays in place
+    /// until the system time eventually catches up with the frontier and they
+    /// start moving together again (c).
+    ///
+    /// <center>
+    /// ```svgbob
+    ///                                   system time
+    ///                                    ----*------------------------
+    ///                                                     ^ frontier
+    ///
+    ///                                                (b)
+    ///
+    ///                                    --------*--------------------
+    ///       system time                                   ^
+    /// ----------*------------            ------------*----------------
+    ///           ^ frontier                                ^
+    ///                                    -----------------*-----------
+    ///          (a)                                        ^
+    ///                                    ----------------------*------
+    ///                                                          ^
+    ///                                                (c)
+    /// ```
+    /// </center>
+    ///
+    /// Let `frontier` be the current relative time of the frontier (in relation
+    /// to the current time). If `frontier - delta > `[`TIME_USER_HEADROOM`]
+    /// (i.e., if the adjustment would move the frontier too far away), the
+    /// check will fail.
     ///
     /// [system time]: crate#kernel-timing
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Observation:** Even under ideal circumstances, all timed events are
+    /// > bound to be overdue by a very small extent because of various factors
+    /// > such as an intrinsic interrupt latency, insufficient timer resolution,
+    /// > and uses of CPU Lock. This means the minimum value of `t` in the above
+    /// > explanation is not `0` but a somewhat smaller value. The consequence
+    /// > is that `delta` can never reliably be `>= TIME_USER_HEADROOM`.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Relation to Other Specifications:** `adj_tim` from
+    /// > [the TOPPERS 3rd generation kernels]
+    ///
+    /// [the TOPPERS 3rd generation kernels]: https://www.toppers.jp/index.html
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Rationale:** When moving the system time forward, capping by a
+    /// > frontier instead of an actual latest arrival time has advantages over
+    /// > other schemes that involve tracking the latest arrival time:
+    /// >
+    /// >  - Linear-scanning all outstanding timed events to find the latest
+    /// >    arrival time would take a linear time.
+    /// >
+    /// >  - Using a double-ended data structure for an event queue, such as a
+    /// >    balanced search tree and double heaps, would increase the runtime
+    /// >    cost of maintaining the structure.
+    /// >
+    /// > Also, the gap between the current time and the frontier is completely
+    /// > in control of the code that calls `adjust_time`, making the behavior
+    /// > more predictable.
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>;
 
     // TODO: get time resolution?
@@ -424,7 +508,7 @@ pub trait PortTimer {
     /// greater than zero.
     ///
     /// This value should be somewhat smaller than `MAX_TICK_COUNT`. The
-    /// difference determines the kernel's resilience against late-arriving
+    /// difference determines the kernel's resilience against overdue
     /// timer interrupts.
     ///
     /// [`pend_tick_after`]: Self::pend_tick_after

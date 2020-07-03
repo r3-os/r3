@@ -379,6 +379,12 @@ The kernel timing is driven by **a port timer driver**, which is part of a port.
 [`PortTimer`]: crate::kernel::PortTimer
 [`PortToKernel`]: crate::kernel::PortToKernel
 
+The kernel expects that timer interrupts are handled in a timely manner. The resilience against overdue timer interrupts is limited by two factors: (1) [`PortTimer::MAX_TICK_COUNT`]` - `[`PortTimer::MAX_TIMEOUT`], representing the headroom of port-timer timeouts below the timer counter's representable range. Violating this will cause the kernel to lose track of time. (2) [`TIME_HARD_HEADROOM`], representing how overdue timed events can be before the internal represention of their arrival times wraps around and the timing algorithm starts exhibiting an incorrect behavior. **The application is responsible for ensuring these limitations are not exceeded**, e.g., by avoiding holding CPU Lock for a long time.
+
+[`PortTimer::MAX_TICK_COUNT`]: crate::kernel::PortTimer::MAX_TICK_COUNT
+[`PortTimer::MAX_TIMEOUT`]: crate::kernel::PortTimer::MAX_TIMEOUT
+[`TIME_HARD_HEADROOM`]: crate::kernel::TIME_HARD_HEADROOM
+
 <div class="admonition-follows"></div>
 
 > **Relation to Other Specifications:** There are many major design choices when it comes to kernel timing and timed APIs, and they are quite diverse between operating system or kernel specifications. The following list shows some of them:
