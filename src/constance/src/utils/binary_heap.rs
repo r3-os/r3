@@ -54,31 +54,33 @@ impl<T: VecLike> BinaryHeap for T {
             return None;
         }
 
-        let taken;
-        let end = self.len() - 1;
-        if i < end {
-            // Swap the last item with the item at `i`
-            self.swap(i, end);
-            ctx.on_move(&mut self[i], i);
+        if let Some(mut item) = self.pop() {
+            let slice = &mut **self;
+            if i < slice.len() {
+                // Swap the last item with the item at `i`
+                core::mem::swap(&mut slice[i], &mut item);
+                ctx.on_move(&mut slice[i], i);
 
-            // Take the former `i`
-            taken = self.pop().unwrap();
-
-            if !self.is_empty() {
                 // Sift down the item at `i`, restoring the invariant
-                sift_down_to_bottom(self, i, ctx);
+                // Safety: `i` points to an element within `slice`.
+                unsafe { sift_down_to_bottom(slice, i, ctx) };
             }
+            Some(item)
         } else {
-            taken = self.pop().unwrap();
+            debug_assert!(false);
+            None
         }
-
-        Some(taken)
     }
 
     fn insert(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>) -> usize {
         let i = self.len();
         self.push(item);
-        sift_up(self, 0, i, ctx)
+
+        let slice = &mut **self;
+        assert!(i < slice.len());
+
+        // Safety: `i` points to an element within `slice`.
+        unsafe { sift_up(slice, 0, i, ctx) }
     }
 }
 
@@ -90,15 +92,20 @@ impl<T: VecLike> BinaryHeap for T {
 // the hole is filled back at the end of its scope, even on panic.
 // Using a hole reduces the constant factor compared to using swaps,
 // which involves twice as many moves.
-fn sift_up<Element>(
-    this: &mut impl BinaryHeap<Element = Element>,
+/// Sift-up operation
+///
+/// # Safety
+///
+/// `pos` must point to an element within `this`.
+unsafe fn sift_up<Element>(
+    this: &mut [Element],
     start: usize,
     pos: usize,
     mut ctx: impl BinaryHeapCtx<Element>,
 ) -> usize {
     unsafe {
         // Take out the value at `pos` and create a hole.
-        let mut hole = helpers::Hole::new(&mut *this, pos);
+        let mut hole = helpers::Hole::new(this, pos);
 
         while hole.pos() > start {
             let parent = (hole.pos() - 1) / 2;
@@ -116,15 +123,19 @@ fn sift_up<Element>(
 ///
 /// Note: This is faster when the element is known to be large / should
 /// be closer to the bottom.
-fn sift_down_to_bottom<Element>(
-    this: &mut impl BinaryHeap<Element = Element>,
+///
+/// # Safety
+///
+/// `pos` must point to an element within `this`.
+unsafe fn sift_down_to_bottom<Element>(
+    this: &mut [Element],
     mut pos: usize,
     mut ctx: impl BinaryHeapCtx<Element>,
 ) {
     let end = this.len();
     let start = pos;
     unsafe {
-        let mut hole = helpers::Hole::new(&mut *this, pos);
+        let mut hole = helpers::Hole::new(this, pos);
         let mut child = 2 * pos + 1;
         while child < end {
             let right = child + 1;
@@ -137,5 +148,7 @@ fn sift_down_to_bottom<Element>(
         }
         pos = hole.pos();
     }
-    sift_up(this, start, pos, ctx);
+
+    // Safety: `pos` points to an element within `this`.
+    unsafe { sift_up(this, start, pos, ctx) };
 }
