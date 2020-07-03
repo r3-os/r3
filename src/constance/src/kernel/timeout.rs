@@ -325,17 +325,8 @@ fn duration_since_last_tick<System: Kernel>(
     (elapsed, tick_count)
 }
 
-/// Implements [`PortToKernel::timer_tick`].
-///
-/// Precondition: CPU Lock inactive, an interrupt context
-///
-/// [`PortToKernel::timer_tick`]: super::PortToKernel::timer_tick
-pub(super) fn handle_tick<System: Kernel>() {
-    // The precondition includes CPU Lock being inactive, so this `unwrap`
-    // should succeed
-    let mut lock = lock_cpu::<System>().unwrap();
-
-    // Mark the current “tick”
+/// Create a tick now.
+fn mark_tick<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>) {
     let (duration_since_last_tick, tick_count) =
         duration_since_last_tick::<System>(lock.borrow_mut());
 
@@ -351,6 +342,19 @@ pub(super) fn handle_tick<System: Kernel>() {
         .replace_with(&mut *lock, |old_value| {
             old_value.wrapping_add(duration_since_last_tick as Time64)
         });
+}
+
+/// Implements [`PortToKernel::timer_tick`].
+///
+/// Precondition: CPU Lock inactive, an interrupt context
+///
+/// [`PortToKernel::timer_tick`]: super::PortToKernel::timer_tick
+pub(super) fn handle_tick<System: Kernel>() {
+    // The precondition includes CPU Lock being inactive, so this `unwrap`
+    // should succeed
+    let mut lock = lock_cpu::<System>().unwrap();
+
+    mark_tick(lock.borrow_mut());
 
     // Schedule the next tick
     // Safety: CPU Lock active
