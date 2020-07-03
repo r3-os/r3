@@ -353,8 +353,8 @@ impl<System: Kernel> WaitQueue<System> {
     }
 }
 
-/// Call the given closure with a reference to the current wait payload object
-/// of the specified task as the closure's parameter.
+/// Access the specified task's current wait payload object in the supplied
+/// closure.
 ///
 /// The wait object might get deallocated when the task starts running. This
 /// function allows access to the wait object while ensuring the reference to
@@ -372,8 +372,8 @@ pub(super) fn with_current_wait_payload<System: Kernel, R>(
     f(wait)
 }
 
-/// Insert a wait object pertaining to the currently running task to `self` but
-/// not pertainiing to any wait queue, transitioning the task into a Waiting
+/// Create a wait object pertaining to the currently running task but
+/// not pertaining to any wait queue. Transition the task into the Waiting
 /// state.
 ///
 /// The only way to end such a wait operation is to call [`interrupt_task`].
