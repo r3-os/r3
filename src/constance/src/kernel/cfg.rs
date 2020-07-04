@@ -301,8 +301,9 @@ macro_rules! build {
                     InterruptHandlerTable,
                 },
                 EventGroupCb, HunkAttr, HunkInitAttr, InterruptAttr, InterruptLineInit, KernelCfg1,
-                KernelCfg2, Port, State, TaskAttr, TaskCb,
+                KernelCfg2, Port, State, TaskAttr, TaskCb, TimeoutRef,
             },
+            staticvec::StaticVec,
             utils::{
                 for_times::U, intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap,
                 Init, RawCell, UIntegerWithBound,
@@ -410,10 +411,15 @@ macro_rules! build {
                     (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines.get(i).to_init());
         }
 
+        // Calculate the required storage of the timeout heap
+        const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len();
+        type TimeoutHeap = StaticVec<TimeoutRef<$sys>, TIMEOUT_HEAP_LEN>;
+
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg2 for $sys {
             type TaskReadyBitmap = TaskReadyBitmap;
             type TaskReadyQueue = [StaticListHead<TaskCb<Self>>; CFG.num_task_priority_levels];
+            type TimeoutHeap = TimeoutHeap;
 
             fn state() -> &'static KernelState {
                 &KERNEL_STATE

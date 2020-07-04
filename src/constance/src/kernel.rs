@@ -11,7 +11,7 @@ use core::{
 
 use crate::{
     time::{Duration, Time},
-    utils::{intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap},
+    utils::{binary_heap::VecLike, intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap},
 };
 
 #[macro_use]
@@ -685,6 +685,9 @@ pub unsafe trait KernelCfg2: Port + Sized {
     #[doc(hidden)]
     type TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<Self>>]> + Init + 'static;
 
+    #[doc(hiddden)]
+    type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + Init + 'static;
+
     /// The table of combined second-level interrupt handlers.
     ///
     /// A port should generate first-level interrupt handlers that call them.
@@ -728,6 +731,7 @@ pub struct State<
     TaskReadyBitmap: 'static = <System as KernelCfg2>::TaskReadyBitmap,
     TaskReadyQueue: 'static = <System as KernelCfg2>::TaskReadyQueue,
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
+    TimeoutHeap: 'static = <System as KernelCfg2>::TimeoutHeap,
 > {
     // TODO: Make `running_task` non-null to simplify runtime code
     /// The currently or recently running task. Can be in a Running or Waiting
@@ -749,7 +753,7 @@ pub struct State<
     priority_boost: AtomicBool,
 
     /// The global state of the timekeeping system.
-    timeout: timeout::TimeoutGlobals<System>,
+    timeout: timeout::TimeoutGlobals<System, TimeoutHeap>,
 }
 
 impl<
@@ -758,7 +762,9 @@ impl<
         TaskReadyBitmap: 'static + Init,
         TaskReadyQueue: 'static + Init,
         TaskPriority: 'static,
-    > Init for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
+        TimeoutHeap: 'static + Init,
+    > Init
+    for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     const INIT: Self = Self {
         running_task: AtomicRef::new(None),
@@ -775,7 +781,9 @@ impl<
         TaskReadyBitmap: 'static + fmt::Debug,
         TaskReadyQueue: 'static + fmt::Debug,
         TaskPriority: 'static + fmt::Debug,
-    > fmt::Debug for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority>
+        TimeoutHeap: 'static + fmt::Debug,
+    > fmt::Debug
+    for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("State")

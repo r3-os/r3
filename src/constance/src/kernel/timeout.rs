@@ -125,7 +125,11 @@
 //!     CET         enqueueable       user headroom
 //! ```
 //!
-use core::fmt;
+use core::{
+    fmt,
+    ptr::NonNull,
+    sync::atomic::{AtomicU32, AtomicUsize, Ordering},
+};
 
 use super::{
     utils::{lock_cpu, CpuLockCell, CpuLockGuardBorrowMut},
@@ -133,11 +137,14 @@ use super::{
 };
 use crate::{
     time::{Duration, Time},
-    utils::Init,
+    utils::{
+        binary_heap::{BinaryHeap, BinaryHeapCtx},
+        Init,
+    },
 };
 
 /// A kernel-global state for timed event management.
-pub(super) struct TimeoutGlobals<System> {
+pub(super) struct TimeoutGlobals<System, TimeoutHeap: 'static> {
     /// The value of [`PortTimer::tick_count`] on the previous “tick”.
     ///
     /// [`PortTimer::tick_count`]: super::PortTimer::tick_count
@@ -154,24 +161,30 @@ pub(super) struct TimeoutGlobals<System> {
 
     /// The gap between the frontier and the previous tick.
     frontier_gap: CpuLockCell<System, Time32>,
+
+    /// The heap (priority queue) containing outstanding timeouts, sorted by
+    /// arrival time.
+    heap: CpuLockCell<System, TimeoutHeap>,
 }
 
-impl<System> Init for TimeoutGlobals<System> {
+impl<System, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<System, TimeoutHeap> {
     const INIT: Self = Self {
         last_tick_count: Init::INIT,
         last_tick_time: Init::INIT,
         last_tick_sys_time: Init::INIT,
         frontier_gap: Init::INIT,
+        heap: Init::INIT,
     };
 }
 
-impl<System: Kernel> fmt::Debug for TimeoutGlobals<System> {
+impl<System: Kernel, TimeoutHeap: fmt::Debug> fmt::Debug for TimeoutGlobals<System, TimeoutHeap> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TimeoutGlobals")
             .field("last_tick_count", &self.last_tick_count)
             .field("last_tick_time", &self.last_tick_time)
             .field("last_tick_sys_time", &self.last_tick_sys_time)
             .field("frontier_gap", &self.frontier_gap)
+            .field("heap", &self.heap)
             .finish()
     }
 }
@@ -179,14 +192,14 @@ impl<System: Kernel> fmt::Debug for TimeoutGlobals<System> {
 // ---------------------------------------------------------------------------
 
 /// An internal utility to access `TimeoutGlobals`.
-trait KernelTimeoutGlobalsExt: Sized {
-    fn g_timeout() -> &'static TimeoutGlobals<Self>;
+trait KernelTimeoutGlobalsExt: Kernel {
+    fn g_timeout() -> &'static TimeoutGlobals<Self, Self::TimeoutHeap>;
 }
 
 impl<T: Kernel> KernelTimeoutGlobalsExt for T {
     /// Shortcut for `&Self::state().timeout`.
     #[inline(always)]
-    fn g_timeout() -> &'static TimeoutGlobals<Self> {
+    fn g_timeout() -> &'static TimeoutGlobals<Self, Self::TimeoutHeap> {
         &Self::state().timeout
     }
 }
@@ -198,6 +211,9 @@ type Time64 = u64;
 
 /// Represents an absolute time with a reduced range.
 type Time32 = u32;
+
+/// Atomic cell of [`Time32`].
+type AtomicTime32 = AtomicU32;
 
 #[inline]
 fn time64_from_sys_time(sys_time: Time) -> Time64 {
@@ -234,13 +250,78 @@ pub const TIME_HARD_HEADROOM: Duration = Duration::from_micros(HARD_HEADROOM as 
 /// A timeout.
 struct Timeout<System> {
     /// The arrival time of the timeout. This is *an event time*.
-    at: CpuLockCell<System, Time32>,
+    ///
+    /// This is defined as an atomic variable only because [`TimeoutHeapCtx`]
+    /// needs to access this. Otherwise, this would have been
+    /// [`CpuLockCell`]`<System, _>`. `Ordering::Relaxed` is overkill but that's
+    /// the weakest ordering that `std::sync::atomic` provides.
+    at: AtomicU32,
+
+    /// The position of this timeout in [`TimeoutGlobals::heap`].
+    ///
+    /// Similarly to [`Self::at`], this is defined as an atomic variable only
+    /// because [`TimeoutHeapCtx`] needs to access this.
+    heap_pos: AtomicUsize,
+
     // TODO
+    _phantom: core::marker::PhantomData<System>,
+}
+
+/// A reference to a [`Timeout`].
+#[doc(hidden)]
+pub struct TimeoutRef<System>(NonNull<Timeout<System>>);
+
+// Safety: `Timeout` is `Send + Sync`
+unsafe impl<System> Send for TimeoutRef<System> {}
+unsafe impl<System> Sync for TimeoutRef<System> {}
+
+impl<System> Clone for TimeoutRef<System> {
+    fn clone(&self) -> Self {
+        Self(self.0)
+    }
+}
+
+impl<System> Copy for TimeoutRef<System> {}
+
+impl<System> fmt::Debug for TimeoutRef<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("TimeoutRef").field(&self.0).finish()
+    }
+}
+
+/// Used when manipulating [`TimeoutGlobals::heap`]. Provides the correct
+/// comparator function for [`Timeout`]s. Ensures [`Timeout::heap_pos`] is
+/// up-to-date.
+struct TimeoutHeapCtx {
+    critical_point: Time32,
+}
+
+impl<System> BinaryHeapCtx<TimeoutRef<System>> for TimeoutHeapCtx {
+    #[inline]
+    fn lt(&mut self, x: &TimeoutRef<System>, y: &TimeoutRef<System>) -> bool {
+        // Safety: `x` and `y` are in the heap, so the pointees must be valid
+        let (x, y) = unsafe {
+            (
+                x.0.as_ref().at.load(Ordering::Relaxed),
+                y.0.as_ref().at.load(Ordering::Relaxed),
+            )
+        };
+        let critical_point = self.critical_point;
+        x.wrapping_sub(critical_point) < y.wrapping_sub(critical_point)
+    }
+
+    #[inline]
+    fn on_move(&mut self, e: &mut TimeoutRef<System>, new_index: usize) {
+        // Safety: `e` is in the heap, so the pointee must be valid
+        unsafe { e.0.as_ref() }
+            .heap_pos
+            .store(new_index, Ordering::Relaxed);
+    }
 }
 
 // ---------------------------------------------------------------------------
 
-impl<System: Kernel> TimeoutGlobals<System> {
+impl<System: Kernel, TimeoutHeap> TimeoutGlobals<System, TimeoutHeap> {
     /// Initialize the timekeeping system.
     pub(super) fn init(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) {
         // Mark the first “tick”

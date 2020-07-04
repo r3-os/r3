@@ -27,6 +27,10 @@ extern crate core;
 #[doc(hidden)]
 pub extern crate parse_generics_shim;
 
+// `configure!` requires `StaticVec`
+#[doc(hidden)]
+pub extern crate staticvec;
+
 #[macro_use]
 pub mod utils;
 #[macro_use]

@@ -44,6 +44,10 @@ impl<T> Init for mem::MaybeUninit<T> {
     const INIT: Self = mem::MaybeUninit::uninit();
 }
 
+impl<T, const N: usize> Init for staticvec::StaticVec<T, N> {
+    const INIT: Self = Self::new();
+}
+
 macro_rules! impl_init {
     (
         $($ty:ty => $value:expr,)*
