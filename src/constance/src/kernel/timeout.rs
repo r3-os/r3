@@ -126,6 +126,7 @@
 //! ```
 //!
 use core::{
+    convert::TryInto,
     fmt,
     marker::PhantomPinned,
     pin::Pin,
@@ -134,8 +135,8 @@ use core::{
 };
 
 use super::{
-    utils::{lock_cpu, CpuLockCell, CpuLockGuardBorrowMut},
-    Kernel, TimeError, UTicks,
+    utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
+    BadParamError, Kernel, TimeError, UTicks,
 };
 use crate::{
     time::{Duration, Time},
@@ -167,6 +168,9 @@ pub(super) struct TimeoutGlobals<System, TimeoutHeap: 'static> {
     /// The heap (priority queue) containing outstanding timeouts, sorted by
     /// arrival time.
     heap: CpuLockCell<System, TimeoutHeap>,
+
+    /// Flag indicating whether `handle_tick` is in progress or not.
+    handle_tick_in_progress: CpuLockCell<System, bool>,
 }
 
 impl<System, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<System, TimeoutHeap> {
@@ -176,6 +180,7 @@ impl<System, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<System, Timeou
         last_tick_sys_time: Init::INIT,
         frontier_gap: Init::INIT,
         heap: Init::INIT,
+        handle_tick_in_progress: Init::INIT,
     };
 }
 
@@ -187,6 +192,7 @@ impl<System: Kernel, TimeoutHeap: fmt::Debug> fmt::Debug for TimeoutGlobals<Syst
             .field("last_tick_sys_time", &self.last_tick_sys_time)
             .field("frontier_gap", &self.frontier_gap)
             .field("heap", &self.heap)
+            .field("handle_tick_in_progress", &self.handle_tick_in_progress)
             .finish()
     }
 }
@@ -214,7 +220,7 @@ type Time64 = u64;
 
 /// Represents an absolute time with a reduced range. This is also used to
 /// represent a relative time span.
-type Time32 = u32;
+pub(super) type Time32 = u32;
 
 /// Atomic cell of [`Time32`].
 type AtomicTime32 = AtomicU32;
@@ -227,6 +233,14 @@ fn time64_from_sys_time(sys_time: Time) -> Time64 {
 #[inline]
 fn sys_time_from_time64(sys_time: Time64) -> Time {
     Time::from_micros(sys_time)
+}
+
+#[inline]
+pub(super) fn time32_from_duration(duration: Duration) -> Result<Time32, BadParamError> {
+    Ok(duration
+        .as_micros()
+        .try_into()
+        .map_err(|_| BadParamError::BadParam)?)
 }
 
 const USER_HEADROOM: Time32 = 1 << 29;
@@ -253,14 +267,26 @@ pub const TIME_HARD_HEADROOM: Duration = Duration::from_micros(HARD_HEADROOM as 
 // ---------------------------------------------------------------------------
 
 /// A timeout.
-pub(super) struct Timeout<System> {
+///
+/// `Timeout` is a `!Unpin` type. Once registered by [`insert_timeout`], the
+/// `Timeout` must stay in the same memory location until it's unregistered.
+/// Dropping isn't allowed either. `Timeout::drop` can detect the violation of
+/// this requirement and cause a panic.
+///
+/// `Timeout` is unregistered by one of the following ways:
+///
+///  - On expiration, right before its callback function is called.
+///  - [`remove_timeout`] can unregister a `Timeout` at anytime. There is a
+///    RAII guard type [`TimeoutGuard`] that does this automatically.
+///
+pub(super) struct Timeout<System: Kernel> {
     /// The arrival time of the timeout. This is *an event time*.
     ///
     /// This is defined as an atomic variable only because [`TimeoutHeapCtx`]
     /// needs to access this. Otherwise, this would have been
     /// [`CpuLockCell`]`<System, _>`. `Ordering::Relaxed` is overkill but that's
     /// the weakest ordering that `std::sync::atomic` provides.
-    at: AtomicU32,
+    at: AtomicTime32,
 
     /// The position of this timeout in [`TimeoutGlobals::heap`].
     ///
@@ -270,6 +296,12 @@ pub(super) struct Timeout<System> {
     /// [`HEAP_POS_NONE`] indicates this timeout is not included in the heap.
     heap_pos: AtomicUsize,
 
+    /// Callback function.
+    callback: TimeoutFn<System>,
+
+    /// Parameter given to the callback function.
+    callback_param: usize,
+
     /// Un-implement `Unpin`.
     _pin: PhantomPinned,
 
@@ -277,11 +309,13 @@ pub(super) struct Timeout<System> {
     _phantom: core::marker::PhantomData<System>,
 }
 
+pub(super) type TimeoutFn<System> = fn(usize, CpuLockGuard<System>) -> CpuLockGuard<System>;
+
 /// Value of [`Timeout::heap_pos`] indicating the timeout is not included in the
 /// heap.
 const HEAP_POS_NONE: usize = usize::MAX;
 
-impl<System> Drop for Timeout<System> {
+impl<System: Kernel> Drop for Timeout<System> {
     #[inline]
     fn drop(&mut self) {
         if *self.heap_pos.get_mut() != HEAP_POS_NONE {
@@ -299,23 +333,67 @@ impl<System> Drop for Timeout<System> {
     }
 }
 
+impl<System: Kernel> Timeout<System> {
+    /// Construct a `Timeout`.
+    ///
+    /// The expiration time is set to zero (the origin at boot time, an
+    /// unspecified time point otherwise).
+    pub(super) const fn new(callback: TimeoutFn<System>, callback_param: usize) -> Self {
+        Self {
+            at: AtomicTime32::new(0),
+            heap_pos: AtomicUsize::new(HEAP_POS_NONE),
+            callback,
+            callback_param,
+            _pin: PhantomPinned,
+            _phantom: core::marker::PhantomData,
+        }
+    }
+
+    /// Configure the `Timeout` to expire in the specified duration.
+    pub(super) fn set_expiration_after(
+        &self,
+        lock: CpuLockGuardBorrowMut<'_, System>,
+        duration_time32: Time32,
+    ) {
+        let current_time = current_time(lock);
+        let at = current_time.wrapping_add(duration_time32);
+        self.at.store(at, Ordering::Relaxed);
+    }
+
+    /// Adjust the `Timeout`'s expiration time.
+    ///
+    /// Intended to be used by periodic events before re-registering the
+    /// `Timeout`.
+    pub(super) fn adjust_expiration(
+        &self,
+        _lock: CpuLockGuardBorrowMut<'_, System>,
+        duration_time32: Time32,
+    ) {
+        let at = self
+            .at
+            .load(Ordering::Relaxed)
+            .wrapping_add(duration_time32);
+        self.at.store(at, Ordering::Relaxed);
+    }
+}
+
 /// A reference to a [`Timeout`].
 #[doc(hidden)]
-pub struct TimeoutRef<System>(NonNull<Timeout<System>>);
+pub struct TimeoutRef<System: Kernel>(NonNull<Timeout<System>>);
 
 // Safety: `Timeout` is `Send + Sync`
-unsafe impl<System> Send for TimeoutRef<System> {}
-unsafe impl<System> Sync for TimeoutRef<System> {}
+unsafe impl<System: Kernel> Send for TimeoutRef<System> {}
+unsafe impl<System: Kernel> Sync for TimeoutRef<System> {}
 
-impl<System> Clone for TimeoutRef<System> {
+impl<System: Kernel> Clone for TimeoutRef<System> {
     fn clone(&self) -> Self {
         Self(self.0)
     }
 }
 
-impl<System> Copy for TimeoutRef<System> {}
+impl<System: Kernel> Copy for TimeoutRef<System> {}
 
-impl<System> fmt::Debug for TimeoutRef<System> {
+impl<System: Kernel> fmt::Debug for TimeoutRef<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("TimeoutRef").field(&self.0).finish()
     }
@@ -328,7 +406,7 @@ struct TimeoutHeapCtx {
     critical_point: Time32,
 }
 
-impl<System> BinaryHeapCtx<TimeoutRef<System>> for TimeoutHeapCtx {
+impl<System: Kernel> BinaryHeapCtx<TimeoutRef<System>> for TimeoutHeapCtx {
     #[inline]
     fn lt(&mut self, x: &TimeoutRef<System>, y: &TimeoutRef<System>) -> bool {
         // Safety: `x` and `y` are in the heap, so the pointees must be valid
@@ -483,10 +561,51 @@ pub(super) fn handle_tick<System: Kernel>() {
 
     mark_tick(lock.borrow_mut());
 
-    // TODO: Process expired timeouts
-
     let g_timeout = System::g_timeout();
     let current_time = g_timeout.last_tick_time.get(&*lock);
+    let critical_point = critical_point(current_time);
+
+    // Set `handle_tick_in_progress`. This will suppress redundant calls to
+    // `pend_next_tick` made by timeout handlers.
+    g_timeout.handle_tick_in_progress.replace(&mut *lock, true);
+
+    // Process expired timeouts
+    loop {
+        // Check the top element (representing the earliest timeout) in the heap
+        let timeout = if let Some(&timeout_ref) = g_timeout.heap.read(&*lock).get(0) {
+            // Safety: `timeout_ref` is in the heap, meaning the pointee is valid
+            unsafe { &*timeout_ref.0.as_ptr() }
+        } else {
+            // The heap is empty
+            break;
+        };
+
+        // How much time do we have before `timeout` becomes overdue?
+        let remaining = saturating_duration_until_timeout(timeout, current_time);
+        if remaining > 0 {
+            break;
+        }
+
+        // The timeout has expired. Remove it from the heap.
+        let Timeout {
+            callback,
+            callback_param,
+            ..
+        } = *timeout;
+
+        g_timeout
+            .heap
+            .write(&mut *lock)
+            .heap_remove(0, TimeoutHeapCtx { critical_point });
+
+        // (Note: `timeout` is considered invalid at this point because it's not
+        // in the heap anymore)
+
+        // Call the callback function.
+        lock = callback(callback_param, lock);
+    }
+
+    g_timeout.handle_tick_in_progress.replace(&mut *lock, false);
 
     // Schedule the next tick
     pend_next_tick(lock.borrow_mut(), current_time);
@@ -537,7 +656,7 @@ fn critical_point(current_time: Time32) -> Time32 {
 
 /// Calculate the duration until the specified timeout is reached. Returns `0`
 /// if the timeout is already overdue.
-fn saturating_duration_until_timeout<System>(
+fn saturating_duration_until_timeout<System: Kernel>(
     timeout: &Timeout<System>,
     current_time: Time32,
 ) -> Time32 {
@@ -589,8 +708,10 @@ pub(super) fn insert_timeout<System: Kernel>(
     // `TimeoutHeapCtx:on_move` should have assigned `heap_pos`
     debug_assert_eq!(timeout.heap_pos.load(Ordering::Relaxed), pos);
 
-    // (Re-)schedule the next tick
-    pend_next_tick(lock, current_time);
+    if !System::g_timeout().handle_tick_in_progress.get(&*lock) {
+        // (Re-)schedule the next tick
+        pend_next_tick(lock, current_time);
+    }
 }
 
 /// Unregister the specified `Timeout`. Does nothing if it's not registered.
@@ -650,8 +771,10 @@ fn remove_timeout_inner<System: Kernel>(
         timeout as *const _
     );
 
-    // (Re-)schedule the next tick
-    pend_next_tick(lock, current_time);
+    if !System::g_timeout().handle_tick_in_progress.get(&*lock) {
+        // (Re-)schedule the next tick
+        pend_next_tick(lock, current_time);
+    }
 }
 
 /// RAII guard that automatically unregisters `Timeout` when dropped.
