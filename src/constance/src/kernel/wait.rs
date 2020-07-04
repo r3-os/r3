@@ -3,8 +3,9 @@ use core::{fmt, ops, ptr::NonNull};
 use super::{
     event_group, task,
     task::{TaskCb, TaskSt},
-    utils::{CpuLockCell, CpuLockGuardBorrowMut},
-    BadObjectStateError, Kernel, Port, PortThreading, WaitError,
+    timeout,
+    utils::{CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
+    BadObjectStateError, Kernel, Port, PortThreading, WaitError, WaitTimeoutError,
 };
 
 use crate::utils::{
@@ -163,13 +164,37 @@ pub(crate) struct TaskWait<System: PortThreading> {
 
     /// The result of the last wait operation. Set by a wake-upper. Returned by
     /// [`WaitQueue::wait`].
-    wait_result: CpuLockCell<System, Result<(), WaitError>>,
+    wait_result: CpuLockCell<System, Result<(), WaitTimeoutError>>,
 }
 
 impl<System: PortThreading> Init for TaskWait<System> {
     const INIT: Self = Self {
         current_wait: Init::INIT,
         wait_result: CpuLockCell::new(Ok(())),
+    };
+}
+
+/// Register a timeout object to interrupt `$task_cb` after the duration
+/// specified by `$duration_time32`. The timeout object remains valid throughout
+/// the current lexical scope.
+///
+/// This macro is used inside a blocking operation with timeout.
+macro_rules! setup_timeout_wait {
+    ($lock:ident, $task_cb:expr, $duration_time32:expr) => {
+        // Create a timeout object.
+        let timeout = new_timeout_object_for_task($lock.borrow_mut(), $task_cb, $duration_time32);
+        pin_utils::pin_mut!(timeout);
+
+        // Use `TimeoutGuard` to automatically unregister the timeout when
+        // leaving the current lexical scope.
+        let mut timeout_guard = timeout::TimeoutGuard {
+            timeout: timeout.as_ref(),
+            lock: $lock,
+        };
+        let mut $lock = timeout_guard.lock.borrow_mut();
+
+        // Register the timeout object
+        timeout::insert_timeout($lock.borrow_mut(), timeout_guard.timeout);
     };
 }
 
@@ -205,6 +230,38 @@ impl<System: Kernel> WaitQueue<System> {
             payload,
         };
 
+        self.wait_inner(lock, &wait)
+            .map_err(WaitTimeoutError::expect_not_timeout)?;
+
+        Ok(wait.payload)
+    }
+
+    /// Insert a wait object pertaining to the currently running task to `self`,
+    /// transitioning the task into the Waiting state. The operation will time
+    /// out after the specified duration.
+    ///
+    /// The current context must be [waitable] (This function doesn't check
+    /// that). The caller should use `expect_waitable_context` to do that.
+    ///
+    /// [waitable]: crate#contexts
+    #[inline]
+    pub(super) fn wait_timeout(
+        &'static self,
+        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        payload: WaitPayload<System>,
+        duration_time32: timeout::Time32,
+    ) -> Result<WaitPayload<System>, WaitTimeoutError> {
+        let task = System::state().running_task().unwrap();
+        let wait = Wait {
+            task,
+            link: CpuLockCell::new(None),
+            wait_queue: Some(self),
+            payload,
+        };
+
+        // Configure a timeout
+        setup_timeout_wait!(lock, task, duration_time32);
+
         self.wait_inner(lock, &wait)?;
 
         Ok(wait.payload)
@@ -219,7 +276,7 @@ impl<System: Kernel> WaitQueue<System> {
         &'static self,
         mut lock: CpuLockGuardBorrowMut<'_, System>,
         wait: &Wait<System>,
-    ) -> Result<(), WaitError> {
+    ) -> Result<(), WaitTimeoutError> {
         let task = wait.task;
         let wait_ref = WaitRef(wait.into());
 
@@ -395,6 +452,39 @@ pub(super) fn wait_no_queue<System: Kernel>(
         payload,
     };
 
+    wait_no_queue_inner(lock, &wait).map_err(WaitTimeoutError::expect_not_timeout)?;
+
+    Ok(wait.payload)
+}
+
+/// Create a wait object pertaining to the currently running task but
+/// not pertaining to any wait queue. Transition the task into the Waiting
+/// state. The operation will time out after the specified duration.
+///
+/// The only way to end such a wait operation is to call [`interrupt_task`] or
+/// to wait until it times out.
+///
+/// The current context must be [waitable] (This function doesn't check
+/// that). The caller should use `expect_waitable_context` to do that.
+///
+/// [waitable]: crate#contexts
+#[inline]
+pub(super) fn wait_no_queue_timeout<System: Kernel>(
+    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    payload: WaitPayload<System>,
+    duration_time32: timeout::Time32,
+) -> Result<WaitPayload<System>, WaitTimeoutError> {
+    let task = System::state().running_task().unwrap();
+    let wait = Wait {
+        task,
+        link: CpuLockCell::new(None),
+        wait_queue: None,
+        payload,
+    };
+
+    // Configure a timeout
+    setup_timeout_wait!(lock, task, duration_time32);
+
     wait_no_queue_inner(lock, &wait)?;
 
     Ok(wait.payload)
@@ -408,7 +498,7 @@ pub(super) fn wait_no_queue<System: Kernel>(
 fn wait_no_queue_inner<System: Kernel>(
     mut lock: CpuLockGuardBorrowMut<'_, System>,
     wait: &Wait<System>,
-) -> Result<(), WaitError> {
+) -> Result<(), WaitTimeoutError> {
     let task = wait.task;
     let wait_ref = WaitRef(wait.into());
 
@@ -445,7 +535,7 @@ fn wait_no_queue_inner<System: Kernel>(
 fn complete_wait<System: Kernel>(
     mut lock: CpuLockGuardBorrowMut<'_, System>,
     wait: &Wait<System>,
-    wait_result: Result<(), WaitError>,
+    wait_result: Result<(), WaitTimeoutError>,
 ) {
     let task_cb = wait.task;
 
@@ -475,10 +565,17 @@ fn complete_wait<System: Kernel>(
 /// Call `unlock_cpu_and_check_preemption` as needed.
 ///
 /// Returns `Err(BadObjectState)` if the task is not in the Waiting state.
+///
+/// `wait_result` must be valid for the wait operation type. For example,
+/// if you specify `WaitTimeoutError::Timeout` but the wait operation does not
+/// use a timeout, the unblock task will panic immediately (by tripping an error
+/// path in [`WaitTimeoutError::expect_not_timeout`]). As a rule of thumb, code
+/// outside this module should not pass `WaitTimeoutError::Timeout` to this
+/// method.
 pub(super) fn interrupt_task<System: Kernel>(
     mut lock: CpuLockGuardBorrowMut<'_, System>,
     task_cb: &'static TaskCb<System>,
-    wait_result: Result<(), WaitError>,
+    wait_result: Result<(), WaitTimeoutError>,
 ) -> Result<(), BadObjectStateError> {
     match *task_cb.st.read(&*lock) {
         TaskSt::Waiting => {
@@ -504,4 +601,38 @@ pub(super) fn interrupt_task<System: Kernel>(
         }
         _ => Err(BadObjectStateError::BadObjectState),
     }
+}
+
+/// Construct [`timeout::Timeout`] to interrupt the specified task with
+/// [`WaitTimeoutError::Timeout`] after a certain period of time.
+fn new_timeout_object_for_task<System: Kernel>(
+    lock: CpuLockGuardBorrowMut<'_, System>,
+    task_cb: &'static TaskCb<System>,
+    duration_time32: timeout::Time32,
+) -> timeout::Timeout<System> {
+    // Construct a `Timeout`, supplying our callback function
+    let param = task_cb as *const _ as usize;
+    let timeout_object = timeout::Timeout::new(interrupt_task_by_timeout, param);
+
+    /// The callback function
+    fn interrupt_task_by_timeout<System: Kernel>(
+        param: usize,
+        mut lock: CpuLockGuard<System>,
+    ) -> CpuLockGuard<System> {
+        // Safety: We are just converting `param` back to the original form
+        let task_cb = unsafe { &*(param as *const TaskCb<System>) };
+
+        // Interrupt the task
+        match interrupt_task(lock.borrow_mut(), task_cb, Err(WaitTimeoutError::Timeout)) {
+            // Even if the task is already unblocked, we don't care
+            Ok(()) | Err(BadObjectStateError::BadObjectState) => {}
+        }
+
+        lock
+    }
+
+    // Configure the `Timeout` to expire in `duration_time32`
+    timeout_object.set_expiration_after(lock, duration_time32);
+
+    timeout_object
 }

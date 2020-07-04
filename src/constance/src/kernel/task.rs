@@ -5,7 +5,7 @@ use num_traits::ToPrimitive;
 use super::{
     hunk::Hunk, state, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
     GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, Port,
-    PortThreading, UnparkError, UnparkExactError, WaitError,
+    PortThreading, UnparkError, UnparkExactError, WaitTimeoutError,
 };
 use crate::utils::{
     intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
@@ -157,13 +157,19 @@ impl<System: Kernel> Task<System> {
     /// Interrupt any ongoing wait operations undertaken by the task.
     ///
     /// This method interrupt any ongoing system call that is blocking the task.
-    /// The interrupted system call will return [`WaitError::Interrupted`].
+    /// The interrupted system call will return [`WaitError::Interrupted`] or
+    /// [`WaitTimeoutError::Interrupted`].
     ///
     /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
+    /// [`WaitTimeoutError::Interrupted`]: crate::kernel::WaitTimeoutError::Interrupted
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
-        wait::interrupt_task(lock.borrow_mut(), task_cb, Err(WaitError::Interrupted))?;
+        wait::interrupt_task(
+            lock.borrow_mut(),
+            task_cb,
+            Err(WaitTimeoutError::Interrupted),
+        )?;
 
         // The task is now awake, check dispatch
         unlock_cpu_and_check_preemption(lock);

@@ -277,6 +277,16 @@ define_error! {
     }
 }
 
+impl WaitTimeoutError {
+    /// Convert `self` to `WaitError`, panicking if `self == Self::Timeout`.
+    pub(super) fn expect_not_timeout(self) -> WaitError {
+        match self {
+            Self::Interrupted => WaitError::Interrupted,
+            Self::Timeout => panic!("got timeout result for a non-timeout wait"),
+        }
+    }
+}
+
 define_error! {
     /// Error type for [`Kernel::park`].
     ///
@@ -294,7 +304,7 @@ define_error! {
     /// Error type for [`Kernel::park_timeout`].
     ///
     /// [`Kernel::park_timeout`]: super::Kernel::park_timeout
-    pub enum ParkTimeoutError: BadContextError, WaitTimeoutError {
+    pub enum ParkTimeoutError: BadContextError, WaitTimeoutError, BadParamError {
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts

@@ -779,18 +779,8 @@ fn remove_timeout_inner<System: Kernel>(
 
 /// RAII guard that automatically unregisters `Timeout` when dropped.
 pub(super) struct TimeoutGuard<'a, 'b, System: Kernel> {
-    timeout: Pin<&'a Timeout<System>>,
-    lock: CpuLockGuardBorrowMut<'b, System>,
-}
-
-impl<'a, 'b, System: Kernel> TimeoutGuard<'a, 'b, System> {
-    pub(super) fn timeout(&self) -> Pin<&Timeout<System>> {
-        self.timeout
-    }
-
-    pub(super) fn borrow_cpu_lock(&mut self) -> CpuLockGuardBorrowMut<'_, System> {
-        self.lock.borrow_mut()
-    }
+    pub(super) timeout: Pin<&'a Timeout<System>>,
+    pub(super) lock: CpuLockGuardBorrowMut<'b, System>,
 }
 
 impl<'a, 'b, System: Kernel> Drop for TimeoutGuard<'a, 'b, System> {
