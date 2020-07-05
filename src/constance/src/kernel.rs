@@ -281,8 +281,8 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     fn set_time(time: Time) -> Result<(), TimeError> {
         timeout::set_system_time::<Self>(time)
     }
-    fn adjust_time(_delta: Duration) -> Result<(), AdjustTimeError> {
-        todo!()
+    fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError> {
+        timeout::adjust_system_and_event_time::<Self>(delta)
     }
 
     unsafe fn exit_task() -> Result<!, ExitTaskError> {

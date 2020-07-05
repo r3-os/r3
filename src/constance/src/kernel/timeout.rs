@@ -136,7 +136,7 @@ use core::{
 
 use super::{
     utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
-    BadParamError, Kernel, TimeError, UTicks,
+    AdjustTimeError, BadParamError, Kernel, TimeError, UTicks,
 };
 use crate::{
     time::{Duration, Time},
@@ -145,6 +145,9 @@ use crate::{
         Init,
     },
 };
+
+#[cfg(tests)]
+mod tests;
 
 /// A kernel-global state for timed event management.
 pub(super) struct TimeoutGlobals<System, TimeoutHeap: 'static> {
@@ -163,6 +166,9 @@ pub(super) struct TimeoutGlobals<System, TimeoutHeap: 'static> {
     last_tick_sys_time: CpuLockCell<System, Time64>,
 
     /// The gap between the frontier and the previous tick.
+    ///
+    /// This value only can be increased by [`adjust_system_and_event_time`].
+    /// The upper bound is [`USER_HEADROOM`].
     frontier_gap: CpuLockCell<System, Time32>,
 
     /// The heap (priority queue) containing outstanding timeouts, sorted by
@@ -241,6 +247,30 @@ pub(super) fn time32_from_duration(duration: Duration) -> Result<Time32, BadPara
         .as_micros()
         .try_into()
         .map_err(|_| BadParamError::BadParam)?)
+}
+
+/// Convert the negation of `duration` to `Time32`.
+#[inline]
+pub(super) fn time32_from_neg_duration(duration: Duration) -> Result<Time32, BadParamError> {
+    // Unlike `time32_from_duration`, there's no nice way to do this
+    let duration = duration.as_micros();
+    if duration > 0 {
+        Err(BadParamError::BadParam)
+    } else {
+        Ok(0u32.wrapping_sub(duration as u32))
+    }
+}
+
+/// Convert `duration` to `Time32`. Negative values are wrapped around.
+#[inline]
+pub(super) fn wrapping_time32_from_duration(duration: Duration) -> Time32 {
+    duration.as_micros() as Time32
+}
+
+/// Convert `duration` to `Time64`. Negative values are wrapped around.
+#[inline]
+pub(super) fn wrapping_time64_from_duration(duration: Duration) -> Time64 {
+    duration.as_micros() as i64 as Time64
 }
 
 const USER_HEADROOM: Time32 = 1 << 29;
@@ -482,6 +512,83 @@ pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), 
     Ok(())
 }
 
+/// Implements [`Kernel::adjust_time`].
+pub(super) fn adjust_system_and_event_time<System: Kernel>(
+    delta: Duration,
+) -> Result<(), AdjustTimeError> {
+    let mut lock = lock_cpu::<System>()?;
+    let g_timeout = System::g_timeout();
+
+    // For the `delta.is_negative()` case, we'd like to check if the adjustment
+    // would throw the frontier out of the valid range. The frontier is a
+    // time-dependent quantity, so first we need to get the latest value of the
+    // frontier.
+    //
+    // `mark_tick` will update `frontier_gap` with the latest value without
+    // introducing any application-visible side-effects.
+    //
+    // This is also useful for the `delta.is_positive()` case because it updates
+    // `last_tick_time`.
+    mark_tick(lock.borrow_mut());
+
+    if delta.is_negative() {
+        let delta_abs = time32_from_neg_duration(delta).unwrap();
+
+        let new_frontier_gap = g_timeout.frontier_gap.get(&*lock) + delta_abs;
+
+        if new_frontier_gap > USER_HEADROOM {
+            // The frontier would be too far away
+            return Err(AdjustTimeError::BadObjectState);
+        }
+
+        g_timeout.frontier_gap.replace(&mut *lock, new_frontier_gap);
+    } else if delta.is_positive() {
+        let delta_abs = time32_from_duration(delta).unwrap();
+
+        // Check the top element (representing the earliest timeout) in the heap
+        if let Some(&timeout_ref) = g_timeout.heap.read(&*lock).get(0) {
+            // Safety: `timeout_ref` is in the heap, meaning the pointee is valid
+            let timeout = unsafe { timeout_ref.0.as_ref() };
+
+            let current_time = g_timeout.last_tick_time.get(&*lock);
+
+            // How much time do we have before `timeout` enters the hard headroom
+            // zone?
+            let duration =
+                saturating_duration_before_timeout_exhausting_user_headroom(timeout, current_time);
+
+            if duration < delta_abs {
+                // The timeout would enter the hard headroom zone if we made
+                // this adjustment
+                return Err(AdjustTimeError::BadObjectState);
+            }
+        }
+
+        g_timeout
+            .frontier_gap
+            .replace_with(&mut *lock, |old_value| old_value.saturating_sub(delta_abs));
+    } else {
+        // Do nothing
+        return Ok(());
+    }
+
+    // Update the current system time and the current event time
+    let delta32 = wrapping_time32_from_duration(delta);
+    let delta64 = wrapping_time64_from_duration(delta);
+    g_timeout
+        .last_tick_time
+        .replace_with(&mut *lock, |old_value| old_value.wrapping_add(delta32));
+    g_timeout
+        .last_tick_sys_time
+        .replace_with(&mut *lock, |old_value| old_value.wrapping_add(delta64));
+
+    // Schedule the next tick
+    let current_time = g_timeout.last_tick_time.get(&*lock);
+    pend_next_tick(lock.borrow_mut(), current_time);
+
+    Ok(())
+}
+
 /// Calculate the elapsed time since the last tick.
 ///
 /// Returns two values:
@@ -668,6 +775,22 @@ fn saturating_duration_until_timeout<System: Kernel>(
         .wrapping_sub(critical_point);
 
     duration_until_violating_critical_point.saturating_sub(HARD_HEADROOM + USER_HEADROOM)
+}
+
+/// Calculate the duration before the specified timeout surpasses the user
+/// headroom zone (and enters the hard headroom zone).
+fn saturating_duration_before_timeout_exhausting_user_headroom<System: Kernel>(
+    timeout: &Timeout<System>,
+    current_time: Time32,
+) -> Time32 {
+    let critical_point = critical_point(current_time);
+
+    let duration_until_violating_critical_point = timeout
+        .at
+        .load(Ordering::Relaxed)
+        .wrapping_sub(critical_point);
+
+    duration_until_violating_critical_point.saturating_sub(HARD_HEADROOM)
 }
 
 /// Register the specified timeout.
