@@ -676,16 +676,13 @@ pub(super) fn handle_tick<System: Kernel>() {
     // `pend_next_tick` made by timeout handlers.
     g_timeout.handle_tick_in_progress.replace(&mut *lock, true);
 
-    // Process expired timeouts
-    loop {
-        // Check the top element (representing the earliest timeout) in the heap
-        let timeout = if let Some(&timeout_ref) = g_timeout.heap.read(&*lock).get(0) {
-            // Safety: `timeout_ref` is in the heap, meaning the pointee is valid
-            unsafe { &*timeout_ref.0.as_ptr() }
-        } else {
-            // The heap is empty
-            break;
-        };
+    // Process expired timeouts.
+    //
+    // For each iteration, check the top element (representing the earliest
+    // timeout) in the heap. Exit from the loop if the heap is empty.
+    while let Some(&timeout_ref) = g_timeout.heap.read(&*lock).get(0) {
+        // Safety: `timeout_ref` is in the heap, meaning the pointee is valid
+        let timeout = unsafe { &*timeout_ref.0.as_ptr() };
 
         // How much time do we have before `timeout` becomes overdue?
         let remaining = saturating_duration_until_timeout(timeout, current_time);
