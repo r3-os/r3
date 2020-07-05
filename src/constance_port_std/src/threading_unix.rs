@@ -269,3 +269,46 @@ fn ok_or_errno(x: c_int) -> Result<c_int, errno::Errno> {
         Err(errno::errno())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{thread::sleep, time::Duration};
+
+    /// Make sure that the child thread dereferences `ThreadData` when it exits
+    /// by returning.
+    #[test]
+    fn returning_releases_thread_data() {
+        let jh = spawn(|| {
+            assert_eq!(Arc::strong_count(&current().data), 3);
+            assert_eq!(Arc::strong_count(&current().data), 3);
+        });
+
+        // Wait until the child thread exits
+        sleep(Duration::from_millis(200));
+
+        // `jh` should be the sole owner of `ThreadData` now
+        assert_eq!(Arc::strong_count(&jh.thread.data), 1);
+    }
+
+    /// Make sure that the child thread dereferences `ThreadData` when it exits
+    /// by `exit_thread`.
+    ///
+    /// This property is important because that's the sole way for our task
+    /// thread to exit, and `ThreadData` includes file descriptors, which are
+    /// (relatively) scarce resources.
+    #[test]
+    fn exit_thread_releases_thread_data() {
+        let jh = spawn(|| {
+            assert_eq!(Arc::strong_count(&current().data), 3);
+            assert_eq!(Arc::strong_count(&current().data), 3);
+            unsafe { exit_thread() };
+        });
+
+        // Wait until the child thread exits
+        sleep(Duration::from_millis(200));
+
+        // `jh` should be the sole owner of `ThreadData` now
+        assert_eq!(Arc::strong_count(&jh.thread.data), 1);
+    }
+}
