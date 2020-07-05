@@ -1,11 +1,13 @@
+//! Threading library similar to `std::thread` but supporting the remote park
+//! operation ([`Thread::park`]).
 use parking_lot::Mutex;
 use std::{
     mem::MaybeUninit,
     os::raw::c_int,
     ptr::null_mut,
     sync::{
-        atomic::{AtomicPtr, Ordering},
-        Arc,
+        atomic::{AtomicPtr, AtomicUsize, Ordering},
+        Arc, Once,
     },
     thread,
 };
@@ -35,6 +37,8 @@ pub fn spawn<T: 'static + Send>(f: impl FnOnce() -> T + Send + 'static) -> JoinH
     let std_handle = thread::spawn(move || {
         // Set up a destructor for `THREAD_DATA`
         THREAD_DATA_DTOR.with(|_| {});
+
+        data2.set_self();
 
         // Move `data2` into `THREAD_DATA`
         THREAD_DATA.store(Arc::into_raw(data2) as _, Ordering::Relaxed);
@@ -95,6 +99,7 @@ pub struct Thread {
 struct ThreadData {
     park_sock: [c_int; 2],
     park_lock: Mutex<()>,
+    pthread_id: AtomicUsize,
 }
 
 impl ThreadData {
@@ -114,6 +119,7 @@ impl ThreadData {
         let this = Self {
             park_sock,
             park_lock: Mutex::new(()),
+            pthread_id: AtomicUsize::new(0),
         };
 
         // Enable non-blocking I/O
@@ -127,6 +133,12 @@ impl ThreadData {
         .unwrap();
 
         this
+    }
+
+    /// Assign `self.pthread_id` using `pthread_self`.
+    fn set_self(&self) {
+        self.pthread_id
+            .store(unsafe { libc::pthread_self() }, Ordering::Relaxed);
     }
 
     /// Get the FD to read a park token.
@@ -161,6 +173,8 @@ pub fn current() -> Thread {
 
         // Set up a destructor for `THREAD_DATA`
         THREAD_DATA_DTOR.with(|_| {});
+
+        data.set_self();
 
         data
     } else {
@@ -251,7 +265,57 @@ impl Thread {
         .unwrap();
     }
 
-    // TODO: `park` (remote park)
+    /// Force the thread to park.
+    ///
+    /// The effect is equivalent to calling `park` on the target thread.
+    /// However, this method can be called from any thread. (I call this “remote
+    /// park”.)
+    ///
+    /// The result is unspecified if the thread has already exited.
+    pub fn park(&self) {
+        // Make sure the signal handler is registered
+        static SIGNAL_HANDLER_ONCE: Once = Once::new();
+        SIGNAL_HANDLER_ONCE.call_once(register_remote_park_signal_handler);
+
+        let pthread_id = self.data.pthread_id.load(Ordering::Relaxed);
+
+        // Raise the signal `SIGNAL_REMOTE_PARK`. This will force the target
+        // thread to execute `remote_park_signal_handler`.
+        ok_or_errno(unsafe { libc::pthread_kill(pthread_id, SIGNAL_REMOTE_PARK) }).unwrap();
+    }
+}
+
+const SIGNAL_REMOTE_PARK: c_int = libc::SIGUSR1;
+
+/// Register the signal handler for `SIGNAL_REMOTE_PARK`.
+#[cold]
+fn register_remote_park_signal_handler() {
+    ok_or_errno(unsafe {
+        libc::sigaction(
+            SIGNAL_REMOTE_PARK,
+            &libc::sigaction {
+                sa_sigaction: remote_park_signal_handler as libc::sighandler_t,
+                sa_mask: 0,
+                sa_flags: libc::SA_SIGINFO,
+            },
+            null_mut(),
+        )
+    })
+    .unwrap();
+
+    /// The signal handler for `SIGNAL_REMOTE_PARK`.
+    extern "C" fn remote_park_signal_handler(
+        _signo: c_int,
+        _: *mut libc::siginfo_t,
+        _: *mut libc::ucontext_t,
+    ) {
+        let current_ptr = THREAD_DATA.load(Ordering::Relaxed);
+        assert!(!current_ptr.is_null());
+        let current = unsafe { &*current_ptr };
+
+        // Park the current thread
+        park_inner(current);
+    }
 }
 
 fn isize_ok_or_errno(x: isize) -> Result<isize, errno::Errno> {
