@@ -98,7 +98,6 @@ pub struct Thread {
 #[derive(Debug)]
 struct ThreadData {
     park_sock: [c_int; 2],
-    park_lock: Mutex<()>,
     pthread_id: AtomicUsize,
 }
 
@@ -118,11 +117,11 @@ impl ThreadData {
 
         let this = Self {
             park_sock,
-            park_lock: Mutex::new(()),
             pthread_id: AtomicUsize::new(0),
         };
 
         // Enable non-blocking I/O
+        // TODO: Non-blocking I/O isn't necessary anymore - just let `recv` block
         ok_or_errno(unsafe {
             libc::fcntl(
                 this.park_sock_token_source(),
@@ -238,29 +237,17 @@ impl Thread {
         self.std_thread.id()
     }
 
+    /// Make a new park token available for the thread.
+    ///
+    /// Unlike [`std::thread::Thread::unpark`], **a thread can have multiple
+    /// tokens**. Each call to `park` will consume one token. The maximum number
+    /// of tokens a thread can have is unspecified.
     pub fn unpark(&self) {
         let data = &self.data;
-        let _guard = data.park_lock.lock();
-
-        let mut buf = 0u8;
-
-        // Discard any preexisting token. There can be only up to one token
-        // because of the use of `park_lock`.
-        match isize_ok_or_errno(unsafe {
-            libc::recv(
-                data.park_sock_token_source(),
-                (&mut buf) as *mut _ as _,
-                1,
-                0,
-            )
-        }) {
-            Ok(_) | Err(errno::Errno(libc::EAGAIN)) => {}
-            Err(e) => panic!("failed to evict park token: {}", e),
-        }
 
         // Make a token available
         isize_ok_or_errno(unsafe {
-            libc::send(data.park_sock_token_sink(), (&buf) as *const _ as _, 1, 0)
+            libc::send(data.park_sock_token_sink(), &0u8 as *const _ as _, 1, 0)
         })
         .unwrap();
     }
