@@ -16,6 +16,7 @@ constance_test_suite = { path = "../constance_test_suite" }
 
 [target."cfg(unix)".dependencies]
 libc = "0.2.71"
+errno = "0.2.5"
 
 [target."cfg(windows)".dependencies]
 winapi = { version = "0.3.8", features = ["processthreadsapi"] }

@@ -32,6 +32,9 @@ mod threading;
 #[path = "threading_win.rs"]
 mod threading;
 
+#[cfg(test)]
+mod threading_test;
+
 /// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate constance;
