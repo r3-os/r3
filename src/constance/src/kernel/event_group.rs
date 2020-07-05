@@ -6,7 +6,7 @@ use core::{
 };
 
 use super::{
-    state, task, utils,
+    state, task, timeout, utils,
     wait::{WaitPayload, WaitQueue},
     BadIdError, GetEventGroupError, Id, Kernel, Port, UpdateEventGroupError, WaitEventGroupError,
     WaitEventGroupTimeoutError,
@@ -151,11 +151,16 @@ impl<System: Kernel> EventGroup<System> {
     /// [`wait`](Self::wait) with timeout.
     pub fn wait_timeout(
         self,
-        _bits: EventGroupBits,
-        _flags: EventGroupWaitFlags,
-        _timeout: Duration,
+        bits: EventGroupBits,
+        flags: EventGroupWaitFlags,
+        timeout: Duration,
     ) -> Result<EventGroupBits, WaitEventGroupTimeoutError> {
-        todo!()
+        let time32 = timeout::time32_from_duration(timeout)?;
+        let lock = utils::lock_cpu::<System>()?;
+        state::expect_waitable_context::<System>()?;
+        let event_group_cb = self.event_group_cb()?;
+
+        wait_timeout(event_group_cb, lock, bits, flags, time32)
     }
 }
 
@@ -202,6 +207,37 @@ fn wait<System: Kernel>(
                 flags,
                 orig_bits: Init::INIT,
             },
+        )?;
+
+        // The original value will be copied to `orig_bits`
+        if let WaitPayload::EventGroupBits { orig_bits, .. } = result {
+            Ok(orig_bits.load(Ordering::Relaxed))
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+fn wait_timeout<System: Kernel>(
+    event_group_cb: &'static EventGroupCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+    bits: EventGroupBits,
+    flags: EventGroupWaitFlags,
+    time32: timeout::Time32,
+) -> Result<EventGroupBits, WaitEventGroupTimeoutError> {
+    if let Some(original_value) = poll_core(event_group_cb.bits.write(&mut *lock), bits, flags) {
+        Ok(original_value)
+    } else {
+        // The current state does not satify the wait condition. In this case,
+        // start waiting. The wake-upper is responsible for using `poll_core`.
+        let result = event_group_cb.wait_queue.wait_timeout(
+            lock.borrow_mut(),
+            WaitPayload::EventGroupBits {
+                bits,
+                flags,
+                orig_bits: Init::INIT,
+            },
+            time32,
         )?;
 
         // The original value will be copied to `orig_bits`

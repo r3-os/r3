@@ -404,7 +404,7 @@ define_error! {
     /// Error type for [`EventGroup::wait_timeout`].
     ///
     /// [`EventGroup::wait_timeout`]: super::EventGroup::wait_timeout
-    pub enum WaitEventGroupTimeoutError: BadContextError, BadIdError, WaitTimeoutError {
+    pub enum WaitEventGroupTimeoutError: BadContextError, BadIdError, WaitTimeoutError, BadParamError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].

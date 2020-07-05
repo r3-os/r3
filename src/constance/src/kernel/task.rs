@@ -3,13 +3,16 @@ use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, mem, sync::atomic::
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, state, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
-    GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, Port,
-    PortThreading, UnparkError, UnparkExactError, WaitTimeoutError,
+    hunk::Hunk, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
+    GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, ParkTimeoutError,
+    Port, PortThreading, UnparkError, UnparkExactError, WaitTimeoutError,
 };
-use crate::utils::{
-    intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
-    Init, PrioBitmap,
+use crate::{
+    time::Duration,
+    utils::{
+        intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
+        Init, PrioBitmap,
+    },
 };
 
 #[cfg_attr(doc, svgbobdoc::transform)]
@@ -701,6 +704,27 @@ pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
 
     // Wait until woken up by `unpark_exact`
     wait::wait_no_queue(lock.borrow_mut(), wait::WaitPayload::Park)?;
+
+    Ok(())
+}
+
+/// Implements [`Kernel::park_timeout`].
+pub(super) fn park_current_task_timeout<System: Kernel>(
+    timeout: Duration,
+) -> Result<(), ParkTimeoutError> {
+    let time32 = timeout::time32_from_duration(timeout)?;
+    let mut lock = utils::lock_cpu::<System>()?;
+    state::expect_waitable_context::<System>()?;
+
+    let running_task = System::state().running_task().unwrap();
+
+    // If the task already has a park token, return immediately
+    if running_task.park_token.replace(&mut *lock, false) {
+        return Ok(());
+    }
+
+    // Wait until woken up by `unpark_exact`
+    wait::wait_no_queue_timeout(lock.borrow_mut(), wait::WaitPayload::Park, time32)?;
 
     Ok(())
 }
