@@ -89,9 +89,7 @@ impl<T: VecLike> BinaryHeap for T {
         assert!(i < slice.len());
 
         // Safety: `i` points to an element within `slice`.
-        let pos = unsafe { sift_up(slice, 0, i, ctx) };
-
-        pos
+        unsafe { sift_up(slice, 0, i, ctx) }
     }
 }
 
