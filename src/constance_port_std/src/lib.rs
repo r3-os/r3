@@ -1,4 +1,5 @@
 #![feature(const_fn)]
+#![feature(thread_local)]
 #![feature(external_doc)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![doc(include = "./lib.md")]
@@ -20,7 +21,6 @@ use std::{
     collections::{BTreeSet, HashMap},
     mem::{replace, ManuallyDrop},
     sync::atomic::AtomicU8,
-    thread::{self, JoinHandle},
     time::Instant,
 };
 
@@ -55,7 +55,7 @@ pub const NUM_INTERRUPT_LINES: usize = 1024;
 #[doc(hidden)]
 pub struct State {
     cpu_lock: AtomicBool,
-    dispatcher: AtomicRef<'static, thread::Thread>,
+    dispatcher: AtomicRef<'static, threading::Thread>,
     dispatcher_pending: AtomicBool,
     panic_payload: Mutex<Option<Box<dyn Any + Send>>>,
     int_state: Mutex<Option<IntState>>,
@@ -66,7 +66,7 @@ pub struct State {
 
 #[derive(Debug)]
 pub struct TaskState {
-    thread: ManuallyDrop<Mutex<Option<JoinHandle<()>>>>,
+    thread: ManuallyDrop<Mutex<Option<threading::JoinHandle<()>>>>,
     tsm: AtomicU8,
 }
 
@@ -142,7 +142,7 @@ impl TaskState {
     fn assert_current_thread(&self) {
         // `self` must represent the current thread
         assert_eq!(
-            Some(thread::current().id()),
+            Some(threading::current().id()),
             self.thread.lock().as_ref().map(|jh| jh.thread().id()),
             "`self` is not a current thread"
         );
@@ -160,7 +160,7 @@ impl TaskState {
 
         // Suspend the current thread until woken up
         while self.tsm.load(Ordering::Acquire) != TSM_RUNNING {
-            thread::park();
+            threading::park();
         }
         log::trace!("yield_current({:p}) leave", self);
     }
@@ -171,7 +171,7 @@ impl TaskState {
 
         // `self` must represent the current thread
         assert_eq!(
-            Some(thread::current().id()),
+            Some(threading::current().id()),
             self.thread.lock().as_ref().map(|jh| jh.thread().id()),
             "`self` is not a current thread"
         );
@@ -317,7 +317,7 @@ impl State {
 
         // This thread becomes the dispatcher
         self.dispatcher.store(
-            Some(Box::leak(Box::new(thread::current()))),
+            Some(Box::leak(Box::new(threading::current()))),
             Ordering::Relaxed,
         );
 
@@ -325,7 +325,7 @@ impl State {
 
         loop {
             if !self.dispatcher_pending.swap(false, Ordering::Acquire) {
-                thread::park();
+                threading::park();
                 continue;
             }
 
@@ -392,41 +392,38 @@ impl State {
                 let mut thread_cell = pts.thread.lock();
                 if thread_cell.is_none() {
                     // Start the task's thread
-                    let jh = thread::Builder::new()
-                        .spawn(move || {
-                            THREAD_ROLE.with(|role| role.set(ThreadRole::Task));
+                    let jh = threading::spawn(move || {
+                        THREAD_ROLE.with(|role| role.set(ThreadRole::Task));
 
-                            while pts.tsm.load(Ordering::Acquire) != TSM_RUNNING {
-                                thread::park();
-                            }
+                        while pts.tsm.load(Ordering::Acquire) != TSM_RUNNING {
+                            threading::park();
+                        }
 
-                            assert!(!self.is_cpu_lock_active());
+                        assert!(!self.is_cpu_lock_active());
 
-                            log::debug!("task {:p} is now running", task);
+                        log::debug!("task {:p} is now running", task);
 
-                            let result =
-                                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                                    // Safety: The port can call this
-                                    unsafe {
-                                        (task.attr.entry_point)(task.attr.entry_param);
-                                    }
-                                }));
-
-                            // If the task panics, send the panic info to the
-                            // dispatcher
-                            if let Err(panic_payload) = result {
-                                *self.panic_payload.lock() = Some(panic_payload);
-                            }
-
-                            // Safety: To my knowledge, we have nothing on the
-                            // current thread' stack which are unsafe to
-                            // `forget`. (`libstd`'s thread entry point might
-                            // not be prepared to this, though...)
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            // Safety: The port can call this
                             unsafe {
-                                System::exit_task().unwrap();
+                                (task.attr.entry_point)(task.attr.entry_param);
                             }
-                        })
-                        .unwrap();
+                        }));
+
+                        // If the task panics, send the panic info to the
+                        // dispatcher
+                        if let Err(panic_payload) = result {
+                            *self.panic_payload.lock() = Some(panic_payload);
+                        }
+
+                        // Safety: To my knowledge, we have nothing on the
+                        // current thread' stack which are unsafe to
+                        // `forget`. (`libstd`'s thread entry point might
+                        // not be prepared to this, though...)
+                        unsafe {
+                            System::exit_task().unwrap();
+                        }
+                    });
                     *thread_cell = Some(jh);
                 }
 
