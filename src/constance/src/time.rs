@@ -6,5 +6,6 @@
 //! >
 //! > — [*Don't Hug Me I'm Scared 2 - TIME*](https://www.youtube.com/watch?v=vtkGtXtDlQA)
 mod duration;
+#[allow(clippy::module_inception)]
 mod time;
 pub use self::{duration::*, time::*};
