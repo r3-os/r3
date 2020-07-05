@@ -24,6 +24,12 @@ use std::{
     time::Instant,
 };
 
+#[cfg(unix)]
+#[path = "threading_unix.rs"]
+mod threading;
+
+#[cfg(windows)]
+#[path = "threading_win.rs"]
 mod threading;
 
 /// Used by `use_port!`
