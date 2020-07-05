@@ -297,8 +297,8 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError> {
         task::park_current_task_timeout::<Self>(timeout)
     }
-    fn sleep(_duration: Duration) -> Result<(), SleepError> {
-        todo!()
+    fn sleep(timeout: Duration) -> Result<(), SleepError> {
+        task::put_current_task_on_sleep_timeout::<Self>(timeout)
     }
 }
 

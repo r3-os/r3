@@ -5,7 +5,7 @@ use num_traits::ToPrimitive;
 use super::{
     hunk::Hunk, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
     GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, ParkTimeoutError,
-    Port, PortThreading, UnparkError, UnparkExactError, WaitTimeoutError,
+    Port, PortThreading, SleepError, UnparkError, UnparkExactError, WaitTimeoutError,
 };
 use crate::{
     time::Duration,
@@ -760,5 +760,21 @@ fn unpark_exact<System: Kernel>(
         } else {
             Ok(())
         }
+    }
+}
+
+/// Implements [`Kernel::sleep`].
+pub(super) fn put_current_task_on_sleep_timeout<System: Kernel>(
+    timeout: Duration,
+) -> Result<(), SleepError> {
+    let time32 = timeout::time32_from_duration(timeout)?;
+    let mut lock = utils::lock_cpu::<System>()?;
+    state::expect_waitable_context::<System>()?;
+
+    // Wait until woken up by timeout
+    match wait::wait_no_queue_timeout(lock.borrow_mut(), wait::WaitPayload::Sleep, time32) {
+        Ok(_) => unreachable!(),
+        Err(WaitTimeoutError::Interrupted) => Err(SleepError::Interrupted),
+        Err(WaitTimeoutError::Timeout) => Ok(()),
     }
 }

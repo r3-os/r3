@@ -350,7 +350,7 @@ define_error! {
     /// Error type for [`Kernel::sleep`].
     ///
     /// [`Kernel::sleep`]: super::Kernel::sleep
-    pub enum SleepError: BadContextError {
+    pub enum SleepError: BadContextError, BadParamError {
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
