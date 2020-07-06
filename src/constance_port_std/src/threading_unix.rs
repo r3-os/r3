@@ -98,6 +98,7 @@ pub struct Thread {
 #[derive(Debug)]
 struct ThreadData {
     park_sock: [c_int; 2],
+    park_count: AtomicUsize,
     pthread_id: AtomicUsize,
 }
 
@@ -117,6 +118,7 @@ impl ThreadData {
 
         let this = Self {
             park_sock,
+            park_count: AtomicUsize::new(0),
             pthread_id: AtomicUsize::new(0),
         };
 
@@ -202,7 +204,14 @@ fn park_inner(data: &ThreadData) {
             events: libc::POLLRDNORM,
             revents: 0,
         };
-        let count = ok_or_errno(unsafe { libc::poll(&mut pollfd, 1, c_int::MAX) }).unwrap();
+        let count = match ok_or_errno(unsafe { libc::poll(&mut pollfd, 1, c_int::MAX) }) {
+            Ok(i) => i,
+            Err(errno::Errno(libc::EINTR)) => {
+                // Interrupted while waiting. Try again.
+                continue;
+            }
+            Err(e) => panic!("failed to poll park token: {}", e),
+        };
 
         if count == 0 {
             // It's not available yet. Start waiting again
@@ -266,9 +275,16 @@ impl Thread {
 
         let pthread_id = self.data.pthread_id.load(Ordering::Relaxed);
 
+        self.data.park_count.fetch_add(1, Ordering::Relaxed);
+
         // Raise the signal `SIGNAL_REMOTE_PARK`. This will force the target
         // thread to execute `remote_park_signal_handler`.
         ok_or_errno(unsafe { libc::pthread_kill(pthread_id, SIGNAL_REMOTE_PARK) }).unwrap();
+
+        // Wait until the signal is delivered.
+        while self.data.park_count.load(Ordering::Relaxed) != 0 {
+            std::thread::yield_now();
+        }
     }
 }
 
@@ -283,7 +299,10 @@ fn register_remote_park_signal_handler() {
             &libc::sigaction {
                 sa_sigaction: remote_park_signal_handler as libc::sighandler_t,
                 sa_mask: 0,
-                sa_flags: libc::SA_SIGINFO,
+                // `SA_SIGINFO`: The handler use a three-parameter signature.
+                // `SA_NODEFER`: Do not block the signal while the handler is
+                //               running.
+                sa_flags: libc::SA_SIGINFO | libc::SA_NODEFER,
             },
             null_mut(),
         )
@@ -300,8 +319,27 @@ fn register_remote_park_signal_handler() {
         assert!(!current_ptr.is_null());
         let current = unsafe { &*current_ptr };
 
-        // Park the current thread
-        park_inner(current);
+        loop {
+            let count = current.park_count.load(Ordering::Relaxed);
+            if count == 0 {
+                break;
+            }
+
+            if current
+                .park_count
+                .compare_and_swap(count, count - 1, Ordering::Relaxed)
+                != count
+            {
+                // The read-modify-write sequence has failed - try again
+                // (This can happen because of `SA_NODEFER`, which is important
+                // not to miss any signals received just after exiting this
+                // loop.)
+                continue;
+            }
+
+            // Park the current thread
+            park_inner(current);
+        }
     }
 }
 

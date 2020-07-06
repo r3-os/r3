@@ -84,6 +84,20 @@ fn remote_park() {
 
     sleep(Duration::from_millis(200));
 
+    // Suspend and resume the child thread in a rapid succession
+    for _ in 0..100 {
+        jh.thread().park();
+        jh.thread().unpark();
+    }
+
+    // Check that the child thread is running
+    let i1 = counter.load(Ordering::Relaxed);
+    yield_now();
+    sleep(Duration::from_millis(200));
+    yield_now();
+    let i2 = counter.load(Ordering::Relaxed);
+    assert_ne!(i1, i2);
+
     // Suspend the child thread
     jh.thread().park();
 
