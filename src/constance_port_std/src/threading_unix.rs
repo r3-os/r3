@@ -270,11 +270,11 @@ fn register_remote_park_signal_handler() {
             SIGNAL_REMOTE_PARK,
             &libc::sigaction {
                 sa_sigaction: remote_park_signal_handler as libc::sighandler_t,
-                sa_mask: 0,
                 // `SA_SIGINFO`: The handler use a three-parameter signature.
                 // `SA_NODEFER`: Do not block the signal while the handler is
                 //               running.
                 sa_flags: libc::SA_SIGINFO | libc::SA_NODEFER,
+                ..std::mem::zeroed()
             },
             null_mut(),
         )
