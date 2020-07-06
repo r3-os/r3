@@ -122,17 +122,6 @@ impl ThreadData {
             pthread_id: AtomicUsize::new(0),
         };
 
-        // Enable non-blocking I/O
-        // TODO: Non-blocking I/O isn't necessary anymore - just let `recv` block
-        ok_or_errno(unsafe {
-            libc::fcntl(
-                this.park_sock_token_source(),
-                libc::F_SETFL,
-                libc::O_NONBLOCK,
-            )
-        })
-        .unwrap();
-
         this
     }
 
@@ -195,34 +184,12 @@ pub fn park() {
 }
 
 fn park_inner(data: &ThreadData) {
-    let mut buf = 0u8;
-
     loop {
-        // Block the current thread until the token becomes available
-        let mut pollfd = libc::pollfd {
-            fd: data.park_sock_token_source(),
-            events: libc::POLLRDNORM,
-            revents: 0,
-        };
-        let count = match ok_or_errno(unsafe { libc::poll(&mut pollfd, 1, c_int::MAX) }) {
-            Ok(i) => i,
-            Err(errno::Errno(libc::EINTR)) => {
-                // Interrupted while waiting. Try again.
-                continue;
-            }
-            Err(e) => panic!("failed to poll park token: {}", e),
-        };
-
-        if count == 0 {
-            // It's not available yet. Start waiting again
-            continue;
-        }
-
-        // Take the token
+        // Take the token (blocking)
         match isize_ok_or_errno(unsafe {
             libc::recv(
                 data.park_sock_token_source(),
-                (&mut buf) as *mut _ as _,
+                (&mut 0u8) as *mut _ as _,
                 1,
                 0,
             )
@@ -231,6 +198,10 @@ fn park_inner(data: &ThreadData) {
             Ok(0) | Err(errno::Errno(libc::EAGAIN)) => {
                 // It was a spurious wakeup (this can be caused by how `unpark`
                 // is implemented). Try again.
+                continue;
+            }
+            Err(errno::Errno(libc::EINTR)) => {
+                // Interrupted while waiting. Try again.
                 continue;
             }
             Ok(i) => panic!("unexpected return value: {}", i),
