@@ -1,5 +1,7 @@
 use std::sync::atomic;
 
+pub mod iterpool;
+
 pub trait HasAtomicEquivalent {
     type AtomicEquivalent;
 }

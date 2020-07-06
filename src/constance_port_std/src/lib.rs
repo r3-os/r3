@@ -35,6 +35,7 @@ mod threading;
 #[cfg(test)]
 mod threading_test;
 
+mod ums;
 mod utils;
 
 /// Used by `use_port!`
