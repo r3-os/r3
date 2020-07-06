@@ -1,5 +1,6 @@
 //! Threading library similar to `std::thread` but supporting the remote park
 //! operation ([`Thread::park`]).
+use crate::utils::Atomic;
 use parking_lot::Mutex;
 use std::{
     mem::MaybeUninit,
@@ -99,7 +100,7 @@ pub struct Thread {
 struct ThreadData {
     park_sock: [c_int; 2],
     park_count: AtomicUsize,
-    pthread_id: AtomicUsize,
+    pthread_id: Atomic<libc::pthread_t>,
 }
 
 impl ThreadData {
@@ -119,7 +120,7 @@ impl ThreadData {
         let this = Self {
             park_sock,
             park_count: AtomicUsize::new(0),
-            pthread_id: AtomicUsize::new(0),
+            pthread_id: Atomic::<libc::pthread_t>::new(0),
         };
 
         this

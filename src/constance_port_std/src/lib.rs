@@ -35,6 +35,8 @@ mod threading;
 #[cfg(test)]
 mod threading_test;
 
+mod utils;
+
 /// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate constance;
