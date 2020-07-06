@@ -270,10 +270,8 @@ fn register_remote_park_signal_handler() {
             SIGNAL_REMOTE_PARK,
             &libc::sigaction {
                 sa_sigaction: remote_park_signal_handler as libc::sighandler_t,
-                // `SA_SIGINFO`: The handler use a three-parameter signature.
-                // `SA_NODEFER`: Do not block the signal while the handler is
-                //               running.
-                sa_flags: libc::SA_SIGINFO | libc::SA_NODEFER,
+                // `SA_SIGINFO`: The handler uses the three-parameter signature.
+                sa_flags: libc::SA_SIGINFO,
                 ..std::mem::zeroed()
             },
             null_mut(),
@@ -291,23 +289,8 @@ fn register_remote_park_signal_handler() {
         assert!(!current_ptr.is_null());
         let current = unsafe { &*current_ptr };
 
-        loop {
-            let count = current.park_count.load(Ordering::Relaxed);
-            if count == 0 {
-                break;
-            }
-
-            if current
-                .park_count
-                .compare_and_swap(count, count - 1, Ordering::Relaxed)
-                != count
-            {
-                // The read-modify-write sequence has failed - try again
-                // (This can happen because of `SA_NODEFER`, which is important
-                // not to miss any signals received just after exiting this
-                // loop.)
-                continue;
-            }
+        while current.park_count.load(Ordering::Relaxed) != 0 {
+            current.park_count.fetch_sub(1, Ordering::Relaxed);
 
             // Park the current thread
             park_inner(current);
