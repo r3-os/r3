@@ -52,10 +52,6 @@ This port fully supports [the standard interrupt handling framework].
 
 ## Implementation
 
-All interrupt handlers execute in the main thread. Whenever an interrupt is pended or enabled, preemption checking code will run, and under the right condition, will yield the control to the dispatcher.
-
-The dispatcher loop handles top-level interrupts and calls the interrupt handlers directly.
-
-In an interrupt handler, the preemption checking code handles nested interrupts and calls their interrupt handlers.
+Based on the internal user-mode scheduling (UMS) framework, we treat interrupt handlers as UMS worker threads, just like tasks and the dispatcher. The user-mode scheduler manages active interrupt threads and favors them over other kinds of threads. (In contrast, the scheduler doesn't manage tasks - it only knows which task is currently chosen by the operating system.)
 
 **To be implemented:** True asynchronous interrupts aren't supported yet.

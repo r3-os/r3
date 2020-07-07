@@ -1,5 +1,6 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
+//! TODO: This description is wrong
 use constance::{
     kernel::{Hunk, InterruptHandler, InterruptLine, Task},
     prelude::*,

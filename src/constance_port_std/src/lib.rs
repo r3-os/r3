@@ -14,13 +14,11 @@ use constance::{
     prelude::*,
     utils::intrusive_list::StaticListHead,
 };
+use once_cell::sync::OnceCell;
 use parking_lot::{lock_api::RawMutex, Mutex};
 use std::{
-    any::Any,
     cell::Cell,
     collections::{BTreeSet, HashMap},
-    mem::{replace, ManuallyDrop},
-    sync::atomic::AtomicU8,
     time::Instant,
 };
 
@@ -60,29 +58,49 @@ pub const NUM_INTERRUPT_LINES: usize = 1024;
 /// the corresponding trait methods of `Port*`.
 #[doc(hidden)]
 pub struct State {
-    cpu_lock: AtomicBool,
-    dispatcher: AtomicRef<'static, threading::Thread>,
-    dispatcher_pending: AtomicBool,
-    panic_payload: Mutex<Option<Box<dyn Any + Send>>>,
-    int_state: Mutex<Option<IntState>>,
-    /// When handling an interrupt, this field tracks the interrupt priority.
-    active_int_priority: Mutex<InterruptPriority>,
+    thread_group: OnceCell<ums::ThreadGroup<SchedState>>,
+    join_handle: Mutex<Option<ums::ThreadGroupJoinHandle>>,
+    dispatch_pending: AtomicBool,
     origin: AtomicRef<'static, Instant>,
 }
 
 #[derive(Debug)]
 pub struct TaskState {
-    thread: ManuallyDrop<Mutex<Option<threading::JoinHandle<()>>>>,
-    tsm: AtomicU8,
+    tsm: Mutex<Tsm>,
 }
 
-/// The state of the simulated interrupt controller.
-#[derive(Debug)]
-struct IntState {
+/// Task state machine
+///
+/// These don't exactly align with the task states defined in the kernel.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum Tsm {
+    /// The task's context state is not initialized. The kernel has to call
+    /// `initialize_task_state` first before choosing this task as `running_task`.
+    Uninit,
+    /// The task's context state is initialized but hasn't started running.
+    Dormant,
+    /// The task is currently running.
+    Running(ums::ThreadId),
+}
+
+/// The state of the simulated hardware-based scheduler.
+struct SchedState {
+    /// Interrupt lines.
     int_lines: HashMap<InterruptNum, IntLine>,
     /// `int_lines.iter().filter(|_,a| a.pended && a.enable)
     /// .map(|i,a| (a.priority, i)).collect()`.
     pended_lines: BTreeSet<(InterruptPriority, InterruptNum)>,
+    active_int_handlers: Vec<(InterruptPriority, ums::ThreadId)>,
+    cpu_lock: bool,
+
+    dispatcher_thread: Option<ums::ThreadId>,
+    dispatcher_active: bool,
+
+    /// The currently-selected task thread.
+    task_thread: Option<ums::ThreadId>,
+
+    /// Garbage can
+    zombies: Vec<ums::ThreadId>,
 }
 
 /// The configuration of an interrupt line.
@@ -93,20 +111,6 @@ struct IntLine {
     enable: bool,
     pended: bool,
 }
-
-// Task state machine
-//
-// These don't exactly align with the task states defined in the kernel.
-//
-/// The task's context state is not initialized. The kernel has to call
-/// `initialize_task_state` first before choosing this task as `running_task`.
-const TSM_UNINIT: u8 = 0;
-/// The task's context state is initialized but hasn't started running.
-const TSM_DORMANT: u8 = 1;
-/// The task is currently running.
-const TSM_RUNNING: u8 = 2;
-/// The task is currently suspended.
-const TSM_READY: u8 = 3;
 
 impl Init for TaskState {
     const INIT: Self = Self::new();
@@ -125,8 +129,8 @@ impl Init for IntLine {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ThreadRole {
     Unknown,
-    /// The main thread, on which dispatcher and interrupt handlers execute.
-    Main,
+    /// The backing thread for an interrupt context.
+    Interrupt,
     /// The backing thread for a task.
     Task,
 }
@@ -140,71 +144,60 @@ thread_local! {
 impl TaskState {
     pub const fn new() -> Self {
         Self {
-            thread: ManuallyDrop::new(Mutex::const_new(RawMutex::INIT, None)),
-            tsm: AtomicU8::new(TSM_UNINIT),
+            tsm: Mutex::const_new(RawMutex::INIT, Tsm::Uninit),
         }
     }
 
     fn assert_current_thread(&self) {
         // `self` must represent the current thread
-        assert_eq!(
-            Some(threading::current().id()),
-            self.thread.lock().as_ref().map(|jh| jh.thread().id()),
-            "`self` is not a current thread"
-        );
-    }
-
-    /// Yield the current task `self` and invoke the dispatcher.
-    fn yield_current(&self, state: &State) {
-        log::trace!("yield_current({:p}) enter", self);
-        self.assert_current_thread();
-
-        self.tsm.store(TSM_READY, Ordering::Release);
-
-        // Unpark the dispatcher
-        state.invoke_dispatcher();
-
-        // Suspend the current thread until woken up
-        while self.tsm.load(Ordering::Acquire) != TSM_RUNNING {
-            threading::park();
-        }
-        log::trace!("yield_current({:p}) leave", self);
+        // TODO
     }
 
     unsafe fn exit_and_dispatch(&self, state: &State) -> ! {
         log::trace!("exit_and_dispatch({:p}) enter", self);
         self.assert_current_thread();
 
-        // `self` must represent the current thread
-        assert_eq!(
-            Some(threading::current().id()),
-            self.thread.lock().as_ref().map(|jh| jh.thread().id()),
-            "`self` is not a current thread"
-        );
+        let mut lock = state.thread_group.get().unwrap().lock();
 
-        // Remove itself from `self.thread`
-        let mut thread_cell = self.thread.lock();
-        *thread_cell = None;
-        self.tsm.store(TSM_UNINIT, Ordering::Release);
-        drop(thread_cell);
+        // Dissociate this thread from the task.
+        let thread_id = match std::mem::replace(&mut *self.tsm.lock(), Tsm::Uninit) {
+            Tsm::Running(thread_id) => thread_id,
+            _ => unreachable!(),
+        };
 
-        // Unpark the dispatcher
-        state.invoke_dispatcher();
+        // Make sure this thread will run to completion.
+        //
+        // Running all threads to completion is a prerequisite for a clean
+        // shutdown. Shutdown will not complete if there are running threads.
+        //
+        // At this point, the thread is already dissociated from the task, so
+        // the kernel will never choose this task again. However, the underlying
+        // UMS thread is still alive. Thus, we need to temporarily override the
+        // normal scheduling to ensure this thread will run to completion.
+        lock.scheduler().zombies.push(thread_id);
+        lock.scheduler().cpu_lock = false;
+        drop(lock);
+
+        state.pend_dispatch();
 
         log::trace!("exit_and_dispatch({:p}) calling exit_thread", self);
-        unsafe {
-            threading::exit_thread();
-        }
+        unsafe { ums::exit_thread() };
     }
 }
 
 struct BadIntLineError;
 
-impl IntState {
+impl SchedState {
     fn new<System: Kernel>() -> Self {
         let mut this = Self {
             int_lines: HashMap::new(),
             pended_lines: BTreeSet::new(),
+            active_int_handlers: Vec::new(),
+            cpu_lock: true,
+            dispatcher_thread: None,
+            dispatcher_active: false,
+            task_thread: None,
+            zombies: Vec::new(),
         };
 
         for i in 0..NUM_INTERRUPT_LINES {
@@ -250,63 +243,155 @@ impl IntState {
             Ok(false)
         }
     }
+}
 
-    fn highest_pended_priority(&self) -> Option<InterruptPriority> {
-        self.pended_lines.iter().next().map(|&(pri, _)| pri)
+impl ums::Scheduler for SchedState {
+    fn choose_next_thread(&mut self) -> Option<ums::ThreadId> {
+        if let Some(&thread_id) = self.zombies.first() {
+            // Clean up zombie threads as soon as possible
+            Some(thread_id)
+        } else if let Some(&(_, thread_id)) = self.active_int_handlers.last() {
+            Some(thread_id)
+        } else if self.cpu_lock {
+            // CPU Lock owned by a task thread
+            Some(self.task_thread.unwrap())
+        } else if self.dispatcher_active {
+            Some(self.dispatcher_thread.unwrap())
+        } else {
+            self.task_thread
+        }
     }
 
-    fn take_highest_pended_priority(
-        &mut self,
-    ) -> Option<(
-        InterruptNum,
-        InterruptPriority,
-        kernel::cfg::InterruptHandlerFn,
-    )> {
-        let (pri, num) = self.pended_lines.iter().next().cloned()?;
-        self.pended_lines.remove(&(pri, num));
+    fn thread_exited(&mut self, thread_id: ums::ThreadId) {
+        if self.active_int_handlers.last().map(|x| x.1) == Some(thread_id) {
+            log::trace!("an interrupt handler exited");
+            self.active_int_handlers.pop();
+            return;
+        }
+
+        if let Some(i) = self.zombies.iter().position(|id| *id == thread_id) {
+            log::trace!("removing the zombie thread {:?}", thread_id);
+            self.zombies.swap_remove(i);
+            return;
+        }
+
+        if self.dispatcher_thread == Some(thread_id) {
+            // Currently, this only happens when the dispatcher thread panics
+            log::trace!("removing the dispatcher thread {:?}", thread_id);
+            self.dispatcher_thread = None;
+        }
+
+        log::warn!("thread_exited: unexpected thread {:?}", thread_id);
+    }
+}
+
+/// Check for any pending interrupts that can be activated under the current
+/// condition. If there are one or more of them, activate them and return
+/// `true`, in which case the caller should call
+/// [`ums::ThreadGroupLockGuard::preempt`] or [`ums::yield_now`].
+#[must_use]
+fn check_preemption_by_interrupt(lock: &mut ums::ThreadGroupLockGuard<SchedState>) -> bool {
+    let mut activated_any = false;
+
+    // Check pending interrupts
+    loop {
+        let sched_state = lock.scheduler();
+
+        // Find the highest pended priority
+        let (pri, num) = if let Some(&x) = sched_state.pended_lines.iter().next() {
+            x
+        } else {
+            // No interrupt is pended
+            break;
+        };
+
+        // Masking by CPU Lock
+        if sched_state.cpu_lock && is_interrupt_priority_managed(pri) {
+            log::trace!(
+                "not handling an interrupt with priority {} because of CPU Lock",
+                pri
+            );
+            break;
+        }
+
+        // Masking by an already active interrupt
+        if let Some(&(existing_pri, _)) = sched_state.active_int_handlers.last() {
+            if existing_pri < pri {
+                log::trace!(
+                    "not handling an interrupt with priority {} because of \
+                        an active interrupt handler with priority {}",
+                    pri,
+                    existing_pri,
+                );
+                break;
+            }
+        }
+
+        // Take the interrupt
+        sched_state.pended_lines.remove(&(pri, num));
 
         // Find the interrupt handler for `num`. Return
         // `default_interrupt_handler` if there's none.
-        let start = self
+        let start = sched_state
             .int_lines
             .get(&num)
             .and_then(|line| line.start)
-            .unwrap_or(Self::default_interrupt_handler);
+            .unwrap_or(default_interrupt_handler);
 
-        Some((num, pri, start))
+        let thread_id = lock.spawn(move |_| {
+            THREAD_ROLE.with(|role| role.set(ThreadRole::Interrupt));
+
+            // Safety: The port can call an interrupt handler
+            unsafe { start() }
+        });
+
+        log::trace!(
+            "handling an interrupt {} (priority = {}) with thread {:?}",
+            num,
+            pri,
+            thread_id
+        );
+
+        lock.scheduler().active_int_handlers.push((pri, thread_id));
+
+        activated_any = true;
     }
 
-    extern "C" fn default_interrupt_handler() {
-        panic!("Unhandled interrupt");
-    }
+    activated_any
+}
+
+fn is_interrupt_priority_managed(p: InterruptPriority) -> bool {
+    p >= 0
+}
+
+extern "C" fn default_interrupt_handler() {
+    panic!("Unhandled interrupt");
 }
 
 #[allow(clippy::missing_safety_doc)]
 impl State {
     pub const fn new() -> Self {
         Self {
-            cpu_lock: AtomicBool::new(true),
-            dispatcher: AtomicRef::new(None),
-            dispatcher_pending: AtomicBool::new(true),
-            panic_payload: Mutex::const_new(RawMutex::INIT, None),
-            int_state: Mutex::const_new(RawMutex::INIT, None),
-            active_int_priority: Mutex::const_new(RawMutex::INIT, 0),
+            thread_group: OnceCell::new(),
+            join_handle: Mutex::const_new(RawMutex::INIT, None),
+            dispatch_pending: AtomicBool::new(false),
             origin: AtomicRef::new(None),
         }
     }
 
     pub fn init<System: Kernel>(&self) {
-        // Register the current thread as the main thread.
-        THREAD_ROLE.with(|role| role.set(ThreadRole::Main));
+        // Create a UMS thread group.
+        let (thread_group, join_handle) = ums::ThreadGroup::new(SchedState::new::<System>());
 
-        // Initialize the interrupt controller
-        *self.int_state.lock() = Some(IntState::new::<System>());
+        self.thread_group.set(thread_group).ok().unwrap();
+        *self.join_handle.lock() = Some(join_handle);
     }
 
-    fn invoke_dispatcher(&self) {
-        let dispatcher = self.dispatcher.load(Ordering::Relaxed).unwrap();
-        self.dispatcher_pending.store(true, Ordering::Release);
-        dispatcher.unpark();
+    fn pend_dispatch(&self) {
+        // TODO: assimilate this system into the simulated interrupt controller, like PendSV from Arm-M
+        let mut lock = self.thread_group.get().unwrap().lock();
+        lock.scheduler().dispatcher_active = true;
+        self.dispatch_pending.store(true, Ordering::Relaxed);
     }
 
     pub unsafe fn dispatch_first_task<System: Kernel>(&'static self) -> !
@@ -318,168 +403,114 @@ impl State {
         log::trace!("dispatch_first_task");
         assert!(self.is_cpu_lock_active());
 
-        // The current thread must be a main thread
-        THREAD_ROLE.with(|role| assert_eq!(role.get(), ThreadRole::Main));
+        // Create a UMS worker thread for the dispatcher
+        let mut lock = self.thread_group.get().unwrap().lock();
+        let dispatcher_thread = lock.spawn(move |_| self.dispatcher_loop::<System>());
+        lock.scheduler().dispatcher_thread = Some(dispatcher_thread);
 
-        // This thread becomes the dispatcher
-        self.dispatcher.store(
-            Some(Box::leak(Box::new(threading::current()))),
-            Ordering::Relaxed,
-        );
+        log::trace!("dispatcher thread is {:?}", dispatcher_thread);
 
-        self.cpu_lock.store(false, Ordering::Relaxed);
+        // Pend dispatch
+        lock.scheduler().dispatcher_active = true;
+        self.dispatch_pending.store(true, Ordering::Relaxed);
+        lock.scheduler().cpu_lock = false;
 
+        // Start scheduling
+        lock.preempt();
+        drop(lock);
+
+        // Wait until the thread group shuts down
+        let join_handle = self.join_handle.lock().take().unwrap();
+        if let Err(e) = join_handle.join() {
+            std::panic::resume_unwind(e);
+        }
+
+        // TODO: Expose a function to shut down the system
+        panic!("the system has been shut down");
+    }
+
+    fn dispatcher_loop<System: Kernel>(&'static self)
+    where
+        System: Port<PortTaskState = TaskState>,
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
+    {
         loop {
-            if !self.dispatcher_pending.swap(false, Ordering::Acquire) {
-                threading::park();
+            if !self.dispatch_pending.swap(false, Ordering::Acquire) {
+                ums::yield_now();
                 continue;
             }
 
-            // This thread can unpark under the following circumstances:
-            //
-            //  1. Voluntary yield by a task thread. CPU Lock is inactive in
-            //     this case.
-            //  2. An interrupt was pended by a task thread. CPU Lock might be
-            //     active in this case.
-            //  3. `dispatch_first_task` was called at boot time. This case is
-            //     reduced to the first case.
-            //
+            unsafe { self.enter_cpu_lock() };
+            unsafe { System::choose_running_task() };
+            unsafe { self.leave_cpu_lock::<System>() };
 
-            // Check pending interrupts
-            while let Some((num, pri, f)) = {
-                let mut int_state = self.int_state.lock();
-                int_state.as_mut().unwrap().take_highest_pended_priority()
-            } {
-                *self.active_int_priority.lock() = pri;
+            let mut lock = self.thread_group.get().unwrap().lock();
 
-                log::trace!(
-                    "handling a top-level interrupt {} (priority = {})",
-                    num,
-                    pri
-                );
-
-                // Safety: The port can call an interrupt handler
-                unsafe { f() };
-            }
-
-            // If one of the tasks panics, resume rewinding in the dispatcher,
-            // thus ensuring the whole program is terminated or a test failure
-            // is reported.
-            if let Some(panic_payload) = self.panic_payload.lock().take() {
-                std::panic::resume_unwind(panic_payload);
-            }
-
-            let has_cpu_lock = self.cpu_lock.load(Ordering::Relaxed);
-
-            if has_cpu_lock {
-                // The dispatcher was invoked to call an unmanaged interrupt
-                // handler. Do not call `choose_running_task` on the way out.
-            } else {
-                // Enable CPU Lock
-                self.cpu_lock.store(true, Ordering::Relaxed);
-
-                // Let the kernel decide the next task to run
-                // Safety: CPU Lock enabled (implied by us being the dispatcher)
-                unsafe {
-                    System::choose_running_task();
-                }
-            }
-
-            // Run that task
-            if let Some(task) = System::state().running_task() {
+            // Tell the scheduler which task to run next
+            lock.scheduler().task_thread = if let Some(task) = System::state().running_task() {
                 log::trace!("dispatching task {:p}", task);
 
-                let pts = &task.port_task_state;
+                let mut tsm = task.port_task_state.tsm.lock();
 
-                // The task must be in `DORMANT` or `READY`.
-                assert_ne!(pts.tsm.load(Ordering::Relaxed), TSM_UNINIT);
-                assert_ne!(pts.tsm.load(Ordering::Relaxed), TSM_RUNNING);
+                match &*tsm {
+                    Tsm::Dormant => {
+                        // Spawn a UMS worker thread for this task
+                        let thread = lock.spawn(move |_| {
+                            assert!(!self.is_cpu_lock_active());
+                            log::debug!("task {:p} is now running", task);
 
-                let mut thread_cell = pts.thread.lock();
-                if thread_cell.is_none() {
-                    // Start the task's thread
-                    let jh = threading::spawn(move || {
-                        THREAD_ROLE.with(|role| role.set(ThreadRole::Task));
+                            THREAD_ROLE.with(|role| role.set(ThreadRole::Task));
 
-                        while pts.tsm.load(Ordering::Acquire) != TSM_RUNNING {
-                            threading::park();
-                        }
-
-                        assert!(!self.is_cpu_lock_active());
-
-                        log::debug!("task {:p} is now running", task);
-
-                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             // Safety: The port can call this
                             unsafe {
                                 (task.attr.entry_point)(task.attr.entry_param);
                             }
-                        }));
 
-                        // If the task panics, send the panic info to the
-                        // dispatcher
-                        if let Err(panic_payload) = result {
-                            *self.panic_payload.lock() = Some(panic_payload);
-                        }
+                            // Safety: To my knowledge, we have nothing on the
+                            // current thread' stack which are unsafe to
+                            // `forget`. (`libstd`'s thread entry point might
+                            // not be prepared to this, though...)
+                            unsafe {
+                                System::exit_task().unwrap();
+                            }
+                        });
 
-                        // Safety: To my knowledge, we have nothing on the
-                        // current thread' stack which are unsafe to
-                        // `forget`. (`libstd`'s thread entry point might
-                        // not be prepared to this, though...)
-                        unsafe {
-                            System::exit_task().unwrap();
-                        }
-                    });
-                    *thread_cell = Some(jh);
+                        log::trace!("spawned thread {:?} for the task {:p}", thread, task);
+
+                        *tsm = Tsm::Running(thread);
+                        Some(thread)
+                    }
+                    Tsm::Running(thread_id) => Some(*thread_id),
+                    Tsm::Uninit => unreachable!(),
                 }
-
-                if !has_cpu_lock {
-                    // Disable CPU Lock
-                    self.cpu_lock.store(false, Ordering::Relaxed);
-                }
-
-                // Unpark the task's thread
-                pts.tsm.store(TSM_RUNNING, Ordering::Release);
-                thread_cell.as_ref().unwrap().thread().unpark();
             } else {
-                // Since we don't have timers or interrupts yet, this means we
-                // are in deadlock
+                // Since we don't have timers or real interrupts yet, this means
+                // we are in deadlock.
                 //
                 // The test code currently relies on this behavior (panic on
                 // deadlock) to exit the dispatcher loop. When we have timers
                 // and interrupts, we need to devise another way to exit the
                 // dispatcher loop.
                 panic!("No task to schedule");
-            }
+            };
+
+            lock.scheduler().dispatcher_active = false;
         }
     }
 
-    pub unsafe fn yield_cpu<System: Kernel>(&self)
-    where
-        System: Port<PortTaskState = TaskState>,
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn yield_cpu<System: Kernel>(&self) {
         log::trace!("yield_cpu");
         assert!(!self.is_cpu_lock_active());
 
-        // The dispatcher will automatically run when the current interrupt
-        // handler returns the control to it
+        self.pend_dispatch();
+
+        // `yield_now` would have no effect in an interrupt context.
         if self.is_interrupt_context() {
             return;
         }
 
-        self.yield_cpu_inner::<System>();
-    }
-
-    fn yield_cpu_inner<System: Kernel>(&self)
-    where
-        System: Port<PortTaskState = TaskState>,
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
-        let task = System::state().running_task().expect("no running task");
-        task.port_task_state.yield_current(self);
+        ums::yield_now();
     }
 
     pub unsafe fn exit_and_dispatch<System: Kernel>(&self, task: &'static TaskCb<System>) -> !
@@ -491,8 +522,6 @@ impl State {
         log::trace!("exit_and_dispatch");
         assert!(self.is_cpu_lock_active());
 
-        unsafe { self.leave_cpu_lock::<System>() };
-
         unsafe {
             task.port_task_state.exit_and_dispatch(self);
         }
@@ -500,21 +529,23 @@ impl State {
 
     pub unsafe fn enter_cpu_lock(&self) {
         log::trace!("enter_cpu_lock");
-        assert!(!self.is_cpu_lock_active());
-        self.cpu_lock.store(true, Ordering::Relaxed);
+
+        let mut lock = self.thread_group.get().unwrap().lock();
+        assert!(!lock.scheduler().cpu_lock);
+        lock.scheduler().cpu_lock = true;
     }
 
-    pub unsafe fn leave_cpu_lock<System: Kernel>(&self)
-    where
-        System: Port<PortTaskState = TaskState>,
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn leave_cpu_lock<System: Kernel>(&self) {
         log::trace!("leave_cpu_lock");
-        assert!(self.is_cpu_lock_active());
-        self.cpu_lock.store(false, Ordering::Relaxed);
 
-        self.check_preemption_by_interrupt::<System>();
+        let mut lock = self.thread_group.get().unwrap().lock();
+        assert!(lock.scheduler().cpu_lock);
+        lock.scheduler().cpu_lock = false;
+
+        if check_preemption_by_interrupt(&mut lock) {
+            drop(lock);
+            ums::yield_now();
+        }
     }
 
     pub unsafe fn initialize_task_state<System: Kernel>(&self, task: &'static TaskCb<System>)
@@ -524,124 +555,48 @@ impl State {
         log::trace!("initialize_task_state {:p}", task);
 
         let pts = &task.port_task_state;
-        match pts.tsm.load(Ordering::Relaxed) {
-            TSM_DORMANT => {}
-            TSM_RUNNING | TSM_READY => {
+        let mut tsm = pts.tsm.lock();
+        match &*tsm {
+            Tsm::Dormant => {}
+            Tsm::Running(_) => {
                 todo!("terminating a thread is not implemented yet");
             }
-            TSM_UNINIT => {
-                pts.tsm.store(TSM_DORMANT, Ordering::Relaxed);
+            Tsm::Uninit => {
+                *tsm = Tsm::Dormant;
             }
-            _ => unreachable!(),
         }
     }
 
     pub fn is_cpu_lock_active(&self) -> bool {
-        self.cpu_lock.load(Ordering::Relaxed)
+        (self.thread_group.get().unwrap().lock())
+            .scheduler()
+            .cpu_lock
     }
 
     pub fn is_interrupt_context(&self) -> bool {
         THREAD_ROLE.with(|role| match role.get() {
-            ThreadRole::Main => true,
+            ThreadRole::Interrupt => true,
             ThreadRole::Task => false,
             _ => panic!("`is_interrupt_context` was called from an unknown thread"),
         })
-    }
-
-    fn is_interrupt_priority_managed(p: InterruptPriority) -> bool {
-        p >= 0
-    }
-
-    /// Check if there's a pending interrupt that can preempt the current thread.
-    /// If there's one, let it preempt immediately.
-    fn check_preemption_by_interrupt<System: Kernel>(&self)
-    where
-        System: Port<PortTaskState = TaskState>,
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
-        let mut int_state_lock = self.int_state.lock();
-        let int_state = int_state_lock.as_mut().unwrap();
-
-        let mut highest_pri = int_state.highest_pended_priority();
-
-        // Masking by CPU Lock
-        if self.is_cpu_lock_active() {
-            if let Some(pri) = highest_pri {
-                if Self::is_interrupt_priority_managed(pri) {
-                    highest_pri = None;
-                }
-            }
-        }
-
-        let highest_pri = if let Some(highest_pri) = highest_pri {
-            highest_pri
-        } else {
-            return;
-        };
-
-        if self.is_interrupt_context() {
-            if highest_pri < *self.active_int_priority.lock() {
-                // Nested activation - call the handler now
-                let (num, _, f) = int_state.take_highest_pended_priority().unwrap();
-                drop(int_state_lock);
-
-                log::trace!(
-                    "being preempted by a nested interrupt {} (priority = {})",
-                    num,
-                    highest_pri
-                );
-
-                let pri = replace(&mut *self.active_int_priority.lock(), highest_pri);
-
-                // Safety: The port can call an interrupt handler
-                unsafe { f() };
-
-                *self.active_int_priority.lock() = pri;
-
-                log::trace!(
-                    "returning from a nested interrupt {} (priority = {})",
-                    num,
-                    highest_pri
-                );
-            } else {
-                log::trace!(
-                    "a nested interrupt with priority {} will not preempt because \
-                    it has a lower priority than the current one ({})",
-                    highest_pri,
-                    *self.active_int_priority.lock()
-                );
-            }
-        } else {
-            // Top-level activation - yield the control to the dispatcher
-            drop(int_state_lock);
-
-            log::trace!(
-                "being preempted by a top-level interrupt (priority = {})",
-                highest_pri
-            );
-
-            self.yield_cpu_inner::<System>();
-        }
     }
 
     pub fn set_interrupt_line_priority<System: Kernel>(
         &self,
         num: InterruptNum,
         priority: InterruptPriority,
-    ) -> Result<(), SetInterruptLinePriorityError>
-    where
-        System: Port<PortTaskState = TaskState>,
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    ) -> Result<(), SetInterruptLinePriorityError> {
         log::trace!("set_interrupt_line_priority{:?}", (num, priority));
 
-        (self.int_state.lock().as_mut().unwrap())
+        let mut lock = self.thread_group.get().unwrap().lock();
+        lock.scheduler()
             .update_line(num, |line| line.priority = priority)
             .map_err(|BadIntLineError| SetInterruptLinePriorityError::BadParam)?;
 
-        self.check_preemption_by_interrupt::<System>();
+        if check_preemption_by_interrupt(&mut lock) {
+            drop(lock);
+            ums::yield_now();
+        }
 
         Ok(())
     }
@@ -649,19 +604,18 @@ impl State {
     pub fn enable_interrupt_line<System: Kernel>(
         &self,
         num: InterruptNum,
-    ) -> Result<(), EnableInterruptLineError>
-    where
-        System: Port<PortTaskState = TaskState>,
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    ) -> Result<(), EnableInterruptLineError> {
         log::trace!("enable_interrupt_line{:?}", (num,));
 
-        (self.int_state.lock().as_mut().unwrap())
+        let mut lock = self.thread_group.get().unwrap().lock();
+        lock.scheduler()
             .update_line(num, |line| line.enable = true)
             .map_err(|BadIntLineError| EnableInterruptLineError::BadParam)?;
 
-        self.check_preemption_by_interrupt::<System>();
+        if check_preemption_by_interrupt(&mut lock) {
+            drop(lock);
+            ums::yield_now();
+        }
 
         Ok(())
     }
@@ -672,7 +626,8 @@ impl State {
     ) -> Result<(), EnableInterruptLineError> {
         log::trace!("disable_interrupt_line{:?}", (num,));
 
-        (self.int_state.lock().as_mut().unwrap())
+        (self.thread_group.get().unwrap().lock())
+            .scheduler()
             .update_line(num, |line| line.enable = false)
             .map_err(|BadIntLineError| EnableInterruptLineError::BadParam)
     }
@@ -680,19 +635,18 @@ impl State {
     pub fn pend_interrupt_line<System: Kernel>(
         &self,
         num: InterruptNum,
-    ) -> Result<(), PendInterruptLineError>
-    where
-        System: Port<PortTaskState = TaskState>,
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    ) -> Result<(), PendInterruptLineError> {
         log::trace!("pend_interrupt_line{:?}", (num,));
 
-        (self.int_state.lock().as_mut().unwrap())
+        let mut lock = self.thread_group.get().unwrap().lock();
+        lock.scheduler()
             .update_line(num, |line| line.pended = true)
             .map_err(|BadIntLineError| PendInterruptLineError::BadParam)?;
 
-        self.check_preemption_by_interrupt::<System>();
+        if check_preemption_by_interrupt(&mut lock) {
+            drop(lock);
+            ums::yield_now();
+        }
 
         Ok(())
     }
@@ -700,7 +654,8 @@ impl State {
     pub fn clear_interrupt_line(&self, num: InterruptNum) -> Result<(), ClearInterruptLineError> {
         log::trace!("clear_interrupt_line{:?}", (num,));
 
-        (self.int_state.lock().as_mut().unwrap())
+        (self.thread_group.get().unwrap().lock())
+            .scheduler()
             .update_line(num, |line| line.pended = false)
             .map_err(|BadIntLineError| ClearInterruptLineError::BadParam)
     }
@@ -709,7 +664,8 @@ impl State {
         &self,
         num: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
-        (self.int_state.lock().as_ref().unwrap())
+        (self.thread_group.get().unwrap().lock())
+            .scheduler()
             .is_line_pended(num)
             .map_err(|BadIntLineError| QueryInterruptLineError::BadParam)
     }
