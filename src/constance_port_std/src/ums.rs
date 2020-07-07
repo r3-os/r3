@@ -53,6 +53,11 @@ pub trait Scheduler: Send + 'static {
     /// It's an error to return an already-exited thread. The client is
     /// responsible for tracking the lifetime of spawned threads.
     fn choose_next_thread(&mut self) -> Option<ThreadId>;
+
+    /// Called when a thread exits.
+    fn thread_exited(&mut self, thread_id: ThreadId) {
+        let _ = thread_id;
+    }
 }
 
 #[derive(Debug)]
@@ -145,6 +150,7 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
 
             // Delete the current thread
             let mut state_guard = state2.lock();
+            state_guard.sched.thread_exited(thread_id);
             state_guard.threads.deallocate(thread_id.0).unwrap();
             state_guard.num_threads -= 1;
 
