@@ -138,6 +138,10 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
     ///  - [`yield_now`]
     ///
     pub fn spawn(&mut self, f: impl FnOnce(ThreadId) + Send + 'static) -> ThreadId {
+        if self.guard.shutting_down && self.guard.num_threads == 0 {
+            panic!("thread group has already been shut down");
+        }
+
         let state = Arc::clone(self.state_ref);
 
         // Allocate a `ThreadId`
