@@ -1,7 +1,6 @@
 //! Threading library similar to `std::thread` but supporting the remote park
 //! operation ([`Thread::park`]).
 use crate::utils::Atomic;
-use parking_lot::Mutex;
 use std::{
     mem::MaybeUninit,
     os::raw::c_int,
