@@ -76,8 +76,14 @@ struct WorkerThread {
 }
 
 thread_local! {
+    static TLB: OnceCell<ThreadLocalBlock> = OnceCell::new();
+}
+
+struct ThreadLocalBlock {
+    /// The current thread ID.
+    thread_id: ThreadId,
     /// The thread group the current worker thread belongs to.
-    static CURRENT_THREAD_GROUP: OnceCell<Arc<Mutex<State<dyn Scheduler>>>> = OnceCell::new();
+    state: Arc<Mutex<State<dyn Scheduler>>>,
 }
 
 impl<Sched: Scheduler> ThreadGroup<Sched> {
@@ -123,6 +129,14 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
     /// store the obtained `ThreadId` in the contained `Sched: `[`Scheduler`]
     /// and have it chosen by [`Scheduler::choose_next_thread`] for the thread
     /// to actually run.
+    ///
+    /// The following functions are avabile for use inside a worker thread. You
+    /// should use them instead of the same named methods defined in other
+    /// places.
+    ///
+    ///  - [`exit_thread`]
+    ///  - [`yield_now`]
+    ///
     pub fn spawn(&mut self, f: impl FnOnce(ThreadId) + Send + 'static) -> ThreadId {
         let state = Arc::clone(self.state_ref);
 
@@ -136,7 +150,11 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
 
         let join_handle = threading::spawn(move || {
             let state2 = Arc::clone(&state);
-            CURRENT_THREAD_GROUP.with(|cell| cell.set(state).ok().unwrap());
+            TLB.with(|cell| {
+                cell.set(ThreadLocalBlock { thread_id, state })
+                    .ok()
+                    .unwrap()
+            });
 
             // Block thw spawned thread until scheduled to run
             threading::park();
@@ -146,32 +164,7 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
                 f(thread_id);
             }));
 
-            log::trace!("{:?} exited with result {:?}", thread_id, result);
-
-            // Delete the current thread
-            let mut state_guard = state2.lock();
-            state_guard.sched.thread_exited(thread_id);
-            state_guard.threads.deallocate(thread_id.0).unwrap();
-            state_guard.num_threads -= 1;
-
-            if let Err(e) = result {
-                // Send the panic payload to the thread group's owner.
-                // Leave other threads hanging because there's no way to
-                // terminate them safely.
-                // This should be at least sufficient for running tests and
-                // apps with `panic = "abort"`.
-                let _ = state_guard.result_send.send(Err(e));
-                return;
-            }
-
-            if state_guard.num_threads == 0 && state_guard.shutting_down {
-                // Complete the shutdown
-                state_guard.complete_shutdown();
-                return;
-            }
-
-            // Invoke the scheduler
-            state_guard.unpark_next_thread();
+            finalize_thread(state2, thread_id, result);
         });
 
         // Save the `JoinHandle` representing the spawned thread
@@ -188,7 +181,7 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
     /// Calling this method from a worker thread is not allowed.
     pub fn preempt(&mut self) {
         assert!(
-            CURRENT_THREAD_GROUP.with(|cell| cell.get().is_none()),
+            TLB.with(|cell| cell.get().is_none()),
             "this method cannot be called from a worker thread"
         );
 
@@ -268,8 +261,8 @@ impl State<dyn Scheduler> {
 ///
 /// Panics if the current thread is not a worker thread of some [`ThreadGroup`].
 pub fn yield_now() {
-    let thread_group: Arc<Mutex<State<dyn Scheduler>>> = CURRENT_THREAD_GROUP
-        .with(|cell| cell.get().cloned())
+    let thread_group: Arc<Mutex<State<dyn Scheduler>>> = TLB
+        .with(|cell| cell.get().map(|tlb| Arc::clone(&tlb.state)))
         .expect("current thread does not belong to a thread group");
 
     {
@@ -281,4 +274,60 @@ pub fn yield_now() {
     // Block thw thread until scheduled to run. This might end immediately if
     // the current thread is the next thread to run.
     threading::park();
+}
+
+/// Terminate the current worker thread.
+///
+/// Panics if the current thread is not a worker thread of some [`ThreadGroup`].
+///
+/// # Safety
+///
+/// It comes with all the unsafety of terminating a thread, such as that it
+/// could unpin pinned local variables.
+pub unsafe fn exit_thread() -> ! {
+    let (thread_id, thread_group) = TLB
+        .with(|cell| {
+            cell.get()
+                .map(|tlb| (tlb.thread_id, Arc::clone(&tlb.state)))
+        })
+        .expect("current thread does not belong to a thread group");
+
+    finalize_thread(thread_group, thread_id, Ok(()));
+
+    // Safety: Inherited
+    unsafe { threading::exit_thread() };
+}
+
+/// Mark the specified thread as exited.
+fn finalize_thread(
+    thread_group: Arc<Mutex<State<dyn Scheduler>>>,
+    thread_id: ThreadId,
+    result: Result<()>,
+) {
+    log::trace!("{:?} exited with result {:?}", thread_id, result);
+
+    // Delete the current thread
+    let mut state_guard = thread_group.lock();
+    state_guard.sched.thread_exited(thread_id);
+    state_guard.threads.deallocate(thread_id.0).unwrap();
+    state_guard.num_threads -= 1;
+
+    if let Err(e) = result {
+        // Send the panic payload to the thread group's owner.
+        // Leave other threads hanging because there's no way to
+        // terminate them safely.
+        // This should be at least sufficient for running tests and
+        // apps with `panic = "abort"`.
+        let _ = state_guard.result_send.send(Err(e));
+        return;
+    }
+
+    if state_guard.num_threads == 0 && state_guard.shutting_down {
+        // Complete the shutdown
+        state_guard.complete_shutdown();
+        return;
+    }
+
+    // Invoke the scheduler
+    state_guard.unpark_next_thread();
 }

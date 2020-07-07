@@ -318,3 +318,63 @@ fn forward_panic() {
     // This should panic
     join_handle.join().unwrap();
 }
+
+/// Tests two ways of exiting a thread.
+#[test]
+fn exit_current_thread() {
+    init_logger();
+
+    let count = 10;
+
+    struct St {
+        threads: Mutex<Vec<ThreadId>>,
+    }
+    let st: &_ = Box::leak(Box::new(St {
+        threads: Mutex::new(Vec::new()),
+    }));
+
+    impl Scheduler for &'static St {
+        fn choose_next_thread(&mut self) -> Option<ThreadId> {
+            let threads = self.threads.lock();
+
+            // Schedule any alive thread
+            threads.first().cloned()
+        }
+
+        fn thread_exited(&mut self, thread_id: ThreadId) {
+            let mut threads = self.threads.lock();
+            let i = threads.iter().position(|t| *t == thread_id).unwrap();
+            threads.remove(i);
+        }
+    }
+
+    let (tg, join_handle) = ThreadGroup::new(st);
+
+    {
+        let mut lock = tg.lock();
+
+        let threads = (0..count)
+            .map(|i| {
+                lock.spawn(move |_| {
+                    if i % 2 == 0 {
+                        // Exit the thread by calling `exit_thread`
+                        unsafe { exit_thread() };
+                    } else {
+                        // Exit the thread by returning
+                    }
+                })
+            })
+            .collect();
+
+        *st.threads.lock() = threads;
+    }
+
+    // Shut down the thread group as soon as the worker thread exits.
+    tg.lock().shutdown();
+
+    // Start the scheduling. All threads will evetually exit, but for this to
+    // happen, the scheduler should schedule each thread at least once.
+    tg.lock().preempt();
+
+    join_handle.join().unwrap();
+}
