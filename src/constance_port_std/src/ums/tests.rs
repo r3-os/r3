@@ -326,29 +326,25 @@ fn exit_current_thread() {
 
     let count = 10;
 
-    struct St {
-        threads: Mutex<Vec<ThreadId>>,
+    struct Sched {
+        threads: Vec<ThreadId>,
     }
-    let st: &_ = Box::leak(Box::new(St {
-        threads: Mutex::new(Vec::new()),
-    }));
 
-    impl Scheduler for &'static St {
+    impl Scheduler for Sched {
         fn choose_next_thread(&mut self) -> Option<ThreadId> {
-            let threads = self.threads.lock();
-
             // Schedule any alive thread
-            threads.first().cloned()
+            self.threads.first().cloned()
         }
 
         fn thread_exited(&mut self, thread_id: ThreadId) {
-            let mut threads = self.threads.lock();
-            let i = threads.iter().position(|t| *t == thread_id).unwrap();
-            threads.remove(i);
+            let i = self.threads.iter().position(|t| *t == thread_id).unwrap();
+            self.threads.remove(i);
         }
     }
 
-    let (tg, join_handle) = ThreadGroup::new(st);
+    let (tg, join_handle) = ThreadGroup::new(Sched {
+        threads: Vec::new(),
+    });
 
     {
         let mut lock = tg.lock();
@@ -366,7 +362,7 @@ fn exit_current_thread() {
             })
             .collect();
 
-        *st.threads.lock() = threads;
+        lock.scheduler().threads = threads;
     }
 
     // Shut down the thread group as soon as the worker thread exits.
