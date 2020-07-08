@@ -83,12 +83,7 @@ macro_rules! instantiate_kernel_tests {
             #[test]
             fn run() {
                 TEST_UTIL.run(|| {
-                    port_std_impl::PORT_STATE.init::<System>();
-
-                    // Safety: We are a port, so it's okay to call this
-                    unsafe {
-                        <System as constance::kernel::PortToKernel>::boot();
-                    }
+                    port_std_impl::PORT_STATE.port_boot::<System>();
                 });
             }
         }

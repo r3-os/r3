@@ -134,7 +134,8 @@ impl ums::Scheduler for SchedState {
 /// Check for any pending interrupts that can be activated under the current
 /// condition. If there are one or more of them, activate them and return
 /// `true`, in which case the caller should call
-/// [`ums::ThreadGroupLockGuard::preempt`] or [`ums::yield_now`].
+/// [`ums::ThreadGroupLockGuard::preempt`], [`ums::yield_now`],
+/// [`ums::exit_thread`].
 ///
 /// This should be called after changing some properties of `SchedState` in a
 /// way that might cause interrupt handlers to activate, such as disabling

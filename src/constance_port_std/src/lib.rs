@@ -174,12 +174,36 @@ impl State {
         }
     }
 
-    pub fn init<System: Kernel>(&self) {
+    /// Initialize the user-mode scheduling system and boot the kernel.
+    pub fn port_boot<System: Kernel>(&self) -> ! {
         // Create a UMS thread group.
         let (thread_group, join_handle) = ums::ThreadGroup::new(sched::SchedState::new::<System>());
 
         self.thread_group.set(thread_group).ok().unwrap();
         *self.join_handle.lock() = Some(join_handle);
+
+        // Create the initial UMS worker thread, where the boot phase of the
+        // kernel runs
+        let mut lock = self.thread_group.get().unwrap().lock();
+        let thread_id = lock.spawn(|_| {
+            // Safety: We are a port, so it's okay to call this
+            unsafe {
+                <System as PortToKernel>::boot();
+            }
+        });
+        log::trace!("startup thread = {:?}", thread_id);
+        lock.scheduler().task_thread = Some(thread_id);
+        lock.scheduler().recycle_thread(thread_id);
+        lock.preempt();
+        drop(lock);
+
+        // Wait until the thread group shuts down
+        let join_handle = self.join_handle.lock().take().unwrap();
+        if let Err(e) = join_handle.join() {
+            std::panic::resume_unwind(e);
+        }
+
+        panic!("the system has been shut down")
     }
 
     pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> !
@@ -211,17 +235,11 @@ impl State {
             self.thread_group.get().unwrap(),
             &mut lock
         ));
-        lock.preempt();
         drop(lock);
 
-        // Wait until the thread group shuts down
-        let join_handle = self.join_handle.lock().take().unwrap();
-        if let Err(e) = join_handle.join() {
-            std::panic::resume_unwind(e);
-        }
-
-        // TODO: Expose a function to shut down the system
-        panic!("the system has been shut down");
+        // Safety: The requirement of `dispatch_first_task` explicitly allows
+        // discarding the context.
+        unsafe { ums::exit_thread() };
     }
 
     extern "C" fn dispatch_handler<System: PortInstance>()
@@ -637,12 +655,7 @@ macro_rules! use_port {
 
             $crate::env_logger::init();
 
-            port_std_impl::PORT_STATE.init::<$sys>();
-
-            // Safety: We are a port, so it's okay to call these
-            unsafe {
-                <$sys as PortToKernel>::boot();
-            }
+            port_std_impl::PORT_STATE.port_boot::<$sys>();
         }
     };
 }
