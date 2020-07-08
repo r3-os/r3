@@ -124,7 +124,11 @@ impl TaskState {
 
     fn assert_current_thread(&self) {
         // `self` must represent the current thread
-        // TODO
+        let expected_thread_id = match &*self.tsm.lock() {
+            Tsm::Running(thread_id) => *thread_id,
+            _ => unreachable!(),
+        };
+        assert_eq!(ums::current_thread(), Some(expected_thread_id));
     }
 
     unsafe fn exit_and_dispatch(&self, state: &'static State) -> ! {

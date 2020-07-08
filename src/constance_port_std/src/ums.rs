@@ -335,3 +335,8 @@ fn finalize_thread(
     // Invoke the scheduler
     state_guard.unpark_next_thread();
 }
+
+/// Get the current worker thread.
+pub fn current_thread() -> Option<ThreadId> {
+    TLB.with(|cell| cell.get().map(|tlb| tlb.thread_id))
+}
