@@ -697,6 +697,9 @@ pub(super) fn handle_tick<System: Kernel>() {
             ..
         } = *timeout;
 
+        debug_assert_eq!(timeout.heap_pos.load(Ordering::Relaxed), 0);
+        timeout.heap_pos.store(HEAP_POS_NONE, Ordering::Relaxed);
+
         g_timeout
             .heap
             .write(&mut *lock)
