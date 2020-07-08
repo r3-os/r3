@@ -257,7 +257,7 @@ impl State {
     {
         unsafe { self.enter_cpu_lock() };
         unsafe { System::choose_running_task() };
-        unsafe { self.leave_cpu_lock::<System>() };
+        unsafe { self.leave_cpu_lock() };
 
         let mut lock = self.thread_group.get().unwrap().lock();
 
@@ -310,15 +310,10 @@ impl State {
         self.pend_interrupt_line(INTERRUPT_LINE_DISPATCH).unwrap();
     }
 
-    pub unsafe fn exit_and_dispatch<System: Kernel>(
+    pub unsafe fn exit_and_dispatch<System: PortInstance>(
         &'static self,
         task: &'static TaskCb<System>,
-    ) -> !
-    where
-        System: Port<PortTaskState = TaskState>,
-        // Work-around <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    ) -> ! {
         log::trace!("exit_and_dispatch");
         assert!(self.is_cpu_lock_active());
 
@@ -335,7 +330,7 @@ impl State {
         lock.scheduler().cpu_lock = true;
     }
 
-    pub unsafe fn leave_cpu_lock<System: Kernel>(&'static self) {
+    pub unsafe fn leave_cpu_lock(&'static self) {
         log::trace!("leave_cpu_lock");
 
         let mut lock = self.thread_group.get().unwrap().lock();
@@ -348,10 +343,10 @@ impl State {
         }
     }
 
-    pub unsafe fn initialize_task_state<System: Kernel>(&self, task: &'static TaskCb<System>)
-    where
-        System: Port<PortTaskState = TaskState>,
-    {
+    pub unsafe fn initialize_task_state<System: PortInstance>(
+        &self,
+        task: &'static TaskCb<System>,
+    ) {
         log::trace!("initialize_task_state {:p}", task);
 
         let pts = &task.port_task_state;
@@ -609,7 +604,7 @@ macro_rules! use_port {
                 }
 
                 unsafe fn exit_and_dispatch(task: &'static TaskCb<Self>) -> ! {
-                    PORT_STATE.exit_and_dispatch::<Self>(task);
+                    PORT_STATE.exit_and_dispatch(task);
                 }
 
                 unsafe fn enter_cpu_lock() {
@@ -617,7 +612,7 @@ macro_rules! use_port {
                 }
 
                 unsafe fn leave_cpu_lock() {
-                    PORT_STATE.leave_cpu_lock::<Self>()
+                    PORT_STATE.leave_cpu_lock()
                 }
 
                 unsafe fn initialize_task_state(task: &'static TaskCb<Self>) {
