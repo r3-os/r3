@@ -50,6 +50,16 @@ pub extern crate env_logger;
 /// defined as `0..NUM_INTERRUPT_LINES`
 pub const NUM_INTERRUPT_LINES: usize = 1024;
 
+/// Implemented on a system type by [`use_port!`].
+///
+/// # Safety
+///
+/// Only meant to be implemented by [`use_port!`].
+#[doc(hidden)]
+pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
+    fn port_state() -> &'static State;
+}
+
 /// The internal state of the port.
 ///
 /// # Safety
@@ -394,9 +404,8 @@ impl State {
         self.dispatch_pending.store(true, Ordering::Relaxed);
     }
 
-    pub unsafe fn dispatch_first_task<System: Kernel>(&'static self) -> !
+    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> !
     where
-        System: Port<PortTaskState = TaskState>,
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
@@ -429,9 +438,8 @@ impl State {
         panic!("the system has been shut down");
     }
 
-    fn dispatcher_loop<System: Kernel>(&'static self)
+    fn dispatcher_loop<System: PortInstance>(&'static self)
     where
-        System: Port<PortTaskState = TaskState>,
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
@@ -742,9 +750,16 @@ macro_rules! use_port {
                 PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
                 TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
-            use $crate::{State, TaskState};
+            use $crate::{State, TaskState, PortInstance};
 
             pub(super) static PORT_STATE: State = State::new();
+
+            unsafe impl PortInstance for $sys {
+                #[inline]
+                fn port_state() -> &'static State {
+                    &PORT_STATE
+                }
+            }
 
             // Assume `$sys: Kernel`
             unsafe impl PortThreading for $sys {
