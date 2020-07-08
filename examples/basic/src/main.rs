@@ -4,7 +4,7 @@
 #![feature(const_mut_refs)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
-use constance::{kernel::Task, sync::Mutex};
+use constance::{kernel::Task, prelude::*, sync::Mutex};
 
 constance_port_std::use_port!(unsafe struct System);
 
@@ -43,5 +43,8 @@ fn task1_body(_: usize) {
 }
 
 fn task2_body(_: usize) {
-    dbg!();
+    loop {
+        dbg!(System::time().unwrap());
+        System::sleep(constance::time::Duration::from_secs(1)).unwrap();
+    }
 }
