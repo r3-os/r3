@@ -288,7 +288,7 @@ impl ums::Scheduler for SchedState {
 /// [`ums::ThreadGroupLockGuard::preempt`] or [`ums::yield_now`].
 #[must_use]
 fn check_preemption_by_interrupt(
-    state: &'static State,
+    thread_group: &'static ums::ThreadGroup<SchedState>,
     lock: &mut ums::ThreadGroupLockGuard<SchedState>,
 ) -> bool {
     let mut activated_any = false;
@@ -344,7 +344,7 @@ fn check_preemption_by_interrupt(
             // Safety: The port can call an interrupt handler
             unsafe { start() }
 
-            let mut lock = state.thread_group.get().unwrap().lock();
+            let mut lock = thread_group.lock();
 
             // Make this interrupt handler inactive
             let (_, popped_thread_id) = lock.scheduler().active_int_handlers.pop().unwrap();
@@ -358,7 +358,7 @@ fn check_preemption_by_interrupt(
             // Make sure this thread will run to completion
             lock.scheduler().zombies.push(thread_id);
 
-            let _ = check_preemption_by_interrupt(state, &mut lock);
+            let _ = check_preemption_by_interrupt(thread_group, &mut lock);
         });
 
         log::trace!(
@@ -427,7 +427,10 @@ impl State {
         lock.scheduler().cpu_lock = false;
 
         // Start scheduling
-        assert!(check_preemption_by_interrupt(self, &mut lock));
+        assert!(check_preemption_by_interrupt(
+            self.thread_group.get().unwrap(),
+            &mut lock
+        ));
         lock.preempt();
         drop(lock);
 
@@ -548,7 +551,7 @@ impl State {
         assert!(lock.scheduler().cpu_lock);
         lock.scheduler().cpu_lock = false;
 
-        if check_preemption_by_interrupt(self, &mut lock) {
+        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
@@ -599,7 +602,7 @@ impl State {
             .update_line(num, |line| line.priority = priority)
             .map_err(|BadIntLineError| SetInterruptLinePriorityError::BadParam)?;
 
-        if check_preemption_by_interrupt(self, &mut lock) {
+        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
@@ -618,7 +621,7 @@ impl State {
             .update_line(num, |line| line.enable = true)
             .map_err(|BadIntLineError| EnableInterruptLineError::BadParam)?;
 
-        if check_preemption_by_interrupt(self, &mut lock) {
+        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
@@ -649,7 +652,7 @@ impl State {
             .update_line(num, |line| line.pended = true)
             .map_err(|BadIntLineError| PendInterruptLineError::BadParam)?;
 
-        if check_preemption_by_interrupt(self, &mut lock) {
+        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
