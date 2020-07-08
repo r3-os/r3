@@ -1,6 +1,7 @@
 #![feature(const_fn)]
 #![feature(thread_local)]
 #![feature(external_doc)]
+#![feature(deadline_api)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![doc(include = "./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -16,7 +17,11 @@ use constance::{
 };
 use once_cell::sync::OnceCell;
 use parking_lot::{lock_api::RawMutex, Mutex};
-use std::{cell::Cell, time::Instant};
+use std::{
+    cell::Cell,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 
 #[cfg(unix)]
 #[path = "threading_unix.rs"]
@@ -53,6 +58,12 @@ pub const INTERRUPT_LINE_DISPATCH: InterruptNum = 1023;
 /// The default interrupt priority for [`INTERRUPT_LINE_DISPATCH`].
 pub const INTERRUPT_PRIORITY_DISPATCH: InterruptPriority = 16384;
 
+/// The (software) interrupt line used for timer interrupts.
+pub const INTERRUPT_LINE_TIMER: InterruptNum = 1022;
+
+/// The default interrupt priority for [`INTERRUPT_LINE_TIMER`].
+pub const INTERRUPT_PRIORITY_TIMER: InterruptPriority = 16383;
+
 /// Implemented on a system type by [`use_port!`].
 ///
 /// # Safety
@@ -73,6 +84,7 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
 pub struct State {
     thread_group: OnceCell<ums::ThreadGroup<sched::SchedState>>,
     join_handle: Mutex<Option<ums::ThreadGroupJoinHandle>>,
+    timer_cmd_send: Mutex<Option<mpsc::Sender<TimerCmd>>>,
     origin: AtomicRef<'static, Instant>,
 }
 
@@ -97,6 +109,10 @@ enum Tsm {
     Dormant,
     /// The task is currently running.
     Running(ums::ThreadId),
+}
+
+enum TimerCmd {
+    SetTimeout { at: Instant },
 }
 
 /// The role of a thread.
@@ -171,6 +187,7 @@ impl State {
         Self {
             thread_group: OnceCell::new(),
             join_handle: Mutex::const_new(RawMutex::INIT, None),
+            timer_cmd_send: Mutex::const_new(RawMutex::INIT, None),
             origin: AtomicRef::new(None),
         }
     }
@@ -178,12 +195,41 @@ impl State {
     /// Initialize the user-mode scheduling system and boot the kernel.
     ///
     /// Returns when the shutdown initiated by [`shutdown`] completes.
-    pub fn port_boot<System: Kernel>(&self) {
+    pub fn port_boot<System: PortInstance>(&self) {
         // Create a UMS thread group.
         let (thread_group, join_handle) = ums::ThreadGroup::new(sched::SchedState::new::<System>());
 
         self.thread_group.set(thread_group).ok().unwrap();
         *self.join_handle.lock() = Some(join_handle);
+
+        // Start a timer thread
+        let (timer_cmd_send, timer_cmd_recv) = mpsc::channel();
+        log::trace!("starting the timer thread");
+        let timer_join_handle = std::thread::spawn(move || {
+            let mut next_deadline = None;
+            loop {
+                let recv_result = if let Some(next_deadline) = next_deadline {
+                    timer_cmd_recv.recv_deadline(next_deadline)
+                } else {
+                    timer_cmd_recv
+                        .recv()
+                        .map_err(|_| mpsc::RecvTimeoutError::Disconnected)
+                };
+                match recv_result {
+                    Err(mpsc::RecvTimeoutError::Disconnected) => {
+                        break;
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
+                        pend_interrupt_line::<System>(INTERRUPT_LINE_TIMER).unwrap();
+                        next_deadline = None;
+                    }
+                    Ok(TimerCmd::SetTimeout { at }) => {
+                        next_deadline = Some(at);
+                    }
+                }
+            }
+        });
+        *self.timer_cmd_send.lock() = Some(timer_cmd_send);
 
         // Create the initial UMS worker thread, where the boot phase of the
         // kernel runs
@@ -200,11 +246,33 @@ impl State {
         lock.scheduler().task_thread = Some(thread_id);
         lock.scheduler().recycle_thread(thread_id);
         lock.preempt();
+
+        // Configure timer interrupt
+        lock.scheduler()
+            .update_line(INTERRUPT_LINE_TIMER, |line| {
+                line.priority = INTERRUPT_PRIORITY_TIMER;
+                line.enable = true;
+                line.start = Some(Self::timer_handler::<System>);
+            })
+            .ok()
+            .unwrap();
+
         drop(lock);
 
         // Wait until the thread group shuts down
         let join_handle = self.join_handle.lock().take().unwrap();
-        if let Err(e) = join_handle.join() {
+        let result = join_handle.join();
+
+        // Stop the timer thread.
+        // `timer_cmd_recv.recv` will return `Err(_)` when we drop the
+        // corresponding sender (`timer_cmd_send`).
+        log::trace!("stopping the timer thread");
+        *self.timer_cmd_send.lock() = None;
+        timer_join_handle.join().unwrap();
+        log::trace!("stopped the timer thread");
+
+        // Propagate any panic that occured in a worker thread
+        if let Err(e) = result {
             std::panic::resume_unwind(e);
         }
     }
@@ -222,6 +290,7 @@ impl State {
         let mut lock = self.thread_group.get().unwrap().lock();
 
         // Configure PendSV
+        // TODO: move this (except for `pended = true`) to `port_boot`
         lock.scheduler()
             .update_line(INTERRUPT_LINE_DISPATCH, |line| {
                 line.priority = INTERRUPT_PRIORITY_DISPATCH;
@@ -550,12 +619,36 @@ impl State {
 
     pub fn pend_tick_after<System: PortInstance>(&self, tick_count_delta: UTicks) {
         expect_worker_thread::<System>();
-        // TODO
+        log::trace!("pend_tick_after({:?})", tick_count_delta);
+
+        // Calculate when `timer_tick` should be called
+        let now = Instant::now() + Duration::from_micros(tick_count_delta.into());
+
+        // Lock the scheduler because we aren't sure what would happen if
+        // `Sender::send` was interrupted
+        let _sched_lock = lock_scheduler::<System>();
+
+        let timer_cmd_send = self.timer_cmd_send.lock();
+        let timer_cmd_send = timer_cmd_send.as_ref().unwrap();
+        timer_cmd_send
+            .send(TimerCmd::SetTimeout { at: now })
+            .unwrap();
     }
 
-    pub fn pend_tick<System: PortInstance>(&self) {
+    pub fn pend_tick<System: PortInstance>(&'static self) {
         expect_worker_thread::<System>();
-        // TODO
+        log::trace!("pend_tick");
+
+        self.pend_interrupt_line::<System>(INTERRUPT_LINE_TIMER)
+            .unwrap();
+    }
+
+    extern "C" fn timer_handler<System: PortInstance>() {
+        assert_eq!(expect_worker_thread::<System>(), ThreadRole::Interrupt);
+        log::trace!("timer_handler");
+
+        // Safety: CPU Lock inactive, an interrupt context
+        unsafe { <System as PortToKernel>::timer_tick() };
     }
 }
 
