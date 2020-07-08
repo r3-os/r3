@@ -175,7 +175,9 @@ impl State {
     }
 
     /// Initialize the user-mode scheduling system and boot the kernel.
-    pub fn port_boot<System: Kernel>(&self) -> ! {
+    ///
+    /// Returns when the shutdown initiated by [`shutdown`] completes.
+    pub fn port_boot<System: Kernel>(&self) {
         // Create a UMS thread group.
         let (thread_group, join_handle) = ums::ThreadGroup::new(sched::SchedState::new::<System>());
 
@@ -202,8 +204,6 @@ impl State {
         if let Err(e) = join_handle.join() {
             std::panic::resume_unwind(e);
         }
-
-        panic!("the system has been shut down")
     }
 
     pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> !
@@ -299,14 +299,7 @@ impl State {
                 Tsm::Uninit => unreachable!(),
             }
         } else {
-            // Since we don't have timers or real interrupts yet, this means
-            // we are in deadlock.
-            //
-            // The test code currently relies on this behavior (panic on
-            // deadlock) to exit the dispatcher loop. When we have timers
-            // and interrupts, we need to devise another way to exit the
-            // dispatcher loop.
-            panic!("No task to schedule");
+            None
         };
     }
 
@@ -535,6 +528,22 @@ impl State {
     pub fn pend_tick(&self) {
         // TODO
     }
+}
+
+/// Initiate graceful shutdown.
+///
+/// The shutdown completes when all threads complete execution. Usually, the
+/// process will exit after this.
+///
+/// Note: There is no safe way to restart the simulated system without
+/// restarting an entire process.
+pub fn shutdown<System: PortInstance>() {
+    System::port_state()
+        .thread_group
+        .get()
+        .unwrap()
+        .lock()
+        .shutdown();
 }
 
 #[macro_export]

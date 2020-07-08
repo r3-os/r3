@@ -4,6 +4,7 @@
 #![feature(never_type)]
 #![feature(const_mut_refs)]
 
+use constance_port_std::PortInstance;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 struct KernelTestUtil {
@@ -17,34 +18,27 @@ impl KernelTestUtil {
         }
     }
 
-    fn success(&self) {
+    fn success<System: PortInstance>(&self) {
         self.is_successful.store(true, Ordering::Relaxed);
+        constance_port_std::shutdown::<System>();
     }
 
     fn fail(&self) {
         panic!("test failed");
     }
 
-    fn run(&self, func: impl FnOnce() -> !) {
+    fn run(&self, func: impl FnOnce()) {
         let _ = env_logger::try_init();
 
-        let panic_info = std::panic::catch_unwind(std::panic::AssertUnwindSafe(func))
-            .err()
-            .unwrap();
-
-        // "No task to schedule" is not a failure - it's the only way to stop
-        // the dispatcher loop
-        if let Some(msg) = panic_info.downcast_ref::<&'static str>() {
-            if msg.contains("No task to schedule") {
-                if self.is_successful.load(Ordering::Relaxed) {
-                    return;
-                }
-
-                panic!("The program deadlocked without calling `success`");
-            }
+        if let Err(panic_info) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(func)) {
+            std::panic::resume_unwind(panic_info);
         }
 
-        std::panic::resume_unwind(panic_info);
+        if self.is_successful.load(Ordering::Relaxed) {
+            return;
+        }
+
+        panic!("The program deadlocked without calling `success`");
     }
 }
 
@@ -67,7 +61,7 @@ macro_rules! instantiate_kernel_tests {
                     &COTTAGE
                 }
                 fn success() {
-                    TEST_UTIL.success();
+                    TEST_UTIL.success::<System>();
                 }
                 fn fail() {
                     TEST_UTIL.fail();
