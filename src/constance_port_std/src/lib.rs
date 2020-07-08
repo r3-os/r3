@@ -7,7 +7,7 @@
 use atomic_ref::AtomicRef;
 use constance::{
     kernel::{
-        self, ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
+        ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
         PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
         SetInterruptLinePriorityError, TaskCb, UTicks,
     },
@@ -16,11 +16,7 @@ use constance::{
 };
 use once_cell::sync::OnceCell;
 use parking_lot::{lock_api::RawMutex, Mutex};
-use std::{
-    cell::Cell,
-    collections::{BTreeSet, HashMap},
-    time::Instant,
-};
+use std::{cell::Cell, time::Instant};
 
 #[cfg(unix)]
 #[path = "threading_unix.rs"]
@@ -33,6 +29,7 @@ mod threading;
 #[cfg(test)]
 mod threading_test;
 
+mod sched;
 mod ums;
 mod utils;
 
@@ -74,7 +71,7 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
 /// the corresponding trait methods of `Port*`.
 #[doc(hidden)]
 pub struct State {
-    thread_group: OnceCell<ums::ThreadGroup<SchedState>>,
+    thread_group: OnceCell<ums::ThreadGroup<sched::SchedState>>,
     join_handle: Mutex<Option<ums::ThreadGroupJoinHandle>>,
     origin: AtomicRef<'static, Instant>,
 }
@@ -82,6 +79,10 @@ pub struct State {
 #[derive(Debug)]
 pub struct TaskState {
     tsm: Mutex<Tsm>,
+}
+
+impl Init for TaskState {
+    const INIT: Self = Self::new();
 }
 
 /// Task state machine
@@ -96,45 +97,6 @@ enum Tsm {
     Dormant,
     /// The task is currently running.
     Running(ums::ThreadId),
-}
-
-/// The state of the simulated hardware-based scheduler.
-struct SchedState {
-    /// Interrupt lines.
-    int_lines: HashMap<InterruptNum, IntLine>,
-    /// `int_lines.iter().filter(|_,a| a.pended && a.enable)
-    /// .map(|i,a| (a.priority, i)).collect()`.
-    pended_lines: BTreeSet<(InterruptPriority, InterruptNum)>,
-    active_int_handlers: Vec<(InterruptPriority, ums::ThreadId)>,
-    cpu_lock: bool,
-
-    /// The currently-selected task thread.
-    task_thread: Option<ums::ThreadId>,
-
-    /// Garbage can
-    zombies: Vec<ums::ThreadId>,
-}
-
-/// The configuration of an interrupt line.
-#[derive(Debug)]
-struct IntLine {
-    priority: InterruptPriority,
-    start: Option<kernel::cfg::InterruptHandlerFn>,
-    enable: bool,
-    pended: bool,
-}
-
-impl Init for TaskState {
-    const INIT: Self = Self::new();
-}
-
-impl Init for IntLine {
-    const INIT: Self = IntLine {
-        priority: 0,
-        start: None,
-        enable: false,
-        pended: false,
-    };
 }
 
 /// The role of a thread.
@@ -186,7 +148,7 @@ impl TaskState {
         // the kernel will never choose this task again. However, the underlying
         // UMS thread is still alive. Thus, we need to temporarily override the
         // normal scheduling to ensure this thread will run to completion.
-        lock.scheduler().zombies.push(thread_id);
+        lock.scheduler().recycle_thread(thread_id);
         lock.scheduler().cpu_lock = false;
         drop(lock);
 
@@ -196,192 +158,6 @@ impl TaskState {
         log::trace!("exit_and_dispatch({:p}) calling exit_thread", self);
         unsafe { ums::exit_thread() };
     }
-}
-
-struct BadIntLineError;
-
-impl SchedState {
-    fn new<System: Kernel>() -> Self {
-        let mut this = Self {
-            int_lines: HashMap::new(),
-            pended_lines: BTreeSet::new(),
-            active_int_handlers: Vec::new(),
-            cpu_lock: true,
-            task_thread: None,
-            zombies: Vec::new(),
-        };
-
-        for i in 0..NUM_INTERRUPT_LINES {
-            if let Some(handler) = System::INTERRUPT_HANDLERS.get(i) {
-                this.int_lines.insert(
-                    i as InterruptNum,
-                    IntLine {
-                        start: Some(handler),
-                        ..IntLine::INIT
-                    },
-                );
-            }
-        }
-
-        this
-    }
-
-    fn update_line(
-        &mut self,
-        i: InterruptNum,
-        f: impl FnOnce(&mut IntLine),
-    ) -> Result<(), BadIntLineError> {
-        if i >= NUM_INTERRUPT_LINES {
-            return Err(BadIntLineError);
-        }
-        let line = self.int_lines.entry(i).or_insert_with(|| IntLine::INIT);
-        self.pended_lines.remove(&(line.priority, i));
-        f(line);
-        if line.enable && line.pended {
-            self.pended_lines.insert((line.priority, i));
-        }
-        Ok(())
-    }
-
-    fn is_line_pended(&self, i: InterruptNum) -> Result<bool, BadIntLineError> {
-        if i >= NUM_INTERRUPT_LINES {
-            return Err(BadIntLineError);
-        }
-
-        if let Some(line) = self.int_lines.get(&i) {
-            Ok(line.pended)
-        } else {
-            Ok(false)
-        }
-    }
-}
-
-impl ums::Scheduler for SchedState {
-    fn choose_next_thread(&mut self) -> Option<ums::ThreadId> {
-        if let Some(&thread_id) = self.zombies.first() {
-            // Clean up zombie threads as soon as possible
-            Some(thread_id)
-        } else if let Some(&(_, thread_id)) = self.active_int_handlers.last() {
-            Some(thread_id)
-        } else if self.cpu_lock {
-            // CPU Lock owned by a task thread
-            Some(self.task_thread.unwrap())
-        } else {
-            self.task_thread
-        }
-    }
-
-    fn thread_exited(&mut self, thread_id: ums::ThreadId) {
-        if let Some(i) = self.zombies.iter().position(|id| *id == thread_id) {
-            log::trace!("removing the zombie thread {:?}", thread_id);
-            self.zombies.swap_remove(i);
-            return;
-        }
-
-        log::warn!("thread_exited: unexpected thread {:?}", thread_id);
-    }
-}
-
-/// Check for any pending interrupts that can be activated under the current
-/// condition. If there are one or more of them, activate them and return
-/// `true`, in which case the caller should call
-/// [`ums::ThreadGroupLockGuard::preempt`] or [`ums::yield_now`].
-#[must_use]
-fn check_preemption_by_interrupt(
-    thread_group: &'static ums::ThreadGroup<SchedState>,
-    lock: &mut ums::ThreadGroupLockGuard<SchedState>,
-) -> bool {
-    let mut activated_any = false;
-
-    // Check pending interrupts
-    loop {
-        let sched_state = lock.scheduler();
-
-        // Find the highest pended priority
-        let (pri, num) = if let Some(&x) = sched_state.pended_lines.iter().next() {
-            x
-        } else {
-            // No interrupt is pended
-            break;
-        };
-
-        // Masking by CPU Lock
-        if sched_state.cpu_lock && is_interrupt_priority_managed(pri) {
-            log::trace!(
-                "not handling an interrupt with priority {} because of CPU Lock",
-                pri
-            );
-            break;
-        }
-
-        // Masking by an already active interrupt
-        if let Some(&(existing_pri, _)) = sched_state.active_int_handlers.last() {
-            if existing_pri < pri {
-                log::trace!(
-                    "not handling an interrupt with priority {} because of \
-                        an active interrupt handler with priority {}",
-                    pri,
-                    existing_pri,
-                );
-                break;
-            }
-        }
-
-        // Take the interrupt
-        sched_state.pended_lines.remove(&(pri, num));
-
-        // Find the interrupt handler for `num`. Return
-        // `default_interrupt_handler` if there's none.
-        let start = sched_state
-            .int_lines
-            .get(&num)
-            .and_then(|line| line.start)
-            .unwrap_or(default_interrupt_handler);
-
-        let thread_id = lock.spawn(move |thread_id| {
-            THREAD_ROLE.with(|role| role.set(ThreadRole::Interrupt));
-
-            // Safety: The port can call an interrupt handler
-            unsafe { start() }
-
-            let mut lock = thread_group.lock();
-
-            // Make this interrupt handler inactive
-            let (_, popped_thread_id) = lock.scheduler().active_int_handlers.pop().unwrap();
-            assert_eq!(thread_id, popped_thread_id);
-            log::trace!(
-                "an interrupt handler for an interrupt {} (priority = {}) exited",
-                num,
-                pri
-            );
-
-            // Make sure this thread will run to completion
-            lock.scheduler().zombies.push(thread_id);
-
-            let _ = check_preemption_by_interrupt(thread_group, &mut lock);
-        });
-
-        log::trace!(
-            "handling an interrupt {} (priority = {}) with thread {:?}",
-            num,
-            pri,
-            thread_id
-        );
-
-        lock.scheduler().active_int_handlers.push((pri, thread_id));
-
-        activated_any = true;
-    }
-
-    activated_any
-}
-
-fn is_interrupt_priority_managed(p: InterruptPriority) -> bool {
-    p >= 0
-}
-
-extern "C" fn default_interrupt_handler() {
-    panic!("Unhandled interrupt");
 }
 
 #[allow(clippy::missing_safety_doc)]
@@ -396,7 +172,7 @@ impl State {
 
     pub fn init<System: Kernel>(&self) {
         // Create a UMS thread group.
-        let (thread_group, join_handle) = ums::ThreadGroup::new(SchedState::new::<System>());
+        let (thread_group, join_handle) = ums::ThreadGroup::new(sched::SchedState::new::<System>());
 
         self.thread_group.set(thread_group).ok().unwrap();
         *self.join_handle.lock() = Some(join_handle);
@@ -427,7 +203,7 @@ impl State {
         lock.scheduler().cpu_lock = false;
 
         // Start scheduling
-        assert!(check_preemption_by_interrupt(
+        assert!(sched::check_preemption_by_interrupt(
             self.thread_group.get().unwrap(),
             &mut lock
         ));
@@ -551,7 +327,7 @@ impl State {
         assert!(lock.scheduler().cpu_lock);
         lock.scheduler().cpu_lock = false;
 
-        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
+        if sched::check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
@@ -600,9 +376,9 @@ impl State {
         let mut lock = self.thread_group.get().unwrap().lock();
         lock.scheduler()
             .update_line(num, |line| line.priority = priority)
-            .map_err(|BadIntLineError| SetInterruptLinePriorityError::BadParam)?;
+            .map_err(|sched::BadIntLineError| SetInterruptLinePriorityError::BadParam)?;
 
-        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
+        if sched::check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
@@ -619,9 +395,9 @@ impl State {
         let mut lock = self.thread_group.get().unwrap().lock();
         lock.scheduler()
             .update_line(num, |line| line.enable = true)
-            .map_err(|BadIntLineError| EnableInterruptLineError::BadParam)?;
+            .map_err(|sched::BadIntLineError| EnableInterruptLineError::BadParam)?;
 
-        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
+        if sched::check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
@@ -638,7 +414,7 @@ impl State {
         (self.thread_group.get().unwrap().lock())
             .scheduler()
             .update_line(num, |line| line.enable = false)
-            .map_err(|BadIntLineError| EnableInterruptLineError::BadParam)
+            .map_err(|sched::BadIntLineError| EnableInterruptLineError::BadParam)
     }
 
     pub fn pend_interrupt_line(
@@ -650,9 +426,9 @@ impl State {
         let mut lock = self.thread_group.get().unwrap().lock();
         lock.scheduler()
             .update_line(num, |line| line.pended = true)
-            .map_err(|BadIntLineError| PendInterruptLineError::BadParam)?;
+            .map_err(|sched::BadIntLineError| PendInterruptLineError::BadParam)?;
 
-        if check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
+        if sched::check_preemption_by_interrupt(self.thread_group.get().unwrap(), &mut lock) {
             drop(lock);
             ums::yield_now();
         }
@@ -666,7 +442,7 @@ impl State {
         (self.thread_group.get().unwrap().lock())
             .scheduler()
             .update_line(num, |line| line.pended = false)
-            .map_err(|BadIntLineError| ClearInterruptLineError::BadParam)
+            .map_err(|sched::BadIntLineError| ClearInterruptLineError::BadParam)
     }
 
     pub fn is_interrupt_line_pending(
@@ -676,7 +452,7 @@ impl State {
         (self.thread_group.get().unwrap().lock())
             .scheduler()
             .is_line_pended(num)
-            .map_err(|BadIntLineError| QueryInterruptLineError::BadParam)
+            .map_err(|sched::BadIntLineError| QueryInterruptLineError::BadParam)
     }
 
     // TODO: Make these customizable to test the kernel under multiple conditions
