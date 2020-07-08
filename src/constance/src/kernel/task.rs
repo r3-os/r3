@@ -600,13 +600,26 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     };
 
     // The priority of the next task to run
+    //
+    // The default value is `usize::max_value() - 1` for the following reason:
+    // If `running_task` is in the Waiting state and there's no other task to
+    // schedule at the moment, we want to assign `None` to `running_task`. In
+    // this case, if the default value was the same as `prev_task_priority`,
+    // `prev_task_priority` would be equal to `next_task_priority`, and the
+    // `if` statement below would return too early. We make sure this does not
+    // happen by making the default value of `next_task_priority` lower.
+    //
+    // `usize::max_value()` never collides with an actual task priority because
+    // of the priority range restriction imposed by `CfgBuilder::
+    // num_task_priority_levels`.
     let next_task_priority = System::state()
         .task_ready_bitmap
         .read(&*lock)
         .find_set()
-        .unwrap_or(usize::max_value());
+        .unwrap_or(usize::max_value() - 1);
 
-    // Return if there's no task willing to take over the current one.
+    // Return if there's no task willing to take over the current one, and
+    // the current one can still run.
     if prev_task_priority <= next_task_priority {
         return;
     }
