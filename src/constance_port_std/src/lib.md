@@ -57,3 +57,35 @@ Based on the internal user-mode scheduling (UMS) framework, we treat interrupt h
 The interrupt line [`INTERRUPT_LINE_DISPATCH`] is reserved for the dispatcher.
 
 [`INTERRUPT_LINE_DISPATCH`]: crate::INTERRUPT_LINE_DISPATCH
+
+# Preemption and Host Environment
+
+The user-mode scheduling scheme may interact poorly with other components or the host operating system. Preemption is implemented by signals on POSIX platforms and can cause system calls to fail with an error code that `libstd` is not prepared to deal with. Also, sharing an external resource between threads is prone to a deadlock. Here's an example: Suppose an application uses an allocator whose internal structure is protected by a host mutex. Task A acquires a lock, but then gets preempted by task B, which also attempts to acquire a lock. The guest operating system is unaware of the existence of such resources and keeps scheduling task B (not knowing that completing task A would unblock task B), leading to a deadlock.
+
+**This means that even using the default (system) global allocator inside a guest environment can cause a deadlock.**
+
+There are several ways to tackle these problems:
+
+ - Lock the scheduler structure by calling [`lock_scheduler`].
+
+   **Con:** You need to be careful not to call any guest operating services while the lock is being held.
+
+ - Activate [CPU Lock] while accessing external resources.
+
+   **Con:** CPU Lock doesn't affect unmanaged interrupt handlers. Many guest operating services are unavailable while CPU Lock is being held.
+
+ - Activate [Priority Boost] while accessing external resources.
+
+   **Con:** Priority Boost doesn't affect and can't be used in interrupt handlers.
+
+ - Create a mutex using the guest operating system's feature and use it to ensure only one task can access a particular external resource at a time.
+
+   **Con:** Interrupt handlers can't perform a blocking operation. Interrupts can still preempt host system calls.
+
+ - Create an asynchronous RPC channel.
+
+   **Con:** Complicated and requires allocation of system-global resources such as an interrupt line for inbound signaling.
+
+[`lock_scheduler`]: crate::lock_scheduler
+[CPU Lock]: constance::kernel::Kernel::acquire_cpu_lock
+[Priority Boost]: constance::kernel::Kernel::boost_priority

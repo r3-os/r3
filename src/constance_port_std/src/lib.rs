@@ -614,6 +614,15 @@ pub fn pend_interrupt_line<System: PortInstance>(
     Ok(())
 }
 
+/// Temporarily lock the scheduler, disabling preemption.
+///
+/// *All* operating system and port functions will be unavailable until the lock
+/// is relinquished.
+pub fn lock_scheduler<System: PortInstance>() -> impl Sized {
+    let state = System::port_state();
+    state.thread_group.get().unwrap().lock()
+}
+
 #[macro_export]
 macro_rules! use_port {
     (unsafe $vis:vis struct $sys:ident) => {
