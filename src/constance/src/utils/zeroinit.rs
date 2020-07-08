@@ -51,6 +51,7 @@ impl_zero_init! {
     isize,
     f32,
     f64,
+    atomic::AtomicBool,
     atomic::AtomicU8,
     atomic::AtomicU16,
     atomic::AtomicU32,
