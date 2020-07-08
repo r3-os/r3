@@ -135,6 +135,7 @@ use core::{
 };
 
 use super::{
+    task,
     utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
     AdjustTimeError, BadParamError, Kernel, TimeError, UTicks,
 };
@@ -339,6 +340,14 @@ pub(super) struct Timeout<System: Kernel> {
     _phantom: core::marker::PhantomData<System>,
 }
 
+/// Tiemout callback function.
+///
+/// The callback function is called with CPU Lock active and an interrupt
+/// context when the associated [`Timeout`] expires.
+///
+/// The callback function may wake up tasks. When it does that, it doesn't have
+/// to call `unlock_cpu_and_check_preemption` or `yield_cpu` - it's
+/// automatically taken care of.
 pub(super) type TimeoutFn<System> = fn(usize, CpuLockGuard<System>) -> CpuLockGuard<System>;
 
 /// Value of [`Timeout::heap_pos`] indicating the timeout is not included in the
@@ -716,6 +725,10 @@ pub(super) fn handle_tick<System: Kernel>() {
 
     // Schedule the next tick
     pend_next_tick(lock.borrow_mut(), current_time);
+
+    // Callback functions might have woken up some tasks. Check for dispatch and
+    // release CPU Lock.
+    task::unlock_cpu_and_check_preemption(lock);
 }
 
 /// Get the current event time.
