@@ -779,7 +779,7 @@ macro_rules! use_port {
 
             unsafe impl PortInterrupts for $sys {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE:
-                    ::std::ops::Range<InterruptPriority> = 0..InterruptPriority::max_value();
+                    ::std::ops::Range<InterruptPriority> = 0..InterruptPriority::MAX;
 
                 unsafe fn set_interrupt_line_priority(
                     line: InterruptNum,

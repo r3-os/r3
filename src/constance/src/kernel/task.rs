@@ -553,7 +553,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLo
     let prev_task_priority = if let Some(running_task) = System::state().running_task() {
         running_task.priority.to_usize().unwrap()
     } else {
-        usize::max_value()
+        usize::MAX
     };
 
     // The priority of the next task to run
@@ -561,7 +561,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLo
         .task_ready_bitmap
         .read(&*lock)
         .find_set()
-        .unwrap_or(usize::max_value());
+        .unwrap_or(usize::MAX);
 
     // Relinquish CPU Lock
     drop(lock);
@@ -593,15 +593,15 @@ pub(super) fn choose_next_running_task<System: Kernel>(
         if *running_task.st.read(&*lock) == TaskSt::Running {
             running_task.priority.to_usize().unwrap()
         } else {
-            usize::max_value()
+            usize::MAX
         }
     } else {
-        usize::max_value()
+        usize::MAX
     };
 
     // The priority of the next task to run
     //
-    // The default value is `usize::max_value() - 1` for the following reason:
+    // The default value is `usize::MAX - 1` for the following reason:
     // If `running_task` is in the Waiting state and there's no other task to
     // schedule at the moment, we want to assign `None` to `running_task`. In
     // this case, if the default value was the same as `prev_task_priority`,
@@ -609,14 +609,14 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     // `if` statement below would return too early. We make sure this does not
     // happen by making the default value of `next_task_priority` lower.
     //
-    // `usize::max_value()` never collides with an actual task priority because
+    // `usize::MAX - 1` never collides with an actual task priority because
     // of the priority range restriction imposed by `CfgBuilder::
     // num_task_priority_levels`.
     let next_task_priority = System::state()
         .task_ready_bitmap
         .read(&*lock)
         .find_set()
-        .unwrap_or(usize::max_value() - 1);
+        .unwrap_or(usize::MAX - 1);
 
     // Return if there's no task willing to take over the current one, and
     // the current one can still run.

@@ -91,7 +91,7 @@ impl PoolPtr {
 
     /// Construct a `PoolPtr` from a given `x: usize`.
     ///
-    /// `x` must be less than `usize::max_value()`.
+    /// `x` must be less than `usize::MAX`.
     pub fn new(x: usize) -> Self {
         PoolPtr(NonZeroUsize::new(x.wrapping_add(1)).expect("count overflow"))
     }
