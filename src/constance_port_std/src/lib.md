@@ -52,6 +52,10 @@ This port fully supports [the standard interrupt handling framework].
 
 ## Implementation
 
-Based on the internal user-mode scheduling (UMS) framework, we treat interrupt handlers as UMS worker threads, just like tasks and the dispatcher. The user-mode scheduler manages active interrupt threads and favors them over other kinds of threads. (In contrast, the scheduler doesn't manage tasks - it only knows which task is currently chosen by the operating system.)
+Based on the internal user-mode scheduling (UMS) framework, we treat interrupt handlers as UMS worker threads, just like tasks. The user-mode scheduler manages active interrupt threads and favors them over other kinds of threads. (In contrast, the scheduler doesn't manage tasks - it only knows which task is currently chosen by the operating system.)
+
+The interrupt line [`INTERRUPT_LINE_DISPATCH`] is reserved for the dispatcher.
 
 **To be implemented:** True asynchronous interrupts aren't supported yet.
+
+[`INTERRUPT_LINE_DISPATCH`]: crate::INTERRUPT_LINE_DISPATCH
