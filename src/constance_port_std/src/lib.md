@@ -56,6 +56,4 @@ Based on the internal user-mode scheduling (UMS) framework, we treat interrupt h
 
 The interrupt line [`INTERRUPT_LINE_DISPATCH`] is reserved for the dispatcher.
 
-**To be implemented:** True asynchronous interrupts aren't supported yet.
-
 [`INTERRUPT_LINE_DISPATCH`]: crate::INTERRUPT_LINE_DISPATCH

@@ -546,6 +546,32 @@ pub fn shutdown<System: PortInstance>() {
         .shutdown();
 }
 
+/// Pend an interrupt line from an external thread.
+///
+/// It's illegal to call this method from a thread managed by the port (i.e.,
+/// you can't call it from a task or an interrupt handler). Use
+/// [`constance::kernel::InterruptLine::pend`] instead in such cases.
+pub fn pend_interrupt_line<System: PortInstance>(
+    num: InterruptNum,
+) -> Result<(), PendInterruptLineError> {
+    log::trace!("external-pend_interrupt_line{:?}", (num,));
+
+    assert_eq!(THREAD_ROLE.with(|r| r.get()), ThreadRole::Unknown);
+
+    let state = System::port_state();
+    let mut lock = state.thread_group.get().unwrap().lock();
+    lock.scheduler()
+        .update_line(num, |line| line.pended = true)
+        .map_err(|sched::BadIntLineError| PendInterruptLineError::BadParam)?;
+
+    if sched::check_preemption_by_interrupt(state.thread_group.get().unwrap(), &mut lock) {
+        lock.preempt();
+        drop(lock);
+    }
+
+    Ok(())
+}
+
 #[macro_export]
 macro_rules! use_port {
     (unsafe $vis:vis struct $sys:ident) => {

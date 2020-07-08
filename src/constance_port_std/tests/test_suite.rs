@@ -3,6 +3,7 @@
 #![feature(const_if_match)]
 #![feature(never_type)]
 #![feature(const_mut_refs)]
+#![feature(const_fn)]
 
 use constance_port_std::PortInstance;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -42,8 +43,22 @@ impl KernelTestUtil {
     }
 }
 
+mod kernel_tests {
+    pub mod external_interrupt;
+}
+
 macro_rules! instantiate_kernel_tests {
-    ($(
+    ( $( { $($tt:tt)* }, )* ) => {
+        instantiate_kernel_tests!(
+            @inner
+
+            $( { $($tt)* }, )*
+
+            // Port-specific tests
+            { path: crate::kernel_tests::external_interrupt, name_ident: external_interrupt, },
+        );
+    };
+    ( @inner $(
         { path: $path:path, name_ident: $name_ident:ident, $($rest:tt)* },
     )*) => {$(
         mod $name_ident {
