@@ -3,7 +3,6 @@ use constance::{kernel::Task, prelude::*};
 
 use super::Driver;
 
-#[derive(Debug)]
 pub struct App<System> {
     task: Task<System>,
 }

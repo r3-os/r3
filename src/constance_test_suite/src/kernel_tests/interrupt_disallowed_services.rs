@@ -7,7 +7,6 @@ use constance::{
 
 use super::Driver;
 
-#[derive(Debug)]
 pub struct App<System> {
     int: Option<InterruptLine<System>>,
 }
