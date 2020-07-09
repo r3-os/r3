@@ -1,4 +1,4 @@
-use core::{convert::TryInto, fmt};
+use core::{convert::TryInto, fmt, ops};
 
 use crate::utils::{Init, ZeroInit};
 
@@ -168,6 +168,30 @@ impl Duration {
             None
         }
     }
+
+    /// Add the specified value to `self`, returning `None` if the result
+    /// overflows.
+    #[inline]
+    pub const fn checked_add(self, other: Self) -> Option<Self> {
+        // FIXME: `Option::map` is not `const fn` yet
+        if let Some(x) = self.micros.checked_add(other.micros) {
+            Some(Self::from_micros(x))
+        } else {
+            None
+        }
+    }
+
+    /// Subtract the specified value from `self`, returning `None` if the result
+    /// overflows.
+    #[inline]
+    pub const fn checked_sub(self, other: Self) -> Option<Self> {
+        // FIXME: `Option::map` is not `const fn` yet
+        if let Some(x) = self.micros.checked_sub(other.micros) {
+            Some(Self::from_micros(x))
+        } else {
+            None
+        }
+    }
 }
 
 /// Error type returned when a checked duration type conversion fails.
@@ -214,6 +238,110 @@ impl fmt::Debug for Duration {
             write!(f, "-")?;
         }
         abs_dur.fmt(f)
+    }
+}
+
+impl ops::Add for Duration {
+    type Output = Self;
+
+    /// Perform a checked addition, panicking on overflow.
+    #[inline]
+    fn add(self, rhs: Self) -> Self::Output {
+        self.checked_add(rhs)
+            .expect("overflow when adding durations")
+    }
+}
+
+impl ops::AddAssign for Duration {
+    /// Perform a checked addition, panicking on overflow.
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl ops::Sub for Duration {
+    type Output = Self;
+
+    /// Perform a checked subtraction, panicking on overflow.
+    #[inline]
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.checked_sub(rhs)
+            .expect("overflow when subtracting durations")
+    }
+}
+
+impl ops::SubAssign for Duration {
+    /// Perform a checked subtraction, panicking on overflow.
+    #[inline]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl ops::Mul<i32> for Duration {
+    type Output = Duration;
+
+    /// Perform a checked multiplication, panicking on overflow.
+    #[inline]
+    fn mul(self, rhs: i32) -> Self::Output {
+        self.checked_mul(rhs)
+            .expect("overflow when multiplying duration by scalar")
+    }
+}
+
+impl ops::Mul<Duration> for i32 {
+    type Output = Duration;
+
+    /// Perform a checked multiplication, panicking on overflow.
+    #[inline]
+    fn mul(self, rhs: Duration) -> Self::Output {
+        rhs.checked_mul(self)
+            .expect("overflow when multiplying duration by scalar")
+    }
+}
+
+impl ops::MulAssign<i32> for Duration {
+    /// Perform a checked multiplication, panicking on overflow.
+    #[inline]
+    fn mul_assign(&mut self, rhs: i32) {
+        *self = *self * rhs;
+    }
+}
+
+impl ops::Div<i32> for Duration {
+    type Output = Duration;
+
+    /// Perform a checked division, panicking on overflow or when `rhs` is zero.
+    #[inline]
+    fn div(self, rhs: i32) -> Self::Output {
+        self.checked_div(rhs)
+            .expect("divide by zero or overflow when dividing duration by scalar")
+    }
+}
+
+impl ops::DivAssign<i32> for Duration {
+    /// Perform a checked division, panicking on overflow or when `rhs` is zero.
+    #[inline]
+    fn div_assign(&mut self, rhs: i32) {
+        *self = *self / rhs;
+    }
+}
+
+impl core::iter::Sum for Duration {
+    /// Perform a checked summation, panicking on overflow.
+    fn sum<I: Iterator<Item = Duration>>(iter: I) -> Self {
+        iter.fold(Duration::ZERO, |x, y| {
+            x.checked_add(y)
+                .expect("overflow in iter::sum over durations")
+        })
+    }
+}
+
+impl<'a> core::iter::Sum<&'a Duration> for Duration {
+    /// Perform a checked summation, panicking on overflow.
+    fn sum<I: Iterator<Item = &'a Duration>>(iter: I) -> Self {
+        iter.cloned().sum()
     }
 }
 

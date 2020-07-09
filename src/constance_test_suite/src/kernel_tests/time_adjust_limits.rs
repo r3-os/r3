@@ -37,9 +37,8 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // `system_time += TIME_USER_HEADROOM + 1300ms`, which should fail because
     // `task2`'s timeout would be late by `300ms`
     log::debug!("system_time += TIME_USER_HEADROOM + 1300ms (should fail)");
-    // TODO: `impl Add for Duration`
     assert_eq!(
-        System::adjust_time(Duration::from_millis(1300 + TIME_USER_HEADROOM.as_millis())),
+        System::adjust_time(TIME_USER_HEADROOM + Duration::from_millis(1300)),
         Err(AdjustTimeError::BadObjectState),
     );
 
@@ -69,7 +68,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // `system_time -= TIME_USER_HEADROOM - 900ms`, which should succeed because the frontier will be
     // only away by `TIME_USER_HEADROOM - 200ms`
     log::debug!("system_time -= TIME_USER_HEADROOM - 900ms");
-    System::adjust_time(Duration::from_millis(TIME_USER_HEADROOM.as_millis() - 900)).unwrap();
+    System::adjust_time(TIME_USER_HEADROOM - Duration::from_millis(900)).unwrap();
 
     D::app().seq.expect_and_replace(3, 4);
 
