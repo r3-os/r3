@@ -145,6 +145,7 @@ pub mod kernel_tests {
         (mod event_group_order_fifo {}, "event_group_order_fifo"),
         (mod event_group_order_task_priority {}, "event_group_order_task_priority"),
         (mod event_group_set_and_dispatch {}, "event_group_set_and_dispatch"),
+        (mod event_group_timeout {}, "event_group_timeout"),
         (mod event_group_wait_types {}, "event_group_wait_types"),
         (mod interrupt_disallowed_services {}, "interrupt_disallowed_services"),
         (mod interrupt_handler_priority {}, "interrupt_handler_priority"),
@@ -162,6 +163,7 @@ pub mod kernel_tests {
         (mod task_priority_boost_reset {}, "task_priority_boost_reset"),
         (mod task_queue_fifo {}, "task_queue_fifo"),
         (mod time_misc {}, "time_misc"),
+        (mod time_stress {}, "time_stress"),
     }
 
     /// Invoke the specified macro with a description of test cases
