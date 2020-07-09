@@ -1,4 +1,4 @@
-use core::{convert::TryInto, fmt};
+use core::{convert::TryInto, fmt, ops};
 
 use crate::{
     time::Duration,
@@ -159,11 +159,59 @@ impl Time {
                 .ok()?,
         ))
     }
+
+    /// Advance the time by `duration` and return the result.
+    #[inline]
+    pub const fn wrapping_add(&self, duration: Duration) -> Self {
+        Self::from_micros(self.micros.wrapping_add(duration.as_micros() as i64 as u64))
+    }
+
+    /// Put back the time by `duration` and return the result.
+    #[inline]
+    pub const fn wrapping_sub(&self, duration: Duration) -> Self {
+        Self::from_micros(self.micros.wrapping_sub(duration.as_micros() as i64 as u64))
+    }
 }
 
 impl fmt::Debug for Time {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.core_duration_since_origin().fmt(f)
+    }
+}
+
+impl ops::Add<Duration> for Time {
+    type Output = Self;
+
+    /// Advance the time by `duration` and return the result.
+    #[inline]
+    fn add(self, rhs: Duration) -> Self::Output {
+        self.wrapping_add(rhs)
+    }
+}
+
+impl ops::AddAssign<Duration> for Time {
+    /// Advance the time by `duration` in place.
+    #[inline]
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
+impl ops::Sub<Duration> for Time {
+    type Output = Self;
+
+    /// Put back the time by `duration` and return the result.
+    #[inline]
+    fn sub(self, rhs: Duration) -> Self::Output {
+        self.wrapping_sub(rhs)
+    }
+}
+
+impl ops::SubAssign<Duration> for Time {
+    /// Put back the time by `duration` in place.
+    #[inline]
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
     }
 }
 

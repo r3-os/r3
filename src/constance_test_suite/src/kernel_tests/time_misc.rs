@@ -66,8 +66,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     log::trace!("sleeping for {:?}", d);
     System::sleep(d).unwrap();
 
-    // TODO: `impl Add<Duration> for Time`
-    let now4 = Time::from_micros(now3.as_micros().wrapping_add(d.as_micros() as _));
+    let now4 = now3 + d;
     let now4_got = System::time().unwrap();
     log::trace!("time = {:?} (expected >= {:?})", now4_got, now4);
     assert!(now4_got.as_micros() >= now4.as_micros());
