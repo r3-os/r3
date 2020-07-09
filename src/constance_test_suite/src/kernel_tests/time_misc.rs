@@ -5,19 +5,20 @@ use constance::{
     prelude::*,
     time::{Duration, Time},
 };
+use core::marker::PhantomData;
 
 use super::Driver;
 
 pub struct App<System> {
-    task: Task<System>,
+    _phantom: PhantomData<System>,
 }
 
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            let task = new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
+            new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
 
-            App { task }
+            App { _phantom: PhantomData }
         }
     }
 }
