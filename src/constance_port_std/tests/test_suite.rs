@@ -1,6 +1,4 @@
 //! Runs test cases defined in `constance_test_suite`.
-#![feature(const_loop)]
-#![feature(const_if_match)]
 #![feature(never_type)]
 #![feature(const_mut_refs)]
 #![feature(const_fn)]

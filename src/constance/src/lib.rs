@@ -1,8 +1,6 @@
 #![feature(external_doc)] // `#[doc(include = ...)]`
 #![feature(const_fn)]
-#![feature(const_if_match)]
 #![feature(const_panic)]
-#![feature(const_loop)]
 #![feature(const_generics)]
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
