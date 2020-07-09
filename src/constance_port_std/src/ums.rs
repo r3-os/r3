@@ -1,9 +1,8 @@
 //! Utterly inefficient cross-platform preemptive user-mode scheduling
 use once_cell::sync::OnceCell;
-use parking_lot::{Mutex, MutexGuard};
 use std::{
     panic::{catch_unwind, AssertUnwindSafe},
-    sync::{mpsc, Arc},
+    sync::{mpsc, Arc, Mutex, MutexGuard},
     thread::Result,
 };
 
@@ -117,7 +116,7 @@ impl<Sched: Scheduler + ?Sized> ThreadGroup<Sched> {
     pub fn lock(&self) -> ThreadGroupLockGuard<'_, Sched> {
         ThreadGroupLockGuard {
             state_ref: &self.state,
-            guard: self.state.lock(),
+            guard: self.state.lock().unwrap(),
         }
     }
 }
@@ -270,7 +269,7 @@ pub fn yield_now() {
         .expect("current thread does not belong to a thread group");
 
     {
-        let mut state_guard = thread_group.lock();
+        let mut state_guard = thread_group.lock().unwrap();
         log::trace!("{:?} yielded the processor", state_guard.cur_thread_id);
         state_guard.unpark_next_thread();
     }
@@ -311,7 +310,7 @@ fn finalize_thread(
     log::trace!("{:?} exited with result {:?}", thread_id, result);
 
     // Delete the current thread
-    let mut state_guard = thread_group.lock();
+    let mut state_guard = thread_group.lock().unwrap();
     state_guard.sched.thread_exited(thread_id);
     state_guard.threads.deallocate(thread_id.0).unwrap();
     state_guard.num_threads -= 1;
