@@ -3,9 +3,7 @@ Simulator for running [`::constance`] on a hosted environment
 # Usage
 
 ```rust
-#![feature(const_loop)]
 #![feature(const_fn)]
-#![feature(const_if_match)]
 #![feature(const_mut_refs)]
 
 // Require `unsafe` even in `unsafe fn` - highly recommended

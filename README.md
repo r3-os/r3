@@ -27,9 +27,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 ## Example
 
 ```rust
-#![feature(const_loop)]
 #![feature(const_fn)]
-#![feature(const_if_match)]
 #![feature(const_mut_refs)]
 use constance::kernel::Task;
 
