@@ -51,6 +51,10 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         System::set_time(now),
         Err(constance::kernel::TimeError::BadContext)
     );
+    assert_eq!(
+        System::adjust_time(Duration::ZERO),
+        Err(constance::kernel::AdjustTimeError::BadContext)
+    );
     unsafe { System::release_cpu_lock().unwrap() };
 
     // System time should wrap around
@@ -67,6 +71,15 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     let now4_got = System::time().unwrap();
     log::trace!("time = {:?} (expected >= {:?})", now4_got, now4);
     assert!(now4_got.as_micros() >= now4.as_micros());
+
+    // `adjust_time(0)` is no-op
+    System::adjust_time(Duration::ZERO).unwrap();
+
+    let now5 = now4_got;
+    let now5_got = System::time().unwrap();
+    log::trace!("time = {:?} (expected {:?})", now5_got, now5);
+    assert!(now5_got.as_micros() >= now5.as_micros());
+    assert!(now5_got.as_micros() <= now5.as_micros() + 100_000);
 
     // Out-of-range duration
     assert_eq!(
