@@ -68,5 +68,15 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     log::trace!("time = {:?} (expected >= {:?})", now4_got, now4);
     assert!(now4_got.as_micros() >= now4.as_micros());
 
+    // Out-of-range duration
+    assert_eq!(
+        System::sleep(Duration::from_micros(-1)),
+        Err(constance::kernel::SleepError::BadParam)
+    );
+    assert_eq!(
+        System::sleep(Duration::MIN),
+        Err(constance::kernel::SleepError::BadParam)
+    );
+
     D::success();
 }
