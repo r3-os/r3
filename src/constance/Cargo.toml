@@ -4,6 +4,11 @@ version = "0.0.1"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
+readme = "../../README.md"
+description = "Static RTOS testing the limit of Rust's const eval and generics"
+categories = ["embedded", "no-std"]
+keywords = ["constance", "rtos"]
+repository = "https://github.com/yvt/Constance"
 
 [dependencies]
 tokenlock = { version = "0.3.0", default-features = false }

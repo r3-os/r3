@@ -4,6 +4,9 @@ version = "0.0.1"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
+description = "Simulation environment for running Constance on a hosted environment"
+keywords = ["constance", "simulator"]
+repository = "https://github.com/yvt/Constance"
 
 [dependencies]
 atomic_ref = { version = "0.1", features = ["nightly"] }
