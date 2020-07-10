@@ -38,3 +38,18 @@ impl HasAtomicEquivalent for isize {
 }
 
 pub type Atomic<T> = <T as HasAtomicEquivalent>::AtomicEquivalent;
+
+pub trait LockConsuming {
+    type LockGuard;
+
+    fn lock(self) -> Self::LockGuard;
+}
+
+impl<'a, T> LockConsuming for &'a try_lock::TryLock<T> {
+    type LockGuard = try_lock::Locked<'a, T>;
+
+    #[inline]
+    fn lock(self) -> Self::LockGuard {
+        self.try_lock().unwrap()
+    }
+}

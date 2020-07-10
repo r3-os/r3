@@ -16,12 +16,12 @@ use constance::{
     utils::intrusive_list::StaticListHead,
 };
 use once_cell::sync::OnceCell;
-use parking_lot::{lock_api::RawMutex, Mutex};
 use std::{
     cell::Cell,
     sync::mpsc,
     time::{Duration, Instant},
 };
+use try_lock::TryLock;
 
 #[cfg(unix)]
 #[path = "threading_unix.rs"]
@@ -37,6 +37,8 @@ mod threading_test;
 mod sched;
 mod ums;
 mod utils;
+
+use self::utils::LockConsuming;
 
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -83,13 +85,19 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
 #[doc(hidden)]
 pub struct State {
     thread_group: OnceCell<ums::ThreadGroup<sched::SchedState>>,
-    timer_cmd_send: Mutex<Option<mpsc::Sender<TimerCmd>>>,
+    timer_cmd_send: TryLock<Option<mpsc::Sender<TimerCmd>>>,
     origin: AtomicRef<'static, Instant>,
 }
 
 #[derive(Debug)]
 pub struct TaskState {
-    tsm: Mutex<Tsm>,
+    /// The task's state in the task state machine.
+    ///
+    /// This field is expected to be accessed with CPU Lock or a scheduler lock,
+    /// so `TryLock` is sufficient (no real mutexes are necessary). It could be
+    /// even `UnsafeCell`, but we'd like to avoid unsafe code whenever possible.
+    /// The runtime performance is not a concern in `constance_port_std`.
+    tsm: TryLock<Tsm>,
 }
 
 impl Init for TaskState {
@@ -134,7 +142,7 @@ thread_local! {
 impl TaskState {
     pub const fn new() -> Self {
         Self {
-            tsm: Mutex::const_new(RawMutex::INIT, Tsm::Uninit),
+            tsm: TryLock::new(Tsm::Uninit),
         }
     }
 
@@ -185,7 +193,7 @@ impl State {
     pub const fn new() -> Self {
         Self {
             thread_group: OnceCell::new(),
-            timer_cmd_send: Mutex::const_new(RawMutex::INIT, None),
+            timer_cmd_send: TryLock::new(None),
             origin: AtomicRef::new(None),
         }
     }
