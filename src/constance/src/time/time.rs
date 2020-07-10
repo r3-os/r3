@@ -1,7 +1,6 @@
-use core::{
-    convert::{TryFrom, TryInto},
-    fmt, ops,
-};
+#[cfg(feature = "chrono")]
+use core::convert::TryFrom;
+use core::{convert::TryInto, fmt, ops};
 
 use crate::{
     time::Duration,
