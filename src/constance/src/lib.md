@@ -274,7 +274,7 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
 # Threads
 
-**An (execution) thread** is a sequence of instructions executed by a processor. There can be multiple threads existing at the same time and the kernel is responsible for scheduling the execution of threads. The location in a program where a thread starts execution is called **an entry point function** for the thread. A thread exits when it returns from its entry point function¹ or calls [`exit_task`](crate::kernel::Kernel::exit_task) (valid only for tasks).
+**An (execution) thread** is a sequence of instructions executed by a processor. There can be multiple threads existing at the same time and the kernel is responsible for deciding which thread to run at any point on a processor (this process is called scheduling). The location in a program where a thread starts execution is called **an entry point function** for the thread. A thread exits when it returns from its entry point function¹ or calls [`exit_task`](crate::kernel::Kernel::exit_task) (valid only for tasks).
 
  ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.
 
