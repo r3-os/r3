@@ -3,6 +3,7 @@ name = "constance_port_std"
 version = "0.0.1"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 atomic_ref = { version = "0.1", features = ["nightly"] }
