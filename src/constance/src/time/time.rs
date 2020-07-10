@@ -1,4 +1,7 @@
-use core::{convert::TryInto, fmt, ops};
+use core::{
+    convert::{TryFrom, TryInto},
+    fmt, ops,
+};
 
 use crate::{
     time::Duration,
@@ -215,5 +218,83 @@ impl ops::SubAssign<Duration> for Time {
     }
 }
 
+/// Error type returned when a checked timestamp type conversion fails.
+#[cfg(feature = "chrono")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TryFromDateTimeError(());
+
+#[cfg(feature = "chrono")]
+impl TryFrom<chrono::DateTime<chrono::Utc>> for Time {
+    type Error = TryFromDateTimeError;
+
+    /// Try to construct a `Time` from the specified `chrono::DateTime<Utc>`.
+    /// Returns an error if the specified `DateTime` overflows the representable
+    /// range of the destination type.
+    ///
+    /// The sub-microsecond part is rounded by truncating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::convert::TryFrom;
+    /// use chrono::{DateTime, Utc, TimeZone};
+    /// use constance::time::Time;
+    /// assert_eq!(
+    ///     Time::try_from(Utc.timestamp(4, 123_456)),
+    ///     Ok(Time::from_micros(4_000_123)),
+    /// );
+    /// assert!(Time::try_from(Utc.timestamp(-1, 999_999_999)).is_err());
+    /// ```
+    fn try_from(value: chrono::DateTime<chrono::Utc>) -> Result<Self, Self::Error> {
+        let secs: u64 = value
+            .timestamp()
+            .try_into()
+            .map_err(|_| TryFromDateTimeError(()))?;
+
+        let micros: u64 = value.timestamp_subsec_micros().into();
+
+        Ok(Self::from_micros(
+            secs.checked_mul(1_000_000)
+                .and_then(|x| x.checked_add(micros))
+                .ok_or(TryFromDateTimeError(()))?,
+        ))
+    }
+}
+
+#[cfg(feature = "chrono")]
+impl TryFrom<Time> for chrono::DateTime<chrono::Utc> {
+    type Error = TryFromDateTimeError;
+
+    /// Try to construct a `chrono::DateTime<chrono::Utc>` from the specified
+    /// `Time`.
+    /// Returns an error if the specified `Time` overflows the representable
+    /// range of the destination type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::convert::TryFrom;
+    /// use chrono::{DateTime, Utc, TimeZone};
+    /// use constance::time::Time;
+    /// assert_eq!(
+    ///     DateTime::try_from(Time::from_micros(123_456_789)),
+    ///     Ok(Utc.timestamp(123, 456_789_000)),
+    /// );
+    /// assert!(
+    ///     DateTime::try_from(Time::from_micros(0xffff_ffff_ffff_ffff))
+    ///         .is_err()
+    /// );
+    /// ```
+    fn try_from(value: Time) -> Result<Self, Self::Error> {
+        use chrono::TimeZone;
+        chrono::Utc
+            .timestamp_opt(
+                (value.micros / 1_000_000) as i64,
+                (value.micros % 1_000_000) as u32 * 1_000,
+            )
+            .single()
+            .ok_or(TryFromDateTimeError(()))
+    }
+}
+
 // TODO: Add more tests
-// TODO: Interoperation with `::chrono`

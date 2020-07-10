@@ -16,6 +16,7 @@ parse-generics-shim = { version = "0.1.1" }
 svgbobdoc = "0.2.2"
 staticvec = { version = "0.10.1", default-features = false }
 pin-utils = "0.1.0"
+chrono = { version = "0.4.13", optional = true, default-features = false }
 
 [dev-dependencies]
 env_logger = "0.7.1"

@@ -1,4 +1,7 @@
-use core::{convert::TryInto, fmt, ops};
+use core::{
+    convert::{TryFrom, TryInto},
+    fmt, ops,
+};
 
 use crate::utils::{Init, ZeroInit};
 
@@ -198,14 +201,14 @@ impl Duration {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromDurationError(());
 
-impl core::convert::TryFrom<core::time::Duration> for Duration {
+impl TryFrom<core::time::Duration> for Duration {
     type Error = TryFromDurationError;
 
     /// Try to construct a `Duration` from the specified `core::time::Duration`.
     /// Returns an error if the specified `Duration` overflows the representable
     /// range of the destination type.
     ///
-    /// The sub-microsecond part is rounded down.
+    /// The sub-microsecond part is rounded by truncating.
     fn try_from(value: core::time::Duration) -> Result<Self, Self::Error> {
         Ok(Self::from_micros(
             value
@@ -216,7 +219,7 @@ impl core::convert::TryFrom<core::time::Duration> for Duration {
     }
 }
 
-impl core::convert::TryFrom<Duration> for core::time::Duration {
+impl TryFrom<Duration> for core::time::Duration {
     type Error = TryFromDurationError;
 
     /// Try to construct a `core::time::Duration` from the specified `Duration`.
@@ -345,7 +348,64 @@ impl<'a> core::iter::Sum<&'a Duration> for Duration {
     }
 }
 
+#[cfg(feature = "chrono")]
+impl TryFrom<chrono::Duration> for Duration {
+    type Error = TryFromDurationError;
+
+    /// Try to construct a `Duration` from the specified `chrono::Duration`.
+    /// Returns an error if the specified `Duration` overflows the representable
+    /// range of the destination type.
+    ///
+    /// The sub-microsecond part is rounded by truncating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::convert::TryFrom;
+    /// use chrono::Duration as ChronoDuration;
+    /// use constance::time::Duration as ConstanceDuration;
+    /// assert_eq!(
+    ///     ConstanceDuration::try_from(ChronoDuration::nanoseconds(123_456)),
+    ///     Ok(ConstanceDuration::from_micros(123)),
+    /// );
+    /// assert_eq!(
+    ///     ConstanceDuration::try_from(ChronoDuration::nanoseconds(-123_456)),
+    ///     Ok(ConstanceDuration::from_micros(-123)),
+    /// );
+    /// assert!(
+    ///     ConstanceDuration::try_from(ChronoDuration::microseconds(0x100000000))
+    ///         .is_err()
+    /// );
+    /// ```
+    fn try_from(value: chrono::Duration) -> Result<Self, Self::Error> {
+        Ok(Self::from_micros(
+            value
+                .num_microseconds()
+                .and_then(|x| x.try_into().ok())
+                .ok_or(TryFromDurationError(()))?,
+        ))
+    }
+}
+
+#[cfg(feature = "chrono")]
+impl From<Duration> for chrono::Duration {
+    /// Construct a `chrono::Duration` from the specified `Duration`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chrono::Duration as ChronoDuration;
+    /// use constance::time::Duration as ConstanceDuration;
+    /// assert_eq!(
+    ///     ChronoDuration::from(ConstanceDuration::from_micros(123_456)),
+    ///     ChronoDuration::microseconds(123_456),
+    /// );
+    /// ```
+    fn from(value: Duration) -> Self {
+        Self::microseconds(value.micros as i64)
+    }
+}
+
 // TODO: Add more tests
 // TODO: Maybe add macros to construct a `Duration` with compile-time overflow
 //       check
-// TODO: Interoperation with `::chrono`
