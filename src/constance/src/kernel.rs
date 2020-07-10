@@ -591,7 +591,7 @@ pub trait PortToKernel {
     // TODO: Explain phases
     unsafe fn boot() -> !;
 
-    /// Determine the next task to run and store it in [`State::active_task_ref`].
+    /// Determine the next task to run and store it in [`State::running_task_ref`].
     ///
     /// Precondition: CPU Lock active / Postcondition: CPU Lock active
     unsafe fn choose_running_task();
@@ -807,7 +807,7 @@ impl<System: KernelCfg2> State<System> {
     /// # Safety
     ///
     /// Modifying the stored value is not allowed.
-    pub unsafe fn active_task_ref(&self) -> &AtomicRef<'static, TaskCb<System>> {
+    pub unsafe fn running_task_ref(&self) -> &AtomicRef<'static, TaskCb<System>> {
         &self.running_task
     }
 }
