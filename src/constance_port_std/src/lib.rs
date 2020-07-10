@@ -83,7 +83,6 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
 #[doc(hidden)]
 pub struct State {
     thread_group: OnceCell<ums::ThreadGroup<sched::SchedState>>,
-    join_handle: Mutex<Option<ums::ThreadGroupJoinHandle>>,
     timer_cmd_send: Mutex<Option<mpsc::Sender<TimerCmd>>>,
     origin: AtomicRef<'static, Instant>,
 }
@@ -186,7 +185,6 @@ impl State {
     pub const fn new() -> Self {
         Self {
             thread_group: OnceCell::new(),
-            join_handle: Mutex::const_new(RawMutex::INIT, None),
             timer_cmd_send: Mutex::const_new(RawMutex::INIT, None),
             origin: AtomicRef::new(None),
         }
@@ -200,7 +198,6 @@ impl State {
         let (thread_group, join_handle) = ums::ThreadGroup::new(sched::SchedState::new::<System>());
 
         self.thread_group.set(thread_group).ok().unwrap();
-        *self.join_handle.lock() = Some(join_handle);
 
         // Start a timer thread
         let (timer_cmd_send, timer_cmd_recv) = mpsc::channel();
@@ -260,7 +257,6 @@ impl State {
         drop(lock);
 
         // Wait until the thread group shuts down
-        let join_handle = self.join_handle.lock().take().unwrap();
         let result = join_handle.join();
 
         // Stop the timer thread.
