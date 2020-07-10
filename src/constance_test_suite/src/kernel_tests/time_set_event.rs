@@ -68,11 +68,15 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     let now = Time::from_millis(600);
     let now_got = System::time().unwrap();
     log::trace!("time = {:?} (expected = {:?})", now_got, now);
-
-    // `now <= now_got < now + timing_error`
-    let delta = now_got.duration_since(now);
-    assert!(!delta.unwrap().is_negative());
-    assert!(delta.unwrap().as_millis() < 100);
+    assert!(
+        now_got
+            .duration_since(now)
+            .unwrap()
+            .checked_abs()
+            .unwrap()
+            .as_millis()
+            < 50
+    );
 
     D::success();
 }
@@ -89,9 +93,13 @@ fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     let now = Time::from_millis(400);
     let now_got = System::time().unwrap();
     log::trace!("time = {:?} (expected = {:?})", now_got, now);
-
-    // `now <= now_got < now + timing_error`
-    let delta = now_got.duration_since(now);
-    assert!(!delta.unwrap().is_negative());
-    assert!(delta.unwrap().as_millis() < 100);
+    assert!(
+        now_got
+            .duration_since(now)
+            .unwrap()
+            .checked_abs()
+            .unwrap()
+            .as_millis()
+            < 50
+    );
 }
