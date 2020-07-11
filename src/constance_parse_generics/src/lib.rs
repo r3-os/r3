@@ -8,6 +8,8 @@ files in the project carrying such notice may not be copied, modified,
 or distributed except according to those terms.
 */
 /*!
+**This is a fork of [`parse-generics-shim`](https://crates.io/crates/parse-generics-shim).**
+
 This crate provides stable, partial implementations of the `parse_generics!` and `parse_where!` macros proposed in [RFC #1583].  These macros serve two purposes:
 
 1. They allow crate authors to use the macros in a limited capacity whether or not the RFC is accepted.
@@ -128,7 +130,7 @@ The following show how the various invocation forms affect the output:
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_generics_shim! {
@@ -157,7 +159,7 @@ stringify!(
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_generics_shim! {
@@ -183,7 +185,7 @@ stringify!(
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_generics_shim! {
@@ -215,7 +217,7 @@ The input does not *have* to start with a generic parameter list.  Note that bot
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_generics_shim! {
@@ -244,7 +246,7 @@ stringify!(
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_generics_shim! {
@@ -344,7 +346,7 @@ The following show how the various invocation forms affect the output:
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_where_shim! {
@@ -374,7 +376,7 @@ stringify!(
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_where_shim! {
@@ -408,7 +410,7 @@ The input does not *have* to start with a `where` clause:
 ```rust
 # #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 # #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-# #[macro_use] extern crate parse_generics_shim;
+# #[macro_use] extern crate constance_parse_generics;
 # fn main() {
 # assert_eq!( (
 parse_where_shim! {
@@ -474,7 +476,7 @@ Then, add the following to your crate's root module:
 ```ignore
 #![cfg_attr(feature="parse-generics-poc", feature(plugin))]
 #![cfg_attr(feature="parse-generics-poc", plugin(parse_generics_poc))]
-#[macro_use] extern crate parse_generics_shim;
+#[macro_use] extern crate constance_parse_generics;
 #[macro_use] extern crate whizzo;
 ```
 

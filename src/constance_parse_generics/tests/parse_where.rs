@@ -9,7 +9,7 @@ or distributed except according to those terms.
 */
 #![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
 #![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
-extern crate parse_generics_shim;
+extern crate constance_parse_generics;
 
 macro_rules! as_item { ($i:item) => { $i } }
 
@@ -31,7 +31,7 @@ macro_rules! aeqiws {
 
 macro_rules! pwts {
     ($fields:tt, $($body:tt)*) => {
-        parse_generics_shim::parse_where_shim! {
+        constance_parse_generics::parse_where_shim! {
             $fields,
             then stringify!(),
             $($body)*

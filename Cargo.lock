@@ -66,11 +66,11 @@ dependencies = [
  "atomic_ref",
  "bitflags",
  "chrono",
+ "constance_parse_generics",
  "env_logger",
  "log",
  "num-integer",
  "num-traits",
- "parse-generics-shim",
  "pin-utils",
  "quickcheck",
  "quickcheck_macros",
@@ -86,6 +86,13 @@ dependencies = [
  "constance",
  "constance_port_std",
  "log",
+]
+
+[[package]]
+name = "constance_parse_generics"
+version = "0.1.2"
+dependencies = [
+ "rustc_version",
 ]
 
 [[package]]
@@ -241,13 +248,6 @@ name = "once_cell"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b631f7e854af39a1739f401cf34a8a013dfe09eac4fa4dba91e9768bd28168d"
-
-[[package]]
-name = "parse-generics-shim"
-version = "0.1.2"
-dependencies = [
- "rustc_version",
-]
 
 [[package]]
 name = "pin-utils"

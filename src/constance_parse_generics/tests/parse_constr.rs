@@ -8,7 +8,7 @@ files in the project carrying such notice may not be copied, modified,
 or distributed except according to those terms.
 */
 #![cfg(not(feature="use-parse-generics-poc"))]
-extern crate parse_generics_shim;
+extern crate constance_parse_generics;
 extern crate rustc_version;
 
 macro_rules! aeqiws {
@@ -29,7 +29,7 @@ macro_rules! aeqiws {
 
 macro_rules! pgts {
     ($($body:tt)*) => {
-        parse_generics_shim::parse_constr! {
+        constance_parse_generics::parse_constr! {
             (true, true),
             then stringify!(),
             $($body)*

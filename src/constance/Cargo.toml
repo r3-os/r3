@@ -11,6 +11,7 @@ keywords = ["constance", "rtos"]
 repository = "https://github.com/yvt/Constance"
 
 [dependencies]
+constance_parse_generics = { version = "0.1.2", path = "../constance_parse_generics" }
 tokenlock = { version = "0.3.0", default-features = false }
 num-integer = "0.1.42"
 num-traits = "0.2.11"
@@ -19,7 +20,6 @@ svgbobdoc = "0.2.2"
 staticvec = { version = "0.10.1", default-features = false }
 pin-utils = "0.1.0"
 chrono = { version = "0.4.13", optional = true, default-features = false }
-parse-generics-shim = { path = "../constance_parse_generics" }
 
 [dependencies.atomic_ref]
 # - “Make the crate `no_std`”
