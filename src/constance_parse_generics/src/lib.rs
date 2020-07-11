@@ -422,10 +422,10 @@ stringify!(
 This feature has removed because of incompatibility with a modern Rust compiler.
 
 */
-#![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
-#![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
+#![cfg_attr(feature = "use-parse-generics-poc", feature(plugin))]
+#![cfg_attr(feature = "use-parse-generics-poc", plugin(parse_generics_poc))]
 
-#[cfg(not(feature="use-parse-generics-poc"))]
+#[cfg(not(feature = "use-parse-generics-poc"))]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! parse_generics_shim_util {

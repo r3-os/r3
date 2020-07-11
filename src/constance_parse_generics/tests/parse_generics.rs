@@ -10,20 +10,22 @@ or distributed except according to those terms.
 extern crate constance_parse_generics;
 extern crate rustc_version;
 
-macro_rules! as_item { ($i:item) => { $i } }
+macro_rules! as_item {
+    ($i:item) => {
+        $i
+    };
+}
 
 macro_rules! aeqiws {
-    ($lhs:expr, $rhs:expr) => {
-        {
-            let lhs = $lhs;
-            let rhs = $rhs;
-            let lhs_words = lhs.split_whitespace();
-            let rhs_words = rhs.split_whitespace();
-            let lhs = lhs_words.collect::<Vec<_>>().join("");
-            let rhs = rhs_words.collect::<Vec<_>>().join("");
-            assert_eq!(lhs, rhs);
-        }
-    };
+    ($lhs:expr, $rhs:expr) => {{
+        let lhs = $lhs;
+        let rhs = $rhs;
+        let lhs_words = lhs.split_whitespace();
+        let rhs_words = rhs.split_whitespace();
+        let lhs = lhs_words.collect::<Vec<_>>().join("");
+        let rhs = rhs_words.collect::<Vec<_>>().join("");
+        assert_eq!(lhs, rhs);
+    }};
 }
 
 macro_rules! pgts {
@@ -39,7 +41,7 @@ macro_rules! pgts {
 #[test]
 fn test_no_generics() {
     aeqiws!(
-        pgts!({..}, X),
+        pgts!({ .. }, X),
         r#"
             {
                 constr : [ ] ,
@@ -386,7 +388,7 @@ fn test_constr_lt_params() {
 
     aeqiws!(
         pgts!({ .. }, <T: ?Sized + Clone + Copy + for<'a> From<&'a str>> X),
-        if cfg!(feature="parse-generics-poc") {
+        if cfg!(feature = "parse-generics-poc") {
             r#"
                 {
                     constr : [ T : ? Sized + Clone + Copy

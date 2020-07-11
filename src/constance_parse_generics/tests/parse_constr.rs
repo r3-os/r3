@@ -11,17 +11,15 @@ extern crate constance_parse_generics;
 extern crate rustc_version;
 
 macro_rules! aeqiws {
-    ($lhs:expr, $rhs:expr) => {
-        {
-            let lhs = $lhs;
-            let rhs = $rhs;
-            let lhs_words = lhs.split_whitespace();
-            let rhs_words = rhs.split_whitespace();
-            let lhs = lhs_words.collect::<Vec<_>>().join("");
-            let rhs = rhs_words.collect::<Vec<_>>().join("");
-            assert_eq!(lhs, rhs);
-        }
-    };
+    ($lhs:expr, $rhs:expr) => {{
+        let lhs = $lhs;
+        let rhs = $rhs;
+        let lhs_words = lhs.split_whitespace();
+        let rhs_words = rhs.split_whitespace();
+        let lhs = lhs_words.collect::<Vec<_>>().join("");
+        let rhs = rhs_words.collect::<Vec<_>>().join("");
+        assert_eq!(lhs, rhs);
+    }};
 }
 
 macro_rules! pgts {
@@ -52,10 +50,18 @@ fn test_simple() {
     aeqiws!(pgts!('a + T; X), "{ 'a + T } , ; X");
     aeqiws!(pgts!('a + 'b; X), "{ 'a + 'b } , ; X");
     aeqiws!(pgts!('a + 'b + T; X), "{ 'a + 'b + T } , ; X");
-    aeqiws!(pgts!('a + ::std::clone::Clone; X),
-        if rv!(1.10) { "{ 'a + :: std :: clone :: Clone } , ; X" }
-        else { "{ 'a + :: std:: clone:: Clone } , ; X" } );
+    aeqiws!(
+        pgts!('a + ::std::clone::Clone; X),
+        if rv!(1.10) {
+            "{ 'a + :: std :: clone :: Clone } , ; X"
+        } else {
+            "{ 'a + :: std:: clone:: Clone } , ; X"
+        }
+    );
     aeqiws!(pgts!('a + From<u8>; X), "{ 'a + From < u8 > } , ; X");
-    aeqiws!(pgts!('a + From<Bar<u8>>; X), "{ 'a + From < Bar < u8 >> } , ; X");
+    aeqiws!(
+        pgts!('a + From<Bar<u8>>; X),
+        "{ 'a + From < Bar < u8 >> } , ; X"
+    );
     aeqiws!(pgts!('a + From<Bar>> X), "{ 'a + From < Bar > } , > X");
 }

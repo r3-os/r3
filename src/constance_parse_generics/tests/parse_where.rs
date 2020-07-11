@@ -10,17 +10,15 @@ or distributed except according to those terms.
 extern crate constance_parse_generics;
 
 macro_rules! aeqiws {
-    ($lhs:expr, $rhs:expr) => {
-        {
-            let lhs = $lhs;
-            let rhs = $rhs;
-            let lhs_words = lhs.split_whitespace();
-            let rhs_words = rhs.split_whitespace();
-            let lhs = lhs_words.collect::<Vec<_>>().join("");
-            let rhs = rhs_words.collect::<Vec<_>>().join("");
-            assert_eq!(lhs, rhs);
-        }
-    };
+    ($lhs:expr, $rhs:expr) => {{
+        let lhs = $lhs;
+        let rhs = $rhs;
+        let lhs_words = lhs.split_whitespace();
+        let rhs_words = rhs.split_whitespace();
+        let lhs = lhs_words.collect::<Vec<_>>().join("");
+        let rhs = rhs_words.collect::<Vec<_>>().join("");
+        assert_eq!(lhs, rhs);
+    }};
 }
 
 macro_rules! pwts {
@@ -36,7 +34,7 @@ macro_rules! pwts {
 #[test]
 fn test_no_where() {
     aeqiws!(
-        pwts!({..}, X),
+        pwts!({ .. }, X),
         r#"
             { clause : [ ] , preds : [ ] , .. } ,
             X
