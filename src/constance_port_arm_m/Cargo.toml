@@ -1,0 +1,16 @@
+[package]
+name = "constance_port_arm_m"
+version = "0.0.1"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Cortex-M port for Constance"
+categories = ["embedded", "no-std"]
+keywords = ["constance", "arm"]
+repository = "https://github.com/yvt/Constance"
+
+[dependencies]
+constance = { path = "../constance" }
+
+[dev-dependencies]
+constance_test_suite = { path = "../constance_test_suite" }

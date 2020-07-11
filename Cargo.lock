@@ -89,6 +89,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "constance_port_arm_m"
+version = "0.0.1"
+dependencies = [
+ "constance",
+ "constance_test_suite",
+]
+
+[[package]]
 name = "constance_port_std"
 version = "0.0.1"
 dependencies = [
