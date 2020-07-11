@@ -18,13 +18,11 @@ macro_rules! aeqiws {
         {
             let lhs = $lhs;
             let rhs = $rhs;
-            let lhs_words = $lhs.split_whitespace();
-            let rhs_words = $rhs.split_whitespace();
-            for (i, (l, r)) in lhs_words.zip(rhs_words).enumerate() {
-                if l != r {
-                    panic!("assertion failed: `(left == right)` (left: `{:?}`, right: `{:?}`, at word {}, `{:?}` != `{:?}`)", lhs, rhs, i, l, r);
-                }
-            }
+            let lhs_words = lhs.split_whitespace();
+            let rhs_words = rhs.split_whitespace();
+            let lhs = lhs_words.collect::<Vec<_>>().join("");
+            let rhs = rhs_words.collect::<Vec<_>>().join("");
+            assert_eq!(lhs, rhs);
         }
     };
 }
