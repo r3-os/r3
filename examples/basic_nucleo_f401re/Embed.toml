@@ -1,0 +1,25 @@
+# cargo-embed configuration
+[default.probe]
+protocol = "Swd"
+
+[default.flashing]
+enabled = true
+halt_afterwards = false
+restore_unwritten_bytes = false
+
+[default.general]
+chip = "stm32f401re"
+chip_descriptions = []
+log_level = "Warn"
+
+[default.rtt]
+enabled = true
+# A list of channel associations to be displayed. If left empty, all channels are displayed.
+channels = [
+    # { up = 0, down = 0, name = "name" }
+]
+timeout = 3000
+show_timestamps = true
+
+[default.gdb]
+enabled = false

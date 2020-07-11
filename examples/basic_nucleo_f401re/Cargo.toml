@@ -1,0 +1,13 @@
+[package]
+name = "constance_example_basic_nucleo_f401re"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+constance = { path = "../../src/constance" }
+constance_port_arm_m = { path = "../../src/constance_port_arm_m" }
+nucleo-f401re = "0.4.1"
+panic-rtt-target = { version = "0.1.0", features = ["cortex-m"] }
+rtt-target = { version = "0.2.0", features = ["cortex-m"] }
