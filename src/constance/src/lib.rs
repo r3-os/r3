@@ -23,7 +23,7 @@ extern crate core;
 
 // `configure!` requires macros from this crate
 #[doc(hidden)]
-pub extern crate parse_generics_shim;
+pub extern crate constance_parse_generics;
 
 // `configure!` requires `StaticVec`
 #[doc(hidden)]

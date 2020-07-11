@@ -2,6 +2,7 @@
 members = [
     "examples/basic",
     "src/constance",
+    "src/constance_parse_generics",
     "src/constance_port_arm_m",
     "src/constance_port_std",
     "src/constance_test_suite",

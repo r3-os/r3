@@ -99,9 +99,12 @@ pub use self::{event_group::*, hunk::*, interrupt::*, task::*};
 ///
 /// # Limitations
 ///
-/// Generic parameters are supported with a help of
-/// [`::parse_generics_shim`]. Not all forms of generics are supported. See its
-/// documentation to find out what limitation applies.
+/// Generic parameters are supported with the help of
+/// [`::constance_parse_generics`]​ (a fork of [`parse-generics-shim`]). Not all
+/// forms of generics are supported. See its documentation to find out what
+/// limitation applies.
+///
+/// [`parse-generics-shim`]: https://crates.io/crates/parse-generics-shim
 ///
 /// `self` parameters aren't supported yet.
 ///
@@ -114,7 +117,7 @@ macro_rules! configure {
         $( #[$meta:meta] )*
         $vis:vis const fn $ident:ident $($gen_tokens:tt)*
     ) => {
-        $crate::parse_generics_shim::parse_generics_shim! {
+        $crate::constance_parse_generics::parse_generics_shim! {
             { constr },
             then $crate::configure! {
                 [2]
@@ -142,7 +145,7 @@ macro_rules! configure {
         // Remaining tokens to parse
         (_: CfgBuilder<$sys:ty>) -> $id_map:ty where $($where_tokens:tt)*
     ) => {
-        $crate::parse_generics_shim::parse_where_shim! {
+        $crate::constance_parse_generics::parse_where_shim! {
             { clause, preds },
             then $crate::configure! {
                 [3]
@@ -171,7 +174,7 @@ macro_rules! configure {
         // Remaining tokens to parse
         (_: &mut CfgBuilder<$sys:ty>) -> $id_map:ty { $($body:tt)* }
     ) => {
-        $crate::parse_generics_shim::parse_where_shim! {
+        $crate::constance_parse_generics::parse_where_shim! {
             { clause, preds },
             then $crate::configure! {
                 [3]
