@@ -1,0 +1,21 @@
+[package]
+name = "parse-generics-shim"
+version = "0.1.2"
+authors = ["Daniel Keep <daniel.keep@gmail.com>"]
+
+description = "A stable shim for the proposed RFC #1583; provides macros for parsing generics and where clauses."
+repository = "https://github.com/DanielKeep/rust-parse-generics"
+documentation = "https://danielkeep.github.io/rust-parse-generics/doc/parse_generics_shim/index.html"
+keywords = ["macro", "parse", "generics", "where"]
+license = "MIT/Apache-2.0"
+
+[features]
+# use-parse-generics-poc = ["parse-generics-poc"]
+
+# [dependencies.parse-generics-poc]
+# version = "0.1.0"
+# optional = true
+# path = "../parse-generics-poc"
+
+[dev-dependencies]
+rustc_version = "0.1.7"
