@@ -13,8 +13,8 @@ repository = "https://github.com/yvt/Constance"
 [dependencies]
 constance_parse_generics = { version = "0.1.2", path = "../constance_parse_generics" }
 tokenlock = { version = "0.3.0", default-features = false }
-num-integer = "0.1.42"
-num-traits = "0.2.11"
+num-integer = { version = "0.1.42", default-features = false }
+num-traits = { version = "0.2.11", default-features = false }
 bitflags = "1.2.1"
 svgbobdoc = "0.2.2"
 staticvec = { version = "0.10.1", default-features = false }
