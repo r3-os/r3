@@ -2,4 +2,3 @@
 **/*.rs.bk
 /publish
 **/target/criterion
-/Cargo.lock
