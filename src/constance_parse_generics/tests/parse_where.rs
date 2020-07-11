@@ -9,8 +9,6 @@ or distributed except according to those terms.
 */
 extern crate constance_parse_generics;
 
-macro_rules! as_item { ($i:item) => { $i } }
-
 macro_rules! aeqiws {
     ($lhs:expr, $rhs:expr) => {
         {
