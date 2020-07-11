@@ -834,8 +834,6 @@ macro_rules! use_port {
         }
 
         fn main() {
-            use $crate::constance::kernel::PortToKernel;
-
             $crate::env_logger::init();
 
             port_std_impl::PORT_STATE.port_boot::<$sys>();
