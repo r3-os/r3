@@ -419,7 +419,7 @@ stringify!(
 
 ## Using `parse-generics-poc`
 
-This feature has removed because of incompatibility with a modern Rust compiler.
+This feature was removed because of incompatibility with a modern Rust compiler.
 
 */
 #![cfg_attr(feature = "use-parse-generics-poc", feature(plugin))]
