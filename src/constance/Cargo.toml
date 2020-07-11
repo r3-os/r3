@@ -12,15 +12,28 @@ repository = "https://github.com/yvt/Constance"
 
 [dependencies]
 tokenlock = { version = "0.3.0", default-features = false }
-atomic_ref = { version = "0.1", features = ["nightly"] }
 num-integer = "0.1.42"
 num-traits = "0.2.11"
 bitflags = "1.2.1"
-parse-generics-shim = { version = "0.1.1" }
 svgbobdoc = "0.2.2"
 staticvec = { version = "0.10.1", default-features = false }
 pin-utils = "0.1.0"
 chrono = { version = "0.4.13", optional = true, default-features = false }
+
+[dependencies.parse-generics-shim]
+# “Support Rust 2018 style imports”
+# <https://github.com/DanielKeep/rust-parse-generics/pull/5>
+git = "https://github.com/yvt/rust-parse-generics.git"
+rev = "8e8d9b296a6ff98cdc77e5bbd95b59392d4c8829"
+
+[dependencies.atomic_ref]
+# - “Make the crate `no_std`”
+#   <https://github.com/mystor/atomic_ref/pull/1>
+# - “Make `AtomicRef::new` `const fn` (nightly-only)”
+#   <https://github.com/mystor/atomic_ref/pull/2>
+git = "https://github.com/yvt/atomic_ref.git"
+rev = "37523c17a2a535f4d04c204d65d2742647abed25"
+features = ["nightly"]
 
 [dev-dependencies]
 env_logger = "0.7.1"
