@@ -23,9 +23,5 @@ rev = "8e8d9b296a6ff98cdc77e5bbd95b59392d4c8829"
 [patch.crates-io.try-lock]
 # - “Make `TryLock::new` `const fn`”
 #   <https://github.com/seanmonstar/try-lock/pull/2>
-# - “Deprecate `try_lock_order`, introduce `try_lock_explicit[_unchecked]`”
-#   <https://github.com/seanmonstar/try-lock/pull/3>
-# - “Make the crate no-std”
-#   <https://github.com/seanmonstar/try-lock/pull/4>
 git = "https://github.com/yvt/try-lock.git"
-rev = "287f9a965a7b19761824a6545959dd1e0fe8cf3e"
+rev = "cf06bc26a49d511bec22aa36fb68a882e8713d3b"

@@ -446,8 +446,8 @@ checksum = "8548bd16a49ce560246e08f19568e28dd33c6e5eec636ac8039acdc058107b19"
 
 [[package]]
 name = "try-lock"
-version = "0.2.2"
-source = "git+https://github.com/yvt/try-lock.git?rev=287f9a965a7b19761824a6545959dd1e0fe8cf3e#287f9a965a7b19761824a6545959dd1e0fe8cf3e"
+version = "0.2.3"
+source = "git+https://github.com/yvt/try-lock.git?rev=cf06bc26a49d511bec22aa36fb68a882e8713d3b#cf06bc26a49d511bec22aa36fb68a882e8713d3b"
 
 [[package]]
 name = "unicode-width"
