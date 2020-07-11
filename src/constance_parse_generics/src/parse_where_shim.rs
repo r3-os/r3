@@ -7,16 +7,7 @@ Licensed under the MIT license (see LICENSE or <http://opensource.org
 files in the project carrying such notice may not be copied, modified,
 or distributed except according to those terms.
 */
-#[cfg(feature="use-parse-generics-poc")]
-#[doc(hidden)]
-#[macro_export(local_inner_macros)]
-macro_rules! parse_where_shim {
-    ($($body:tt)*) => {
-        parse_where! { $($body)* }
-    };
-}
 
-#[cfg(not(feature="use-parse-generics-poc"))]
 #[doc(hidden)]
 #[macro_export(local_inner_macros)]
 macro_rules! parse_where_shim {

@@ -7,8 +7,6 @@ Licensed under the MIT license (see LICENSE or <http://opensource.org
 files in the project carrying such notice may not be copied, modified,
 or distributed except according to those terms.
 */
-#![cfg_attr(feature="use-parse-generics-poc", feature(plugin))]
-#![cfg_attr(feature="use-parse-generics-poc", plugin(parse_generics_poc))]
 extern crate constance_parse_generics;
 extern crate rustc_version;
 
