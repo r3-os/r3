@@ -422,6 +422,7 @@ stringify!(
 This feature was removed because of incompatibility with a modern Rust compiler.
 
 */
+#![no_std]
 
 #[doc(hidden)]
 #[macro_export]
