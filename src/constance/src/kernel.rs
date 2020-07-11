@@ -424,10 +424,10 @@ pub unsafe trait PortThreading: KernelCfg1 {
     fn is_cpu_lock_active() -> bool;
 
     /// Return a flag indicating whether the current context is
-    /// [an interrupt context].
+    /// [an task context].
     ///
-    /// [an interrupt context]: crate#contexts
-    fn is_interrupt_context() -> bool;
+    /// [an task context]: crate#contexts
+    fn is_task_context() -> bool;
 }
 
 /// Implemented by a port. This trait contains items related to controlling

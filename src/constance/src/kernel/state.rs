@@ -4,7 +4,7 @@ use super::{task, utils, BadContextError, BoostPriorityError, Kernel};
 
 /// If the current context is not waitable, return `Err(BadContext)`.
 pub(super) fn expect_waitable_context<System: Kernel>() -> Result<(), BadContextError> {
-    if System::is_interrupt_context() || System::is_priority_boost_active() {
+    if !System::is_task_context() || System::is_priority_boost_active() {
         Err(BadContextError::BadContext)
     } else {
         Ok(())
@@ -14,7 +14,7 @@ pub(super) fn expect_waitable_context<System: Kernel>() -> Result<(), BadContext
 /// Implements `Kernel::boost_priority`.
 pub(super) fn boost_priority<System: Kernel>() -> Result<(), BoostPriorityError> {
     if System::is_cpu_lock_active()
-        || System::is_interrupt_context()
+        || !System::is_task_context()
         || System::is_priority_boost_active()
     {
         Err(BoostPriorityError::BadContext)
@@ -28,7 +28,7 @@ pub(super) fn boost_priority<System: Kernel>() -> Result<(), BoostPriorityError>
 
 /// Implements `Kernel::unboost_priority`.
 pub(super) fn unboost_priority<System: Kernel>() -> Result<(), BoostPriorityError> {
-    if System::is_interrupt_context() || !System::is_priority_boost_active() {
+    if !System::is_task_context() || !System::is_priority_boost_active() {
         Err(BoostPriorityError::BadContext)
     } else {
         // Acquire CPU Lock after checking other states so that

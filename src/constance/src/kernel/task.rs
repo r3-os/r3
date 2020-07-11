@@ -395,7 +395,7 @@ impl Init for TaskSt {
 
 /// Implements [`Kernel::exit_task`].
 pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskError> {
-    if System::is_interrupt_context() {
+    if !System::is_task_context() {
         return Err(ExitTaskError::BadContext);
     }
 

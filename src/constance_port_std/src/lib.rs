@@ -457,13 +457,13 @@ impl State {
             .cpu_lock
     }
 
-    pub fn is_interrupt_context<System: PortInstance>(&self) -> bool {
+    pub fn is_task_context<System: PortInstance>(&self) -> bool {
         expect_worker_thread::<System>();
 
         THREAD_ROLE.with(|role| match role.get() {
-            ThreadRole::Interrupt => true,
-            ThreadRole::Task => false,
-            _ => panic!("`is_interrupt_context` was called from an unknown thread"),
+            ThreadRole::Interrupt => false,
+            ThreadRole::Task => true,
+            _ => panic!("`is_task_context` was called from an unknown thread"),
         })
     }
 
@@ -777,8 +777,8 @@ macro_rules! use_port {
                     PORT_STATE.is_cpu_lock_active::<Self>()
                 }
 
-                fn is_interrupt_context() -> bool {
-                    PORT_STATE.is_interrupt_context::<Self>()
+                fn is_task_context() -> bool {
+                    PORT_STATE.is_task_context::<Self>()
                 }
             }
 

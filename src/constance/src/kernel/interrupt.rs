@@ -79,7 +79,7 @@ impl<System: Kernel> InterruptLine<System> {
         let mut lock = utils::lock_cpu::<System>()?;
 
         // Deny a non-task context
-        if System::is_interrupt_context() {
+        if !System::is_task_context() {
             return Err(SetInterruptLinePriorityError::BadContext);
         }
 
@@ -116,7 +116,7 @@ impl<System: Kernel> InterruptLine<System> {
         let mut lock = utils::lock_cpu::<System>()?;
 
         // Deny a non-task context
-        if System::is_interrupt_context() {
+        if !System::is_task_context() {
             return Err(SetInterruptLinePriorityError::BadContext);
         }
 
