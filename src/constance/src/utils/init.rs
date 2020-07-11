@@ -50,9 +50,13 @@ impl<T, const N: usize> Init for staticvec::StaticVec<T, N> {
 
 macro_rules! impl_init {
     (
-        $($ty:ty => $value:expr,)*
+        $(
+            $( #[$meta:meta] )*
+            $ty:ty => $value:expr,
+        )*
     ) => {
         $(
+            $( #[$meta] )*
             impl Init for $ty {
                 const INIT: Self = $value;
             }
@@ -77,16 +81,27 @@ impl_init! {
     isize => 0,
     f32 => 0.0,
     f64 => 0.0,
+    #[cfg(target_has_atomic_load_store = "8")]
     atomic::AtomicBool => atomic::AtomicBool::new(false),
+    #[cfg(target_has_atomic_load_store = "8")]
     atomic::AtomicU8 => atomic::AtomicU8::new(0),
+    #[cfg(target_has_atomic_load_store = "16")]
     atomic::AtomicU16 => atomic::AtomicU16::new(0),
+    #[cfg(target_has_atomic_load_store = "32")]
     atomic::AtomicU32 => atomic::AtomicU32::new(0),
+    #[cfg(target_has_atomic_load_store = "64")]
     atomic::AtomicU64 => atomic::AtomicU64::new(0),
+    #[cfg(target_has_atomic_load_store = "ptr")]
     atomic::AtomicUsize => atomic::AtomicUsize::new(0),
+    #[cfg(target_has_atomic_load_store = "8")]
     atomic::AtomicI8 => atomic::AtomicI8::new(0),
+    #[cfg(target_has_atomic_load_store = "16")]
     atomic::AtomicI16 => atomic::AtomicI16::new(0),
+    #[cfg(target_has_atomic_load_store = "32")]
     atomic::AtomicI32 => atomic::AtomicI32::new(0),
+    #[cfg(target_has_atomic_load_store = "64")]
     atomic::AtomicI64 => atomic::AtomicI64::new(0),
+    #[cfg(target_has_atomic_load_store = "ptr")]
     atomic::AtomicIsize => atomic::AtomicIsize::new(0),
     () => (),
 }

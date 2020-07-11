@@ -25,9 +25,13 @@ unsafe impl<T: ?Sized> ZeroInit for Option<&'_ mut T> {}
 
 macro_rules! impl_zero_init {
     (
-        $($ty:ty,)*
+        $(
+            $( #[$meta:meta] )*
+            $ty:ty,
+        )*
     ) => {
         $(
+            $( #[$meta] )*
             unsafe impl ZeroInit for $ty {
             }
         )*
@@ -51,16 +55,27 @@ impl_zero_init! {
     isize,
     f32,
     f64,
+    #[cfg(target_has_atomic_load_store = "8")]
     atomic::AtomicBool,
+    #[cfg(target_has_atomic_load_store = "8")]
     atomic::AtomicU8,
+    #[cfg(target_has_atomic_load_store = "16")]
     atomic::AtomicU16,
+    #[cfg(target_has_atomic_load_store = "32")]
     atomic::AtomicU32,
+    #[cfg(target_has_atomic_load_store = "64")]
     atomic::AtomicU64,
+    #[cfg(target_has_atomic_load_store = "ptr")]
     atomic::AtomicUsize,
+    #[cfg(target_has_atomic_load_store = "8")]
     atomic::AtomicI8,
+    #[cfg(target_has_atomic_load_store = "16")]
     atomic::AtomicI16,
+    #[cfg(target_has_atomic_load_store = "32")]
     atomic::AtomicI32,
+    #[cfg(target_has_atomic_load_store = "64")]
     atomic::AtomicI64,
+    #[cfg(target_has_atomic_load_store = "ptr")]
     atomic::AtomicIsize,
     (),
 }

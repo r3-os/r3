@@ -2,6 +2,7 @@
 #![feature(thread_local)]
 #![feature(external_doc)]
 #![feature(deadline_api)]
+#![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![doc(include = "./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
