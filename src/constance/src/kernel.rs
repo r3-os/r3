@@ -648,9 +648,6 @@ impl<System: Kernel> PortToKernel for System {
             task::init_task(lock.borrow_mut(), cb);
         }
 
-        // Choose the first `runnnig_task`
-        task::choose_next_running_task(lock.borrow_mut());
-
         // Initialize the timekeeping system
         System::state().timeout.init(lock.borrow_mut());
 
@@ -673,7 +670,10 @@ impl<System: Kernel> PortToKernel for System {
         }
 
         // Reacquire CPU Lock
-        let mut _lock = utils::lock_cpu::<System>().unwrap();
+        let mut lock = utils::lock_cpu::<System>().unwrap();
+
+        // Choose the first `running_task`
+        task::choose_next_running_task(lock.borrow_mut());
 
         // Safety: CPU Lock is active, Startup phase
         unsafe {

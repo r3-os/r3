@@ -1,6 +1,9 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
-use constance::{kernel::Task, prelude::*};
+use constance::{
+    kernel::{StartupHook, Task},
+    prelude::*,
+};
 use core::num::NonZeroUsize;
 use wyhash::WyHash;
 
@@ -15,6 +18,8 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
+            new! { StartupHook<_>, start = startup_hook::<System, D> };
+
             let task1 = new! {
                 Task<_>,
                 start = task1_body::<System, D>,
@@ -28,6 +33,10 @@ impl<System: Kernel> App<System> {
             App { task1, task2, task3 }
         }
     }
+}
+
+fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    assert_eq!(Task::<System>::current().unwrap(), None);
 }
 
 fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
