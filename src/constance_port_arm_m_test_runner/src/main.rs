@@ -32,6 +32,10 @@ pub enum MainError {
     CargoMetadataParse,
     #[error("{0:?} is not a valid driver path.")]
     BadDriverPath(PathBuf),
+    #[error("Could not locate the compiled executable at {0:?}.")]
+    ExeNotFound(PathBuf),
+    #[error("Could not connect to the target.\n\n{0}")]
+    ConnectTarget(#[source] Box<dyn std::error::Error>),
     #[error("Could not build the test '{0}'.\n\n{1}")]
     BuildTest(String, #[source] subprocess::SubprocessError),
 }
@@ -97,6 +101,12 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!("Running {} test(s)", tests.len());
 
+    // Connect to the target
+    log::debug!("Connecting to the target");
+    let debug_probe = (opt.target.connect())
+        .await
+        .map_err(MainError::ConnectTarget)?;
+
     // Put the linker script in a directory
     let link_dir = tempdir::TempDir::new("constance_port_arm_m_test_runner")
         .map_err(MainError::TempDirError)?;
@@ -134,9 +144,22 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     };
     log::debug!("target_dir = '{}'", target_dir.display());
 
+    // Executable path
+    let exe_path =
+        target_dir.join("thumbv7em-none-eabihf/release/constance_port_arm_m_test_driver");
+    log::debug!("exe_path = '{}'", exe_path.display());
+
     for test_name in tests.iter() {
         let full_test_name = format!("kernel_tests::{}", test_name);
         log::info!(" - {}", full_test_name);
+
+        // Delete `exe_path`
+        if exe_path.exists() {
+            if let Err(e) = std::fs::remove_file(&exe_path) {
+                // Failure is non-fatal
+                log::warn!("Failed to remove '{}': {}", exe_path.display(), e);
+            }
+        }
 
         // Build the test driver
         log::debug!("Building the test");
@@ -152,6 +175,11 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
             .spawn_expecting_success()
             .await
             .map_err(|e| MainError::BuildTest(full_test_name.clone(), e))?;
+
+        // Locate the executable
+        if !exe_path.is_file() {
+            return Err(MainError::ExeNotFound(exe_path).into());
+        }
 
         // TODO
         log::warn!("TODO: Run the test");
