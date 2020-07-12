@@ -4,26 +4,14 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![no_std]
 #![no_main]
+use constance::{
+    kernel::{StartupHook, Task},
+    prelude::*,
+    sync::Mutex,
+};
 
-// Install a global panic handler
+// Install a global panic handler that uses RTT
 use panic_rtt_target as _;
-
-// TODO: Move this to `use_port!`
-#[link_section = ".vector_table.interrupts"]
-#[no_mangle]
-static __INTERRUPTS: [usize; 1] = [0];
-
-// TODO: Move this to `use_port!`
-#[constance_port_arm_m::entry]
-fn main() -> ! {
-    rtt_target::rtt_init_print!();
-
-    todo!()
-}
-
-/*
-TODO:
-use constance::{kernel::Task, prelude::*, sync::Mutex};
 
 constance_port_arm_m::use_port!(unsafe struct System);
 
@@ -39,6 +27,12 @@ const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 constance::configure! {
     const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
         set!(num_task_priority_levels = 4);
+
+        // Initialize RTT (Real-Time Transfer) with a single up channel and set
+        // it as the print channel for the printing macros
+        new! { StartupHook<_>, start = |_| {
+            rtt_target::rtt_init_print!();
+        } };
 
         let task1 = new! { Task<_>, start = task1_body, priority = 2, active = true };
         let task2 = new! { Task<_>, start = task2_body, priority = 3 };
@@ -59,9 +53,7 @@ fn task1_body(_: usize) {
 
 fn task2_body(_: usize) {
     loop {
-        // TODO: dbg!(System::time().unwrap()); or something similar
+        rtt_target::rprintln!("time = {:?}", System::time().unwrap());
         System::sleep(constance::time::Duration::from_secs(1)).unwrap();
     }
 }
-
-*/
