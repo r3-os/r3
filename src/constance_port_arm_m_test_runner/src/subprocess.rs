@@ -39,16 +39,6 @@ impl CmdBuilder {
         self
     }
 
-    pub fn args<I, S>(mut self, args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.cmd
-            .extend(args.into_iter().map(|a| a.as_ref().to_owned()));
-        self
-    }
-
     pub fn env(mut self, key: impl AsRef<OsStr>, val: impl AsRef<OsStr>) -> Self {
         self.env
             .push((key.as_ref().to_owned(), val.as_ref().to_owned()));
@@ -118,20 +108,5 @@ impl CmdBuilder {
         }
 
         Ok(output.stdout)
-    }
-
-    pub fn spawn_and_get_child(self) -> Result<Child, SubprocessError> {
-        let mut command = self.build_command();
-        command.stdout(Stdio::piped());
-
-        match command.spawn() {
-            Ok(child) => Ok(child),
-            Err(e) => {
-                return Err(SubprocessError::Spawn {
-                    cmd: self.into_cmd(),
-                    error: e,
-                })
-            }
-        }
     }
 }
