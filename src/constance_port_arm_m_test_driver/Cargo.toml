@@ -1,0 +1,33 @@
+[package]
+name = "constance_port_arm_m_test_driver"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[features]
+test = [
+    "constance",
+    "constance_port_arm_m",
+    "cortex-m-rt",
+    "panic-rtt-target",
+    "rtt-target",
+    "constance_test_suite",
+]
+
+[dependencies]
+constance = { path = "../constance", optional = true }
+constance_port_arm_m = { path = "../constance_port_arm_m", optional = true }
+cortex-m-rt = { version = "0.6.12", optional = true, features = ["device"] }
+panic-rtt-target = { version = "0.1.0", features = ["cortex-m"], optional = true }
+rtt-target = { version = "0.2.0", features = ["cortex-m"], optional = true }
+
+[dependencies.constance_test_suite]
+path = "../constance_test_suite"
+default-features = false
+features = [
+    # compile the test case specified by `CONSTANCE_TEST`
+    "tests_selective"
+]
+optional = true

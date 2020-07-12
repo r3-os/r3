@@ -13,6 +13,3 @@ repository = "https://github.com/yvt/Constance"
 constance = { path = "../constance" }
 cortex-m = "0.6.2"
 cortex-m-rt = "0.6.12"
-
-[dev-dependencies]
-constance_test_suite = { path = "../constance_test_suite" }

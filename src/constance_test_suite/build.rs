@@ -49,9 +49,9 @@ fn main() {
             #[doc(hidden)]
             macro_rules! get_selected_kernel_tests_inner {{
                 (($($cb:tt)*), ($($pfx:tt)*)) => {{
-                    $($cb:tt)* ! ( $($pfx:tt)*
+                    $($cb)* ! {{ $($pfx)*
                         {}
-                    )
+                    }}
                 }};
             }}",
             CommaSeparatedWithTrailingComma(&kernel_test_list)

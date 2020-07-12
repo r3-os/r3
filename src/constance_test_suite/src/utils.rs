@@ -1,3 +1,4 @@
+#![allow(dead_code)] // suppress warning when doing selective testing
 use constance::utils::Init;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
