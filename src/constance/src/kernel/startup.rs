@@ -6,6 +6,18 @@ use crate::utils::Init;
 ///
 /// There are no operations defined for startup hooks, so this type
 /// is only used for static configuration.
+///
+/// Startup hooks execute during the boot process, after initializing kernel
+/// structures and before scheduling the first task with [CPU Lock] active.
+///
+/// [CPU Lock]: crate#system-states
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Relation to Other Specifications:** `StartupHook` (AUTOSAR OS,
+/// > OSEK/VDX), initialization routine (μITRON4.0), last function (TI-RTOS).
+///
+#[doc(include = "../common.md")]
 pub struct StartupHook<System>(PhantomData<System>);
 
 impl<System> StartupHook<System> {
