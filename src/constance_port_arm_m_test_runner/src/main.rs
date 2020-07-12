@@ -1,9 +1,11 @@
 use std::{
     env,
     path::{Path, PathBuf},
+    time::Duration,
 };
 use structopt::StructOpt;
 use thiserror::Error;
+use tokio::prelude::*;
 
 mod subprocess;
 mod targets;
@@ -11,7 +13,10 @@ mod utils;
 
 #[tokio::main]
 async fn main() {
-    env_logger::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    env_logger::from_env(
+        env_logger::Env::default().default_filter_or("constance_port_arm_m_test_runner=info"),
+    )
+    .init();
 
     if let Err(e) = main_inner().await {
         log::error!("Command failed.\n{}", e);
@@ -19,7 +24,7 @@ async fn main() {
 }
 
 #[derive(Error, Debug)]
-pub enum MainError {
+enum MainError {
     #[error("Error while creating a temporary directory: {0}")]
     TempDirError(#[source] std::io::Error),
     #[error("Error while writing {0:?}: {1}")]
@@ -35,9 +40,17 @@ pub enum MainError {
     #[error("Could not locate the compiled executable at {0:?}.")]
     ExeNotFound(PathBuf),
     #[error("Could not connect to the target.\n\n{0}")]
-    ConnectTarget(#[source] Box<dyn std::error::Error>),
+    ConnectTarget(#[source] Box<dyn std::error::Error + Send>),
     #[error("Could not build the test '{0}'.\n\n{1}")]
     BuildTest(String, #[source] subprocess::SubprocessError),
+    #[error("{0}")]
+    Run(
+        #[from]
+        #[source]
+        RunError,
+    ),
+    #[error("The test '{0}' failed: {1:?}")]
+    TestFail(String, String),
 }
 
 /// Test runner for the Arm-M port of Constance
@@ -103,7 +116,9 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
 
     // Connect to the target
     log::debug!("Connecting to the target");
-    let debug_probe = (opt.target.connect())
+    let mut debug_probe = opt
+        .target
+        .connect()
         .await
         .map_err(MainError::ConnectTarget)?;
 
@@ -181,11 +196,97 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
             return Err(MainError::ExeNotFound(exe_path).into());
         }
 
-        // TODO
-        log::warn!("TODO: Run the test");
+        // Run the executable
+        log::debug!("Running the test");
+        let output_bytes = debug_probe_program_and_get_output_until(
+            &mut *debug_probe,
+            &exe_path,
+            [b"!- TEST WAS SUCCESSFUL -!", &b"panicked at"[..]].iter(),
+        )
+        .await?;
+
+        // Check the output
+        let output_str = String::from_utf8_lossy(&output_bytes);
+        log::debug!("Output (lossy UTF-8) = {:?}", output_str);
+
+        if !output_str.contains("!- TEST WAS SUCCESSFUL -!") {
+            return Err(MainError::TestFail(full_test_name, output_str.into_owned()).into());
+        }
+
+        log::info!("'{}' was successful", full_test_name);
     }
 
-    println!("Hello, world!");
-
     Ok(())
+}
+
+#[derive(Error, Debug)]
+enum RunError {
+    #[error("Timeout while reading the output")]
+    Timeout,
+    #[error("Length limit exceeded while reading the output")]
+    TooLong,
+    #[error("{0}")]
+    Other(
+        #[from]
+        #[source]
+        Box<dyn std::error::Error>,
+    ),
+}
+
+async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
+    debug_probe: &mut (impl targets::DebugProbe + ?Sized),
+    exe: &Path,
+    markers: impl IntoIterator<Item = P>,
+) -> Result<Vec<u8>, RunError> {
+    let mut stream = debug_probe.program_and_get_output(exe).await?;
+    log::trace!("debug_probe_program_and_get_output_until: Got a stream");
+
+    let matcher = aho_corasick::AhoCorasickBuilder::new().build(markers);
+
+    let mut output = Vec::new();
+    let mut buffer = vec![0u8; 16384];
+
+    loop {
+        log::trace!("... calling `read`");
+        let read_fut = stream.read(&mut buffer);
+        let timeout_fut = tokio::time::delay_for(Duration::from_secs(35));
+
+        let num_bytes = tokio::select! {
+            read_result = read_fut => {
+                log::trace!("... `read` resolved to {:?}", read_result);
+                read_result.unwrap_or(0)
+            },
+            _ = timeout_fut => {
+                log::trace!("... `delay_for` resolved earlier - timeout");
+                log::trace!("... The output so far: {:?}", String::from_utf8_lossy(&output));
+                return Err(RunError::Timeout);
+            },
+        };
+
+        if num_bytes == 0 {
+            break;
+        }
+
+        output.extend_from_slice(&buffer[0..num_bytes]);
+
+        // Check for markers
+        let check_len = (num_bytes + matcher.max_pattern_len() - 1).min(output.len());
+        if output.len() >= check_len {
+            let i = output.len() - check_len;
+            if let Some(m) = matcher.find(&output[i..]) {
+                log::trace!(
+                    "... Found the marker at position {:?}",
+                    i + m.start()..i + m.end()
+                );
+                output.truncate(i + m.end());
+                break;
+            }
+        }
+
+        if output.len() > 1024 * 1024 {
+            return Err(RunError::TooLong);
+        }
+    }
+
+    Ok(output)
 }

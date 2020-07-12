@@ -244,8 +244,10 @@ dependencies = [
 name = "constance_port_arm_m_test_runner"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "constance_test_suite",
  "env_logger",
+ "goblin",
  "lazy_static",
  "log",
  "miniserde",
