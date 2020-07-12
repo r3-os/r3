@@ -45,7 +45,7 @@ fn hook<System: Kernel, D: Driver<App<System>>>(i: usize) {
     log::trace!("hook({})", i);
     D::app().seq.expect_and_replace(i, i + 1);
 
-    if i == 10 {
+    if i == 18 {
         D::success();
     }
 }
