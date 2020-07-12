@@ -9,8 +9,9 @@ use crate::{
 mod event_group;
 mod hunk;
 mod interrupt;
+mod startup;
 mod task;
-pub use self::{event_group::*, hunk::*, interrupt::*, task::*};
+pub use self::{event_group::*, hunk::*, interrupt::*, startup::*, task::*};
 
 /// Makes some useful macros available inside [a configuration function].
 ///
@@ -84,6 +85,7 @@ pub use self::{event_group::*, hunk::*, interrupt::*, task::*};
 ///  - [`Hunk`] with options defined in [`CfgHunkBuilder`]
 ///  - [`InterruptLine`] with options defined in [`CfgInterruptLineBuilder`]
 ///  - [`InterruptHandler`] with options defined in [`CfgInterruptHandlerBuilder`]
+///  - [`StartupHook`] with options defined in [`CfgStartupHookBuilder`]
 ///  - [`EventGroup`] with options defined in [`CfgEventGroupBuilder`]
 ///
 /// [`Task`]: crate::kernel::Task
@@ -94,6 +96,8 @@ pub use self::{event_group::*, hunk::*, interrupt::*, task::*};
 /// [`CfgInterruptLineBuilder`]: crate::kernel::cfg::CfgInterruptLineBuilder
 /// [`InterruptHandler`]: crate::kernel::InterruptHandler
 /// [`CfgInterruptHandlerBuilder`]: crate::kernel::cfg::CfgInterruptHandlerBuilder
+/// [`StartupHook`]: crate::kernel::StartupHook
+/// [`CfgStartupHookBuilder`]: crate::kernel::cfg::CfgStartupHookBuilder
 /// [`EventGroup`]: crate::kernel::EventGroup
 /// [`CfgEventGroupBuilder`]: crate::kernel::cfg::CfgEventGroupBuilder
 ///
@@ -304,7 +308,7 @@ macro_rules! build {
                     InterruptHandlerTable,
                 },
                 EventGroupCb, HunkAttr, HunkInitAttr, InterruptAttr, InterruptLineInit, KernelCfg1,
-                KernelCfg2, Port, State, TaskAttr, TaskCb, TimeoutRef,
+                KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef,
             },
             staticvec::StaticVec,
             utils::{
@@ -414,6 +418,13 @@ macro_rules! build {
                     (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines.get(i).to_init());
         }
 
+        // Construct a table of startup hooks
+        $crate::array_item_from_fn! {
+            const STARTUP_HOOKS:
+                [StartupHookAttr; _] =
+                    (0..CFG.startup_hooks.len()).map(|i| CFG.startup_hooks.get(i).to_attr());
+        }
+
         // Calculate the required storage of the timeout heap
         const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len();
         type TimeoutHeap = StaticVec<TimeoutRef<$sys>, TIMEOUT_HEAP_LEN>;
@@ -438,6 +449,8 @@ macro_rules! build {
             const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
                 line_inits: &INTERRUPT_LINE_INITS,
             };
+
+            const STARTUP_HOOKS: &'static [StartupHookAttr] = &STARTUP_HOOKS;
 
             #[inline(always)]
             fn task_cb_pool() -> &'static [TaskCb<$sys>] {
@@ -497,6 +510,7 @@ pub struct CfgBuilderInner<System> {
     pub num_task_priority_levels: usize,
     pub interrupt_lines: ComptimeVec<CfgBuilderInterruptLine>,
     pub interrupt_handlers: ComptimeVec<CfgBuilderInterruptHandler>,
+    pub startup_hooks: ComptimeVec<CfgBuilderStartupHook>,
     pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
 }
 
@@ -522,6 +536,7 @@ impl<System> CfgBuilder<System> {
                 num_task_priority_levels: 16,
                 interrupt_lines: ComptimeVec::new(),
                 interrupt_handlers: ComptimeVec::new(),
+                startup_hooks: ComptimeVec::new(),
                 event_groups: ComptimeVec::new(),
             },
         }
@@ -567,5 +582,8 @@ impl<System> CfgBuilder<System> {
 
         // Sort handlers by (interrupt number, priority)
         interrupt::sort_handlers(&mut inner.interrupt_handlers);
+
+        // Sort startup hooks by priority
+        startup::sort_hooks(&mut inner.startup_hooks);
     }
 }

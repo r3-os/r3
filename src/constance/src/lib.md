@@ -278,6 +278,11 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
  ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.
 
+The initial thread that starts up the kernel (by calling [`PortToKernel::boot`]) is called **a main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute and should return with CPU Lock inactive. The main thread exits when the kernel requests the port to dispatch the first task.
+
+[`PortToKernel::boot`]: crate::kernel::PortToKernel::boot
+[**startup hooks**]: crate::kernel::StartupHook
+
 There are two types of kernel objects that define the properties of threads such as how and when they are created and whether they can block or not. (To be precise, they are not threads by themselves but often treated as such for brevity. Matching them to threads doesn't cause much confusion in practice because each of them can only map to up to one thread at any moment.)
 
  - **Interrupt handlers** start execution in response to asynchronous external events (interrupts). They always run to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler.
@@ -304,9 +309,11 @@ A context is a general term that is often used to describe the “environment”
 
  - **A task context** means the current [thread] pertains to a task.
  - **An interrupt context** means the current thread pertains to an interrupt handler.
+ - **A boot context** means the current thread is a main thread. [Startup hooks] allow user code to execute in this context.
  - **A waitable context** means a task context and that [Priority Boost] is inactive.
 
 [thread]: #threads
+[Startup hooks]: crate::kernel::StartupHook
 [Priority Boost]: #system-states
 
 <div class="admonition-follows"></div>

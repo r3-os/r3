@@ -461,7 +461,7 @@ impl State {
         expect_worker_thread::<System>();
 
         THREAD_ROLE.with(|role| match role.get() {
-            ThreadRole::Interrupt => false,
+            ThreadRole::Interrupt | ThreadRole::Boot => false,
             ThreadRole::Task => true,
             _ => panic!("`is_task_context` was called from an unknown thread"),
         })

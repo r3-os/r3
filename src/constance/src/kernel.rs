@@ -20,12 +20,15 @@ mod error;
 mod event_group;
 mod hunk;
 mod interrupt;
+mod startup;
 mod state;
 mod task;
 mod timeout;
 mod utils;
 mod wait;
-pub use self::{error::*, event_group::*, hunk::*, interrupt::*, task::*, timeout::*, wait::*};
+pub use self::{
+    error::*, event_group::*, hunk::*, interrupt::*, startup::*, task::*, timeout::*, wait::*,
+};
 
 /// Numeric value used to identify various kinds of kernel objects.
 pub type Id = NonZeroUsize;
@@ -642,7 +645,17 @@ impl<System: Kernel> PortToKernel for System {
             System::INTERRUPT_ATTR.init(lock.borrow_mut());
         }
 
-        forget(lock);
+        // Release CPU Lock
+        drop(lock);
+
+        // Call startup hooks
+        for hook in Self::STARTUP_HOOKS {
+            // Safety: This is the intended place to call startup hooks.
+            unsafe { (hook.start)(hook.param) };
+        }
+
+        // Reacquire CPU Lock
+        let mut _lock = utils::lock_cpu::<System>().unwrap();
 
         // Safety: CPU Lock is active, Startup phase
         unsafe {
@@ -695,6 +708,9 @@ pub unsafe trait KernelCfg2: Port + Sized {
 
     #[doc(hidden)]
     const INTERRUPT_ATTR: InterruptAttr<Self>;
+
+    #[doc(hidden)]
+    const STARTUP_HOOKS: &'static [StartupHookAttr];
 
     /// Access the kernel's global state.
     fn state() -> &'static State<Self>;
