@@ -21,6 +21,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | ☐ Timers         | ☑︎ Test Harness  | ☑︎ Hosted          |
 | ☐ Alarms         | ☑︎ Test Suite    | ☐ F401RE          |
 | ☑︎ Interrupts     | ☑︎ Configurator  |                   |
+| ☑︎ Startup Hooks  |                 |                   |
 | ☐ CPU Exceptions |                 |                   |
 | ☐ Panicking      |                 |                   |
 
