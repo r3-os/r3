@@ -4,6 +4,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![no_std]
 #![no_main]
+#![cfg(target_os = "none")]
 use constance::{
     kernel::{StartupHook, Task},
     prelude::*,
