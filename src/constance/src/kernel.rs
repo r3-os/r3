@@ -96,6 +96,15 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// Get the current [system time].
     ///
     /// [system time]: crate#kernel-timing
+    ///
+    /// This method will return [`TimeError::BadContext`] when called in a
+    /// non-task context.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Rationale:** This restriction originates from μITRON4.0. It's
+    /// > actually unnecessary in the current implementation, but allows
+    /// > headroom for potential changes in the implementation.
     fn time() -> Result<Time, TimeError>;
 
     /// Set the current [system time].
@@ -106,6 +115,15 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     ///
     /// [system time]: crate#kernel-timing
     /// [`adjust_time`]: Self::adjust_time
+    ///
+    /// This method will return [`TimeError::BadContext`] when called in a
+    /// non-task context.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Rationale:** This restriction originates from μITRON4.0. It's
+    /// > actually unnecessary in the current implementation, but allows
+    /// > headroom for potential changes in the implementation.
     fn set_time(time: Time) -> Result<(), TimeError>;
 
     #[cfg_attr(doc, svgbobdoc::transform)]

@@ -34,10 +34,7 @@ fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
         System::set_time(Time::from_micros(0)),
         Err(constance::kernel::TimeError::BadContext)
     );
-    assert_eq!(
-        System::adjust_time(Duration::ZERO),
-        Err(constance::kernel::AdjustTimeError::BadContext)
-    );
+    System::adjust_time(Duration::ZERO).unwrap();
     assert_eq!(
         System::sleep(Duration::from_micros(0)),
         Err(constance::kernel::SleepError::BadContext)

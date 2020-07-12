@@ -2,6 +2,15 @@ use core::sync::atomic::Ordering;
 
 use super::{task, utils, BadContextError, BoostPriorityError, Kernel};
 
+/// If the current context is not a task context, return `Err(BadContext)`.
+pub(super) fn expect_task_context<System: Kernel>() -> Result<(), BadContextError> {
+    if !System::is_task_context() {
+        Err(BadContextError::BadContext)
+    } else {
+        Ok(())
+    }
+}
+
 /// If the current context is not waitable, return `Err(BadContext)`.
 pub(super) fn expect_waitable_context<System: Kernel>() -> Result<(), BadContextError> {
     if !System::is_task_context() || System::is_priority_boost_active() {

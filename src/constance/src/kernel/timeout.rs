@@ -135,6 +135,7 @@ use core::{
 };
 
 use super::{
+    state::expect_task_context,
     task,
     utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
     AdjustTimeError, BadParamError, Kernel, TimeError, UTicks,
@@ -491,6 +492,7 @@ impl<System: Kernel, TimeoutHeap> TimeoutGlobals<System, TimeoutHeap> {
 
 /// Implements [`Kernel::time`].
 pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
+    expect_task_context::<System>()?;
     let mut lock = lock_cpu::<System>()?;
 
     let (duration_since_last_tick, _) = duration_since_last_tick(lock.borrow_mut());
@@ -505,6 +507,7 @@ pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
 
 /// Implements [`Kernel::set_time`].
 pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), TimeError> {
+    expect_task_context::<System>()?;
     let mut lock = lock_cpu::<System>()?;
 
     let (duration_since_last_tick, _) = duration_since_last_tick(lock.borrow_mut());
