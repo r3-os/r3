@@ -1,7 +1,7 @@
 //! Validates error codes returned by time-related methods. Also, checks
 //! miscellaneous properties of such methods.
 use constance::{
-    kernel::Task,
+    kernel::{StartupHook, Task},
     prelude::*,
     time::{Duration, Time},
 };
@@ -16,11 +16,32 @@ pub struct App<System> {
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
+            new! { StartupHook<_>, start = startup_hook::<System, D> };
             new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
 
             App { _phantom: PhantomData }
         }
     }
+}
+
+fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    // Not a task context
+    assert_eq!(
+        System::time(),
+        Err(constance::kernel::TimeError::BadContext)
+    );
+    assert_eq!(
+        System::set_time(Time::from_micros(0)),
+        Err(constance::kernel::TimeError::BadContext)
+    );
+    assert_eq!(
+        System::adjust_time(Duration::ZERO),
+        Err(constance::kernel::AdjustTimeError::BadContext)
+    );
+    assert_eq!(
+        System::sleep(Duration::from_micros(0)),
+        Err(constance::kernel::SleepError::BadContext)
+    );
 }
 
 fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
@@ -55,6 +76,10 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     assert_eq!(
         System::adjust_time(Duration::ZERO),
         Err(constance::kernel::AdjustTimeError::BadContext)
+    );
+    assert_eq!(
+        System::sleep(Duration::from_micros(0)),
+        Err(constance::kernel::SleepError::BadContext)
     );
     unsafe { System::release_cpu_lock().unwrap() };
 

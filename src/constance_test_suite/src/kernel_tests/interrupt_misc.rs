@@ -1,7 +1,7 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
 use constance::{
-    kernel::{self, InterruptHandler, InterruptLine, Task},
+    kernel::{self, InterruptHandler, InterruptLine, Task, StartupHook},
     prelude::*,
 };
 
@@ -16,6 +16,8 @@ impl<System: Kernel> App<System> {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
             new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
 
+            new! { StartupHook<_>, start = startup_hook::<System, D> };
+
             let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
                 unsafe {
                     new! { InterruptHandler<_>,
@@ -29,6 +31,46 @@ impl<System: Kernel> App<System> {
 
             App { int }
         }
+    }
+}
+
+fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    let int = if let Some(int) = D::app().int {
+        int
+    } else {
+        return;
+    };
+
+    let managed_range = System::MANAGED_INTERRUPT_PRIORITY_RANGE;
+
+    // `set_priority` is disallowed in a boot context
+    assert_eq!(
+        int.set_priority(managed_range.start),
+        Err(kernel::SetInterruptLinePriorityError::BadContext),
+    );
+
+    // Other methods are allowed in a boot context
+    int.enable().unwrap();
+    int.disable().unwrap();
+    match int.is_pending() {
+        Ok(false) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
+        value => panic!("{:?}", value),
+    }
+
+    // Before doing the next test, make sure `clear` is supported
+    // There's the same test in `task_body`. The difference is that this one
+    // here executes in a boot context.
+    if int.clear().is_ok() {
+        // Pending the interrupt should succeed. We instantly clear the pending
+        // flag, so the interrupt handler will not actually get called.
+        System::acquire_cpu_lock().unwrap();
+        int.pend().unwrap();
+        match int.is_pending() {
+            Ok(true) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
+            value => panic!("{:?}", value),
+        }
+        int.clear().unwrap();
+        unsafe { System::release_cpu_lock() }.unwrap();
     }
 }
 
