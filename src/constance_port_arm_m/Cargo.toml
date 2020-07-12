@@ -11,5 +11,10 @@ repository = "https://github.com/yvt/Constance"
 
 [dependencies]
 constance = { path = "../constance" }
+
+# `cortex-m-rt` doesn't build on a hosted target. We don't want
+# `cargo test --all` to fail because of this, so we put these in the
+# target-specific section.
+[target."cfg(target_os = \"none\")".dependencies]
 cortex-m = "0.6.2"
 cortex-m-rt = "0.6.12"

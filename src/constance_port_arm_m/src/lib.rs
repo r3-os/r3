@@ -3,6 +3,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
 #![no_std]
+#![cfg(any(target_os = "none", doc))]
 
 use constance::{
     kernel::{
@@ -19,9 +20,11 @@ use constance::{
 pub extern crate constance;
 /// Used by `use_port!`
 #[doc(hidden)]
+#[cfg(target_os = "none")]
 pub extern crate core;
 /// Used by `use_port!`
 #[doc(hidden)]
+#[cfg(target_os = "none")]
 pub use cortex_m_rt;
 
 /// Implemented on a system type by [`use_port!`].
