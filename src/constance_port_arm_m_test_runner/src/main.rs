@@ -1,6 +1,7 @@
 use std::{
     env,
     path::{Path, PathBuf},
+    pin::Pin,
     time::Duration,
 };
 use structopt::StructOpt;
@@ -278,7 +279,14 @@ async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
                     "... Found the marker at position {:?}",
                     i + m.start()..i + m.end()
                 );
-                output.truncate(i + m.end());
+
+                // Read the remaining output, which might include error details
+                log::trace!("... Reading the remaining output");
+                output.extend_from_slice(
+                    &read_to_end_timeout(stream.as_mut(), Duration::from_millis(300))
+                        .await
+                        .map_err(|e| RunError::Other(e.into()))?,
+                );
                 break;
             }
         }
@@ -286,6 +294,41 @@ async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
         if output.len() > 1024 * 1024 {
             return Err(RunError::TooLong);
         }
+    }
+
+    Ok(output)
+}
+
+async fn read_to_end_timeout(
+    mut stream: Pin<&mut (impl tokio::io::AsyncRead + ?Sized)>,
+    timeout: Duration,
+) -> tokio::io::Result<Vec<u8>> {
+    let mut output = Vec::new();
+    let mut buffer = vec![0u8; 16384];
+    let mut timeout_fut = tokio::time::delay_for(timeout);
+
+    log::trace!("read_to_end_timeout: Got a stream");
+
+    loop {
+        log::trace!("... calling `read`");
+        let read_fut = stream.read(&mut buffer);
+
+        let num_bytes = tokio::select! {
+            read_result = read_fut => {
+                log::trace!("... `read` resolved to {:?}", read_result);
+                read_result.unwrap_or(0)
+            },
+            _ = &mut timeout_fut => {
+                log::trace!("... `delay_for` resolved earlier - timeout");
+                break;
+            },
+        };
+
+        if num_bytes == 0 {
+            break;
+        }
+
+        output.extend_from_slice(&buffer[0..num_bytes]);
     }
 
     Ok(output)
