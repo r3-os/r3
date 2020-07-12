@@ -1,7 +1,7 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
 use constance::{
-    kernel::{self, InterruptHandler, InterruptLine, Task, StartupHook},
+    kernel::{self, InterruptHandler, InterruptLine, StartupHook, Task},
     prelude::*,
 };
 
@@ -61,16 +61,12 @@ fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // There's the same test in `task_body`. The difference is that this one
     // here executes in a boot context.
     if int.clear().is_ok() {
-        // Pending the interrupt should succeed. We instantly clear the pending
-        // flag, so the interrupt handler will not actually get called.
-        System::acquire_cpu_lock().unwrap();
         int.pend().unwrap();
         match int.is_pending() {
             Ok(true) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
             value => panic!("{:?}", value),
         }
         int.clear().unwrap();
-        unsafe { System::release_cpu_lock() }.unwrap();
     }
 }
 

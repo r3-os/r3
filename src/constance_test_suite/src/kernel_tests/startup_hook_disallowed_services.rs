@@ -1,28 +1,24 @@
 //! Checks the return codes of disallowed system calls made in a boot context.
 use constance::{
-    kernel::{self, StartupHook, Task},
+    kernel::{self, StartupHook},
     prelude::*,
 };
+use core::marker::PhantomData;
 
 use super::Driver;
 
 pub struct App<System> {
-    task: Task<System>,
+    _phantom: PhantomData<System>,
 }
 
 impl<System: Kernel> App<System> {
     constance::configure! {
         pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            let task = new! { Task<_>, start = task_body::<System, D>, priority = 0 };
             new! { StartupHook<_>, start = hook::<System, D> };
 
-            App { task }
+            App { _phantom: PhantomData }
         }
     }
-}
-
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    D::success();
 }
 
 fn hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
@@ -39,6 +35,5 @@ fn hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Blocking system services
     assert_eq!(System::park(), Err(kernel::ParkError::BadContext));
 
-    // Activate the task, completing the test
-    D::app().task.activate().unwrap();
+    D::success();
 }

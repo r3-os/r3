@@ -36,7 +36,10 @@ impl<System: Kernel> App<System> {
 }
 
 fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    assert_eq!(Task::<System>::current().unwrap(), None);
+    assert_eq!(
+        Task::<System>::current(),
+        Err(constance::kernel::GetCurrentTaskError::BadContext)
+    );
 }
 
 fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {

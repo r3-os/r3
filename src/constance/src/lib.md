@@ -278,7 +278,7 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
  ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.
 
-The initial thread that starts up the kernel (by calling [`PortToKernel::boot`]) is called **a main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute and should return with CPU Lock inactive. The main thread exits when the kernel requests the port to dispatch the first task.
+The initial thread that starts up the kernel (by calling [`PortToKernel::boot`]) is called **a main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel requests the port to dispatch the first task.
 
 [`PortToKernel::boot`]: crate::kernel::PortToKernel::boot
 [**startup hooks**]: crate::kernel::StartupHook

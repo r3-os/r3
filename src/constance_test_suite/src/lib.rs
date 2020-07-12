@@ -154,7 +154,6 @@ pub mod kernel_tests {
         (mod priority_boost {}, "priority_boost"),
         (mod startup_hook_disallowed_services {}, "startup_hook_disallowed_services"),
         (mod startup_hook_priority {}, "startup_hook_priority"),
-        (mod startup_hook_reschedule {}, "startup_hook_reschedule"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
         (mod task_cpu_lock_reset {}, "task_cpu_lock_reset"),

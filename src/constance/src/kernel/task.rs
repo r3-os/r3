@@ -127,11 +127,10 @@ impl<System: Kernel> Task<System> {
     ///
     /// In a task context, this method returns the currently running task.
     ///
-    /// In a non-task context, the result is unreliable because scheduling is
-    /// deferred until the control returns to a task, but the current thread
-    /// (which pertains to an interrupt handler or a startup hook) could be
-    /// interrupted by another interrrupt, which might do scheduling on return
-    /// (whether this happens or not is unspecified).
+    /// In an interrupt context, the result is unreliable because scheduling is
+    /// deferred until the control returns to a task, but the current interrupt
+    /// handler could be interrupted by another interrrupt, which might do
+    /// scheduling on return (whether this happens or not is unspecified).
     pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
         let _lock = utils::lock_cpu::<System>()?;
         let task_cb = if let Some(cb) = System::state().running_task() {

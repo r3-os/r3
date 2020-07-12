@@ -59,6 +59,8 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// CPU Lock is useful for creating a critical section. By making this
     /// method `unsafe`, safe code is prevented from interfering with a critical
     /// section.
+    ///
+    /// Deactivating CPU Lock in a boot context is disallowed.
     unsafe fn release_cpu_lock() -> Result<(), CpuLockError>;
 
     /// Return a flag indicating whether CPU Lock is currently active.
@@ -660,20 +662,16 @@ impl<System: Kernel> PortToKernel for System {
             System::INTERRUPT_ATTR.init(lock.borrow_mut());
         }
 
-        // Release CPU Lock
-        drop(lock);
-
         // Call startup hooks
         for hook in Self::STARTUP_HOOKS {
             // Safety: This is the intended place to call startup hooks.
             unsafe { (hook.start)(hook.param) };
         }
 
-        // Reacquire CPU Lock
-        let mut lock = utils::lock_cpu::<System>().unwrap();
-
         // Choose the first `running_task`
         task::choose_next_running_task(lock.borrow_mut());
+
+        forget(lock);
 
         // Safety: CPU Lock is active, Startup phase
         unsafe {
