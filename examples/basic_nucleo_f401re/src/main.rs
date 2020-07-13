@@ -25,7 +25,7 @@ struct Objects {
 
 const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
-impl constance_port_arm_m::PortCfg for System {}
+unsafe impl constance_port_arm_m::PortCfg for System {}
 
 constance::configure! {
     const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
@@ -51,6 +51,9 @@ constance::configure! {
 }
 
 fn task1_body(_: usize) {
+    use constance::kernel::KernelCfg2;
+    rtt_target::rprintln!("COTTAGE = {:?}", COTTAGE);
+
     COTTAGE.task2.activate().unwrap();
 }
 

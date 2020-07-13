@@ -207,6 +207,7 @@ version = "0.1.0"
 dependencies = [
  "constance",
  "constance_port_arm_m",
+ "cortex-m-rt",
  "nucleo-f401re",
  "panic-rtt-target",
  "rtt-target 0.2.0",
