@@ -70,3 +70,10 @@ Start the `basic` example application using [the NUCLEO-F401RE board](https://ww
 cd examples/basic_nucleo_f401re
 cargo embed --release
 ```
+
+## For Developers
+
+### How to Run Tests
+
+ - Hosted platform and target-independent tests: `cargo test --all`
+ - The Arm-M port and NUCLEO-F401RE: `cargo run -p constance_port_arm_m_test_runner -- -t nucleo_f401re`
