@@ -50,8 +50,8 @@ enum MainError {
         #[source]
         RunError,
     ),
-    #[error("The test '{0}' failed: {1:?}")]
-    TestFail(String, String),
+    #[error("Test failed.")]
+    TestFail,
 }
 
 /// Test runner for the Arm-M port of Constance
@@ -168,6 +168,8 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
         target_dir.join("thumbv7em-none-eabihf/release/constance_port_arm_m_test_driver");
     log::debug!("exe_path = '{}'", exe_path.display());
 
+    let mut failed_tests = Vec::new();
+
     for test_name in tests.iter() {
         let full_test_name = format!("kernel_tests::{}", test_name);
         log::info!(" - {}", full_test_name);
@@ -209,23 +211,66 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Run the executable
+        #[derive(Error, Debug)]
+        enum TestRunError {
+            #[error("Timed out")]
+            Timeout,
+            #[error("The output is too long")]
+            TooLong,
+            #[error("'{0}'")]
+            General(String),
+        }
+
         log::debug!("Running the test");
-        let output_bytes = debug_probe_program_and_get_output_until(
+        let acquisition_result = debug_probe_program_and_get_output_until(
             &mut *debug_probe,
             &exe_path,
             [b"!- TEST WAS SUCCESSFUL -!", &b"panicked at"[..]].iter(),
         )
-        .await?;
+        .await;
 
-        // Check the output
-        let output_str = String::from_utf8_lossy(&output_bytes);
-        log::debug!("Output (lossy UTF-8) = {:?}", output_str);
+        // Interpret the result
+        let test_result = match acquisition_result {
+            Ok(output_bytes) => {
+                // Check the output
+                let output_str = String::from_utf8_lossy(&output_bytes);
+                log::debug!("Output (lossy UTF-8) = {:?}", output_str);
 
-        if !output_str.contains("!- TEST WAS SUCCESSFUL -!") {
-            return Err(MainError::TestFail(full_test_name, output_str.into_owned()).into());
+                if output_str.contains("!- TEST WAS SUCCESSFUL -!") {
+                    Ok(())
+                } else {
+                    Err(TestRunError::General(output_str.into_owned()))
+                }
+            }
+            Err(RunError::Timeout) => Err(TestRunError::Timeout),
+            Err(RunError::TooLong) => Err(TestRunError::TooLong),
+            Err(e @ RunError::Other(_)) => {
+                // Fail-fast if the problem is the debug connection, not the
+                // test itself
+                return Err(e.into());
+            }
+        };
+
+        match test_result {
+            Ok(()) => {
+                log::info!("'{}' was successful", full_test_name);
+            }
+            Err(msg) => {
+                log::error!("Test '{}' failed: {}", full_test_name, msg);
+                failed_tests.push(full_test_name.clone());
+                continue;
+            }
+        }
+    }
+
+    if !failed_tests.is_empty() {
+        log::error!("Failed tests:");
+
+        for full_test_name in failed_tests {
+            log::error!(" - {}", full_test_name);
         }
 
-        log::info!("'{}' was successful", full_test_name);
+        return Err(MainError::TestFail.into());
     }
 
     Ok(())
