@@ -498,11 +498,15 @@ impl State {
         0 // TODO
     }
 
-    pub fn pend_tick_after<System: PortInstance>(&self, _tick_count_delta: UTicks) {
+    pub fn pend_tick_after<System: PortInstance>(&self, tick_count_delta: UTicks) {
+        if tick_count_delta < SElf::MAX_TIMEOUT {
+            todo!("pend_tick_after")
+        }
         // TODO
     }
 
     pub fn pend_tick<System: PortInstance>(&'static self) {
+        todo!("pend_tick")
         // TODO
     }
 }
