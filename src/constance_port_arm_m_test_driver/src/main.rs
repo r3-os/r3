@@ -49,6 +49,8 @@ macro_rules! instantiate_test {
         static COTTAGE: test_case::App<System> =
             constance::build!(System, configure_app => test_case::App<System>);
 
+        impl constance_port_arm_m::PortCfg for System {}
+
         constance::configure! {
             const fn configure_app(_: &mut CfgBuilder<System>) -> test_case::App<System> {
                 // Initialize RTT (Real-Time Transfer) with a single up channel and set

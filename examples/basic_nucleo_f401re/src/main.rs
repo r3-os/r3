@@ -25,6 +25,8 @@ struct Objects {
 
 const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
+impl constance_port_arm_m::PortCfg for System {}
+
 constance::configure! {
     const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
         set!(num_task_priority_levels = 4);

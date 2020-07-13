@@ -14,6 +14,7 @@ use constance::{
     prelude::*,
     utils::Init,
 };
+use core::ops::Range;
 
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -33,8 +34,22 @@ pub use cortex_m_rt;
 ///
 /// Only meant to be implemented by [`use_port!`].
 #[doc(hidden)]
-pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
+pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> + PortCfg {
     fn port_state() -> &'static State;
+}
+
+/// The configuration of the port.
+pub trait PortCfg {
+    /// The priority value to which CPU Lock boosts the current execution
+    /// priority. Must be in range `0..256`. Defaults to `0` when unspecified.
+    ///
+    /// The lower bound of [`MANAGED_INTERRUPT_PRIORITY_RANGE`] is bound to this
+    /// value.
+    ///
+    /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+    ///
+    /// Must be `0` on an Armv6-M target because it doesn't support `BASEPRI`.
+    const CPU_LOCK_PRIORITY_MASK: u8 = 0;
 }
 
 #[doc(hidden)]
@@ -76,13 +91,26 @@ impl State {
         todo!()
     }
 
+    #[inline]
     pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
-        // TODO: unmanaged interrupts
-        cortex_m::interrupt::disable();
+        if System::CPU_LOCK_PRIORITY_MASK > 0 {
+            // Set `BASEPRI` to `CPU_LOCK_PRIORITY_MASK`
+            unsafe { cortex_m::register::basepri::write(System::CPU_LOCK_PRIORITY_MASK) };
+        } else {
+            // Set `PRIMASK` to `1`
+            cortex_m::interrupt::disable();
+        }
     }
 
+    #[inline]
     pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
-        unsafe { cortex_m::interrupt::enable() };
+        if System::CPU_LOCK_PRIORITY_MASK > 0 {
+            // Set `BASEPRI` to `0` (no masking)
+            unsafe { cortex_m::register::basepri::write(0) };
+        } else {
+            // Set `PRIMASK` to `0`
+            unsafe { cortex_m::interrupt::enable() };
+        }
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
@@ -92,8 +120,13 @@ impl State {
         // TODO
     }
 
+    #[inline]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
-        todo!()
+        if System::CPU_LOCK_PRIORITY_MASK > 0 {
+            cortex_m::register::basepri::read() != 0
+        } else {
+            cortex_m::register::primask::read().is_active()
+        }
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
@@ -164,7 +197,7 @@ impl State {
 ///
 ///  - The target must really be a bare-metal Arm-M environment.
 ///  - You shouldn't interfere with the port's operrations. For example, you
-///    shouldn't manually modify `FAULTMASK` or `SCB.VTOR` unless you know what
+///    shouldn't manually modify `PRIMASK` or `SCB.VTOR` unless you know what
 ///    you are doing.
 ///
 #[macro_export]
@@ -180,7 +213,7 @@ macro_rules! use_port {
                 TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
             use $crate::core::ops::Range;
-            use $crate::{State, TaskState, PortInstance};
+            use $crate::{State, TaskState, PortInstance, PortCfg};
 
             pub(super) static PORT_STATE: State = State::new();
 
@@ -232,7 +265,7 @@ macro_rules! use_port {
 
             unsafe impl PortInterrupts for $sys {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
-                    0..InterruptPriority::MAX;
+                    (<$sys as PortCfg>::CPU_LOCK_PRIORITY_MASK as _)..256;
 
                 unsafe fn set_interrupt_line_priority(
                     line: InterruptNum,
