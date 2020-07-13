@@ -12,7 +12,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use constance::kernel::{InterruptNum, StartupHook};
+        use constance::kernel::{InterruptNum, InterruptPriority, StartupHook};
         use constance_test_suite::kernel_tests;
         use $path as test_case;
 
@@ -43,7 +43,10 @@ macro_rules! instantiate_test {
             fn fail() {
                 report_fail();
             }
-            const INTERRUPT_LINES: &'static [InterruptNum] = &[]; // TODO
+            // Most targets should have at least four interrupt lines
+            const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
+            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0x60;
+            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0x20;
         }
 
         static COTTAGE: test_case::App<System> =

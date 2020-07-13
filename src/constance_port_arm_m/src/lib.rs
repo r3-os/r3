@@ -1,5 +1,7 @@
 #![feature(external_doc)]
+#![feature(const_fn)]
 #![feature(llvm_asm)]
+#![feature(const_panic)]
 #![feature(slice_ptr_len)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -16,7 +18,7 @@ use constance::{
     prelude::*,
     utils::{intrusive_list::StaticListHead, Init},
 };
-use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
+use core::{cell::UnsafeCell, mem::MaybeUninit, ops::Range, slice};
 
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -29,6 +31,17 @@ pub extern crate core;
 #[doc(hidden)]
 #[cfg(target_os = "none")]
 pub use cortex_m_rt;
+
+pub const INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..256;
+
+/// `InterruptNum` for SysTick.
+pub const INTERRUPT_SYSTICK: InterruptNum = 15;
+
+/// `InterruptNum` for the first external interrupt.
+pub const INTERRUPT_EXTERNAL0: InterruptNum = 16;
+
+/// The range of valid `InterruptNum`s.
+pub const INTERRUPT_NUM_RANGE: Range<InterruptNum> = 0..256;
 
 /// Implemented on a system type by [`use_port!`].
 ///
@@ -75,6 +88,16 @@ pub unsafe trait PortCfg {
 
         // Safety: `unsafe trait`
         unsafe { (peripherals.SCB.vtor.read() as *const usize).read_volatile() }
+    }
+}
+
+/// Converts [`InterruptNum`] to [`cortex_m::interrupt::Nr`].
+struct Int(InterruptNum);
+
+unsafe impl cortex_m::interrupt::Nr for Int {
+    #[inline]
+    fn nr(&self) -> u8 {
+        (self.0 - INTERRUPT_EXTERNAL0) as _
     }
 }
 
@@ -463,42 +486,128 @@ impl State {
         num: InterruptNum,
         priority: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
-        todo!()
+        // Safety: We claimed the ownership of `Peripherals`
+        let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
+
+        if !INTERRUPT_PRIORITY_RANGE.contains(&priority) || !INTERRUPT_NUM_RANGE.contains(&num) {
+            Err(SetInterruptLinePriorityError::BadParam)
+        } else if num >= INTERRUPT_EXTERNAL0 {
+            // Safety: We don't make "priority-based critical sections"
+            unsafe { peripherals.NVIC.set_priority(Int(num), priority as _) };
+            Ok(())
+        } else if num == INTERRUPT_SYSTICK {
+            // Safety: We don't make "priority-based critical sections"
+            unsafe {
+                peripherals.SCB.set_priority(
+                    cortex_m::peripheral::scb::SystemHandler::SysTick,
+                    priority as _,
+                )
+            };
+            Ok(())
+        } else {
+            Err(SetInterruptLinePriorityError::BadParam)
+        }
     }
 
+    #[inline]
     pub fn enable_interrupt_line<System: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
-        todo!()
+        // Safety: We claimed the ownership of `Peripherals`
+        let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
+
+        if !INTERRUPT_NUM_RANGE.contains(&num) {
+            Err(EnableInterruptLineError::BadParam)
+        } else if num >= INTERRUPT_EXTERNAL0 {
+            // Safety: We don't make "mask-based critical sections"
+            unsafe { cortex_m::peripheral::NVIC::unmask(Int(num)) };
+            Ok(())
+        } else {
+            Err(EnableInterruptLineError::BadParam)
+        }
     }
 
+    #[inline]
     pub fn disable_interrupt_line<System: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
-        todo!()
+        // Safety: We claimed the ownership of `Peripherals`
+        let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
+
+        if !INTERRUPT_NUM_RANGE.contains(&num) {
+            Err(EnableInterruptLineError::BadParam)
+        } else if num >= INTERRUPT_EXTERNAL0 {
+            cortex_m::peripheral::NVIC::mask(Int(num));
+            Ok(())
+        } else {
+            Err(EnableInterruptLineError::BadParam)
+        }
     }
 
+    #[inline]
     pub fn pend_interrupt_line<System: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), PendInterruptLineError> {
-        todo!()
+        if !INTERRUPT_NUM_RANGE.contains(&num) {
+            Err(PendInterruptLineError::BadParam)
+        } else if num >= INTERRUPT_EXTERNAL0 {
+            cortex_m::peripheral::NVIC::pend(Int(num));
+            Ok(())
+        } else if num == INTERRUPT_SYSTICK {
+            cortex_m::peripheral::SCB::set_pendst();
+            Ok(())
+        } else {
+            Err(PendInterruptLineError::BadParam)
+        }
     }
 
+    #[inline]
     pub fn clear_interrupt_line<System: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), ClearInterruptLineError> {
-        todo!()
+        if !INTERRUPT_NUM_RANGE.contains(&num) {
+            Err(ClearInterruptLineError::BadParam)
+        } else if num >= INTERRUPT_EXTERNAL0 {
+            cortex_m::peripheral::NVIC::unpend(Int(num));
+            Ok(())
+        } else if num == INTERRUPT_SYSTICK {
+            cortex_m::peripheral::SCB::clear_pendst();
+            Ok(())
+        } else {
+            Err(ClearInterruptLineError::BadParam)
+        }
     }
 
+    #[inline]
     pub fn is_interrupt_line_pending<System: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
-        todo!()
+        if !INTERRUPT_NUM_RANGE.contains(&num) {
+            Err(QueryInterruptLineError::BadParam)
+        } else if num >= INTERRUPT_EXTERNAL0 {
+            Ok(cortex_m::peripheral::NVIC::is_pending(Int(num)))
+        } else if num == INTERRUPT_SYSTICK {
+            Ok(cortex_m::peripheral::SCB::is_pendst_pending())
+        } else {
+            Err(QueryInterruptLineError::BadParam)
+        }
+    }
+
+    #[inline(always)]
+    pub unsafe fn handle_sys_tick<System: PortInstance>(&'static self)
+    where
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
+    {
+        if let Some(x) = System::INTERRUPT_HANDLERS.get(INTERRUPT_SYSTICK) {
+            // Safety: It's a first-level interrupt handler here. CPU Lock inactive
+            unsafe { x() };
+        }
     }
 
     pub const MAX_TICK_COUNT: UTicks = UTicks::MAX;
@@ -518,6 +627,58 @@ impl State {
         todo!("pend_tick")
         // TODO
     }
+}
+
+/// Used by `use_port!`
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub union InterruptHandler {
+    undefined: usize,
+    defined: constance::kernel::cfg::InterruptHandlerFn,
+}
+
+#[doc(hidden)]
+pub type InterruptHandlerTable = [InterruptHandler; 240];
+
+/// Used by `use_port!`
+#[doc(hidden)]
+pub const fn make_interrupt_handler_table<System: PortInstance>() -> InterruptHandlerTable
+where
+    // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+    System::TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
+{
+    let mut table = [InterruptHandler { undefined: 0 }; 240];
+    let mut i = 0;
+
+    // FIXME: Work-around for `for` being unsupported in `const fn`
+    while i < table.len() {
+        table[i] = if let Some(x) = System::INTERRUPT_HANDLERS.get(i + 16) {
+            InterruptHandler { defined: x }
+        } else {
+            InterruptHandler { undefined: 0 }
+        };
+        i += 1;
+    }
+
+    // Disallow registering in range `0..16` except for SysTick
+    i = 0;
+    // FIXME: Work-around for `for` being unsupported in `const fn`
+    while i < 16 {
+        if i != INTERRUPT_SYSTICK {
+            // FIXME: `Option::is_some` is not `const fn` yet
+            // TODO: This check trips even if no handler is registered at `i`
+            #[cfg(any())]
+            if let Some(_) = System::INTERRUPT_HANDLERS.get(i) {
+                panic!(
+                    "registering a handler for a non-internal exception is \
+                    disallowed except for SysTick"
+                );
+            }
+        }
+        i += 1;
+    }
+
+    table
 }
 
 /// Instantiate the port.
@@ -648,10 +809,10 @@ macro_rules! use_port {
             }
         }
 
-        // TODO
         #[link_section = ".vector_table.interrupts"]
         #[no_mangle]
-        static __INTERRUPTS: [usize; 1] = [0];
+        static __INTERRUPTS: $crate::InterruptHandlerTable =
+            $crate::make_interrupt_handler_table::<$sys>();
 
         #[$crate::cortex_m_rt::entry]
         fn main() -> ! {
@@ -666,6 +827,11 @@ macro_rules! use_port {
         #[$crate::cortex_m_rt::exception]
         fn PendSV() {
             unsafe { port_arm_m_impl::PORT_STATE.handle_pend_sv::<$sys>() };
+        }
+
+        #[$crate::cortex_m_rt::exception]
+        fn SysTick() {
+            unsafe { port_arm_m_impl::PORT_STATE.handle_sys_tick::<$sys>() };
         }
     };
 }
