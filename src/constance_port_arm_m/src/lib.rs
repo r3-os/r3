@@ -44,7 +44,9 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> + PortCf
 ///
 /// # Safety
 ///
-///  - `interrupt_stack_top` must return a valid stack pointer.
+///  - `interrupt_stack_top` must return a valid stack pointer. The default
+///    implementation evaluates `*(SCB.VTOR as *const u32)`, which should
+///    produce a valid value (this is usually true).
 ///
 pub unsafe trait PortCfg {
     /// The priority value to which CPU Lock boosts the current execution
@@ -68,7 +70,11 @@ pub unsafe trait PortCfg {
     ///
     /// [`dispatch_first_task`]: constance::kernel::PortThreading::dispatch_first_task
     unsafe fn interrupt_stack_top() -> usize {
-        unsafe { (cortex_m::Peripherals::steal().SCB.vtor.read() as *const usize).read_volatile() }
+        // Safety: We claimed the ownership of `Peripherals`
+        let peripherals = unsafe { cortex_m::Peripherals::steal() };
+
+        // Safety: `unsafe trait`
+        unsafe { (peripherals.SCB.vtor.read() as *const usize).read_volatile() }
     }
 }
 
@@ -100,9 +106,12 @@ impl State {
     pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<System>() };
 
+        // Claim the ownership of `Peripherals`
+        let mut peripherals = cortex_m::Peripherals::take().unwrap();
+
         // Set the priorities of SVCall and PendSV
+        // Safety: We don't make "priority-based critical sections"
         unsafe {
-            let mut peripherals = cortex_m::Peripherals::steal();
             peripherals
                 .SCB
                 .set_priority(cortex_m::peripheral::scb::SystemHandler::SVCall, 0xff);
