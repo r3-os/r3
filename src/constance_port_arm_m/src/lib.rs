@@ -499,7 +499,7 @@ impl State {
     }
 
     pub fn pend_tick_after<System: PortInstance>(&self, tick_count_delta: UTicks) {
-        if tick_count_delta < SElf::MAX_TIMEOUT {
+        if tick_count_delta < Self::MAX_TIMEOUT {
             todo!("pend_tick_after")
         }
         // TODO
