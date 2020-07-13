@@ -3,7 +3,7 @@ use std::{
     process::{ExitStatus, Stdio},
 };
 use thiserror::Error;
-use tokio::process::{Child, Command};
+use tokio::process::Command;
 
 #[derive(Error, Debug)]
 pub enum SubprocessError {
