@@ -63,6 +63,9 @@ struct Opt {
     target: &'static dyn targets::Target,
     /// If specified, only run tests containing this string in their names
     tests: Vec<String>,
+    /// Display build progress and warnings
+    #[structopt(short = "v")]
+    verbose: bool,
 }
 
 lazy_static::lazy_static! {
@@ -179,18 +182,26 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         // Build the test driver
         log::debug!("Building the test");
-        subprocess::CmdBuilder::new(cargo_cmd)
-            .arg("build")
-            .arg("--release")
-            .arg("--features=test")
-            .env(
-                "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",
-                link_dir.path(),
-            )
-            .env("CONSTANCE_TEST", &full_test_name)
-            .spawn_expecting_success()
-            .await
-            .map_err(|e| MainError::BuildTest(full_test_name.clone(), e))?;
+        let cmd_result = {
+            let cmd = subprocess::CmdBuilder::new(cargo_cmd)
+                .arg("build")
+                .arg("--release")
+                .arg("--features=test")
+                .args(if opt.verbose { None } else { Some("-q") })
+                .env(
+                    "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",
+                    link_dir.path(),
+                )
+                .env("CONSTANCE_TEST", &full_test_name);
+            if opt.verbose {
+                cmd.spawn_expecting_success().await
+            } else {
+                // Hide `stderr` unless the command fails
+                cmd.spawn_expecting_success_quiet().await
+            }
+        };
+
+        cmd_result.map_err(|e| MainError::BuildTest(full_test_name.clone(), e))?;
 
         // Locate the executable
         if !exe_path.is_file() {

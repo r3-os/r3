@@ -39,6 +39,16 @@ impl CmdBuilder {
         self
     }
 
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.cmd
+            .extend(args.into_iter().map(|a| a.as_ref().to_owned()));
+        self
+    }
+
     pub fn env(mut self, key: impl AsRef<OsStr>, val: impl AsRef<OsStr>) -> Self {
         self.env
             .push((key.as_ref().to_owned(), val.as_ref().to_owned()));
@@ -80,6 +90,35 @@ impl CmdBuilder {
             return Err(SubprocessError::FailStatus {
                 cmd: self.into_cmd(),
                 status,
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Don't reveal the error output unless the command fails.
+    pub async fn spawn_expecting_success_quiet(self) -> Result<(), SubprocessError> {
+        let mut command = self.build_command();
+        command.stderr(Stdio::piped());
+
+        let output = match command.output().await {
+            Ok(output) => output,
+            Err(e) => {
+                return Err(SubprocessError::Spawn {
+                    cmd: self.into_cmd(),
+                    error: e,
+                })
+            }
+        };
+
+        if !output.status.success() {
+            // Reveal the error output
+            use std::io::Write;
+            std::io::stderr().write(&output.stderr).unwrap();
+
+            return Err(SubprocessError::FailStatus {
+                cmd: self.into_cmd(),
+                status: output.status,
             });
         }
 
