@@ -94,6 +94,7 @@ pub unsafe trait PortCfg {
 /// Converts [`InterruptNum`] to [`cortex_m::interrupt::Nr`].
 struct Int(InterruptNum);
 
+#[cfg(target_os = "none")]
 unsafe impl cortex_m::interrupt::Nr for Int {
     #[inline]
     fn nr(&self) -> u8 {
