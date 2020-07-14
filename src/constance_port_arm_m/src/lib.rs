@@ -58,8 +58,9 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> + PortCf
 /// # Safety
 ///
 ///  - `interrupt_stack_top` must return a valid stack pointer. The default
-///    implementation evaluates `*(SCB.VTOR as *const u32)`, which should
-///    produce a valid value (this is usually true).
+///    implementation evaluates `*(SCB.VTOR as *const u32)`, which should be
+///    fine for most use cases, but if this is not acceptable, a custom
+///    implementation should be provided.
 ///
 pub unsafe trait PortCfg {
     /// The priority value to which CPU Lock boosts the current execution
