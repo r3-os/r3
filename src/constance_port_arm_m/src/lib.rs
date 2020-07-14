@@ -412,7 +412,6 @@ impl State {
     ) {
         let stack = task.attr.stack.as_ptr();
         let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<u32>;
-        // TODO: Enforce alignemnt on the stack size
         // TODO: Enforce minimum stack size
 
         // Exception frame (automatically saved and restored as part of

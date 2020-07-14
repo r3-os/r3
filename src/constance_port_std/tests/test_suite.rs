@@ -2,6 +2,7 @@
 #![feature(never_type)]
 #![feature(const_mut_refs)]
 #![feature(const_fn)]
+#![feature(slice_ptr_len)]
 
 use constance_port_std::PortInstance;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -43,6 +44,7 @@ impl KernelTestUtil {
 
 mod kernel_tests {
     pub mod external_interrupt;
+    pub mod stack_align;
 }
 
 macro_rules! instantiate_kernel_tests {
@@ -54,6 +56,7 @@ macro_rules! instantiate_kernel_tests {
 
             // Port-specific tests
             { path: crate::kernel_tests::external_interrupt, name_ident: external_interrupt, },
+            { path: crate::kernel_tests::stack_align, name_ident: stack_align, },
         );
     };
     ( @inner $(

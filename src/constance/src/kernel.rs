@@ -377,6 +377,15 @@ pub unsafe trait PortThreading: KernelCfg1 {
     const STACK_DEFAULT_SIZE: usize = 1024;
 
     /// The alignment requirement for task stack regions.
+    ///
+    /// Both ends of stack regions are aligned by `STACK_ALIGN`. It's
+    /// automatically enforced by the kernel configurator for automatically
+    /// allocated stack regions (this applies to tasks created without
+    /// [`stack_hunk`]). The kernel configurator does not check the alignemnt
+    /// for manually-allocated stack regions.
+    ///
+    /// [`stack_hunk`]: crate::kernel::cfg::CfgTaskBuilder::stack_hunk
+    /// [`StackHunk`]: crate::kernel::StackHunk
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
 
     /// Transfer the control to [`State::running_task`], discarding the current

@@ -111,6 +111,10 @@ impl<System: Port> CfgTaskBuilder<System> {
         };
         let stack = match stack {
             TaskStack::Auto(size) => {
+                // Round up the stack size
+                let size =
+                    (size + System::STACK_ALIGN - 1) / System::STACK_ALIGN * System::STACK_ALIGN;
+
                 let hunk = hunk::Hunk::<_, [_]>::build()
                     .len(size)
                     .align(System::STACK_ALIGN)
