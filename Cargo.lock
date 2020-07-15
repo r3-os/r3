@@ -227,6 +227,11 @@ dependencies = [
  "constance",
  "cortex-m",
  "cortex-m-rt",
+ "log",
+ "num-integer",
+ "num-rational",
+ "quickcheck",
+ "quickcheck_macros",
 ]
 
 [[package]]
@@ -829,6 +834,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d59457e662d541ba17869cf51cf177c0b5f0cbf476c66bdc90bf1edac4f875b"
 dependencies = [
  "autocfg",
+ "num-traits",
+]
+
+[[package]]
+name = "num-rational"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5b4d7360f362cfb50dde8143501e6940b22f644be75a4cc90b2d81968908138"
+dependencies = [
+ "autocfg",
+ "num-integer",
  "num-traits",
 ]
 

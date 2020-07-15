@@ -2,7 +2,7 @@ use constance::{
     kernel::{
         ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
         PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
-        SetInterruptLinePriorityError, TaskCb, UTicks,
+        SetInterruptLinePriorityError, TaskCb,
     },
     prelude::*,
     utils::{intrusive_list::StaticListHead, Init},
@@ -529,24 +529,6 @@ impl State {
             // Safety: It's a first-level interrupt handler here. CPU Lock inactive
             unsafe { x() };
         }
-    }
-
-    pub const MAX_TICK_COUNT: UTicks = UTicks::MAX;
-    pub const MAX_TIMEOUT: UTicks = UTicks::MAX / 2;
-    pub fn tick_count<System: PortInstance>(&self) -> UTicks {
-        0 // TODO
-    }
-
-    pub fn pend_tick_after<System: PortInstance>(&self, tick_count_delta: UTicks) {
-        if tick_count_delta < Self::MAX_TIMEOUT {
-            todo!("pend_tick_after")
-        }
-        // TODO
-    }
-
-    pub fn pend_tick<System: PortInstance>(&'static self) {
-        todo!("pend_tick")
-        // TODO
     }
 }
 

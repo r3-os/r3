@@ -11,6 +11,24 @@ The interrupt numbers `0..16` are mapped to non-external interrupts, and most op
 [`INTERRUPT_EXTERNAL0`]: crate::INTERRUPT_EXTERNAL0
 [`INTERRUPT_SYSTICK`]: crate::INTERRUPT_SYSTICK
 
+# Kernel Timing
+
+The availability of timer sources varies greatly between MCUs and there's no one-size-fits-all solution. For this reason, [`use_port!`] does not implement [`PortTimer`] on your system type. The Arm-M architecture defines SysTick, an optional timer integrated with a processor core and most Arm-M-based MCUs are equipped with those. This crate provides an implementation of `PortTimer` that utilizes SysTick.
+
+[`PortTimer`]: constance::kernel::PortTimer
+
+## Tickful SysTick
+
+This implementation is selected by [`use_systick_tickful!`]. It configures SysTick to fire at a constant interval. The SysTick handler advances the tick count by a constant amount every time it's called.
+
+**Pros:** The time measurement is as accurate as the source clock.
+
+**Cons:** Preempts tasks frequently. Inefficient in terms of energy consumption. Timeout precision is limited by the tick frequency. Can't tolerate a large interrupt delay (missing one interrupt is enough to disrupt the time measurement).
+
+## Tickless SysTick
+
+TODO
+
 # Safety
 
 Being a low-level piece of software, this port directly interfaces with hardware. This is not a problem as long as the port is the only piece of code doing that, but it might interfere with other low-level libraries and break their assumptions, potentially leading to an undefined behavior. This section lists potential harmful interactions that an application developer should keep in mind.

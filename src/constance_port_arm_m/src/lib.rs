@@ -2,15 +2,20 @@
 #![feature(const_fn)]
 #![feature(llvm_asm)]
 #![feature(const_panic)]
+#![feature(const_generics)]
 #![feature(slice_ptr_len)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
 #![no_std]
-#![cfg(any(target_os = "none", doc))]
 
 use constance::kernel::{InterruptNum, InterruptPriority};
 use core::ops::Range;
+
+/// Used by `use_port!` and this crate's code
+#[doc(hidden)]
+#[macro_use]
+pub mod utils;
 
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -28,6 +33,14 @@ pub extern crate core;
 #[doc(hidden)]
 #[cfg(target_os = "none")]
 pub use cortex_m_rt;
+
+/// Used by `use_port!`
+#[doc(hidden)]
+#[cfg(target_os = "none")]
+pub mod systick_tickful;
+
+#[doc(hidden)]
+pub mod timing;
 
 pub const INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..256;
 
@@ -85,7 +98,48 @@ pub unsafe trait PortCfg {
     }
 }
 
+/// The configuration for the implementation of `PortTimer` based on SysTick
+/// ([tickful]).
+///
+/// [tickful]: crate::use_systick_tickful
+pub trait PortSysTickCfg {
+    /// The numerator of the input clock frequency of SysTick.
+    const FREQUENCY: u64;
+
+    /// The denominator of the input clock frequency of SysTick.
+    /// Defaults to `1`.
+    const FREQUENCY_DENOMINATOR: u64 = 1;
+
+    /// The interrupt priority of the SysTick interrupt line.
+    /// Defaults to `0xc0`.
+    const INTERRUPT_PRIORITY: InterruptPriority = 0xc0;
+
+    /// The period of ticks, measured in SysTick cycles. Must be in range
+    /// `0..=0x1000000`.
+    ///
+    /// Defaults to
+    /// `(FREQUENCY / FREQUENCY_DENOMINATOR / 100).max(1).min(0x1000000)` (100Hz).
+    const TICK_PERIOD: u32 = {
+        // FIXME: Work-around for `Ord::max` not being `const fn`
+        let x = Self::FREQUENCY / Self::FREQUENCY_DENOMINATOR / 100;
+        if x == 0 {
+            1
+        } else if x > 0x1000000 {
+            0x1000000
+        } else {
+            x as u32
+        }
+    };
+}
+
 /// Instantiate the port.
+///
+/// This macro doesn't provide an implementation of [`PortTimer`], which you
+/// must supply one through other ways.
+/// See [the crate-level documentation](crate#kernel-timing) for possible
+/// options.
+///
+/// [`PortTimer`]: constance::kernel::PortTimer
 ///
 /// # Safety
 ///
@@ -194,23 +248,6 @@ macro_rules! use_port {
                     PORT_STATE.is_interrupt_line_pending::<Self>(line)
                 }
             }
-
-            impl PortTimer for $sys {
-                const MAX_TICK_COUNT: UTicks = State::MAX_TICK_COUNT;
-                const MAX_TIMEOUT: UTicks = State::MAX_TIMEOUT;
-
-                unsafe fn tick_count() -> UTicks {
-                    PORT_STATE.tick_count::<Self>()
-                }
-
-                unsafe fn pend_tick_after(tick_count_delta: UTicks) {
-                    PORT_STATE.pend_tick_after::<Self>(tick_count_delta)
-                }
-
-                unsafe fn pend_tick() {
-                    PORT_STATE.pend_tick::<Self>()
-                }
-            }
         }
 
         #[link_section = ".vector_table.interrupts"]
@@ -237,5 +274,76 @@ macro_rules! use_port {
         fn SysTick() {
             unsafe { port_arm_m_impl::PORT_STATE.handle_sys_tick::<$sys>() };
         }
+    };
+}
+
+/// Attach the tickful implementation of [`PortTimer`] that is based on SysTick
+/// to a given system type.
+///
+/// [`PortTimer`]: constance::kernel::PortTimer
+/// [a tickful scheme]: crate#tickful-systick
+///
+/// You should also do the following:
+///
+///  - Implement [`PortSysTickCfg`] manually.
+///  - Call `$ty::configure_systick()` in your configuration function.
+///    See the following example.
+///
+/// ```rust,ignore
+/// constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
+///
+/// impl constance_port_arm_m::PortSysTickCfg for System {
+///    // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
+///     const FREQUENCY: u64 = 2_000_000;
+/// }
+///
+/// constance::configure! {
+///     const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
+///         call!(System::configure_systick);
+///         /* ... */
+///     }
+/// }
+/// ```
+///
+/// # Safety
+///
+///  - The target must really be a bare-metal Arm-M environment.
+///
+#[macro_export]
+macro_rules! use_systick_tickful {
+    (unsafe impl PortTimer for $ty:ty) => {
+        const _: () = {
+            use $crate::constance::{
+                kernel::{cfg::CfgBuilder, PortTimer, UTicks},
+                utils::Init,
+            };
+            use $crate::systick_tickful;
+
+            static TIMER_STATE: systick_tickful::State<$ty> = Init::INIT;
+
+            impl PortTimer for $ty {
+                const MAX_TICK_COUNT: UTicks = u32::MAX;
+                const MAX_TIMEOUT: UTicks = u32::MAX;
+
+                unsafe fn tick_count() -> UTicks {
+                    // Safety: CPU Lock active
+                    unsafe { TIMER_STATE.tick_count() }
+                }
+            }
+
+            // Safety: Only `use_systick_tickful!` is allowed to `impl` this
+            unsafe impl systick_tickful::SysTickTickfulInstance for $ty {
+                unsafe fn handle_tick() {
+                    // Safety: Interrupt context, CPU Lock inactive
+                    unsafe { TIMER_STATE.handle_tick::<Self>() };
+                }
+            }
+
+            impl $ty {
+                pub const fn configure_systick(b: &mut CfgBuilder<Self>) {
+                    systick_tickful::configure(b);
+                }
+            }
+        };
     };
 }

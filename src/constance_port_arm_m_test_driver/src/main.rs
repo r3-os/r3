@@ -30,6 +30,15 @@ macro_rules! instantiate_test {
         }
 
         constance_port_arm_m::use_port!(unsafe struct System);
+        constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
+
+        unsafe impl constance_port_arm_m::PortCfg for System {}
+
+        impl constance_port_arm_m::PortSysTickCfg for System {
+            // STM32F401
+            // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
+            const FREQUENCY: u64 = 2_000_000;
+        }
 
         struct Driver;
 
@@ -52,8 +61,6 @@ macro_rules! instantiate_test {
         static COTTAGE: test_case::App<System> =
             constance::build!(System, configure_app => test_case::App<System>);
 
-        unsafe impl constance_port_arm_m::PortCfg for System {}
-
         constance::configure! {
             const fn configure_app(_: &mut CfgBuilder<System>) -> test_case::App<System> {
                 // Initialize RTT (Real-Time Transfer) with a single up channel and set
@@ -61,6 +68,8 @@ macro_rules! instantiate_test {
                 new! { StartupHook<_>, start = |_| {
                     rtt_target::rtt_init_print!();
                 } };
+
+                call!(System::configure_systick);
 
                 call!(test_case::App::new::<Driver>)
             }

@@ -543,6 +543,9 @@ pub trait PortTimer {
     /// difference determines the kernel's resilience against overdue
     /// timer interrupts.
     ///
+    /// This is ignored and can take any value if `pend_tick_after` is
+    /// implemented as no-op.
+    ///
     /// [`pend_tick_after`]: Self::pend_tick_after
     const MAX_TIMEOUT: UTicks;
 
