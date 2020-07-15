@@ -191,7 +191,7 @@ impl State {
             str r3, [r2, 36]
 
             # Choose the next task to run
-        .LChooseTask:
+        ChooseTask:
             push {r0}
             bl $1
             pop {r0}
@@ -204,7 +204,7 @@ impl State {
             #    [r0 = &running_task]
             #
             #    r1 = running_task
-            #    if r1.is_none() { goto LChooseTask; }
+            #    if r1.is_none() { goto ChooseTask; }
             #    r2 = r1.port_task_state.sp
             #
             #    {r4-r11} = r2[0..8]
@@ -215,7 +215,8 @@ impl State {
             #    [r4-r11 = context, lr = EXC_RETURN]
 
             ldr r1, [r0]
-            cbz r1, LChooseTask
+            tst r1, r1
+            beq ChooseTask
             ldr r2, [r1]
             ldr lr, [r2, 32]
             ldr r3, [r2, 36]
@@ -264,7 +265,7 @@ impl State {
         llvm_asm!("
             # Choose the next task to run
             # TODO: This is redundant for `dispatch_first_task`
-        .LChooseTask2:
+        ChooseTask2:
             push {r0}
             bl $1
             pop {r0}
@@ -275,7 +276,7 @@ impl State {
             #    [r0 = &running_task]
             #
             #    r1 = running_task
-            #    if r1.is_none() { goto LChooseTask2; }
+            #    if r1.is_none() { goto ChooseTask2; }
             #    r2 = r1.port_task_state.sp
             #
             #    {r4-r11} = r2[0..8]
@@ -286,7 +287,8 @@ impl State {
             #    [r4-r11 = context, lr = EXC_RETURN]
 
             ldr r1, [r0]
-            cbz r1, LChooseTask2
+            tst r1, r1
+            beq ChooseTask2
             ldr r2, [r1]
             ldr lr, [r2, 32]
             ldr r3, [r2, 36]
