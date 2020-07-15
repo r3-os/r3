@@ -51,7 +51,6 @@ constance::configure! {
 }
 
 fn task1_body(_: usize) {
-    use constance::kernel::KernelCfg2;
     rtt_target::rprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();

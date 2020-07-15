@@ -118,7 +118,7 @@ impl State {
 
     pub unsafe fn exit_and_dispatch<System: PortInstance>(
         &'static self,
-        task: &'static TaskCb<System>,
+        _task: &'static TaskCb<System>,
     ) -> ! {
         unsafe { self.leave_cpu_lock::<System>() };
 
@@ -441,9 +441,6 @@ impl State {
         &'static self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
-        // Safety: We claimed the ownership of `Peripherals`
-        let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
-
         if !INTERRUPT_NUM_RANGE.contains(&num) {
             Err(EnableInterruptLineError::BadParam)
         } else if num >= INTERRUPT_EXTERNAL0 {
@@ -460,9 +457,6 @@ impl State {
         &self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
-        // Safety: We claimed the ownership of `Peripherals`
-        let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
-
         if !INTERRUPT_NUM_RANGE.contains(&num) {
             Err(EnableInterruptLineError::BadParam)
         } else if num >= INTERRUPT_EXTERNAL0 {
