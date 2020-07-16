@@ -9,21 +9,21 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 
 ## Implementation Status
 
-|       Core       |     Library     |       Ports       |
-| :--------------- | :-------------- | :---------------- |
-| ☑︎ Tasks          | ☐ `Mutex`       | ☑︎ `std` (Hosted)  |
-| ☑︎ Hunks          | ☐ `RwLock`      | ☐ Armv7-M         |
-| ☑︎ Wait Objects   | ☐ `Once`        |                   |
-| ☑︎ Timeouts       | ☐ Logger        |                   |
-| ☐ Semaphores     | ☐ C API         |                   |
-| ☑︎ Event Groups   |                 |                   |
-| ☐ Mutexes        | **Tools**       | **Boards**        |
-| ☐ Timers         | ☑︎ Test Harness  | ☑︎ Hosted          |
-| ☐ Alarms         | ☑︎ Test Suite    | ☐ F401RE          |
-| ☑︎ Interrupts     | ☑︎ Configurator  |                   |
-| ☑︎ Startup Hooks  |                 |                   |
-| ☐ CPU Exceptions |                 |                   |
-| ☐ Panicking      |                 |                   |
+|       Core       |     Library     |        Ports       |
+| :--------------- | :-------------- | :----------------- |
+| ☑︎ Tasks          | ☐ `Mutex`       | ☑︎ `std` (Hosted)   |
+| ☑︎ Hunks          | ☐ `RwLock`      | ☑︎ Armv7-M (no FPU) |
+| ☑︎ Wait Objects   | ☐ `Once`        |                    |
+| ☑︎ Timeouts       | ☐ Logger        |                    |
+| ☐ Semaphores     | ☐ C API         |                    |
+| ☑︎ Event Groups   |                 |                    |
+| ☐ Mutexes        | **Tools**       | **Boards**         |
+| ☐ Timers         | ☑︎ Test Harness  | ☑︎ Hosted           |
+| ☐ Alarms         | ☑︎ Test Suite    | ☑︎ F401RE           |
+| ☑︎ Interrupts     | ☑︎ Configurator  |                    |
+| ☑︎ Startup Hooks  |                 |                    |
+| ☐ CPU Exceptions |                 |                    |
+| ☐ Panicking      |                 |                    |
 
 ## Example
 
