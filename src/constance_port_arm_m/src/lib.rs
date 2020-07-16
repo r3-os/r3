@@ -258,11 +258,6 @@ macro_rules! use_port {
         }
 
         #[$crate::cortex_m_rt::exception]
-        fn SVCall() {
-            unsafe { port_arm_m_impl::PORT_STATE.handle_sv_call::<$sys>() };
-        }
-
-        #[$crate::cortex_m_rt::exception]
         fn PendSV() {
             unsafe { port_arm_m_impl::PORT_STATE.handle_pend_sv::<$sys>() };
         }
