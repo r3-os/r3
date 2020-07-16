@@ -19,6 +19,10 @@ impl SeqTracker {
         }
     }
 
+    pub(crate) fn get(&self) -> usize {
+        self.counter.load(Ordering::Relaxed)
+    }
+
     /// Assert that the counter is equal to `old` and then replace it with
     /// `new`.
     #[track_caller]
