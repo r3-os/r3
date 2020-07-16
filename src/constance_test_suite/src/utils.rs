@@ -21,6 +21,7 @@ impl SeqTracker {
 
     /// Assert that the counter is equal to `old` and then replace it with
     /// `new`.
+    #[track_caller]
     pub(crate) fn expect_and_replace(&self, old: usize, new: usize) {
         log::debug!(
             "{} (expected: {}) → {}",
@@ -28,9 +29,7 @@ impl SeqTracker {
             old,
             new
         );
-        assert_eq!(
-            self.counter.compare_and_swap(old, new, Ordering::Relaxed),
-            old
-        );
+        let got = self.counter.compare_and_swap(old, new, Ordering::Relaxed);
+        assert_eq!(got, old, "expected {}, got {}", old, got);
     }
 }
