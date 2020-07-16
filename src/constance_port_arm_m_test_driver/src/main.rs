@@ -32,7 +32,12 @@ macro_rules! instantiate_test {
         constance_port_arm_m::use_port!(unsafe struct System);
         constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
 
-        unsafe impl constance_port_arm_m::PortCfg for System {}
+        unsafe impl constance_port_arm_m::PortCfg for System {
+            // On some chips, RTT stops working when the processor is suspended
+            // by the WFI instruction, which interferes with test result
+            // collection.
+            const USE_WFI: bool = false;
+        }
 
         impl constance_port_arm_m::PortSysTickCfg for System {
             // STM32F401
@@ -67,16 +72,6 @@ macro_rules! instantiate_test {
                 // it as the print channel for the printing macros
                 new! { StartupHook<_>, start = |_| {
                     rtt_target::rtt_init_print!();
-                } };
-
-                new! { StartupHook<_>, start = |_| {
-                    // STM32F401 specific: Keep the system clock running when
-                    // executing WFI. Otherise, the processor would stop
-                    // responding to the debug probe, severing the connection.
-                    unsafe {
-                        let dbgmcu_cr = 0xe0042004 as *mut u32;
-                        dbgmcu_cr.write_volatile(dbgmcu_cr.read_volatile() | 7);
-                    }
                 } };
 
                 call!(System::configure_systick);

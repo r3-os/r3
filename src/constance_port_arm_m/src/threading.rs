@@ -117,15 +117,24 @@ impl State {
             mov r0, #0
             msr primask, r0
             cpsie i
-
-        IdleLoop:
-            wfi
-            b IdleLoop
         "
         :
         :   "r"(msp_top)
         :
         :   "volatile");
+
+        if System::USE_WFI {
+            llvm_asm!("
+            IdleLoopWithWfi:
+                wfi
+                b IdleLoopWithWfi
+            "::::"volatile");
+        } else {
+            llvm_asm!("
+            IdleLoopWithoutWfi:
+                b IdleLoopWithoutWfi
+            "::::"volatile");
+        }
 
         unsafe { core::hint::unreachable_unchecked() };
     }

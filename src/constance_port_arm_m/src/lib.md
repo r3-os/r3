@@ -33,6 +33,10 @@ TODO
 
 When there is no task to schedule, the port transfers the control to **the idle task** (this is an internal construct and invisible to the kernel or an application). The idle task executes the `wfi` instruction to reduce power consumption.
 
+The use of the `wfi` instruction can interfere with debugger connection. For example, RTT (Real-Time Transfer) stops working when the processor of STM32F401 is idle. Setting [`PortCfg::USE_WFI`] to `false` solves this issue.
+
+[`PortCfg::USE_WFI`]: crate::PortCfg::USE_WFI
+
 # Safety
 
 Being a low-level piece of software, this port directly interfaces with hardware. This is not a problem as long as the port is the only piece of code doing that, but it might interfere with other low-level libraries and break their assumptions, potentially leading to an undefined behavior. This section lists potential harmful interactions that an application developer should keep in mind.

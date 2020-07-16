@@ -74,6 +74,10 @@ pub unsafe trait PortCfg {
     /// Must be `0` on an Armv6-M target because it doesn't support `BASEPRI`.
     const CPU_LOCK_PRIORITY_MASK: u8 = 0;
 
+    /// Enables the use of the `wfi` instruction in the idle task to save power.
+    /// Defaults to `true`.
+    const USE_WFI: bool = true;
+
     /// Get the top of the interrupt stack. Defaults to
     /// `*(SCB.VTOR as *const u32)`.
     ///

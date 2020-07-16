@@ -17,7 +17,10 @@ use panic_rtt_target as _;
 constance_port_arm_m::use_port!(unsafe struct System);
 constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
 
-unsafe impl constance_port_arm_m::PortCfg for System {}
+unsafe impl constance_port_arm_m::PortCfg for System {
+    // Disable the use of WFI because it breaks RTT and debugger connection
+    const USE_WFI: bool = false;
+}
 
 impl constance_port_arm_m::PortSysTickCfg for System {
     // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
@@ -41,17 +44,6 @@ constance::configure! {
         // it as the print channel for the printing macros
         new! { StartupHook<_>, start = |_| {
             rtt_target::rtt_init_print!();
-        } };
-
-        new! { StartupHook<_>, start = |_| unsafe {
-            // STM32F401 specific: Keep the system clock running when
-            // executing WFI. Otherise, the processor would stop
-            // responding to the debug probe, severing the connection.
-            let dbgmcu = &*nucleo_f401re::hal::stm32::DBGMCU::ptr();
-            dbgmcu.cr.modify(|_, w| w
-                .dbg_stop().set_bit()
-                .dbg_sleep().set_bit()
-                .dbg_standby().set_bit());
         } };
 
         call!(System::configure_systick);
