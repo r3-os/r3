@@ -1,4 +1,6 @@
 //! Verifies the adjustable range of [`adjust_time`].
+//!
+//! [`adjust_time`]: constance::kernel::Kernel::adjust_time
 use constance::{
     kernel::{AdjustTimeError, Hunk, Task, TIME_USER_HEADROOM},
     prelude::*,
