@@ -15,8 +15,8 @@
 //!         leave_cpu_lock();
 //!
 //!         // (1)
-//!         // Pend SVC (this is synchronous - if we do this with CPU Lock
-//!         // active, the processor will escalate it to HardFault)
+//!         // Pend SVC (this is synchronous - if we did this with CPU Lock
+//!         // active, the processor would escalate it to HardFault)
 //!         asm!("svc 42");
 //!     }
 //!
@@ -50,7 +50,7 @@
 //! mode* context is equal to the one associated with `state().running_task`.
 //! This explains why `pend_sv_handler` works.
 //! However, this invariant is temporarily broken during the boot process, when
-//! the kernel assign `running_task` before calling `dispatch_first_task`. This
+//! the kernel assigns `running_task` before calling `dispatch_first_task`. This
 //! special case is handled by the use of SVC (1).
 //!
 //! However, if an interupt is taken before reaching (1) and the interrupt
