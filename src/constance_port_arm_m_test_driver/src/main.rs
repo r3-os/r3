@@ -5,6 +5,9 @@
 #![cfg_attr(feature = "test", no_std)]
 #![cfg_attr(feature = "test", no_main)]
 
+#[cfg(feature = "test")]
+mod logger;
+
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
     // If a test case is specified, instantiate the test case
@@ -68,10 +71,27 @@ macro_rules! instantiate_test {
 
         constance::configure! {
             const fn configure_app(_: &mut CfgBuilder<System>) -> test_case::App<System> {
-                // Initialize RTT (Real-Time Transfer) with a single up channel and set
-                // it as the print channel for the printing macros
+                // Initialize RTT (Real-Time Transfer) with two up channels and set
+                // the first one as the print channel for the printing macros, and
+                // the second one as log output
                 new! { StartupHook<_>, start = |_| {
-                    rtt_target::rtt_init_print!();
+                    let channels = rtt_target::rtt_init! {
+                        up: {
+                            0: {
+                                size: 1024
+                                mode: NoBlockSkip
+                                name: "Terminal"
+                            }
+                            1: {
+                                size: 1024
+                                mode: NoBlockSkip
+                                name: "Log"
+                            }
+                        }
+                    };
+
+                    rtt_target::set_print_channel(channels.up.0);
+                    logger::init(channels.up.1);
                 } };
 
                 call!(System::configure_systick);

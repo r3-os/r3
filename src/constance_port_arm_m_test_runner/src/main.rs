@@ -63,6 +63,11 @@ struct Opt {
     target: &'static dyn targets::Target,
     /// If specified, only run tests containing this string in their names
     tests: Vec<String>,
+    /// Log level of the test program
+    #[structopt(short = "l", long = "log-level",
+        possible_values(&LogLevel::variants()), case_insensitive = true,
+        default_value = "warn")]
+    log_level: LogLevel,
     /// Display build progress and warnings
     #[structopt(short = "v")]
     verbose: bool,
@@ -79,6 +84,16 @@ fn try_parse_target(arg_target: &str) -> Result<&'static dyn targets::Target, &'
         .find(|x| x.0 == arg_target)
         .ok_or("no such target")
         .map(|x| x.1)
+}
+
+#[derive(Clone, Copy, arg_enum_proc_macro::ArgEnum)]
+enum LogLevel {
+    Off,
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
 }
 
 async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
@@ -189,6 +204,14 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
                 .arg("build")
                 .arg("--release")
                 .arg("--features=test")
+                .arg(match opt.log_level {
+                    LogLevel::Off => "--features=log/max_level_off",
+                    LogLevel::Error => "--features=log/max_level_error",
+                    LogLevel::Warn => "--features=log/max_level_warn",
+                    LogLevel::Info => "--features=log/max_level_info",
+                    LogLevel::Debug => "--features=log/max_level_debug",
+                    LogLevel::Trace => "--features=log/max_level_trace",
+                })
                 .args(if opt.verbose { None } else { Some("-q") })
                 .env(
                     "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",

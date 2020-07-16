@@ -1,6 +1,7 @@
 use std::{
     error::Error,
     future::Future,
+    io::Write,
     path::Path,
     pin::Pin,
     sync::{Arc, Mutex},
@@ -187,20 +188,28 @@ impl AsyncRead for ReadRtt {
     ) -> Poll<tokio::io::Result<usize>> {
         // Read up to `buf.len()` bytes
         let mut pos = 0;
-        for channel in self.rtt.up_channels().iter() {
+        for (i, channel) in self.rtt.up_channels().iter().enumerate() {
             if pos >= buf.len() {
                 break;
             }
             match channel.read(&mut buf[pos..]) {
                 Ok(num_read_bytes) => {
-                    if num_read_bytes > 0 {
-                        log::trace!(
-                            "Read {:?} from {:?}",
-                            String::from_utf8_lossy(&buf[pos..][..num_read_bytes]),
-                            (channel.number(), channel.name()),
-                        );
+                    if i == 0 {
+                        // Terminal channel
+                        if num_read_bytes > 0 {
+                            log::trace!(
+                                "Read {:?} from {:?}",
+                                String::from_utf8_lossy(&buf[pos..][..num_read_bytes]),
+                                (channel.number(), channel.name()),
+                            );
+                        }
+                        pos += num_read_bytes;
+                    } else {
+                        // Log channel
+                        std::io::stdout()
+                            .write_all(&buf[pos..][..num_read_bytes])
+                            .unwrap();
                     }
-                    pos += num_read_bytes;
                 }
                 Err(e) => {
                     return Poll::Ready(Err(tokio::io::Error::new(tokio::io::ErrorKind::Other, e)));

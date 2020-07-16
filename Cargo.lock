@@ -52,6 +52,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d25d88fd6b8041580a654f9d0c581a047baee2b3efee13275f2fc392fc75034"
 
 [[package]]
+name = "arg_enum_proc_macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bc19845baa31d32d189d8020bc8d76bf735e4587c9eba9cf561003ba4c93908"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "as-slice"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -241,7 +252,9 @@ dependencies = [
  "constance",
  "constance_port_arm_m",
  "constance_test_suite",
+ "cortex-m",
  "cortex-m-rt",
+ "log",
  "panic-rtt-target",
  "rtt-target 0.2.0",
 ]
@@ -251,6 +264,7 @@ name = "constance_port_arm_m_test_runner"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
+ "arg_enum_proc_macro",
  "constance_test_suite",
  "env_logger",
  "goblin",
