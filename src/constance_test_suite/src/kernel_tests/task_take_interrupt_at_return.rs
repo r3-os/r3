@@ -61,6 +61,32 @@
 //! handler calls `yield_cpu`, `pend_sv_handler` will be called right after
 //! `leave_cpu_lock`. `pend_sv_handler` is not prepared to handle `running_task`
 //! being `None` and trips an assertion (2).
+//!
+//! Also, when the interrupt handler re-activates the original task, it might
+//! corrupt the exception frame corresponding to the current interrupt
+//! activation by overwriting a part of it, causing an unpredictable behavior
+//! on return.
+//!
+//! ```text
+//!
+//!   Top → ┌───────────┐        ┌───────────┐
+//!         │           │        │           │
+//!         ├───────────┤        │ Exception │
+//!         │           │        │   Frame   │
+//!         │ Exception │        │           │
+//!         │   Frame   │        ├───────────┤
+//!         │           │        │ Corrupted │
+//!         ├───────────┤        ├───────────┤
+//!         │           │ ← PSP  │           │ ← PSP
+//!         │           │        │           │
+//!         │           │        │           │
+//!         │           │        │           │
+//!         └───────────┘        └───────────┘
+//!
+//!         Handler entry            After
+//!                          initialize_task_state
+//!
+//! ```
 use constance::{
     kernel::{Hunk, InterruptHandler, InterruptLine, Task},
     prelude::*,
