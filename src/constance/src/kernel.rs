@@ -388,10 +388,12 @@ pub unsafe trait PortThreading: KernelCfg1 {
     /// [`StackHunk`]: crate::kernel::StackHunk
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
 
-    /// Transfer the control to [`State::running_task`], discarding the current
-    /// (startup) context.
+    /// Transfer the control to the dispatcher, discarding the current
+    /// (startup) context. [`State::running_task`] is `None` at this point.
+    /// The dispatcher should call [`PortToKernel::choose_running_task`] to find
+    /// the next task to run and transfer the control to that task.
     ///
-    /// Precondition: CPU Lock active, Startup phase
+    /// Precondition: CPU Lock active, a boot context
     unsafe fn dispatch_first_task() -> !;
 
     /// Yield the processor.
@@ -679,9 +681,6 @@ impl<System: Kernel> PortToKernel for System {
             // Safety: This is the intended place to call startup hooks.
             unsafe { (hook.start)(hook.param) };
         }
-
-        // Choose the first `running_task`
-        task::choose_next_running_task(lock.borrow_mut());
 
         forget(lock);
 

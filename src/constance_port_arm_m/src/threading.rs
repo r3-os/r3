@@ -78,6 +78,9 @@ impl State {
     }
 
     pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
+        // Safety: CPU Lock active
+        unsafe { System::choose_running_task() };
+
         // Find the top of the stack
         // Safety: Only `dispatch_first_task` can call this method
         let msp_top = unsafe { System::interrupt_stack_top() };
