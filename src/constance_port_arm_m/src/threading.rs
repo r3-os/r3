@@ -166,12 +166,17 @@ impl State {
             unsafe { State::leave_cpu_lock_inner::<System>() };
         }
 
+        extern "C" fn panic_null_running_task() {
+            panic!("assertion failed: running_task.is_some()");
+        }
+
         llvm_asm!("
             # Save the context of the previous task
             #
             #    [r0 = &running_task, r4-r11 = context, lr = EXC_RETURN]
             #
             #    r1 = running_task
+            #    assert(r1.is_some());
             #    r2 = psp as *u32 - 10
             #
             #    r2[0..8] = {r4-r11}
@@ -182,6 +187,8 @@ impl State {
             #    [r0 = &running_task]
 
             ldr r1, [r0]
+            tst r1, r1
+            beq $2
             mrs r2, psp
             mrs r3, control
             sub r2, #40
@@ -227,7 +234,8 @@ impl State {
         "
         :
         :   "{r0}"(running_task_ref),
-            "X"(choose_next_task::<System> as extern fn())
+            "X"(choose_next_task::<System> as extern fn()),
+            "X"(panic_null_running_task as extern fn())
         :
         :   "volatile");
     }
