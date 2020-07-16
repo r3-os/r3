@@ -29,6 +29,10 @@ This implementation is selected by [`use_systick_tickful!`]. It configures SysTi
 
 TODO
 
+# Idle Task
+
+When there is no task to schedule, the port transfers the control to **the idle task** (this is invisible to the kernel or an application). The idle task executes the `wfi` instruction to reduce power consumption.
+
 # Safety
 
 Being a low-level piece of software, this port directly interfaces with hardware. This is not a problem as long as the port is the only piece of code doing that, but it might interfere with other low-level libraries and break their assumptions, potentially leading to an undefined behavior. This section lists potential harmful interactions that an application developer should keep in mind.

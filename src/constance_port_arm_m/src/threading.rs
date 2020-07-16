@@ -78,38 +78,38 @@ impl State {
     }
 
     pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
-        // Safety: CPU Lock active
-        unsafe { System::choose_running_task() };
-
-        // Find the top of the stack
-        // Safety: Only `dispatch_first_task` can call this method
+        // Find the top of the interrupt stack
+        // Safety: Only the port can call this method
         let msp_top = unsafe { System::interrupt_stack_top() };
 
-        // Re-enable interrupts so `svc` can execute
-        unsafe { self.leave_cpu_lock::<System>() };
-
-        // TODO: PendSV taking in this period can be a problem
-        //
-        // Consider the following execution sequence:
-        //
-        //  1. `running_task = task1`
-        //  2. The call to `leave_cpu_lock` above
-        //  3. An interrupt handler starts running
-        //  4. The interrupt handler pends PendSV
-        //  5. PendSV saves `PSP` to `task1`, but `PSP` doesn't actually
-        //     represent `task1`'s stack pointer at this point
+        // Pend PendSV
+        cortex_m::peripheral::SCB::set_pendsv();
 
         llvm_asm!("
             # Reset MSP to the top of the stack, effectively discarding the
-            # current context
+            # current context. Beyond this point, this code is considered to be
+            # running in the idle task.
+            #
+            # The idle task uses MSP as its stack.
             msr msp, $0
 
             # TODO: Set MSPLIM on Armv8-M
 
-            # Transfer the control to `handle_sv_call`, which will dispatch the
-            # first task and will never return to this thread
-            svc 42
-        "::"r"(msp_top)::"volatile");
+            # Release CPU Lock
+            # TODO: Choose the appropriate method based on `CPU_LOCK_PRIORITY_MASK`
+            mov r0, #0
+            msr primask, r0
+            cpsie i
+
+        .global port_arm_m_idle_loop
+        port_arm_m_idle_loop:
+            wfi
+            b port_arm_m_idle_loop
+        "
+        :
+        :   "r"(msp_top)
+        :
+        :   "volatile");
 
         unreachable!()
     }
@@ -123,20 +123,36 @@ impl State {
         &'static self,
         _task: &'static TaskCb<System>,
     ) -> ! {
-        unsafe { self.leave_cpu_lock::<System>() };
+        // Find the top of the interrupt stack
+        // Safety: Only the port can call this method
+        let msp_top = unsafe { System::interrupt_stack_top() };
 
-        // TODO: PendSV taking in this period can be a problem
-        //
-        // Consider the following execution sequence:
-        //
-        //  1. The call to `leave_cpu_lock` above (task A)
-        //  2. An interrupt handler starts running
-        //  3. The interrupt handler activates task A, which initializes the
-        //     context of task A
-        //  4. The interrupt handler returns, but the corresponding exception
-        //     frame is gone, causing an unpredictable behavior
+        // Pend PendSV
+        cortex_m::peripheral::SCB::set_pendsv();
 
-        llvm_asm!("svc 42"::::"volatile");
+        llvm_asm!("
+            # Effectively transfer the control to the idle task by switching
+            # to MSP. `running_task` is `None` at this point, so the fact that
+            # we are in the idle task agrees with that.
+            mrs r0, control
+            bic r0, #2
+            msr control, r0
+
+            # Discard any PendSV exception frame in MSP.
+            mov sp, $0
+
+            # Release CPU Lock
+            # TODO: Choose the appropriate method based on `CPU_LOCK_PRIORITY_MASK`
+            mov r0, #0
+            msr primask, r0
+            cpsie i
+
+            b port_arm_m_idle_loop
+        "
+        :
+        :   "{r1}"(msp_top)
+        :
+        :   "volatile");
         unreachable!()
     }
 
@@ -149,7 +165,10 @@ impl State {
         // Precondition:
         //  - `EXC_RETURN.Mode == 1` - Exception was taken in Thread mode. This
         //    is true because PendSV is configured with the lowest priority.
-        //  - `SPSEL.Mode == 1` - The exception frame was stacked to PSP.
+        //  - `SPSEL.Mode == 1 && running_task.is_some()` - If the previous task
+        //    is not the idle task, then the exception frame was stacked to PSP.
+        //  - `SPSEL.Mode == 0 && running_task.is_none()` - If the previous task
+        //    is the idle task, then the exception frame was stacked to MSP.
 
         // Compilation assumption:
         //  - The compiled code does not use any registers other than r0-r3
@@ -169,29 +188,25 @@ impl State {
             unsafe { State::leave_cpu_lock_inner::<System>() };
         }
 
-        extern "C" fn panic_null_running_task() {
-            panic!("assertion failed: running_task.is_some()");
-        }
-
         llvm_asm!("
             # Save the context of the previous task
             #
             #    [r0 = &running_task, r4-r11 = context, lr = EXC_RETURN]
             #
             #    r1 = running_task
-            #    assert(r1.is_some());
-            #    r2 = psp as *u32 - 10
+            #    if r1.is_some() {
+            #        r2 = psp as *u32 - 10
             #
-            #    r2[0..8] = {r4-r11}
-            #    r2[8] = lr (EXC_RETURN)
-            #    r2[9] = control
-            #    r1.port_task_state.sp = r2
+            #        r2[0..8] = {r4-r11}
+            #        r2[8] = lr (EXC_RETURN)
+            #        r2[9] = control
+            #        r1.port_task_state.sp = r2
+            #    }
             #
             #    [r0 = &running_task]
 
             ldr r1, [r0]
-            tst r1, r1
-            beq $2
+            cbz r1, ChooseTask
             mrs r2, psp
             mrs r3, control
             sub r2, #40
@@ -207,26 +222,30 @@ impl State {
             pop {r0}
 
             # Restore the context of the next task
-            # TODO: Handle the case where `running_task.is_none()` better
-            #        - Should use the `wfi` instruction
-            #        - Should wait in Thread mode
             #
             #    [r0 = &running_task]
             #
             #    r1 = running_task
-            #    if r1.is_none() { goto ChooseTask; }
-            #    r2 = r1.port_task_state.sp
+            #    if r1.is_some() {
+            #        r2 = r1.port_task_state.sp
             #
-            #    {r4-r11} = r2[0..8]
-            #    lr = r2[8]
-            #    control = r2[9]
-            #    psp = &r2[10]
+            #        {r4-r11} = r2[0..8]
+            #        lr = r2[8]
+            #        control = r2[9]
+            #        psp = &r2[10]
+            #    } else {
+            #        // The idle task only uses r0-r3, so we can skip most steps
+            #        // in this case
+            #        control = 2;
+            #        lr = 0xfffffff9; /* “ Return to Thread Mode; Exception
+            #           return gets state from the Main stack; On return
+            #           execution uses the Main Stack.” */
+            #    }
             #
             #    [r4-r11 = context, lr = EXC_RETURN]
 
             ldr r1, [r0]
-            tst r1, r1
-            beq ChooseTask
+            cbz r1, RestoreIdleTask
             ldr r2, [r1]
             ldr lr, [r2, 32]
             ldr r3, [r2, 36]
@@ -234,11 +253,16 @@ impl State {
             ldmia r2, {r4-r11}
             add r2, #40
             msr psp, r2
+            bx lr
+
+        RestoreIdleTask:
+            mov r0, #0
+            mov lr, #0xfffffff9
+            msr control, r0
         "
         :
-        :   "{r0}"(running_task_ref),
-            "X"(choose_next_task::<System> as extern fn()),
-            "X"(panic_null_running_task as extern fn())
+        :   "{r0}"(running_task_ref)
+        ,   "X"(choose_next_task::<System> as extern fn())
         :
         :   "volatile");
     }

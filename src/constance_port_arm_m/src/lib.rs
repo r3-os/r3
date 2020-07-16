@@ -79,10 +79,7 @@ pub unsafe trait PortCfg {
     ///
     /// # Safety
     ///
-    /// This only can be called by this crate's implementation of
-    /// [`dispatch_first_task`].
-    ///
-    /// [`dispatch_first_task`]: constance::kernel::PortThreading::dispatch_first_task
+    /// This only can be called by the port.
     unsafe fn interrupt_stack_top() -> usize {
         #[cfg(target_os = "none")]
         {

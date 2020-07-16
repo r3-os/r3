@@ -43,6 +43,17 @@ constance::configure! {
             rtt_target::rtt_init_print!();
         } };
 
+        new! { StartupHook<_>, start = |_| unsafe {
+            // STM32F401 specific: Keep the system clock running when
+            // executing WFI. Otherise, the processor would stop
+            // responding to the debug probe, severing the connection.
+            let dbgmcu = &*nucleo_f401re::hal::stm32::DBGMCU::ptr();
+            dbgmcu.cr.modify(|_, w| w
+                .dbg_stop().set_bit()
+                .dbg_sleep().set_bit()
+                .dbg_standby().set_bit());
+        } };
+
         call!(System::configure_systick);
 
         let task1 = new! { Task<_>, start = task1_body, priority = 2, active = true };

@@ -418,8 +418,8 @@ pub unsafe trait PortThreading: KernelCfg1 {
     /// > handler.
     unsafe fn yield_cpu();
 
-    /// Destroy the state of the previously running task (`task`, which might
-    /// already have been removed from [`State::running_task`]) and proceed to
+    /// Destroy the state of the previously running task (`task`, which has
+    /// already been removed from [`State::running_task`]) and proceed to
     /// the dispatcher.
     ///
     /// Precondition: CPU Lock active

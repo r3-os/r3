@@ -69,6 +69,16 @@ macro_rules! instantiate_test {
                     rtt_target::rtt_init_print!();
                 } };
 
+                new! { StartupHook<_>, start = |_| {
+                    // STM32F401 specific: Keep the system clock running when
+                    // executing WFI. Otherise, the processor would stop
+                    // responding to the debug probe, severing the connection.
+                    unsafe {
+                        let dbgmcu_cr = 0xe0042004 as *mut u32;
+                        dbgmcu_cr.write_volatile(dbgmcu_cr.read_volatile() | 7);
+                    }
+                } };
+
                 call!(System::configure_systick);
 
                 call!(test_case::App::new::<Driver>)
