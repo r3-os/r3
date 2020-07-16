@@ -31,7 +31,7 @@ TODO
 
 # Idle Task
 
-When there is no task to schedule, the port transfers the control to **the idle task** (this is invisible to the kernel or an application). The idle task executes the `wfi` instruction to reduce power consumption.
+When there is no task to schedule, the port transfers the control to **the idle task** (this is an internal construct and invisible to the kernel or an application). The idle task executes the `wfi` instruction to reduce power consumption.
 
 # Safety
 

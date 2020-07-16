@@ -78,12 +78,29 @@ impl State {
     }
 
     pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
+        // Pend PendSV
+        cortex_m::peripheral::SCB::set_pendsv();
+
+        // Discard the current context and transfer the control to the idle
+        // task. We have pended PendSV, so the dispatcher will kick in as soon
+        // as the idle task releases CPU Lock.
+        //
+        // Safety: `CONTROL.SPSEL == 0`, Thread mode (entailed by the boot
+        // context), CPU Lock active
+        unsafe { Self::idle_task::<System>() };
+    }
+
+    /// Reset MSP to `interrupt_stack_top()`, release CPU Lock, and start
+    /// executing the idle loop.
+    ///
+    /// # Safety
+    ///
+    /// `CONTROL.SPSEL == 0`, Thread mode, CPU Lock active
+    #[inline(never)]
+    unsafe extern "C" fn idle_task<System: PortInstance>() -> ! {
         // Find the top of the interrupt stack
         // Safety: Only the port can call this method
         let msp_top = unsafe { System::interrupt_stack_top() };
-
-        // Pend PendSV
-        cortex_m::peripheral::SCB::set_pendsv();
 
         llvm_asm!("
             # Reset MSP to the top of the stack, effectively discarding the
@@ -91,7 +108,7 @@ impl State {
             # running in the idle task.
             #
             # The idle task uses MSP as its stack.
-            msr msp, $0
+            mov sp, $0
 
             # TODO: Set MSPLIM on Armv8-M
 
@@ -101,17 +118,16 @@ impl State {
             msr primask, r0
             cpsie i
 
-        .global port_arm_m_idle_loop
-        port_arm_m_idle_loop:
+        IdleLoop:
             wfi
-            b port_arm_m_idle_loop
+            b IdleLoop
         "
         :
         :   "r"(msp_top)
         :
         :   "volatile");
 
-        unreachable!()
+        unsafe { core::hint::unreachable_unchecked() };
     }
 
     pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
@@ -123,37 +139,35 @@ impl State {
         &'static self,
         _task: &'static TaskCb<System>,
     ) -> ! {
-        // Find the top of the interrupt stack
-        // Safety: Only the port can call this method
-        let msp_top = unsafe { System::interrupt_stack_top() };
-
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
 
         llvm_asm!("
-            # Effectively transfer the control to the idle task by switching
-            # to MSP. `running_task` is `None` at this point, so the fact that
-            # we are in the idle task agrees with that.
+            # Activate the idle task's context by switching the current SP to
+            # MSP.
+            # `running_task` is `None` at this point, so the processor state
+            # will be consistent with `running_task` after this operation.
             mrs r0, control
             bic r0, #2
             msr control, r0
 
-            # Discard any PendSV exception frame in MSP.
-            mov sp, $0
-
-            # Release CPU Lock
-            # TODO: Choose the appropriate method based on `CPU_LOCK_PRIORITY_MASK`
-            mov r0, #0
-            msr primask, r0
-            cpsie i
-
-            b port_arm_m_idle_loop
+            # Transfer the control to the idle task. We have pended PendSV, so
+            # the dispatcher will kick in as soon as the idle task releases CPU
+            # Lock.
+            #
+            # Safety:
+            #  - `CONTROL.SPSEL == 0` (we just set it)
+            #  - Thread mode (because `exit_and_dispatch` is called in a task
+            #    context),
+            #  - CPU Lock active (`exit_and_dispatch`'s requirement)
+            b $0
         "
         :
-        :   "{r1}"(msp_top)
+        :   "X"(Self::idle_task::<System> as unsafe extern fn() -> !)
         :
         :   "volatile");
-        unreachable!()
+
+        unsafe { core::hint::unreachable_unchecked() };
     }
 
     #[inline(always)]
@@ -165,10 +179,12 @@ impl State {
         // Precondition:
         //  - `EXC_RETURN.Mode == 1` - Exception was taken in Thread mode. This
         //    is true because PendSV is configured with the lowest priority.
-        //  - `SPSEL.Mode == 1 && running_task.is_some()` - If the previous task
-        //    is not the idle task, then the exception frame was stacked to PSP.
-        //  - `SPSEL.Mode == 0 && running_task.is_none()` - If the previous task
-        //    is the idle task, then the exception frame was stacked to MSP.
+        //  - `SPSEL.Mode == 1 && running_task.is_some()` - If the interrupted
+        //    context is not the idle task, the exception frame should have been
+        //    stacked to PSP.
+        //  - `SPSEL.Mode == 0 && running_task.is_none()` - If the interrupted
+        //    context is the idle task, the exception frame should have been
+        //    stacked to MSP.
 
         // Compilation assumption:
         //  - The compiled code does not use any registers other than r0-r3
@@ -442,6 +458,8 @@ impl State {
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
+        // All tasks use PSP. The idle task is the exception, but user
+        // code cannot run in the idle task, so we can ignore this.
         cortex_m::register::control::read().spsel() == cortex_m::register::control::Spsel::Psp
     }
 
