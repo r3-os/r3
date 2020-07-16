@@ -153,6 +153,7 @@ pub mod kernel_tests {
         (mod interrupt_task_activate {}, "interrupt_task_activate"),
         (mod priority_boost {}, "priority_boost"),
         (mod startup_hook_disallowed_services {}, "startup_hook_disallowed_services"),
+        (mod startup_hook_pend_interrupt {}, "startup_hook_pend_interrupt"),
         (mod startup_hook_priority {}, "startup_hook_priority"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
