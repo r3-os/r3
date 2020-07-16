@@ -150,6 +150,10 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// make the event overdue by more than `TIME_USER_HEADROOM`), the check
     /// will fail.
     ///
+    /// The events made overdue by the call will be processed when the port
+    /// timer driver announces a new tick. It's unspecified whether this happens
+    /// before or after the call returns.
+    ///
     /// **Moving Backward (`delta < 0`):** First, we introduce the concept of
     /// **a frontier**. The frontier represents the point of time at which the
     /// system time advanced the most. Usually, the frontier is identical to

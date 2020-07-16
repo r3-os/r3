@@ -11,8 +11,7 @@
 //! 4. (`seq`: 3 → 4, 0ms) `task1` changes the system time to 300ms using
 //!    `adjust_time`.
 //! 5. (`seq`: 4 → 5, 300ms) `task3` wakes up, finding it's late by 200ms.
-//! 6. (`seq`: 5 → 6, 300ms) `task1` exits.
-//! 7. (`seq`: 6 → 7, 600ms) `tsak2` wakes up.
+//! 6. (`seq`: 5 → 6, 600ms) `tsak2` wakes up.
 //!
 use constance::{
     kernel::{Hunk, Task},
@@ -52,9 +51,9 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // Adjust the system time while `task2` and `task3` are sleeping.
     System::adjust_time(Duration::from_millis(300)).unwrap();
-    // This will cause `task3` to wake up immediately.
-
-    D::app().seq.expect_and_replace(5, 6);
+    // This will cause `task3` to wake up very soon.
+    // (It's unspecified whether it happens before or after
+    // `adjust_time` returns.)
 }
 
 fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
@@ -63,7 +62,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Start sleeping at system time 0ms
     System::sleep(Duration::from_millis(600)).unwrap();
 
-    D::app().seq.expect_and_replace(6, 7);
+    D::app().seq.expect_and_replace(5, 6);
 
     // Sleeping should conclude at system time 600ms
     let now = Time::from_millis(600);
