@@ -17,7 +17,6 @@ use super::{
 ///
 /// Only meant to be implemented by [`use_systick_tickful!`].
 pub unsafe trait SysTickTickfulInstance: Kernel + PortSysTickCfg {
-    // TODO: exactness check
     const TICKFUL_CFG: TickfulCfg = TickfulCfg::new(
         Self::FREQUENCY,
         Self::FREQUENCY_DENOMINATOR,
