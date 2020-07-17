@@ -1,5 +1,7 @@
 # <img src="https://img.shields.io/badge/Constance-Real--Time%20Operating%20System-orange?style=for-the-badge&labelColor=333333" width="90%" height="auto" alt="Constance Real-Time Operating System">
 
+<img src="https://img.shields.io/badge/build-I%20dunno-lightgrey?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/crates.io-not%20yet-red?style=for-the-badge"> <img src="https://img.shields.io/badge/docs.rs-I%20wish-red?style=for-the-badge">
+
 Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
 
 - All kernel objects are defined statically for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.
