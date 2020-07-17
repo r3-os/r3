@@ -673,6 +673,7 @@ fn mark_tick<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>) {
 /// Precondition: CPU Lock inactive, an interrupt context
 ///
 /// [`PortToKernel::timer_tick`]: super::PortToKernel::timer_tick
+#[inline]
 pub(super) fn handle_tick<System: Kernel>() {
     // The precondition includes CPU Lock being inactive, so this `unwrap`
     // should succeed
@@ -773,6 +774,7 @@ fn pend_next_tick<System: Kernel>(lock: CpuLockGuardBorrowMut<'_, System>, curre
 // ---------------------------------------------------------------------------
 
 /// Find the critical point based on the current event time.
+#[inline]
 fn critical_point(current_time: Time32) -> Time32 {
     current_time.wrapping_sub(HARD_HEADROOM + USER_HEADROOM)
 }

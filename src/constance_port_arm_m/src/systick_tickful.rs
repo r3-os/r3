@@ -37,9 +37,10 @@ configure! {
         new! { InterruptLine<_>,
             line = INTERRUPT_SYSTICK, priority = System::INTERRUPT_PRIORITY };
         new! { InterruptHandler<_>,
-            line = INTERRUPT_SYSTICK, start = |_| unsafe { System::handle_tick() } };
+            line = INTERRUPT_SYSTICK,
+            start = #[inline] |_| unsafe { System::handle_tick() } };
 
-        new! { StartupHook<_>, start = |_| init(System::TICK_PERIOD) };
+        new! { StartupHook<_>, start = #[inline] |_| init(System::TICK_PERIOD) };
     }
 }
 
