@@ -8,7 +8,7 @@ use core::cell::UnsafeCell;
 
 use super::{
     timing::{TickfulCfg, TickfulState, TickfulStateTrait},
-    PortSysTickCfg, INTERRUPT_SYSTICK,
+    SysTickOptions, INTERRUPT_SYSTICK,
 };
 
 /// Implemented on a system type by [`use_systick_tickful!`].
@@ -16,7 +16,7 @@ use super::{
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_systick_tickful!`].
-pub unsafe trait SysTickTickfulInstance: Kernel + PortSysTickCfg {
+pub unsafe trait SysTickTickfulInstance: Kernel + SysTickOptions {
     const TICKFUL_CFG: TickfulCfg = TickfulCfg::new(
         Self::FREQUENCY,
         Self::FREQUENCY_DENOMINATOR,

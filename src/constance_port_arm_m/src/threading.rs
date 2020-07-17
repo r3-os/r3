@@ -10,7 +10,8 @@ use constance::{
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
 use super::{
-    PortCfg, INTERRUPT_EXTERNAL0, INTERRUPT_NUM_RANGE, INTERRUPT_PRIORITY_RANGE, INTERRUPT_SYSTICK,
+    ThreadingOptions, INTERRUPT_EXTERNAL0, INTERRUPT_NUM_RANGE, INTERRUPT_PRIORITY_RANGE,
+    INTERRUPT_SYSTICK,
 };
 
 /// Implemented on a system type by [`use_port!`].
@@ -18,7 +19,9 @@ use super::{
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_port!`].
-pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> + PortCfg {
+pub unsafe trait PortInstance:
+    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions
+{
     fn port_state() -> &'static State;
 }
 /// Converts [`InterruptNum`] to [`cortex_m::interrupt::Nr`].

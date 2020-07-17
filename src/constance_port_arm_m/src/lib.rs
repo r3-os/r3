@@ -62,7 +62,7 @@ pub const INTERRUPT_NUM_RANGE: Range<InterruptNum> = 0..256;
 ///    fine for most use cases, but if this is not acceptable, a custom
 ///    implementation should be provided.
 ///
-pub unsafe trait PortCfg {
+pub unsafe trait ThreadingOptions {
     /// The priority value to which CPU Lock boosts the current execution
     /// priority. Must be in range `0..256`. Defaults to `0` when unspecified.
     ///
@@ -103,7 +103,7 @@ pub unsafe trait PortCfg {
 /// ([tickful]).
 ///
 /// [tickful]: crate::use_systick_tickful
-pub trait PortSysTickCfg {
+pub trait SysTickOptions {
     /// The numerator of the input clock frequency of SysTick.
     const FREQUENCY: u64;
 
@@ -164,7 +164,7 @@ macro_rules! use_port {
                 TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
             use $crate::core::ops::Range;
-            use $crate::{threading::{State, TaskState, PortInstance}, PortCfg};
+            use $crate::{threading::{State, TaskState, PortInstance}, ThreadingOptions};
 
             pub(super) static PORT_STATE: State = State::new();
 
@@ -218,7 +218,7 @@ macro_rules! use_port {
 
             unsafe impl PortInterrupts for $sys {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
-                    (<$sys as PortCfg>::CPU_LOCK_PRIORITY_MASK as _)..256;
+                    (<$sys as ThreadingOptions>::CPU_LOCK_PRIORITY_MASK as _)..256;
 
                 unsafe fn set_interrupt_line_priority(
                     line: InterruptNum,
@@ -281,14 +281,14 @@ macro_rules! use_port {
 ///
 /// You should also do the following:
 ///
-///  - Implement [`PortSysTickCfg`] manually.
+///  - Implement [`SysTickOptions`] manually.
 ///  - Call `$ty::configure_systick()` in your configuration function.
 ///    See the following example.
 ///
 /// ```rust,ignore
 /// constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
 ///
-/// impl constance_port_arm_m::PortSysTickCfg for System {
+/// impl constance_port_arm_m::SysTickOptions for System {
 ///    // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
 ///     const FREQUENCY: u64 = 2_000_000;
 /// }
