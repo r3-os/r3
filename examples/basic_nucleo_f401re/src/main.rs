@@ -10,19 +10,20 @@ use constance::{
     prelude::*,
     sync::Mutex,
 };
+use constance_port_arm_m as port;
 
 // Install a global panic handler that uses RTT
 use panic_rtt_target as _;
 
-constance_port_arm_m::use_port!(unsafe struct System);
-constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
+port::use_port!(unsafe struct System);
+port::use_systick_tickful!(unsafe impl PortTimer for System);
 
-impl constance_port_arm_m::ThreadingOptions for System {
+impl port::ThreadingOptions for System {
     // Disable the use of WFI because it breaks RTT and debugger connection
     const USE_WFI: bool = false;
 }
 
-impl constance_port_arm_m::SysTickOptions for System {
+impl port::SysTickOptions for System {
     // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
     const FREQUENCY: u64 = 2_000_000;
 }

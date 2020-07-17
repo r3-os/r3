@@ -17,6 +17,7 @@ macro_rules! instantiate_test {
 
         use constance::kernel::{InterruptNum, InterruptPriority, StartupHook};
         use constance_test_suite::kernel_tests;
+        use constance_port_arm_m as port;
         use $path as test_case;
 
         // Install a global panic handler that uses RTT
@@ -32,17 +33,17 @@ macro_rules! instantiate_test {
             panic!("test failed");
         }
 
-        constance_port_arm_m::use_port!(unsafe struct System);
-        constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
+        port::use_port!(unsafe struct System);
+        port::use_systick_tickful!(unsafe impl PortTimer for System);
 
-        impl constance_port_arm_m::ThreadingOptions for System {
+        impl port::ThreadingOptions for System {
             // On some chips, RTT stops working when the processor is suspended
             // by the WFI instruction, which interferes with test result
             // collection.
             const USE_WFI: bool = false;
         }
 
-        impl constance_port_arm_m::SysTickOptions for System {
+        impl port::SysTickOptions for System {
             // STM32F401
             // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
             const FREQUENCY: u64 = 2_000_000;
