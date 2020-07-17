@@ -432,8 +432,7 @@ mod tests {
             let mut last_tick_count = state.tick_count();
 
             // Run the simulation for 100 hardware ticks
-            // FIXME: This is strange, why do I need an explicit type here?
-            for _ in 0..10000u32 {
+            for _ in 0..10000 {
                 // The kernel system time and the actual time must agree
                 assert_eq!((time * 1_000_000).to_integer(), kernel_time);
 
