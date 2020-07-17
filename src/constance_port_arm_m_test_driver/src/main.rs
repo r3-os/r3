@@ -35,7 +35,7 @@ macro_rules! instantiate_test {
         constance_port_arm_m::use_port!(unsafe struct System);
         constance_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
 
-        unsafe impl constance_port_arm_m::ThreadingOptions for System {
+        impl constance_port_arm_m::ThreadingOptions for System {
             // On some chips, RTT stops working when the processor is suspended
             // by the WFI instruction, which interferes with test result
             // collection.

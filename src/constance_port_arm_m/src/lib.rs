@@ -54,15 +54,7 @@ pub const INTERRUPT_EXTERNAL0: InterruptNum = 16;
 pub const INTERRUPT_NUM_RANGE: Range<InterruptNum> = 0..256;
 
 /// The configuration of the port.
-///
-/// # Safety
-///
-///  - `interrupt_stack_top` must return a valid stack pointer. The default
-///    implementation evaluates `*(SCB.VTOR as *const u32)`, which should be
-///    fine for most use cases, but if this is not acceptable, a custom
-///    implementation should be provided.
-///
-pub unsafe trait ThreadingOptions {
+pub trait ThreadingOptions {
     /// The priority value to which CPU Lock boosts the current execution
     /// priority. Must be in range `0..256`. Defaults to `0` when unspecified.
     ///
@@ -150,6 +142,12 @@ pub trait SysTickOptions {
 ///    you are doing.
 ///  - `::cortex_m_rt` should point to the `cortex-m-rt` crate.
 ///  - Other components should not execute the `svc` instruction.
+///  - `<$sys as `[`ThreadingOptions`]`>::`[`interrupt_stack_top`] must return a
+///    valid stack pointer. The default implementation evaluates `*(SCB.VTOR a
+///    *const u32)`, which should be fine for most use cases, but if this is not
+///    acceptable, a custom implementation should be provided.
+///
+/// [`interrupt_stack_top`]: ThreadingOptions::interrupt_stack_top
 ///
 #[macro_export]
 macro_rules! use_port {
