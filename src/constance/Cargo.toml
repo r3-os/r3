@@ -12,13 +12,14 @@ repository = "https://github.com/yvt/Constance"
 
 [dependencies]
 constance_parse_generics = { version = "0.1.2", path = "../constance_parse_generics" }
-tokenlock = { version = "0.3.0", default-features = false }
+
 num-integer = { version = "0.1.42", default-features = false }
 num-traits = { version = "0.2.11", default-features = false }
-bitflags = "1.2.1"
-svgbobdoc = "0.2.2"
+pin-utils = { version = "0.1.0" }
 staticvec = { version = "0.10.1", default-features = false }
-pin-utils = "0.1.0"
+svgbobdoc = { version = "0.2.2" }
+tokenlock = { version = "0.3.0", default-features = false }
+bitflags = { version = "1.2.1" }
 chrono = { version = "0.4.13", optional = true, default-features = false }
 
 [dependencies.atomic_ref]
@@ -31,7 +32,7 @@ rev = "37523c17a2a535f4d04c204d65d2742647abed25"
 features = ["nightly"]
 
 [dev-dependencies]
+quickcheck_macros = "0.9.1"
 env_logger = "0.7.1"
 quickcheck = "0.9.2"
-quickcheck_macros = "0.9.1"
 log = "0.4.8"

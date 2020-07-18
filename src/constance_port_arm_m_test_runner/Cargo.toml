@@ -8,16 +8,24 @@ publish = false
 
 [dependencies]
 constance_test_suite = { path = "../constance_test_suite", default-features = false }
-env_logger = { version = "0.7.1", default-features = false, features = ["atty", "termcolor", "humantime"] }
-log = "0.4.8"
-tempdir = "0.3.7"
-tokio = { version = "0.2.21", features = ["process", "macros", "time", "io-util", "fs", "blocking"] }
+
+arg_enum_proc_macro = "0.3.0"
+aho-corasick = "0.7.13"
+probe-rs-rtt = "0.3.0"
+lazy_static = "1.4.0"
+env_logger = "0.7.1"
 thiserror = "1.0.20"
 miniserde = "0.1.13"
 structopt = "0.3.15"
-arg_enum_proc_macro = "0.3.0"
-lazy_static = "1.4.0"
 probe-rs = "0.8.0"
-probe-rs-rtt = "0.3.0"
-aho-corasick = "0.7.13"
-goblin = { version = "0.2.3", default-features = false, features = ["std", "elf32"] }
+tempdir = "0.3.7"
+log = "0.4.8"
+
+[dependencies.goblin]
+version = "0.2.3"
+default-features = false
+features = ["std", "elf32"]
+
+[dependencies.tokio]
+version = "0.2.21"
+features = ["process", "macros", "time", "io-util", "fs", "blocking"]

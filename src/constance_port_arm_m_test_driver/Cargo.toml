@@ -19,13 +19,14 @@ test = [
 ]
 
 [dependencies]
-constance = { path = "../constance", optional = true }
 constance_port_arm_m = { path = "../constance_port_arm_m", optional = true }
-cortex-m = { version = "0.6.2", optional = true }
+constance = { path = "../constance", optional = true }
+
+panic-rtt-target = { version = "0.1.0", optional = true, features = ["cortex-m"] }
 cortex-m-rt = { version = "0.6.12", optional = true, features = ["device"] }
+rtt-target = { version = "0.2.0", optional = true, features = ["cortex-m"] }
+cortex-m = { version = "0.6.2", optional = true }
 log = { version = "0.4.8", optional = true }
-panic-rtt-target = { version = "0.1.0", features = ["cortex-m"], optional = true }
-rtt-target = { version = "0.2.0", features = ["cortex-m"], optional = true }
 
 [dependencies.constance_test_suite]
 path = "../constance_test_suite"

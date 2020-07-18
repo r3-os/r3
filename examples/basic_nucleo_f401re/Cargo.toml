@@ -9,9 +9,10 @@ publish = false
 # `cargo test --all` to fail because of this, so we put dependencies in the
 # target-specific section.
 [target."cfg(target_os = \"none\")".dependencies]
-constance = { path = "../../src/constance" }
 constance_port_arm_m = { path = "../../src/constance_port_arm_m" }
-cortex-m-rt = "0.6.12"
-nucleo-f401re = "0.4.1"
+constance = { path = "../../src/constance" }
+
 panic-rtt-target = { version = "0.1.0", features = ["cortex-m"] }
+nucleo-f401re = { version = "0.4.1" }
+cortex-m-rt = { version = "0.6.12" }
 rtt-target = { version = "0.2.0", features = ["cortex-m"] }

@@ -10,9 +10,10 @@ repository = "https://github.com/yvt/Constance"
 
 [dependencies]
 constance = { path = "../constance" }
-log = "0.4.8"
+
 env_logger = "0.7.1"
 once_cell = "1.4.0"
+log = "0.4.8"
 
 [dependencies.atomic_ref]
 # - “Make the crate `no_std`”
