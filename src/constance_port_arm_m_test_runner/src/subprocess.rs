@@ -114,7 +114,7 @@ impl CmdBuilder {
         if !output.status.success() {
             // Reveal the error output
             use std::io::Write;
-            std::io::stderr().write(&output.stderr).unwrap();
+            std::io::stderr().write_all(&output.stderr).unwrap();
 
             return Err(SubprocessError::FailStatus {
                 cmd: self.into_cmd(),
