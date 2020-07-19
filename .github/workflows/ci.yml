@@ -1,0 +1,78 @@
+name: CI
+on:
+  pull_request:
+  push:
+
+jobs:
+  # Do a quick check before proceeding to full tests
+  check:
+    name: Quick check
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: clippy, rustfmt
+
+      - name: Install Dependencies (Linux)
+        run: sudo apt-get install libusb-1.0-0-dev
+
+      - name: Exclude Crates
+        run: |
+          # `basic_nucleo_f401re` doesn't compile unless you
+          # provide an appropriate target triple.
+          sed -E -i.bak 's/.*basic_nucleo_f401re.*//' Cargo.toml
+
+      - name: Clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --workspace
+
+      # TODO: Add something like <https://github.com/mbrobbel/rustfmt-check>,
+      #       except for pushing commits automatically
+
+  # Run tests on the host system
+  test-hosted:
+    name: Test (Hosted)
+    needs: check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # TODO: Add `macos-10.15` after addressing the time inaccuracy that
+        #       causes some tests to fail
+        os: [ubuntu-18.04, windows-2019]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Install Dependencies (Linux)
+        if: startsWith(matrix.os, 'ubuntu-')
+        run: sudo apt-get install libusb-1.0-0-dev
+
+      - name: Exclude Crates (Windows)
+        if: startsWith(matrix.os, 'windows-')
+        shell: bash
+        run: |
+          # `constance_port_std` doesn't support Windows yet
+          sed -E -i.bak 's/.*constance_port_std.*//' Cargo.toml
+          sed -E -i.bak 's/.*basic.*//' Cargo.toml
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          --args: --workspace
+        env:
+          RUST_LOG: debug
+
+  # TODO: `test-freestandiing`
