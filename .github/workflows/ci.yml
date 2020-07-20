@@ -71,8 +71,34 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          --args: --workspace
+          args: --workspace
         env:
           RUST_LOG: debug
 
-  # TODO: `test-freestandiing`
+  # Run tests on a freestanding target
+  test-freestanding:
+    name: Test (Freestanding)
+    needs: check
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Install Dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev qemu-system-arm
+
+      - name: Install Additional Target of the Rust Toolchain
+        run: rustup target add thumbv7m-none-eabi
+
+      - name: Test (MPS2+ AN385)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385 -l debug
