@@ -7,7 +7,7 @@ jobs:
   # Do a quick check before proceeding to full tests
   check:
     name: Quick check
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -45,7 +45,7 @@ jobs:
       matrix:
         # TODO: Add `macos-10.15` after addressing the time inaccuracy that
         #       causes some tests to fail
-        os: [ubuntu-18.04, windows-2019]
+        os: [ubuntu-20.04, windows-2019]
     steps:
       - name: Checkout
         uses: actions/checkout@v1
