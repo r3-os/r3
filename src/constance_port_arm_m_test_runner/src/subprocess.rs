@@ -3,7 +3,7 @@ use std::{
     process::{ExitStatus, Stdio},
 };
 use thiserror::Error;
-use tokio::process::Command;
+use tokio::process::{Child, Command};
 
 #[derive(Error, Debug)]
 pub enum SubprocessError {
@@ -147,5 +147,20 @@ impl CmdBuilder {
         }
 
         Ok(output.stdout)
+    }
+
+    pub fn spawn_and_get_child(self) -> Result<Child, SubprocessError> {
+        let mut command = self.build_command();
+        command.stdout(Stdio::piped());
+
+        match command.spawn() {
+            Ok(child) => Ok(child),
+            Err(e) => {
+                return Err(SubprocessError::Spawn {
+                    cmd: self.into_cmd(),
+                    error: e,
+                })
+            }
+        }
     }
 }

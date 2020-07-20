@@ -2,8 +2,21 @@ use std::{convert::TryInto, error::Error, future::Future, path::Path, pin::Pin};
 use tokio::{io::AsyncRead, task::spawn_blocking};
 
 mod probe_rs;
+mod qemu;
 
 pub trait Target: Send + Sync {
+    /// Get the target triple.
+    ///
+    ///  - `thumbv7m-none-eabi`: Armv7-M
+    ///  - `thumbv7em-none-eabi`: Armv7-M + DSP
+    ///  - `thumbv7em-none-eabihf`: Armv7-M + DSP + FPU
+    ///
+    fn target_triple(&self) -> &str;
+
+    /// Get the additional Cargo features to enable when building
+    /// `constance_port_arm_m_test_driver`.
+    fn cargo_features(&self) -> &[&str];
+
     /// Generate the `memory.x` file to be included by `cortex-m-rt`'s linker
     /// script.
     fn memory_layout_script(&self) -> String;
@@ -15,8 +28,8 @@ pub trait Target: Send + Sync {
 }
 
 pub trait DebugProbe: Send + Sync {
-    /// Program the specified ELF image and run it from the beginning and
-    /// capturing its output.
+    /// Program the specified ELF image and run it from the beginning to
+    /// capture its output.
     fn program_and_get_output(
         &mut self,
         exe: &Path,
@@ -25,11 +38,23 @@ pub trait DebugProbe: Send + Sync {
 
 type DynAsyncRead<'a> = Pin<Box<dyn AsyncRead + 'a>>;
 
-pub static TARGETS: &[(&str, &dyn Target)] = &[("nucleo_f401re", &NucleoF401re)];
+pub static TARGETS: &[(&str, &dyn Target)] = &[
+    ("nucleo_f401re", &NucleoF401re),
+    ("qemu_mps2_an385", &QemuMps2An385),
+];
 
 pub struct NucleoF401re;
 
 impl Target for NucleoF401re {
+    fn target_triple(&self) -> &str {
+        // TODO: use `eabihf` when FPU is supported by the Arm-M port
+        "thumbv7em-none-eabi"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-rtt"]
+    }
+
     fn memory_layout_script(&self) -> String {
         "
             MEMORY
@@ -63,5 +88,37 @@ impl Target for NucleoF401re {
             .await
             .unwrap()
         })
+    }
+}
+
+pub struct QemuMps2An385;
+
+impl Target for QemuMps2An385 {
+    fn target_triple(&self) -> &str {
+        "thumbv7m-none-eabi"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-semihosting"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        "
+            MEMORY
+            {
+              /* assuming zbt_boot_ctrl == 0 */
+              FLASH : ORIGIN = 0x00000000, LENGTH = 4096k
+              RAM : ORIGIN = 0x20000000, LENGTH = 4096K
+            }
+
+            _stack_start = ORIGIN(RAM) + LENGTH(RAM);
+        "
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async { Ok(Box::new(qemu::QemuDebugProbe::new()) as Box<dyn DebugProbe>) })
     }
 }

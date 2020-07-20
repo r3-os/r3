@@ -5,8 +5,10 @@
 #![cfg_attr(feature = "test", no_std)]
 #![cfg_attr(feature = "test", no_main)]
 
-#[cfg(feature = "test")]
-mod logger;
+#[cfg(feature = "output-rtt")]
+mod logger_rtt;
+#[cfg(feature = "output-semihosting")]
+mod logger_semihosting;
 
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
@@ -20,12 +22,20 @@ macro_rules! instantiate_test {
         use constance_port_arm_m as port;
         use $path as test_case;
 
-        // Install a global panic handler that uses RTT
+        // Install a global panic handler
+        #[cfg(feature = "output-rtt")]
         use panic_rtt_target as _;
+        #[cfg(feature = "output-semihosting")]
+        use panic_semihosting as _;
 
         fn report_success() {
             // The test runner will catch this
+            #[cfg(feature = "output-rtt")]
             rtt_target::rprintln!("!- TEST WAS SUCCESSFUL -!");
+
+            #[cfg(feature = "output-semihosting")]
+            cortex_m_semihosting::hprintln!("!- TEST WAS SUCCESSFUL -!").unwrap();
+
             loop {}
         }
 
@@ -75,6 +85,7 @@ macro_rules! instantiate_test {
                 // Initialize RTT (Real-Time Transfer) with two up channels and set
                 // the first one as the print channel for the printing macros, and
                 // the second one as log output
+                #[cfg(feature = "output-rtt")]
                 new! { StartupHook<_>, start = |_| {
                     let channels = rtt_target::rtt_init! {
                         up: {
@@ -92,7 +103,13 @@ macro_rules! instantiate_test {
                     };
 
                     rtt_target::set_print_channel(channels.up.0);
-                    logger::init(channels.up.1);
+                    logger_rtt::init(channels.up.1);
+                } };
+
+                // Redirect the log output to stderr
+                #[cfg(feature = "output-semihosting")]
+                new! { StartupHook<_>, start = |_| {
+                    logger_semihosting::init();
                 } };
 
                 call!(System::configure_systick);

@@ -254,8 +254,10 @@ dependencies = [
  "constance_test_suite",
  "cortex-m",
  "cortex-m-rt",
+ "cortex-m-semihosting",
  "log",
  "panic-rtt-target",
+ "panic-semihosting",
  "rtt-target 0.2.0",
 ]
 
@@ -334,6 +336,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "cortex-m-semihosting"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "113ef0ecffee2b62b58f9380f4469099b30e9f9cbee2804771b4203ba1762cfa"
+dependencies = [
+ "cortex-m",
 ]
 
 [[package]]
@@ -895,6 +906,16 @@ checksum = "ab3dec5d8d834d63b28db55b9f0d4fd3781599527217c865cd79349c71c8deb4"
 dependencies = [
  "cortex-m",
  "rtt-target 0.1.1",
+]
+
+[[package]]
+name = "panic-semihosting"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c03864ac862876c16a308f5286f4aa217f1a69ac45df87ad3cd2847f818a642c"
+dependencies = [
+ "cortex-m",
+ "cortex-m-semihosting",
 ]
 
 [[package]]

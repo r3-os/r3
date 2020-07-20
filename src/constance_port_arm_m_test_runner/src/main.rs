@@ -1,3 +1,4 @@
+#![feature(future_readiness_fns)] // `std::future::ready`
 use std::{
     env,
     path::{Path, PathBuf},
@@ -179,8 +180,9 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     log::debug!("target_dir = '{}'", target_dir.display());
 
     // Executable path
-    let exe_path =
-        target_dir.join("thumbv7em-none-eabihf/release/constance_port_arm_m_test_driver");
+    let exe_path = target_dir
+        .join(opt.target.target_triple())
+        .join("release/constance_port_arm_m_test_driver");
     log::debug!("exe_path = '{}'", exe_path.display());
 
     let mut failed_tests = Vec::new();
@@ -203,7 +205,15 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
             let cmd = subprocess::CmdBuilder::new(cargo_cmd)
                 .arg("build")
                 .arg("--release")
+                .arg("--target")
+                .arg(opt.target.target_triple())
                 .arg("--features=test")
+                .args(
+                    opt.target
+                        .cargo_features()
+                        .iter()
+                        .map(|f| format!("--features={}", f)),
+                )
                 .arg(match opt.log_level {
                     LogLevel::Off => "--features=log/max_level_off",
                     LogLevel::Error => "--features=log/max_level_error",

@@ -1,7 +1,9 @@
-[target.thumbv7em-none-eabihf]
+[target.thumbv7m-none-eabi]
 rustflags = [
   "-C", "link-arg=-Tlink.x",
 ]
 
-[build]
-target = "thumbv7em-none-eabihf"
+[target.thumbv7em-none-eabi]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
