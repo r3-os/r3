@@ -351,8 +351,14 @@ impl State {
         exc_frame[4] = MaybeUninit::new(0x12121212);
         // LR: The return address
         exc_frame[5] = MaybeUninit::new(System::exit_task as usize as u32);
-        // PC: The entry point
-        exc_frame[6] = MaybeUninit::new(task.attr.entry_point as usize as u32);
+        // PC: The entry point - The given function pointer has its LSB set to
+        // signify that the target is a Thumb function (that's the only valid
+        // mode on Arm-M) as required by the BLX instruction. In an exception
+        // frame, however, the bit should be cleared to represent the exact
+        // program counter value.
+        // (Until Armv7-M) “UNPREDICTABLE if the new PC not halfword aligned”
+        // (Since Armv8-M) “Bit[0] of the ReturnAddress is discarded”
+        exc_frame[6] = MaybeUninit::new(task.attr.entry_point as usize as u32 & !1);
         // xPSR
         exc_frame[7] = MaybeUninit::new(0x01000000);
 
