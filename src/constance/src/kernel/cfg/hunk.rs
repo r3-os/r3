@@ -62,6 +62,7 @@ impl<T> HunkIniter<T> for ZeroInitTag {
 /// `InitTag` is either [`DefaultInitTag`] or [`ZeroInitTag`].
 ///
 /// [`Hunk`]: crate::kernel::Hunk
+#[must_use = "must call `finish()` to complete registration"]
 pub struct CfgHunkBuilder<System, T: ?Sized, InitTag> {
     _phantom: PhantomData<(System, InitTag, T)>,
     len: usize,

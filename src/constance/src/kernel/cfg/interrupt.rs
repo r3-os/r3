@@ -22,6 +22,7 @@ impl<System: Port> interrupt::InterruptLine<System> {
 /// Configuration builder type for [`InterruptLine`].
 ///
 /// [`InterruptLine`]: crate::kernel::InterruptLine
+#[must_use = "must call `finish()` to complete registration"]
 pub struct CfgInterruptLineBuilder<System> {
     _phantom: PhantomData<System>,
     line: Option<interrupt::InterruptNum>,

@@ -16,6 +16,7 @@ impl<System: Port> startup::StartupHook<System> {
 /// Configuration builder type for [`StartupHook`].
 ///
 /// [`StartupHook`]: crate::kernel::StartupHook
+#[must_use = "must call `finish()` to complete registration"]
 pub struct CfgStartupHookBuilder<System> {
     _phantom: PhantomData<System>,
     start: Option<fn(usize)>,
