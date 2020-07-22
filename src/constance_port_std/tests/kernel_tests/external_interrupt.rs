@@ -1,6 +1,6 @@
 //! Pends an interrupt from an external thread.
 use constance::{
-    kernel::{Hunk, InterruptHandler, InterruptLine, Task},
+    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 use constance_test_suite::kernel_tests::Driver;
@@ -18,24 +18,33 @@ pub struct App<System> {
 }
 
 impl<System: PortInstance> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task_body1::<System, D>, priority = 1, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task_body1::<System, D>)
+            .priority(1)
+            .active(true)
+            .finish(b);
 
-            let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
-                new! { InterruptHandler<_>,
-                    line = int_line, start = isr::<System, D>};
+        let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .finish(b);
 
-                Some(new! { InterruptLine<_>,
-                    line = int_line, priority = D::INTERRUPT_PRIORITY_LOW , enabled = true })
-            } else {
-                None
-            };
+            Some(
+                InterruptLine::build()
+                    .line(int_line)
+                    .priority(D::INTERRUPT_PRIORITY_LOW)
+                    .enabled(true)
+                    .finish(b),
+            )
+        } else {
+            None
+        };
 
-            let done = new! { Hunk<_, AtomicBool> };
+        let done = Hunk::<_, AtomicBool>::build().finish(b);
 
-            App { int, done }
-        }
+        App { int, done }
     }
 }
 
