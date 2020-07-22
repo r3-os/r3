@@ -1,7 +1,10 @@
 //! Safe synchronization primitives.
 use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 
-use crate::{kernel::Hunk, prelude::*};
+use crate::{
+    kernel::{cfg::CfgBuilder, Hunk},
+    prelude::*,
+};
 
 pub struct Mutex<System, T> {
     hunk: Hunk<System, UnsafeCell<T>>,
@@ -16,16 +19,14 @@ impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Mutex<System, T> {
 }
 
 impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
-    configure! {
-        /// Construct a `Mutex`.
-        ///
-        /// This is a configuration function. Use `call!` inside `configure!` to
-        /// use it.
-        pub const fn new(_: &mut CfgBuilder<System>) -> Self {
-            Self {
-                hunk: new! { Hunk<_, UnsafeCell<T>> },
-                _phantom: PhantomData,
-            }
+    /// Construct a `Mutex`.
+    ///
+    /// This is a configuration function. Use `call!` inside `configure!` to
+    /// use it.
+    pub const fn new(b: &mut CfgBuilder<System>) -> Self {
+        Self {
+            hunk: Hunk::<_, UnsafeCell<T>>::build().finish(b),
+            _phantom: PhantomData,
         }
     }
 }
