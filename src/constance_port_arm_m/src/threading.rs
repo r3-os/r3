@@ -245,9 +245,9 @@ impl State {
 
             # Choose the next task to run
         ChooseTask:
-            push {r0}
+            mov r5, r0
             bl $1
-            pop {r0}
+            mov r0, r5
 
             # Restore the context of the next task
             #
