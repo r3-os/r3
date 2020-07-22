@@ -489,9 +489,6 @@ macro_rules! array_item_from_fn {
 }
 
 /// A kernel configuration being constructed.
-///
-/// In [`configure!`], unary methods of this type can be called by
-/// `set!(method_name = value)`.
 pub struct CfgBuilder<System> {
     /// Disallows the mutation of `CfgBuilderInner` by a user-defined
     /// configuration function by making this not `pub`.

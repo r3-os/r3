@@ -21,8 +21,8 @@ impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Mutex<System, T> {
 impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
     /// Construct a `Mutex`.
     ///
-    /// This is a configuration function. Use `call!` inside `configure!` to
-    /// use it.
+    /// This is a configuration function. Call this method from your app's
+    /// configuration function.
     pub const fn new(b: &mut CfgBuilder<System>) -> Self {
         Self {
             hunk: Hunk::<_, UnsafeCell<T>>::build().finish(b),
