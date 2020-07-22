@@ -190,7 +190,6 @@ dependencies = [
  "atomic_ref",
  "bitflags",
  "chrono",
- "constance_parse_generics",
  "env_logger",
  "log",
  "num-integer",

@@ -11,8 +11,6 @@ keywords = ["constance", "rtos"]
 repository = "https://github.com/yvt/Constance"
 
 [dependencies]
-constance_parse_generics = { version = "0.1.2", path = "../constance_parse_generics" }
-
 num-integer = { version = "0.1.42", default-features = false }
 num-traits = { version = "0.2.11", default-features = false }
 pin-utils = { version = "0.1.0" }

@@ -22,11 +22,7 @@
 #[cfg(test)]
 extern crate core;
 
-// `configure!` requires macros from this crate
-#[doc(hidden)]
-pub extern crate constance_parse_generics;
-
-// `configure!` requires `StaticVec`
+// `build!` requires `StaticVec`
 #[doc(hidden)]
 pub extern crate staticvec;
 
