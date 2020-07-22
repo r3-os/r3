@@ -291,11 +291,9 @@ macro_rules! use_port {
 ///     const FREQUENCY: u64 = 2_000_000;
 /// }
 ///
-/// constance::configure! {
-///     const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
-///         call!(System::configure_systick);
-///         /* ... */
-///     }
+/// const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+///     System::configure_systick(b);
+///     /* ... */
 /// }
 /// ```
 ///
