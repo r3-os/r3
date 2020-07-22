@@ -38,9 +38,7 @@ pub mod test1 {
     pub struct App<System> { /* ... */ }
 
     impl<System: Kernel> App<System> {
-        constance::configure! {
-            pub fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self { /* ... */ }
-        }
+        pub const fn new<D: Driver<Self>>(_: CfgBuilder<System>) -> Self { /* ... */ }
     }
 }
 pub mod test2 { /* ... */ }

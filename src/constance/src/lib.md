@@ -220,36 +220,6 @@ mod m {
 
 The constructors of kernel objects are configuration functions by themselves, but they are different from normal configuration functions in that they can actually mutate the contents of `CfgBuilder` (which `build!` will use to create kernel structures in the final form), ultimately shaping the outcome of the configuration process. Therefore, they are the smallest building blocks of configuration functions.
 
-It's possible to write a configuration function directly. However, [`configure!`] can make this process easier by providing macros that offer more concise and distinguishable syntaxes for common patterns. For example, the above code can be rewritten as follows:
-
-```rust
-# #![feature(const_fn)]
-# use constance::kernel::{Kernel};
-# struct Objects<System> { my_module: m::MyModule<System> }
-// Top-level configuration function
-constance::configure! {
-    const fn configure_app<System: Kernel>(_: &mut CfgBuilder<System>) -> Objects<System> {
-        set!(num_task_priority_levels = 4);
-        let my_module = call!(m::configure);
-        Objects { my_module }
-    }
-}
-
-mod m {
-#   use constance::kernel::{Kernel, Task};
-#   pub struct MyModule<System> { task: Task<System> }
-    constance::configure! {
-        pub const fn configure<System: Kernel>(_: &mut CfgBuilder<System>) -> MyModule<System> {
-            let task = new! { Task<_>,
-                start = task_body, priority = 3, active = true };
-            MyModule { task }
-        }
-    }
-
-    fn task_body(_: usize) {}
-}
-```
-
 # System States
 
 A system can be in some of the system states described in this section at any point.
