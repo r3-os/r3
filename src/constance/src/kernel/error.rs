@@ -1,5 +1,120 @@
+use core::{fmt, mem::transmute};
+
+/// The macro to define [`ResultCode`].
+macro_rules! define_result_code {
+    (
+        $( #[$meta:meta] )*
+        pub enum ResultCode {
+            $(
+                $( #[$vmeta:meta] )*
+                $vname:ident = $vd:expr
+            ),* $(,)*
+        }
+    ) => {
+        $( #[$meta] )*
+        pub enum ResultCode {
+            $(
+                $( #[$vmeta] )*
+                $vname = $vd
+            ),*
+        }
+
+        impl ResultCode {
+            /// Get the short name of the result code.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use constance::kernel::ResultCode;
+            /// assert_eq!(ResultCode::BadObjectState.as_str(), "BadObjectState");
+            /// ```
+            pub fn as_str(self) -> &'static str {
+                match self {
+                    $(
+                        Self::$vname => stringify!($vname),
+                    )*
+                }
+            }
+
+            fn fmt(self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+
+        impl fmt::Debug for ResultCode {
+            #[inline]
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                (*self).fmt(f)
+            }
+        }
+    };
+}
+
+define_result_code! {
+    /// All result codes (including success) that the C API can return.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Relation to Other Specifications:** All error codes are intentionally
+    /// > matched to their equivalents in μITRON4.0 for no particular reasons.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Rationale:** Using the C API result codes internally reduces the
+    /// > interop overhead at an API surface.
+    ///
+    #[doc(include = "../common.md")]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    #[repr(i8)]
+    pub enum ResultCode {
+        /// The operation was successful. No additional information is available.
+        Success = 0,
+        /// The operation is not supported.
+        NotSupported = -9,
+        /// A parameter is invalid in a way that is no covered by any other error
+        /// codes.
+        BadParam = -17,
+        /// A specified object identifier ([`Id`]) is invalid.
+        ///
+        /// [`Id`]: super::Id
+        BadId = -18,
+        /// The current context disallows the operation.
+        BadContext = -25,
+        /// A target object is in a state that disallows the operation.
+        BadObjectState = -41,
+        /// An operation or an object couldn't be enqueued because there are too
+        /// many of such things that already have been enqueued.
+        QueueOverflow = -43,
+        /// The wait operation was interrupted by [`Task::interrupt`].
+        ///
+        /// [`Task::interrupt`]: crate::kernel::Task::interrupt
+        Interrupted = -49,
+        /// The operation timed out.
+        Timeout = -50,
+    }
+}
+
+impl ResultCode {
+    /// Get a flag indicating whether the code represents a failure.
+    ///
+    /// Failure codes have negative values.
+    #[inline]
+    pub fn is_err(self) -> bool {
+        (self as i8) < 0
+    }
+
+    /// Get a flag indicating whether the code represents a success.
+    ///
+    /// Success codes have non-negative values.
+    #[inline]
+    pub fn is_ok(self) -> bool {
+        !self.is_err()
+    }
+}
+
 macro_rules! define_error {
     (
+        mod $mod_name:ident {}
         $( #[$meta:meta] )*
         $vis:vis enum $name:ident $(: $($subty:ident),* $(,)*)? {
             $(
@@ -11,7 +126,7 @@ macro_rules! define_error {
         $( #[$meta] )*
         ///
         /// See [`ResultCode`] for all result codes and generic descriptions.
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         #[repr(i8)]
         $vis enum $name {
             $(
@@ -22,14 +137,19 @@ macro_rules! define_error {
             ),*
         }
 
+        impl fmt::Debug for $name {
+            #[inline]
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                ResultCode::from(*self).fmt(f)
+            }
+        }
+
         impl From<Result<(), $name>> for ResultCode {
             #[inline]
             fn from(x: Result<(), $name>) -> Self {
                 match x {
                     Ok(()) => Self::Success,
-                    $(
-                        Err($name::$vname) => Self::$vname,
-                    )*
+                    Err(e) => Self::from(e),
                 }
             }
         }
@@ -37,11 +157,39 @@ macro_rules! define_error {
         impl From<$name> for ResultCode {
             #[inline]
             fn from(x: $name) -> Self {
-                match x {
-                    $(
-                        $name::$vname => Self::$vname,
-                    )*
-                }
+                // Safety: `ResultCode` and `$name` has the same representation
+                //         type, and the representation of `ResultCode` is a
+                //         superset of `x`.
+                unsafe { transmute(x) }
+            }
+        }
+
+        #[cfg(test)]
+        mod $mod_name {
+            use super::*;
+
+            #[test]
+            fn to_result_code() {
+                $(
+                    assert_eq!(
+                        ResultCode::$vname,
+                        ResultCode::from($name::$vname),
+                    );
+                )*
+            }
+
+            #[test]
+            fn result_to_result_code() {
+                $(
+                    assert_eq!(
+                        ResultCode::$vname,
+                        ResultCode::from(Err($name::$vname)),
+                    );
+                )*
+                assert_eq!(
+                    ResultCode::Success,
+                    ResultCode::from(Result::<(), $name>::Ok(())),
+                );
             }
         }
 
@@ -67,91 +215,36 @@ macro_rules! define_error {
     };
 }
 
-/// All result codes (including success) that the C API can return.
-///
-/// <div class="admonition-follows"></div>
-///
-/// > **Relation to Other Specifications:** All error codes are intentionally
-/// > matched to their equivalents in μITRON4.0 for no particular reasons.
-///
-/// <div class="admonition-follows"></div>
-///
-/// > **Rationale:** Using the C API result codes internally reduces the
-/// > interop overhead at an API surface.
-///
-#[doc(include = "../common.md")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[repr(i8)]
-pub enum ResultCode {
-    /// The operation was successful. No additional information is available.
-    Success = 0,
-    /// The operation is not supported.
-    NotSupported = -9,
-    /// A parameter is invalid in a way that is no covered by any other error
-    /// codes.
-    BadParam = -17,
-    /// A specified object identifier ([`Id`]) is invalid.
-    ///
-    /// [`Id`]: super::Id
-    BadId = -18,
-    /// The current context disallows the operation.
-    BadContext = -25,
-    /// A target object is in a state that disallows the operation.
-    BadObjectState = -41,
-    /// An operation or an object couldn't be enqueued because there are too
-    /// many of such things that already have been enqueued.
-    QueueOverflow = -43,
-    /// The wait operation was interrupted by [`Task::interrupt`].
-    ///
-    /// [`Task::interrupt`]: crate::kernel::Task::interrupt
-    Interrupted = -49,
-    /// The operation timed out.
-    Timeout = -50,
-}
-
-impl ResultCode {
-    /// Get a flag indicating whether the code represents a failure.
-    ///
-    /// Failure codes have negative values.
-    #[inline]
-    pub fn is_err(self) -> bool {
-        (self as i8) < 0
-    }
-
-    /// Get a flag indicating whether the code represents a success.
-    ///
-    /// Success codes have non-negative values.
-    #[inline]
-    pub fn is_ok(self) -> bool {
-        !self.is_err()
-    }
-}
-
 define_error! {
+    mod bad_context_error {}
     pub(super) enum BadContextError {
         BadContext,
     }
 }
 
 define_error! {
+    mod bad_id_error {}
     pub(super) enum BadIdError {
         BadId,
     }
 }
 
 define_error! {
+    mod bad_param_error {}
     pub(super) enum BadParamError {
         BadParam,
     }
 }
 
 define_error! {
+    mod bad_object_state_error {}
     pub(super) enum BadObjectStateError {
         BadObjectState,
     }
 }
 
 define_error! {
+    mod activate_task_error {}
     /// Error type for [`Task::activate`].
     ///
     /// [`Task::activate`]: super::Task::activate
@@ -174,6 +267,7 @@ define_error! {
 }
 
 define_error! {
+    mod get_current_task_error {}
     /// Error type for [`Task::current`].
     ///
     /// [`Task::current`]: super::Task::current
@@ -184,6 +278,7 @@ define_error! {
 }
 
 define_error! {
+    mod interrupt_task_error {}
     /// Error type for [`Task::interrupt`].
     ///
     /// [`Task::interrupt`]: super::Task::interrupt
@@ -198,6 +293,7 @@ define_error! {
 }
 
 define_error! {
+    mod exit_task_error {}
     /// Error type for [`Kernel::exit_task`].
     ///
     /// [`Kernel::exit_task`]: super::Kernel::exit_task
@@ -208,6 +304,7 @@ define_error! {
 }
 
 define_error! {
+    mod cpu_lock_error {}
     /// Error type for [`Kernel::acquire_cpu_lock`] and
     /// [`Kernel::release_cpu_lock`].
     ///
@@ -220,6 +317,7 @@ define_error! {
 }
 
 define_error! {
+    mod boost_priority_error {}
     /// Error type for [`Kernel::boost_priority`] and
     /// [`Kernel::unboost_priority`].
     ///
@@ -233,6 +331,7 @@ define_error! {
 }
 
 define_error! {
+    mod time_error {}
     /// Error type for [`Kernel::time`] and
     /// [`Kernel::set_time`].
     ///
@@ -245,6 +344,7 @@ define_error! {
 }
 
 define_error! {
+    mod adjust_time_error {}
     /// Error type for [`Kernel::adjust_time`].
     ///
     /// [`Kernel::adjust_time`]: super::Kernel::adjust_time
@@ -258,6 +358,7 @@ define_error! {
 }
 
 define_error! {
+    mod wait_error {}
     /// Error type for wait operations such as [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
@@ -267,6 +368,7 @@ define_error! {
 }
 
 define_error! {
+    mod wait_timeout_error {}
     /// Error type for wait operations with timeout such as
     /// [`EventGroup::wait_timeout`].
     ///
@@ -288,6 +390,7 @@ impl WaitTimeoutError {
 }
 
 define_error! {
+    mod park_error {}
     /// Error type for [`Kernel::park`].
     ///
     /// [`Kernel::park`]: super::Kernel::park
@@ -301,6 +404,7 @@ define_error! {
 }
 
 define_error! {
+    mod park_timeout_error {}
     /// Error type for [`Kernel::park_timeout`].
     ///
     /// [`Kernel::park_timeout`]: super::Kernel::park_timeout
@@ -317,6 +421,7 @@ define_error! {
 }
 
 define_error! {
+    mod unpark_error {}
     /// Error type for [`Task::unpark`].
     ///
     /// [`Task::unpark`]: super::Task::unpark
@@ -331,6 +436,7 @@ define_error! {
 }
 
 define_error! {
+    mod unpark_exact_error {}
     /// Error type for [`Task::unpark_exact`].
     ///
     /// [`Task::unpark_exact`]: super::Task::unpark_exact
@@ -347,6 +453,7 @@ define_error! {
 }
 
 define_error! {
+    mod sleep_error {}
     /// Error type for [`Kernel::sleep`].
     ///
     /// [`Kernel::sleep`]: super::Kernel::sleep
@@ -361,6 +468,7 @@ define_error! {
     }
 }
 define_error! {
+    mod update_event_group_error {}
     /// Error type for [`EventGroup::set`] and [`EventGroup::clear`].
     ///
     /// [`EventGroup::set`]: super::EventGroup::set
@@ -374,6 +482,7 @@ define_error! {
 }
 
 define_error! {
+    mod get_event_group_error {}
     /// Error type for [`EventGroup::get`].
     ///
     /// [`EventGroup::get`]: super::EventGroup::get
@@ -386,6 +495,7 @@ define_error! {
 }
 
 define_error! {
+    mod wait_event_group_error {}
     /// Error type for [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
@@ -401,6 +511,7 @@ define_error! {
 }
 
 define_error! {
+    mod wait_event_group_timeout_error {}
     /// Error type for [`EventGroup::wait_timeout`].
     ///
     /// [`EventGroup::wait_timeout`]: super::EventGroup::wait_timeout
@@ -419,6 +530,7 @@ define_error! {
 }
 
 define_error! {
+    mod set_interrupt_line_priority_error {}
     /// Error type for [`InterruptLine::set_priority`] and
     /// [`InterruptLine::set_priority_unchecked`].
     ///
@@ -438,6 +550,7 @@ define_error! {
 }
 
 define_error! {
+    mod enable_interrupt_line_error {}
     /// Error type for [`InterruptLine::enable`] and [`InterruptLine::disable`].
     ///
     /// [`InterruptLine::enable`]: super::InterruptLine::enable
@@ -451,6 +564,7 @@ define_error! {
 }
 
 define_error! {
+    mod pend_interrupt_line_error {}
     /// Error type for [`InterruptLine::pend`].
     ///
     /// [`InterruptLine::pend`]: super::InterruptLine::pend
@@ -470,6 +584,7 @@ define_error! {
 }
 
 define_error! {
+    mod clear_interrupt_line_error {}
     /// Error type for [`InterruptLine::clear`].
     ///
     /// [`InterruptLine::clear`]: super::InterruptLine::clear
@@ -489,6 +604,7 @@ define_error! {
 }
 
 define_error! {
+    mod query_interrupt_line_error {}
     /// Error type for [`InterruptLine::is_pending`].
     ///
     /// [`InterruptLine::is_pending`]: super::InterruptLine::is_pending
