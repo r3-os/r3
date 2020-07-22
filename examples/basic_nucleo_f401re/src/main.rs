@@ -6,7 +6,7 @@
 #![no_main]
 #![cfg(target_os = "none")]
 use constance::{
-    kernel::{StartupHook, Task},
+    kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
     sync::Mutex,
 };
@@ -37,28 +37,32 @@ struct Objects {
 
 const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
-constance::configure! {
-    const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
-        set!(num_task_priority_levels = 4);
+const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+    b.num_task_priority_levels(4);
 
-        // Initialize RTT (Real-Time Transfer) with a single up channel and set
-        // it as the print channel for the printing macros
-        new! { StartupHook<_>, start = |_| {
+    // Initialize RTT (Real-Time Transfer) with a single up channel and set
+    // it as the print channel for the printing macros
+    StartupHook::build()
+        .start(|_| {
             rtt_target::rtt_init_print!();
-        } };
+        })
+        .finish(b);
 
-        call!(System::configure_systick);
+    System::configure_systick(b);
 
-        let task1 = new! { Task<_>, start = task1_body, priority = 2, active = true };
-        let task2 = new! { Task<_>, start = task2_body, priority = 3 };
+    let task1 = Task::build()
+        .start(task1_body)
+        .priority(2)
+        .active(true)
+        .finish(b);
+    let task2 = Task::build().start(task2_body).priority(3).finish(b);
 
-        let mutex1 = call!(Mutex::new);
+    let mutex1 = Mutex::new(b);
 
-        Objects {
-            task1,
-            task2,
-            mutex1,
-        }
+    Objects {
+        task1,
+        task2,
+        mutex1,
     }
 }
 

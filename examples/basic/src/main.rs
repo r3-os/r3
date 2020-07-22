@@ -2,7 +2,11 @@
 #![feature(const_mut_refs)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
-use constance::{kernel::Task, prelude::*, sync::Mutex};
+use constance::{
+    kernel::{cfg::CfgBuilder, Task},
+    prelude::*,
+    sync::Mutex,
+};
 
 constance_port_std::use_port!(unsafe struct System);
 
@@ -15,20 +19,22 @@ struct Objects {
 
 const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
-constance::configure! {
-    const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
-        set!(num_task_priority_levels = 4);
+const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+    b.num_task_priority_levels(4);
 
-        let task1 = new! { Task<_>, start = task1_body, priority = 2, active = true };
-        let task2 = new! { Task<_>, start = task2_body, priority = 3 };
+    let task1 = Task::build()
+        .start(task1_body)
+        .priority(2)
+        .active(true)
+        .finish(b);
+    let task2 = Task::build().start(task2_body).priority(3).finish(b);
 
-        let mutex1 = call!(Mutex::new);
+    let mutex1 = Mutex::new(b);
 
-        Objects {
-            task1,
-            task2,
-            mutex1,
-        }
+    Objects {
+        task1,
+        task2,
+        mutex1,
     }
 }
 
