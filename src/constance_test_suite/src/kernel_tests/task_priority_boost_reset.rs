@@ -1,5 +1,8 @@
 //! Checks that Boost Priority is deactivated when a task completes.
-use constance::{kernel::Task, prelude::*};
+use constance::{
+    kernel::{cfg::CfgBuilder, Task},
+    prelude::*,
+};
 
 use super::Driver;
 
@@ -8,13 +11,18 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task1_body::<System, D>, priority = 2, active = true };
-            let task2 = new! { Task<_>, start = task2_body::<System, D>, priority = 1 };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task1_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .finish(b);
+        let task2 = Task::build()
+            .start(task2_body::<System, D>)
+            .priority(1)
+            .finish(b);
 
-            App { task2 }
-        }
+        App { task2 }
     }
 }
 

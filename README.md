@@ -34,7 +34,6 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 #![feature(const_mut_refs)]
 #![no_std]
 #![no_main]
-use constance::kernel::Task;
 
 // ----------------------------------------------------------------
 
@@ -54,6 +53,8 @@ impl port::SysTickOptions for System {
 
 // ----------------------------------------------------------------
 
+use constance::kernel::{Task, cfg::CfgBuilder};
+
 struct Objects {
     task: Task<System>,
 }
@@ -61,14 +62,15 @@ struct Objects {
 // Instantiate the kernel, allocate object IDs
 const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
-constance::configure! {
-    const fn configure_app(_: &mut CfgBuilder<System>) -> Objects {
-        call!(System::configure_systick);
+const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+    System::configure_systick(b);
 
-        Objects {
-            task: new! { Task<_>,
-                start = task_body, priority = 2, active = true },
-        }
+    Objects {
+        task: Task::build()
+            .start(task_body)
+            .priority(2)
+            .active(true)
+            .finish(b),
     }
 }
 

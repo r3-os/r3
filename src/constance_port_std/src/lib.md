@@ -10,17 +10,19 @@ Simulator for running [`::constance`] on a hosted environment
 #![feature(unsafe_block_in_unsafe_fn)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use constance::kernel::Task;
+use constance::kernel::{Task, cfg::CfgBuilder};
 
 // Use the simulator port. This macro generates `fn main()`.
 constance_port_std::use_port!(unsafe struct System);
 
 const COTTAGE: () = constance::build!(System, configure_app => ());
 
-constance::configure! {
-    const fn configure_app(_: &mut CfgBuilder<System>) -> () {
-        new! { Task<_>, start = task_body, priority = 1, active = true };
-    }
+const fn configure_app(b: &mut CfgBuilder<System>) -> () {
+    Task::build()
+        .start(task_body)
+        .priority(1)
+        .active(true)
+        .finish(b);
 }
 
 fn task_body(_: usize) {

@@ -13,6 +13,7 @@ impl<System: Port> event_group::EventGroup<System> {
 /// Configuration builder type for [`EventGroup`].
 ///
 /// [`EventGroup`]: crate::kernel::EventGroup
+#[must_use = "must call `finish()` to complete registration"]
 pub struct CfgEventGroupBuilder<System> {
     _phantom: PhantomData<System>,
     initial_bits: event_group::EventGroupBits,

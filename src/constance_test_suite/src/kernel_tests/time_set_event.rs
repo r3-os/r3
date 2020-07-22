@@ -15,7 +15,7 @@
 //! 7. (`seq`: 6 → 7, 600ms) `tsak2` wakes up.
 //!
 use constance::{
-    kernel::{Hunk, Task},
+    kernel::{cfg::CfgBuilder, Hunk, Task},
     prelude::*,
     time::{Duration, Time},
 };
@@ -30,16 +30,24 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task1_body::<System, D>, priority = 3, active = true };
-            let task2 = new! { Task<_>, start = task2_body::<System, D>, priority = 1 };
-            let task3 = new! { Task<_>, start = task3_body::<System, D>, priority = 2 };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task1_body::<System, D>)
+            .priority(3)
+            .active(true)
+            .finish(b);
+        let task2 = Task::build()
+            .start(task2_body::<System, D>)
+            .priority(1)
+            .finish(b);
+        let task3 = Task::build()
+            .start(task3_body::<System, D>)
+            .priority(2)
+            .finish(b);
 
-            let seq = new! { Hunk<_, SeqTracker> };
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { task2, task3, seq }
-        }
+        App { task2, task3, seq }
     }
 }
 

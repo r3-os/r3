@@ -101,7 +101,7 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5deb64efa5bd81e31fcd1938615a6d98c82eafcbcd787162b6f63b91d6bac5b3"
 dependencies = [
- "rustc_version 0.2.3",
+ "rustc_version",
 ]
 
 [[package]]
@@ -143,7 +143,7 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b9434b9a5aa1450faa3f9cb14ea0e8c53bb5d2b3c1bfd1ab4fc03e9f33fbfb0"
 dependencies = [
- "rustc_version 0.2.3",
+ "rustc_version",
 ]
 
 [[package]]
@@ -190,7 +190,6 @@ dependencies = [
  "atomic_ref",
  "bitflags",
  "chrono",
- "constance_parse_generics",
  "env_logger",
  "log",
  "num-integer",
@@ -222,13 +221,6 @@ dependencies = [
  "nucleo-f401re",
  "panic-rtt-target",
  "rtt-target 0.2.0",
-]
-
-[[package]]
-name = "constance_parse_generics"
-version = "0.1.2"
-dependencies = [
- "rustc_version 0.1.7",
 ]
 
 [[package]]
@@ -495,7 +487,7 @@ dependencies = [
  "cc",
  "libc",
  "log",
- "rustc_version 0.2.3",
+ "rustc_version",
  "winapi 0.3.9",
 ]
 
@@ -1238,20 +1230,11 @@ dependencies = [
 
 [[package]]
 name = "rustc_version"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5f5376ea5e30ce23c03eb77cbe4962b988deead10910c372b226388b594c084"
-dependencies = [
- "semver 0.1.20",
-]
-
-[[package]]
-name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
- "semver 0.9.0",
+ "semver",
 ]
 
 [[package]]
@@ -1285,12 +1268,6 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "semver"
-version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4f410fedcf71af0345d7607d246e7ad15faaadd49d240ee3b24e5dc21a820ac"
 
 [[package]]
 name = "semver"

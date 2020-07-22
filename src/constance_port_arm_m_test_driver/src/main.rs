@@ -17,7 +17,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use constance::kernel::{InterruptNum, InterruptPriority, StartupHook};
+        use constance::kernel::{InterruptNum, InterruptPriority, StartupHook, cfg::CfgBuilder};
         use constance_test_suite::kernel_tests;
         use constance_port_arm_m as port;
         use $path as test_case;
@@ -80,42 +80,40 @@ macro_rules! instantiate_test {
         static COTTAGE: test_case::App<System> =
             constance::build!(System, configure_app => test_case::App<System>);
 
-        constance::configure! {
-            const fn configure_app(_: &mut CfgBuilder<System>) -> test_case::App<System> {
-                // Initialize RTT (Real-Time Transfer) with two up channels and set
-                // the first one as the print channel for the printing macros, and
-                // the second one as log output
-                #[cfg(feature = "output-rtt")]
-                new! { StartupHook<_>, start = |_| {
-                    let channels = rtt_target::rtt_init! {
-                        up: {
-                            0: {
-                                size: 1024
-                                mode: NoBlockSkip
-                                name: "Terminal"
-                            }
-                            1: {
-                                size: 1024
-                                mode: NoBlockSkip
-                                name: "Log"
-                            }
+        const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+            // Initialize RTT (Real-Time Transfer) with two up channels and set
+            // the first one as the print channel for the printing macros, and
+            // the second one as log output
+            #[cfg(feature = "output-rtt")]
+            StartupHook::build().start(|_| {
+                let channels = rtt_target::rtt_init! {
+                    up: {
+                        0: {
+                            size: 1024
+                            mode: NoBlockSkip
+                            name: "Terminal"
                         }
-                    };
+                        1: {
+                            size: 1024
+                            mode: NoBlockSkip
+                            name: "Log"
+                        }
+                    }
+                };
 
-                    rtt_target::set_print_channel(channels.up.0);
-                    logger_rtt::init(channels.up.1);
-                } };
+                rtt_target::set_print_channel(channels.up.0);
+                logger_rtt::init(channels.up.1);
+            }).finish(b);
 
-                // Redirect the log output to stderr
-                #[cfg(feature = "output-semihosting")]
-                new! { StartupHook<_>, start = |_| {
-                    logger_semihosting::init();
-                } };
+            // Redirect the log output to stderr
+            #[cfg(feature = "output-semihosting")]
+            StartupHook::build().start(|_| {
+                logger_semihosting::init();
+            }).finish(b);
 
-                call!(System::configure_systick);
+            System::configure_systick(b);
 
-                call!(test_case::App::new::<Driver>)
-            }
+            test_case::App::new::<Driver>(b)
         }
     };
 

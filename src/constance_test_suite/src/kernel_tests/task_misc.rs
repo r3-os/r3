@@ -1,7 +1,7 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
 use constance::{
-    kernel::{StartupHook, Task},
+    kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
 };
 use core::num::NonZeroUsize;
@@ -16,21 +16,30 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { StartupHook<_>, start = startup_hook::<System, D> };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        StartupHook::build()
+            .start(startup_hook::<System, D>)
+            .finish(b);
 
-            let task1 = new! {
-                Task<_>,
-                start = task1_body::<System, D>,
-                priority = 2,
-                active = true,
-                param = 42,
-            };
-            let task2 = new! { Task<_>, start = task2_body::<System, D>, priority = 1 };
-            let task3 = new! { Task<_>, start = task3_body::<System, D>, priority = 1 };
+        let task1 = Task::build()
+            .start(task1_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .param(42)
+            .finish(b);
+        let task2 = Task::build()
+            .start(task2_body::<System, D>)
+            .priority(1)
+            .finish(b);
+        let task3 = Task::build()
+            .start(task3_body::<System, D>)
+            .priority(1)
+            .finish(b);
 
-            App { task1, task2, task3 }
+        App {
+            task1,
+            task2,
+            task3,
         }
     }
 }

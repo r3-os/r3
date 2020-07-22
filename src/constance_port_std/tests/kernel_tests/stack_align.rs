@@ -1,6 +1,9 @@
 //! Checks that when a stack is automatically allocated, both ends of the
 //! stack region are aligned to a port-specific alignment.
-use constance::{kernel::Task, prelude::*};
+use constance::{
+    kernel::{cfg::CfgBuilder, Task},
+    prelude::*,
+};
 use constance_test_suite::kernel_tests::Driver;
 use core::marker::PhantomData;
 
@@ -9,17 +12,16 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! {
-                Task<_>,
-                start = task_body::<System, D>, priority = 0, active = true,
-                stack_size = 4095,
-            };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task_body::<System, D>)
+            .priority(0)
+            .active(true)
+            .stack_size(4095)
+            .finish(b);
 
-            App {
-                _phantom: PhantomData,
-            }
+        App {
+            _phantom: PhantomData,
         }
     }
 }

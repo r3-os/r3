@@ -16,6 +16,7 @@ impl<System: Port> task::Task<System> {
 /// Configuration builder type for [`Task`].
 ///
 /// [`Task`]: crate::kernel::Task
+#[must_use = "must call `finish()` to complete registration"]
 pub struct CfgTaskBuilder<System> {
     _phantom: PhantomData<System>,
     start: Option<fn(usize)>,

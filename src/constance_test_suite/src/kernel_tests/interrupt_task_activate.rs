@@ -2,7 +2,7 @@
 //! context.
 //! TODO: wrong
 use constance::{
-    kernel::{InterruptHandler, InterruptLine, Task},
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 
@@ -14,24 +14,37 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task_body1::<System, D>, priority = 1, active = true };
-            let task2 = new! { Task<_>, start = task_body2::<System, D>, priority = 0 };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task_body1::<System, D>)
+            .priority(1)
+            .active(true)
+            .finish(b);
+        let task2 = Task::build()
+            .start(task_body2::<System, D>)
+            .priority(0)
+            .finish(b);
 
-            let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
-                unsafe {
-                    new! { InterruptHandler<_>,
-                        line = int_line, start = isr::<System, D>, unmanaged };
-                }
+        let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
+            unsafe {
+                InterruptHandler::build()
+                    .line(int_line)
+                    .start(isr::<System, D>)
+                    .unmanaged()
+                    .finish(b);
+            }
 
-                Some(new! { InterruptLine<_>, line = int_line, enabled = true })
-            } else {
-                None
-            };
+            Some(
+                InterruptLine::build()
+                    .line(int_line)
+                    .enabled(true)
+                    .finish(b),
+            )
+        } else {
+            None
+        };
 
-            App { task2, int }
-        }
+        App { task2, int }
     }
 }
 

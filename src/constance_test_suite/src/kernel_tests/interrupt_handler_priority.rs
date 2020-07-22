@@ -1,6 +1,6 @@
 //! Make sure interrupt handlers are called in the ascending order of priority.
 use constance::{
-    kernel::{Hunk, InterruptHandler, InterruptLine, Task},
+    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 
@@ -13,42 +13,89 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task_body::<System, D>)
+            .priority(0)
+            .active(true)
+            .finish(b);
 
-            let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 3, priority = 30 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 1, priority = 10 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 7, priority = 70 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 5, priority = 50 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 4, priority = 40 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 10, priority = 100 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 9, priority = 90 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 8, priority = 80 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 2, priority = 20 };
-                new! { InterruptHandler<_>, line = int_line, start = isr::<System, D>,
-                    param = 6, priority = 60 };
+        let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(3)
+                .priority(30)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(1)
+                .priority(10)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(7)
+                .priority(70)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(5)
+                .priority(50)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(4)
+                .priority(40)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(10)
+                .priority(100)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(9)
+                .priority(90)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(8)
+                .priority(80)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(2)
+                .priority(20)
+                .finish(b);
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .param(6)
+                .priority(60)
+                .finish(b);
 
-                Some(new! { InterruptLine<_>,
-                    line = int_line, priority = D::INTERRUPT_PRIORITY_HIGH, enabled = true })
-            } else {
-                None
-            };
+            Some(
+                InterruptLine::build()
+                    .line(int_line)
+                    .priority(D::INTERRUPT_PRIORITY_HIGH)
+                    .enabled(true)
+                    .finish(b),
+            )
+        } else {
+            None
+        };
 
-            let seq = new! { Hunk<_, SeqTracker> };
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { int, seq }
-        }
+        App { int, seq }
     }
 }
 

@@ -1,7 +1,7 @@
 //! Sequence the execution of tasks using the parking mechanism. Priority Boost
 //! is used to temporarily suppress preemption.
 use constance::{
-    kernel::{Hunk, Task},
+    kernel::{cfg::CfgBuilder, Hunk, Task},
     prelude::*,
 };
 
@@ -14,15 +14,21 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task1_body::<System, D>, priority = 2, active = true };
-            let task2 = new! { Task<_>, start = task2_body::<System, D>, priority = 1, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task1_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .finish(b);
+        let task2 = Task::build()
+            .start(task2_body::<System, D>)
+            .priority(1)
+            .active(true)
+            .finish(b);
 
-            let seq = new! { Hunk<_, SeqTracker> };
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { task2, seq }
-        }
+        App { task2, seq }
     }
 }
 
