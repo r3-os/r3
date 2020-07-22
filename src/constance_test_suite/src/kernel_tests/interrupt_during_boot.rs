@@ -1,6 +1,6 @@
 //! Checks that an interrupt cannot preempt the main thread.
 use constance::{
-    kernel::{Hunk, InterruptHandler, InterruptLine, StartupHook},
+    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, StartupHook},
     prelude::*,
 };
 
@@ -13,25 +13,28 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { StartupHook<_>, start = startup_hook::<System, D> };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        StartupHook::build()
+            .start(startup_hook::<System, D>)
+            .finish(b);
 
-            let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
-                unsafe {
-                    new! { InterruptHandler<_>,
-                        line = int_line, start = isr::<System, D>, unmanaged };
-                }
+        let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
+            unsafe {
+                InterruptHandler::build()
+                    .line(int_line)
+                    .start(isr::<System, D>)
+                    .unmanaged()
+                    .finish(b);
+            }
 
-                Some(new! { InterruptLine<_>, line = int_line })
-            } else {
-                None
-            };
+            Some(InterruptLine::build().line(int_line).finish(b))
+        } else {
+            None
+        };
 
-            let seq = new! { Hunk<_, SeqTracker> };
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { int, seq }
-        }
+        App { int, seq }
     }
 }
 

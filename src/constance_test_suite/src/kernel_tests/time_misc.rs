@@ -1,7 +1,7 @@
 //! Validates error codes returned by time-related methods. Also, checks
 //! miscellaneous properties of such methods.
 use constance::{
-    kernel::{StartupHook, Task},
+    kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
     time::{Duration, Time},
 };
@@ -14,12 +14,18 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { StartupHook<_>, start = startup_hook::<System, D> };
-            new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        StartupHook::build()
+            .start(startup_hook::<System, D>)
+            .finish(b);
+        Task::build()
+            .start(task_body::<System, D>)
+            .priority(0)
+            .active(true)
+            .finish(b);
 
-            App { _phantom: PhantomData }
+        App {
+            _phantom: PhantomData,
         }
     }
 }

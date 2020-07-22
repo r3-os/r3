@@ -1,7 +1,7 @@
 //! Validates error codes returned by event group manipulation methods. Also,
 //! checks miscellaneous properties of `EventGroup`.
 use constance::{
-    kernel::{EventGroup, Task},
+    kernel::{cfg::CfgBuilder, EventGroup, Task},
     prelude::*,
 };
 use core::num::NonZeroUsize;
@@ -15,19 +15,16 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! {
-                Task<_>,
-                start = task_body::<System, D>,
-                priority = 2,
-                active = true,
-            };
-            let eg1 = new! { EventGroup<_> };
-            let eg2 = new! { EventGroup<_> };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .finish(b);
+        let eg1 = EventGroup::build().finish(b);
+        let eg2 = EventGroup::build().finish(b);
 
-            App { eg1, eg2 }
-        }
+        App { eg1, eg2 }
     }
 }
 

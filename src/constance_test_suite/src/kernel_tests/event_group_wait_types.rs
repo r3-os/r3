@@ -1,6 +1,6 @@
 //! Waits for an event group with various wait flags.
 use constance::{
-    kernel::{EventGroup, EventGroupWaitFlags, Task},
+    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Task},
     prelude::*,
 };
 
@@ -11,14 +11,16 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task1_body::<System, D>, priority = 2, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task1_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .finish(b);
 
-            let eg = new! { EventGroup<_> };
+        let eg = EventGroup::build().finish(b);
 
-            App { eg }
-        }
+        App { eg }
     }
 }
 

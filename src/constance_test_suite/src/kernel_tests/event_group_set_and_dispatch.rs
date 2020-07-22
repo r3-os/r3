@@ -1,6 +1,6 @@
 //! Sets an event group, waking up a task.
 use constance::{
-    kernel::{EventGroup, EventGroupWaitFlags, Hunk, Task},
+    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Hunk, Task},
     prelude::*,
 };
 
@@ -13,18 +13,32 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task1_body::<System, D>, priority = 2, active = true };
-            new! { Task<_>, start = task2_body::<System, D>, priority = 1, active = true };
-            new! { Task<_>, start = task3_body::<System, D>, priority = 1, active = true };
-            new! { Task<_>, start = task4_body::<System, D>, priority = 1, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task1_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .finish(b);
+        Task::build()
+            .start(task2_body::<System, D>)
+            .priority(1)
+            .active(true)
+            .finish(b);
+        Task::build()
+            .start(task3_body::<System, D>)
+            .priority(1)
+            .active(true)
+            .finish(b);
+        Task::build()
+            .start(task4_body::<System, D>)
+            .priority(1)
+            .active(true)
+            .finish(b);
 
-            let eg = new! { EventGroup<_> };
-            let seq = new! { Hunk<_, SeqTracker> };
+        let eg = EventGroup::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { eg, seq }
-        }
+        App { eg, seq }
     }
 }
 

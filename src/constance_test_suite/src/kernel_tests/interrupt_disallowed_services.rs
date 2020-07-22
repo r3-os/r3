@@ -1,7 +1,7 @@
 //! Checks the return codes of disallowed system calls made in an interrupt
 //! context.
 use constance::{
-    kernel::{self, InterruptHandler, InterruptLine, Task},
+    kernel::{self, cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 
@@ -12,23 +12,33 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task_body::<System, D>)
+            .priority(0)
+            .active(true)
+            .finish(b);
 
-            let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
-                unsafe {
-                    new! { InterruptHandler<_>,
-                        line = int_line, start = isr::<System, D>, unmanaged };
-                }
+        let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
+            unsafe {
+                InterruptHandler::build()
+                    .line(int_line)
+                    .start(isr::<System, D>)
+                    .unmanaged()
+                    .finish(b);
+            }
 
-                Some(new! { InterruptLine<_>, line = int_line, enabled = true })
-            } else {
-                None
-            };
+            Some(
+                InterruptLine::build()
+                    .line(int_line)
+                    .enabled(true)
+                    .finish(b),
+            )
+        } else {
+            None
+        };
 
-            App { int }
-        }
+        App { int }
     }
 }
 

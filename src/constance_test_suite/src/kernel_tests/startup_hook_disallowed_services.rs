@@ -1,6 +1,6 @@
 //! Checks the return codes of disallowed system calls made in a boot context.
 use constance::{
-    kernel::{self, StartupHook},
+    kernel::{self, cfg::CfgBuilder, StartupHook},
     prelude::*,
 };
 use core::marker::PhantomData;
@@ -12,11 +12,11 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { StartupHook<_>, start = hook::<System, D> };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        StartupHook::build().start(hook::<System, D>).finish(b);
 
-            App { _phantom: PhantomData }
+        App {
+            _phantom: PhantomData,
         }
     }
 }

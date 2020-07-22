@@ -13,7 +13,10 @@
 //! 7. (`seq`: 6 → 7, 300ms) `task0` starts running.
 //!
 use constance::{
-    kernel::{EventGroup, EventGroupWaitFlags, Hunk, QueueOrder, Task, WaitEventGroupTimeoutError},
+    kernel::{
+        cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Hunk, QueueOrder, Task,
+        WaitEventGroupTimeoutError,
+    },
     prelude::*,
     time::Duration,
 };
@@ -27,16 +30,22 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task0_body::<System, D>, priority = 2, active = true };
-            new! { Task<_>, start = task1_body::<System, D>, priority = 1, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task0_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .finish(b);
+        Task::build()
+            .start(task1_body::<System, D>)
+            .priority(1)
+            .active(true)
+            .finish(b);
 
-            let eg = new! { EventGroup<_>, queue_order = QueueOrder::Fifo };
-            let seq = new! { Hunk<_, SeqTracker> };
+        let eg = EventGroup::build().queue_order(QueueOrder::Fifo).finish(b);
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { eg, seq }
-        }
+        App { eg, seq }
     }
 }
 

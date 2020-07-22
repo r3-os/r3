@@ -1,7 +1,7 @@
 //! Makes sure that interrupt priorities affect the order in which interrupt
 //! handlers are called.
 use constance::{
-    kernel::{Hunk, InterruptHandler, InterruptLine, Task},
+    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 
@@ -14,33 +14,53 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task_body::<System, D>, priority = 0, active = true };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task_body::<System, D>)
+            .priority(0)
+            .active(true)
+            .finish(b);
 
-            let int = [
-                if D::INTERRUPT_LINES.len() >= 1 {
-                    let int_line = D::INTERRUPT_LINES[0];
-                    let pri = D::INTERRUPT_PRIORITY_HIGH;
-                    new! { InterruptHandler<_>, line = int_line, start = isr0::<System, D> };
-                    Some(new! { InterruptLine<_>, line = int_line, priority = pri, enabled = true })
-                } else {
-                    None
-                },
-                if D::INTERRUPT_LINES.len() >= 2 {
-                    let int_line = D::INTERRUPT_LINES[1];
-                    let pri = D::INTERRUPT_PRIORITY_LOW;
-                    new! { InterruptHandler<_>, line = int_line, start = isr1::<System, D> };
-                    Some(new! { InterruptLine<_>, line = int_line, priority = pri, enabled = true })
-                } else {
-                    None
-                },
-            ];
+        let int = [
+            if D::INTERRUPT_LINES.len() >= 1 {
+                let int_line = D::INTERRUPT_LINES[0];
+                let pri = D::INTERRUPT_PRIORITY_HIGH;
+                InterruptHandler::build()
+                    .line(int_line)
+                    .start(isr0::<System, D>)
+                    .finish(b);
+                Some(
+                    InterruptLine::build()
+                        .line(int_line)
+                        .priority(pri)
+                        .enabled(true)
+                        .finish(b),
+                )
+            } else {
+                None
+            },
+            if D::INTERRUPT_LINES.len() >= 2 {
+                let int_line = D::INTERRUPT_LINES[1];
+                let pri = D::INTERRUPT_PRIORITY_LOW;
+                InterruptHandler::build()
+                    .line(int_line)
+                    .start(isr1::<System, D>)
+                    .finish(b);
+                Some(
+                    InterruptLine::build()
+                        .line(int_line)
+                        .priority(pri)
+                        .enabled(true)
+                        .finish(b),
+                )
+            } else {
+                None
+            },
+        ];
 
-            let seq = new! { Hunk<_, SeqTracker> };
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { int, seq }
-        }
+        App { int, seq }
     }
 }
 

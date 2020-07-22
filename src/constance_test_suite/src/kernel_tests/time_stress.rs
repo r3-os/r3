@@ -1,6 +1,6 @@
 //! Launches multiple tasks, each of which calls `sleep` repeatedly.
 use constance::{
-    kernel::{Hunk, Task},
+    kernel::{cfg::CfgBuilder, Hunk, Task},
     prelude::*,
     time::{Duration, Time},
 };
@@ -15,20 +15,22 @@ pub struct App<System> {
 const TASKS: &[usize] = &[300, 150, 300, 320, 580, 900, 500, 750, 170];
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            let mut i = 0;
-            // FIXME: Work-around for `for` being unsupported in `const fn`
-            while i < TASKS.len() {
-                new! { Task<_>,
-                    start = task_body::<System, D>, param = i, priority = 0, active = true };
-                i += 1;
-            }
-
-            let counter = new! { Hunk<_, AtomicUsize> };
-
-            App { counter }
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        let mut i = 0;
+        // FIXME: Work-around for `for` being unsupported in `const fn`
+        while i < TASKS.len() {
+            Task::build()
+                .start(task_body::<System, D>)
+                .param(i)
+                .priority(0)
+                .active(true)
+                .finish(b);
+            i += 1;
         }
+
+        let counter = Hunk::<_, AtomicUsize>::build().finish(b);
+
+        App { counter }
     }
 }
 

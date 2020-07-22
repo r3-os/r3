@@ -2,7 +2,7 @@
 //!
 //! [`adjust_time`]: constance::kernel::Kernel::adjust_time
 use constance::{
-    kernel::{AdjustTimeError, Hunk, Task, TIME_USER_HEADROOM},
+    kernel::{cfg::CfgBuilder, AdjustTimeError, Hunk, Task, TIME_USER_HEADROOM},
     prelude::*,
     time::{Duration, Time},
 };
@@ -16,15 +16,20 @@ pub struct App<System> {
 }
 
 impl<System: Kernel> App<System> {
-    constance::configure! {
-        pub const fn new<D: Driver<Self>>(_: &mut CfgBuilder<System>) -> Self {
-            new! { Task<_>, start = task1_body::<System, D>, priority = 3, active = true };
-            let task2 = new! { Task<_>, start = task2_body::<System, D>, priority = 1 };
+    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Task::build()
+            .start(task1_body::<System, D>)
+            .priority(3)
+            .active(true)
+            .finish(b);
+        let task2 = Task::build()
+            .start(task2_body::<System, D>)
+            .priority(1)
+            .finish(b);
 
-            let seq = new! { Hunk<_, SeqTracker> };
+        let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-            App { task2, seq }
-        }
+        App { task2, seq }
     }
 }
 
