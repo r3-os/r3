@@ -1,7 +1,9 @@
 //! The tickful `PortTimer` implementation based on SysTick.
 use constance::{
     configure,
-    kernel::{InterruptHandler, InterruptLine, Kernel, PortToKernel, StartupHook, UTicks},
+    kernel::{
+        cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, StartupHook, UTicks,
+    },
     utils::Init,
 };
 use core::cell::UnsafeCell;
@@ -31,17 +33,26 @@ pub unsafe trait SysTickTickfulInstance: Kernel + SysTickOptions {
     unsafe fn handle_tick();
 }
 
-configure! {
-    /// The configuration function.
-    pub const fn configure<System: SysTickTickfulInstance>(_: &mut CfgBuilder<System>) -> () {
-        new! { InterruptLine<_>,
-            line = INTERRUPT_SYSTICK, priority = System::INTERRUPT_PRIORITY };
-        new! { InterruptHandler<_>,
-            line = INTERRUPT_SYSTICK,
-            start = #[inline] |_| unsafe { System::handle_tick() } };
+/// The configuration function.
+pub const fn configure<System: SysTickTickfulInstance>(b: &mut CfgBuilder<System>) -> () {
+    InterruptLine::build()
+        .line(INTERRUPT_SYSTICK)
+        .priority(System::INTERRUPT_PRIORITY)
+        .finish(b);
+    InterruptHandler::build()
+        .line(INTERRUPT_SYSTICK)
+        .start(
+            #[inline]
+            |_| unsafe { System::handle_tick() },
+        )
+        .finish(b);
 
-        new! { StartupHook<_>, start = #[inline] |_| init(System::TICK_PERIOD) };
-    }
+    StartupHook::build()
+        .start(
+            #[inline]
+            |_| init(System::TICK_PERIOD),
+        )
+        .finish(b);
 }
 
 /// Configure SysTick.
