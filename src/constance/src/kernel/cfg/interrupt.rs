@@ -375,7 +375,7 @@ impl InterruptHandlerTable {
 /// the given interrupt number to the one of the handler for which this
 /// `ProtoCombinedHandlerFn` was constructed, and if they match, it calls
 /// the handler. Then, it proceeds to the next `ProtoCombinedHandlerFn` and this
-/// goes on until it hits the end of the list.
+/// goes on until it calls the last handler of the current interrupt number.
 ///
 /// ```rust,ignore
 /// fn handler_for_line_3() {
@@ -386,6 +386,9 @@ impl InterruptHandlerTable {
 /// fn proto_combined_handler_0(cur_line: interrupt::InterruptNum, /* ... */) {
 ///     if cur_line == HANDLERS[0].line {
 ///         (HANDLERS[0].start)();
+///         if cur_line != HANDLERS[1].line {
+///             return;
+///         }
 ///     }
 ///     proto_combined_handler_1(cur_line, /* ... */);
 /// }
@@ -465,6 +468,8 @@ impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS:
                 fn proto_combined_handler<T: MakeProtoCombinedHandlersTrait, I: Nat>(cur_line: interrupt::InterruptNum, mut should_unlock_cpu: bool) {
                     let handler = T::HANDLERS[I::N];
 
+                    let next_i = I::N + 1;
+
                     if cur_line == handler.line {
                         if should_unlock_cpu {
                             // Relinquish CPU Lock before calling the next handler
@@ -478,13 +483,16 @@ impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS:
 
                         (handler.start)(handler.param);
 
+                        if next_i < T::NUM_HANDLERS && T::HANDLERS[next_i].line != cur_line {
+                            return;
+                        }
+
                         should_unlock_cpu = true;
                     }
 
                     // Call the next proto combined handler
-                    let i = I::N + 1;
-                    if i < T::NUM_HANDLERS {
-                        T::PROTO_COMBINED_HANDLERS[i](cur_line, should_unlock_cpu);
+                    if next_i < T::NUM_HANDLERS {
+                        T::PROTO_COMBINED_HANDLERS[next_i](cur_line, should_unlock_cpu);
                     }
                 }
                 proto_combined_handler::<T, I>
