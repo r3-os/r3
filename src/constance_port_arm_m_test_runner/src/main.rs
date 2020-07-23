@@ -23,6 +23,7 @@ async fn main() {
 
     if let Err(e) = main_inner().await {
         log::error!("Command failed.\n{}", e);
+        std::process::exit(1);
     }
 }
 
