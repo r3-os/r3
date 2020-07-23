@@ -118,7 +118,7 @@ impl State {
             # Release CPU Lock
             # TODO: Choose the appropriate method based on `CPU_LOCK_PRIORITY_MASK`
             mov r0, #0
-            msr primask, r0
+            msr basepri, r0
             cpsie i
         "
         :
