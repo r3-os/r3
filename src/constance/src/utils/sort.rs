@@ -2,9 +2,13 @@
 /// Sort the provided abstract random-accessible sequence using the specified
 /// comparator pseudo-function.
 ///
-/// This sort is stable.
-macro_rules! sort_by {
-    ($len:expr, |$i:ident| $accessor:expr, |$x:ident, $y: ident| $less_than:expr) => {{
+/// This sort is not stable.
+macro_rules! sort_unstable_by {
+    (
+        $len:expr,
+        |$i:ident| $accessor:expr,
+        |$x:ident, $y: ident| $less_than:expr
+    ) => {{
         // FIXME: Work-around for closures being uncallable in `const fn`
         macro_rules! index_mut {
             ($i2:expr) => {{
@@ -23,26 +27,76 @@ macro_rules! sort_by {
 
         let len: usize = $len;
 
-        // Insertion sort
-        // FIXME: Work-around for `for` being unsupported in `const fn`
-        let mut i = 1;
-        while i < len {
-            // FIXME: Work-around for `for` being unsupported in `const fn`
-            let mut j = i;
-            while j > 0 {
-                let x = *index_mut!(j - 1);
-                let y = *index_mut!(j);
-                if !less_than!(y, x) {
-                    break;
+        // Convert the input array into a binary max-heap
+        if len > 1 {
+            let mut i = (len - 2) / 2;
+            while {
+                sift_down!(len, i);
+                if i == 0 {
+                    false
+                } else {
+                    i -= 1;
+                    true
                 }
+            } {}
+        }
 
-                // swap()
-                *index_mut!(j - 1) = y;
-                *index_mut!(j) = x;
+        // Fill the output in the reverse order
+        // FIXME: Work-around for `for` being unsupported in `const fn`
+        if len > 0 {
+            let mut i = len - 1;
+            while i > 0 {
+                // `index_mut!(0)` is the root and contains the largest value.
+                // Swap it with `index_mut!(i)`.
+                let x = *index_mut!(0);
+                let y = *index_mut!(i);
+                *index_mut!(0) = y;
+                *index_mut!(i) = x;
 
-                j -= 1;
+                // Shrink the heap by one
+                i -= 1;
+
+                // Restore the heap invariant
+                sift_down!(i + 1, 0);
             }
-            i += 1;
+        }
+    }};
+}
+
+/// Used internally by `sort_unstable_by`. Based on `sift_down` from the Rust standard
+/// library.
+macro_rules! sift_down {
+    ($len:expr, $start:expr) => {{
+        let len: usize = $len;
+
+        let mut hole: usize = $start;
+        let mut child = hole * 2 + 1;
+
+        while child < len {
+            let right = child + 1;
+
+            // compare with the greater of the two children
+            let mut child_value = *index_mut!(child);
+            if right < len {
+                let right_value = *index_mut!(right);
+                if !less_than!(right_value, child_value) {
+                    child = right;
+                    child_value = right_value;
+                }
+            }
+
+            // if we are already in order, stop.
+            let hole_value = *index_mut!(hole);
+            if !less_than!(hole_value, child_value) {
+                break;
+            }
+
+            // swap
+            *index_mut!(hole) = child_value;
+            *index_mut!(child) = hole_value;
+
+            hole = child;
+            child = hole * 2 + 1;
         }
     }};
 }
@@ -55,7 +109,7 @@ mod tests {
     fn const_sort() {
         const fn result() -> [u32; 14] {
             let mut array = [2, 6, 1, 9, 13, 3, 8, 12, 5, 11, 14, 7, 4, 10];
-            sort_by!(14, |i| &mut array[i], |x, y| x < y);
+            sort_unstable_by!(14, |i| &mut array[i], |x, y| x < y);
             array
         }
 
@@ -64,11 +118,11 @@ mod tests {
 
     #[quickcheck]
     fn sort(values: Vec<u8>) {
-        let mut got: Vec<_> = values.into_iter().enumerate().collect();
+        let mut got: Vec<_> = values.into_iter().collect();
         let mut expected = got.clone();
 
-        sort_by!(got.len(), |i| &mut got[i], |x, y| x.1 < y.1);
-        expected.sort_by_key(|x| x.1);
+        sort_unstable_by!(got.len(), |i| &mut got[i], |x, y| x < y);
+        expected.sort();
 
         assert_eq!(got, expected);
     }

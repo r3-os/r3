@@ -85,6 +85,7 @@ impl<System: Port> CfgStartupHookBuilder<System> {
             panic!("negative priority is unsafe and should be unlocked by `unchecked`");
         }
 
+        let order = inner.startup_hooks.len();
         inner.startup_hooks.push(CfgBuilderStartupHook {
             start: if let Some(x) = self.start {
                 x
@@ -93,6 +94,7 @@ impl<System: Port> CfgStartupHookBuilder<System> {
             },
             param: self.param,
             priority: self.priority,
+            order,
         });
 
         startup::StartupHook::new()
@@ -105,13 +107,21 @@ pub struct CfgBuilderStartupHook {
     start: fn(usize),
     param: usize,
     priority: i32,
+    /// The registration order.
+    order: usize,
 }
 
-/// Sort startup hooks by priority.
+/// Sort startup hooks by (priority, order).
 pub(super) const fn sort_hooks(startup_hooks: &mut ComptimeVec<CfgBuilderStartupHook>) {
-    sort_by!(startup_hooks.len(), |i| startup_hooks.get_mut(i), |x, y| x
-        .priority
-        < y.priority);
+    sort_unstable_by!(
+        startup_hooks.len(),
+        |i| startup_hooks.get_mut(i),
+        |x, y| if x.priority != y.priority {
+            x.priority < y.priority
+        } else {
+            x.order < y.order
+        }
+    );
 }
 
 impl CfgBuilderStartupHook {

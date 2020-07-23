@@ -257,6 +257,7 @@ impl<System: Port> CfgInterruptHandlerBuilder<System> {
             panic!("`line` is not specified");
         };
 
+        let order = inner.interrupt_handlers.len();
         inner.interrupt_handlers.push(CfgBuilderInterruptHandler {
             line: line_num,
             start: if let Some(x) = self.start {
@@ -267,6 +268,7 @@ impl<System: Port> CfgInterruptHandlerBuilder<System> {
             param: self.param,
             priority: self.priority,
             unmanaged: self.unmanaged,
+            order,
         });
 
         interrupt::InterruptHandler::new()
@@ -281,6 +283,8 @@ pub struct CfgBuilderInterruptHandler {
     param: usize,
     priority: i32,
     unmanaged: bool,
+    /// The registration order.
+    order: usize,
 }
 
 /// Panic if a non-unmanaged-safe interrupt handler is attached to an
@@ -315,20 +319,20 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: Port>(
     }
 }
 
-/// Sort interrupt handlers by (interrupt number, priority).
+/// Sort interrupt handlers by (interrupt number, priority, order).
 pub(super) const fn sort_handlers(
     interrupt_handlers: &mut ComptimeVec<CfgBuilderInterruptHandler>,
 ) {
-    sort_by!(
+    sort_unstable_by!(
         interrupt_handlers.len(),
         |i| interrupt_handlers.get_mut(i),
-        |x, y| x.priority < y.priority
-    );
-
-    sort_by!(
-        interrupt_handlers.len(),
-        |i| interrupt_handlers.get_mut(i),
-        |x, y| x.line < y.line
+        |x, y| if x.line != y.line {
+            x.line < y.line
+        } else if x.priority != y.priority {
+            x.priority < y.priority
+        } else {
+            x.order < y.order
+        }
     );
 }
 
