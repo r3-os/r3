@@ -123,7 +123,11 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Select tests
-    let test_filter = selection::TestFilter::Disjuction(opt.tests.clone());
+    let test_filter = if opt.tests.is_empty() {
+        selection::TestFilter::Pass
+    } else {
+        selection::TestFilter::Disjuction(opt.tests.clone())
+    };
     let test_runs: Vec<_> = test_filter.all_matching_test_runs().collect();
 
     log::info!("Performing {} test run(s)", test_runs.len());
