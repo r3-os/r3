@@ -289,11 +289,11 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
 
         match test_result {
             Ok(()) => {
-                log::info!("'{}' was successful", full_test_name);
+                log::info!("Test run '{}' was successful", test_run);
             }
             Err(msg) => {
-                log::error!("Test '{}' failed: {}", full_test_name, msg);
-                failed_tests.push(full_test_name.clone());
+                log::error!("Test run '{}' failed: {}", test_run, msg);
+                failed_tests.push(test_run.to_string());
                 continue;
             }
         }
@@ -302,8 +302,8 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     if !failed_tests.is_empty() {
         log::error!("Failed tests:");
 
-        for full_test_name in failed_tests {
-            log::error!(" - {}", full_test_name);
+        for test_run_name in failed_tests {
+            log::error!(" - {}", test_run_name);
         }
 
         return Err(MainError::TestFail.into());
