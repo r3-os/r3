@@ -15,6 +15,8 @@ macro_rules! If {
 }
 
 #[macro_use]
+mod binary_search;
+#[macro_use]
 mod sort;
 mod aligned_storage;
 pub mod binary_heap;

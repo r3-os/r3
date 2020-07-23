@@ -370,45 +370,50 @@ impl InterruptHandlerTable {
 
 /// The precursor of combined second-level interrupt handlers.
 ///
-/// `MakeProtoCombinedHandlers` generates `ProtoCombinedHandlerFn` for each
-/// given (uncombined) interrupt handler. Each `ProtoCombinedHandlerFn` compares
-/// the given interrupt number to the one of the handler for which this
-/// `ProtoCombinedHandlerFn` was constructed, and if they match, it calls
+/// `MakeCombinedHandlers` generates `ProtoCombinedHandlerFn` for each
+/// given (uncombined) interrupt handler. Each `ProtoCombinedHandlerFn` calls
 /// the handler. Then, it proceeds to the next `ProtoCombinedHandlerFn` and this
 /// goes on until it calls the last handler of the current interrupt number.
 ///
 /// ```rust,ignore
-/// fn handler_for_line_3() {
-///     proto_combined_handler_0(3, /* ... */);
-/// }
-///
+/// // `MakeCombinedHandlersTrait::PROTO_COMBINED_HANDLERS`
 /// #[inline(always)]
-/// fn proto_combined_handler_0(cur_line: interrupt::InterruptNum, /* ... */) {
-///     if cur_line == HANDLERS[0].line {
-///         (HANDLERS[0].start)();
-///         if cur_line != HANDLERS[1].line {
-///             return;
-///         }
+/// fn proto_combined_handler_0(/* ... */) {
+///     (HANDLERS[0].start)();
+///     if 1 >= HANDLERS.len() || HANDLERS[0].line != HANDLERS[1].line {
+///         return;
 ///     }
 ///     proto_combined_handler_1(cur_line, /* ... */);
 /// }
-/// fn proto_combined_handler_1(cur_line: interrupt::InterruptNum, ...) { /* ... */ }
-/// fn proto_combined_handler_2(cur_line: interrupt::InterruptNum, ...) { /* ... */ }
+/// fn proto_combined_handler_1(...) { /* ... */ }
+/// fn proto_combined_handler_2(...) { /* ... */ }
 /// ```
 ///
 /// `ProtoCombinedHandlerFn` is created from a function that is marked as
-/// `#[inline(always)]`. This ensures the aformentioned interrupt number
-/// comparison and the calls between `ProtoCombinedHandlerFn`s don't appear in
-/// the final binary, assuming some level of compiler optimization is in place.
-/// For example, the above code can be optimized as follows:
+/// `#[inline(always)]`. This ensures the chained calls between
+/// `ProtoCombinedHandlerFn`s don't appear in the final binary, assuming some
+/// level of compiler optimization is in place.
+///
+/// The final product of `MakeCombinedHandlers` is a combined second-level
+/// interrupt handler for each interrupt number, which calls the first
+/// `ProtoCombinedHandlerFn` of that interrupt number.
 ///
 /// ```rust,ignore
-/// fn handler_for_line_3() {
+/// // `MakeCombinedHandlersTrait::COMBINED_HANDLERS`
+/// extern "C" fn combined_handler_for_line_3() {
+///     proto_combined_handler_2(/* ... */);
+/// }
+/// ```
+///
+/// Because of inlining, the above code is optimized as follows:
+///
+/// ```rust,ignore
+/// extern "C" fn combined_handler_for_line_3() {
 ///     (HANDLERS[2].start)();
 ///     (HANDLERS[3].start)();
 /// }
 /// ```
-type ProtoCombinedHandlerFn = fn(interrupt::InterruptNum, bool);
+type ProtoCombinedHandlerFn = fn();
 
 // FIXME: Passing `&'static [_]` as a const generic parameter causes ICE:
 //        <https://github.com/rust-lang/rust/issues/73727>
@@ -421,24 +426,24 @@ pub trait CfgBuilderInterruptHandlerList {
     const HANDLERS: &'static [CfgBuilderInterruptHandler];
 }
 
-/// The ultimate purpose of this type is to make `PROTO_COMBINED_HANDLERS`
-/// (a list of `ProtoCombinedHandlerFn`s) and `FIRST_PROTO_COMBINED_HANDLER`
-/// available to `new_interrupt_handler_table`.
-struct MakeProtoCombinedHandlers<System, Handlers, const NUM_HANDLERS: usize>(
+/// The ultimate purpose of this type is to make `COMBINED_HANDLERS`
+/// (a list of `InterruptHandlerFn`s) available to
+/// `new_interrupt_handler_table`.
+struct MakeCombinedHandlers<System, Handlers, const NUM_HANDLERS: usize>(
     PhantomData<(System, Handlers)>,
 );
 
-trait MakeProtoCombinedHandlersTrait {
+trait MakeCombinedHandlersTrait {
     type System: Port;
     type NumHandlers: Nat;
     const HANDLERS: &'static [CfgBuilderInterruptHandler];
     const NUM_HANDLERS: usize;
     const PROTO_COMBINED_HANDLERS: &'static [ProtoCombinedHandlerFn];
-    const FIRST_PROTO_COMBINED_HANDLER: Option<ProtoCombinedHandlerFn>;
+    const COMBINED_HANDLERS: &'static [Option<InterruptHandlerFn>];
 }
 
 impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS: usize>
-    MakeProtoCombinedHandlersTrait for MakeProtoCombinedHandlers<System, Handlers, NUM_HANDLERS>
+    MakeCombinedHandlersTrait for MakeCombinedHandlers<System, Handlers, NUM_HANDLERS>
 {
     type System = System;
     type NumHandlers = Handlers::NumHandlers;
@@ -446,15 +451,11 @@ impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS:
     const NUM_HANDLERS: usize = NUM_HANDLERS;
     const PROTO_COMBINED_HANDLERS: &'static [ProtoCombinedHandlerFn] =
         &Self::PROTO_COMBINED_HANDLERS_ARRAY;
-    const FIRST_PROTO_COMBINED_HANDLER: Option<ProtoCombinedHandlerFn> = if NUM_HANDLERS > 0 {
-        Some(Self::PROTO_COMBINED_HANDLERS_ARRAY[0])
-    } else {
-        None
-    };
+    const COMBINED_HANDLERS: &'static [Option<InterruptHandlerFn>] = &Self::COMBINED_HANDLERS_ARRAY;
 }
 
 impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS: usize>
-    MakeProtoCombinedHandlers<System, Handlers, NUM_HANDLERS>
+    MakeCombinedHandlers<System, Handlers, NUM_HANDLERS>
 {
     const PROTO_COMBINED_HANDLERS_ARRAY: [ProtoCombinedHandlerFn; NUM_HANDLERS] =
         Self::proto_combined_handlers_array();
@@ -463,42 +464,65 @@ impl<System: Port, Handlers: CfgBuilderInterruptHandlerList, const NUM_HANDLERS:
         // FIXME: Unable to do this inside a `const` item because of
         //        <https://github.com/rust-lang/rust/pull/72934>
         const_array_from_fn! {
-            fn iter<[T: MakeProtoCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> ProtoCombinedHandlerFn {
+            fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> ProtoCombinedHandlerFn {
                 #[inline(always)]
-                fn proto_combined_handler<T: MakeProtoCombinedHandlersTrait, I: Nat>(cur_line: interrupt::InterruptNum, mut should_unlock_cpu: bool) {
+                fn proto_combined_handler<T: MakeCombinedHandlersTrait, I: Nat>() {
                     let handler = T::HANDLERS[I::N];
 
+                    (handler.start)(handler.param);
+
                     let next_i = I::N + 1;
+                    if next_i >= T::NUM_HANDLERS || T::HANDLERS[next_i].line != handler.line {
+                        return;
+                    }
 
-                    if cur_line == handler.line {
-                        if should_unlock_cpu {
-                            // Relinquish CPU Lock before calling the next handler
-                            if T::System::is_cpu_lock_active() {
-                                // Safety: CPU Lock active, we have the ownership
-                                // of the current CPU Lock (because a previously
-                                // called handler left it active)
-                                unsafe { T::System::leave_cpu_lock() };
-                            }
-                        }
-
-                        (handler.start)(handler.param);
-
-                        if next_i < T::NUM_HANDLERS && T::HANDLERS[next_i].line != cur_line {
-                            return;
-                        }
-
-                        should_unlock_cpu = true;
+                    // Relinquish CPU Lock before calling the next handler
+                    if T::System::is_cpu_lock_active() {
+                        // Safety: CPU Lock active, we have the ownership
+                        // of the current CPU Lock (because a previously
+                        // called handler left it active)
+                        unsafe { T::System::leave_cpu_lock() };
                     }
 
                     // Call the next proto combined handler
-                    if next_i < T::NUM_HANDLERS {
-                        T::PROTO_COMBINED_HANDLERS[next_i](cur_line, should_unlock_cpu);
-                    }
+                    T::PROTO_COMBINED_HANDLERS[next_i]();
                 }
                 proto_combined_handler::<T, I>
             }
 
-            // `Self: MakeProtoCombinedHandlersTrait` is used as the context type
+            // `Self: MakeCombinedHandlersTrait` is used as the context type
+            // for the iteration
+            (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; Handlers::NumHandlers]>()
+        }
+    }
+
+    const COMBINED_HANDLERS_ARRAY: [Option<InterruptHandlerFn>; NUM_HANDLERS] =
+        Self::combined_handlers_array();
+
+    const fn combined_handlers_array() -> [Option<InterruptHandlerFn>; NUM_HANDLERS] {
+        // FIXME: Unable to do this inside a `const` item because of
+        //        <https://github.com/rust-lang/rust/pull/72934>
+        const_array_from_fn! {
+            fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> Option<InterruptHandlerFn> {
+                extern "C" fn combined_handler<T: MakeCombinedHandlersTrait, I: Nat>() {
+                    T::PROTO_COMBINED_HANDLERS[I::N]();
+                }
+
+                let handler = T::HANDLERS[I::N];
+                let is_first_handler_of_line = if I::N == 0 {
+                    true
+                } else {
+                    T::HANDLERS[I::N - 1].line != handler.line
+                };
+
+                if is_first_handler_of_line {
+                    Some(combined_handler::<T, I> as InterruptHandlerFn)
+                } else {
+                    None
+                }
+            }
+
+            // `Self: MakeCombinedHandlersTrait` is used as the context type
             // for the iteration
             (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; Handlers::NumHandlers]>()
         }
@@ -538,25 +562,38 @@ pub const unsafe fn new_interrupt_handler_table<
     }
 
     let storage = const_array_from_fn! {
-        fn iter<[T: MakeProtoCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> Option<InterruptHandlerFn> {
-            unsafe extern fn handler<T: MakeProtoCombinedHandlersTrait, I: Nat>() {
-                if let Some(proto_combined_handler) = T::FIRST_PROTO_COMBINED_HANDLER {
-                    proto_combined_handler(I::N, false);
-                }
-            }
+        fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> Option<InterruptHandlerFn> {
+            // The interrupt line
+            let line = I::N;
 
-            if let Some(_) = T::FIRST_PROTO_COMBINED_HANDLER {
-                Some(handler::<T, I> as InterruptHandlerFn)
-            } else {
+            // Find the first handler for the line. The elements of
+            // `COMBINED_HANDLERS` are only set for the first handler of each
+            // line.
+            let i = lower_bound!(T::NUM_HANDLERS, |i| T::HANDLERS[i].line < line);
+
+            if i >= T::NUM_HANDLERS || T::HANDLERS[i].line != line {
+                // The interrupt line does not have an associated handler
                 None
+            } else {
+                // Return the combined handler
+                let handler = T::COMBINED_HANDLERS[i];
+
+                // FIXME: Work-around for `Option::is_none` not being `const fn`
+                // FIXME: Work-around for `Option::unwrap` not being `const fn`
+                // FIXME: Work-around for `assert!` not being allowed in `const fn`
+                if let None = handler {
+                    panic!("assertion failed: T::COMBINED_HANDLERS[i] should be Some but got None");
+                }
+
+                handler
             }
         }
 
-        (0..NUM_LINES).map(|i| iter::<[MakeProtoCombinedHandlers<
+        (0..NUM_LINES).map(|i| iter::<[MakeCombinedHandlers<
             System,
             Handlers,
             NUM_HANDLERS,
-        >], i>(MakeProtoCombinedHandlers(PhantomData))).collect::<[_; NumLines]>()
+        >], i>(MakeCombinedHandlers(PhantomData))).collect::<[_; NumLines]>()
     };
 
     InterruptHandlerTable { storage }
