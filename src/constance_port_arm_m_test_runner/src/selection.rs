@@ -3,6 +3,8 @@ use itertools::iproduct;
 use std::fmt;
 use thiserror::Error;
 
+use crate::utils::Joined;
+
 #[derive(Debug, Clone)]
 pub struct TestRun {
     pub case: TestCase,
@@ -21,10 +23,13 @@ impl fmt::Display for TestRun {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}{}{}",
+            "{}{}",
             self.case,
-            ['-', '+'][self.cpu_lock_by_basepri as usize],
-            FEAT_CPU_LOCK_BY_BASEPRI,
+            if self.cpu_lock_by_basepri {
+                Joined(Some(Joined(("+", FEAT_CPU_LOCK_BY_BASEPRI))))
+            } else {
+                Joined(None)
+            },
         )
     }
 }
