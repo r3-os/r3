@@ -1,6 +1,5 @@
 //! The tickful `PortTimer` implementation based on SysTick.
 use constance::{
-    configure,
     kernel::{
         cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, StartupHook, UTicks,
     },
