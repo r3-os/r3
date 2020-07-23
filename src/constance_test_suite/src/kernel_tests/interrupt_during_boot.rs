@@ -19,15 +19,17 @@ impl<System: Kernel> App<System> {
             .finish(b);
 
         let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
-            unsafe {
-                InterruptHandler::build()
-                    .line(int_line)
-                    .start(isr::<System, D>)
-                    .unmanaged()
-                    .finish(b);
-            }
+            InterruptHandler::build()
+                .line(int_line)
+                .start(isr::<System, D>)
+                .finish(b);
 
-            Some(InterruptLine::build().line(int_line).finish(b))
+            Some(
+                InterruptLine::build()
+                    .line(int_line)
+                    .priority(D::INTERRUPT_PRIORITY_HIGH)
+                    .finish(b),
+            )
         } else {
             None
         };
