@@ -154,7 +154,7 @@ unsafe fn sift_down<Element>(
         let mut child = 2 * pos + 1;
         while child < end {
             let right = child + 1;
-            // compare with the greater of the two children
+            // compare with the lesser of the two children
             if right < end && !ctx.lt(hole.get(child), hole.get(right)) {
                 child = right;
             }
