@@ -23,6 +23,7 @@ output-semihosting = [
     "cortex-m-semihosting",
     "panic-semihosting",
 ]
+cpu-lock-by-basepri = []
 
 [dependencies]
 constance_port_arm_m = { path = "../constance_port_arm_m", optional = true }

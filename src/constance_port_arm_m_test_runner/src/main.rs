@@ -9,6 +9,7 @@ use structopt::StructOpt;
 use thiserror::Error;
 use tokio::prelude::*;
 
+mod selection;
 mod subprocess;
 mod targets;
 mod utils;
@@ -63,7 +64,10 @@ struct Opt {
         possible_values(&TARGET_POSSIBLE_VALUES))]
     target: &'static dyn targets::Target,
     /// If specified, only run tests containing this string in their names
-    tests: Vec<String>,
+    ///
+    /// See the documentation of `TestFilter::from_str` for full syntax.
+    #[structopt(parse(try_from_str = std::str::FromStr::from_str))]
+    tests: Vec<selection::TestFilter>,
     /// Log level of the test program
     #[structopt(short = "l", long = "log-level",
         possible_values(&LogLevel::variants()), case_insensitive = true,
@@ -118,21 +122,10 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Select tests
-    let tests: Vec<_> = constance_test_suite::kernel_tests::TEST_NAMES
-        .iter()
-        .cloned()
-        .filter(|test_name| {
-            if opt.tests.is_empty() {
-                true
-            } else {
-                opt.tests
-                    .iter()
-                    .any(|arg_test_name| test_name.contains(arg_test_name))
-            }
-        })
-        .collect();
+    let test_filter = selection::TestFilter::Disjuction(opt.tests.clone());
+    let test_runs: Vec<_> = test_filter.all_matching_test_runs().collect();
 
-    log::info!("Running {} test(s)", tests.len());
+    log::info!("Performing {} test run(s)", test_runs.len());
 
     // Connect to the target
     log::debug!("Connecting to the target");
@@ -187,9 +180,9 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut failed_tests = Vec::new();
 
-    for test_name in tests.iter() {
-        let full_test_name = format!("kernel_tests::{}", test_name);
-        log::info!(" - {}", full_test_name);
+    for test_run in test_runs.iter() {
+        let full_test_name = test_run.case.to_string();
+        log::info!(" - {}", test_run);
 
         // Delete `exe_path`
         if exe_path.exists() {
@@ -214,6 +207,11 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
                         .iter()
                         .map(|f| format!("--features={}", f)),
                 )
+                .args(if test_run.cpu_lock_by_basepri {
+                    Some("--features=cpu-lock-by-basepri")
+                } else {
+                    None
+                })
                 .arg(match opt.log_level {
                     LogLevel::Off => "--features=log/max_level_off",
                     LogLevel::Error => "--features=log/max_level_error",

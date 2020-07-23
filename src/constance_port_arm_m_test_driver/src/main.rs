@@ -51,6 +51,9 @@ macro_rules! instantiate_test {
             // by the WFI instruction, which interferes with test result
             // collection.
             const USE_WFI: bool = false;
+
+            #[cfg(feature = "cpu-lock-by-basepri")]
+            const CPU_LOCK_PRIORITY_MASK: u8 = 0x20;
         }
 
         impl port::SysTickOptions for System {
