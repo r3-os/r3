@@ -102,7 +102,33 @@ cd examples/basic_nucleo_f401re
 cargo embed --release
 ```
 
+## Prerequisites
+
+You need a Nightly Rust compiler. This project is heavily reliant on unstable features, so it might or might not work with a newer compiler version. See the file `rust-toolchain` to find out which compiler version this project is currently tested with.
+
+You also need to install Rust's cross-compilation support for your target architecture. If it's not installed, you will see a compile error like this:
+
+```
+error[E0463]: can't find crate for `core`
+  |
+  = note: the `thumbv7m-none-eabi` target may not be installed
+```
+
+In this case, you need to run `rustup target add thumbv7m-none-eabi`.
+
 ## For Developers
+
+### Prerequisites
+
+ - [rustup], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
+ - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M port.
+ - libusb 1.x to test the Arm-M port.
+
+[rustup]: https://rustup.rs/
+
+[Nix] users can use the provided `shell.nix` file to install all required software.
+
+[Nix]: https://nixos.org/nix/
 
 ### How to Run Tests
 
