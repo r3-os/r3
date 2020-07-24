@@ -1,8 +1,14 @@
-# <img src="https://img.shields.io/badge/C o n s t a n c e-𝖱𝖤𝖠𝖫̵%20𝖳𝖨𝖬𝖤%20𝖮𝖯𝖤𝖱𝖠𝖳𝖨𝖭𝖦%20𝖲𝖸𝖲𝖳𝖤𝖬-666?style=for-the-badge&labelColor=333333" width="90%" height="auto" alt="Constance Real-Time Operating System">
+<h1 align="center">
+<img src="https://img.shields.io/badge/-𝖢𝖮𝖭𝖲𝖳𝖠𝖭𝖢𝖤-222?style=for-the-badge&labelColor=111111" width="40%" height="auto" alt="Constance"><img src="https://img.shields.io/badge/-𝖱𝖤𝖠𝖫--𝖳𝖨𝖬𝖤%20𝖮𝖯𝖤𝖱𝖠𝖳𝖨𝖭𝖦%20𝖲𝖸𝖲𝖳𝖤𝖬-666?style=for-the-badge&labelColor=333333" width="50%" height="auto" alt="Real-Time Operating System">
+</h1>
 
+<p align="center">
 <img src="https://img.shields.io/github/workflow/status/yvt/Constance/CI/%F0%9F%A6%86?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/crates.io-not%20yet-red?style=for-the-badge"> <img src="https://img.shields.io/badge/docs.rs-I%20wish-red?style=for-the-badge">
+</p>
 
-[**Try it on Repl.it**](https://repl.it/@yvt/Constance-Hosted-Port#main.rs)
+<p align="center">
+<a href="https://repl.it/@yvt/Constance-Hosted-Port#main.rs"><b>Try it on Repl.it</b></a>
+</p>
 
 Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
 
