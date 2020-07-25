@@ -253,7 +253,7 @@ The initial thread that starts up the kernel (by calling [`PortToKernel::boot`])
 [`PortToKernel::boot`]: crate::kernel::PortToKernel::boot
 [**startup hooks**]: crate::kernel::StartupHook
 
-There are two types of kernel objects that define the properties of threads such as how and when they are created and whether they can block or not. (To be precise, they are not threads by themselves but often treated as such for brevity. Matching them to threads doesn't cause much confusion in practice because each of them can only map to up to one thread at any moment.)
+There are two types of kernel objects that can create threads. The threads' properties such as how and when they are created and whether they can block or not are specific to each kernel object type. (To be precise, these kernel objects are not threads by themselves but often treated as such for brevity. Equating them to threads doesn't cause much confusion in practice because each of them can only map to up to one thread at any moment.)
 
  - **Interrupt handlers** start execution in response to asynchronous external events (interrupts). They always run to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler.
 
