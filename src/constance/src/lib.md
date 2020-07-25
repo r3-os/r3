@@ -248,18 +248,21 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
  ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.
 
+The properties of threads such as how and when they are created and whether they can block or not are specific to each thread type.
+
 The initial thread that starts up the kernel (by calling [`PortToKernel::boot`]) is called **a main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel requests the port to dispatch the first task.
 
 [`PortToKernel::boot`]: crate::kernel::PortToKernel::boot
 [**startup hooks**]: crate::kernel::StartupHook
 
-There are two types of kernel objects that can create threads. The threads' properties such as how and when they are created and whether they can block or not are specific to each kernel object type. (To be precise, these kernel objects are not threads by themselves but often treated as such for brevity. Equating them to threads doesn't cause much confusion in practice because each of them can only map to up to one thread at any moment.)
+**[A first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`InterruptHandler`]).
 
- - **Interrupt handlers** start execution in response to asynchronous external events (interrupts). They always run to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler.
+[A first-level interrupt handler]: #interrupt-handling-framework
+[`InterruptHandler`]: crate::kernel::InterruptHandler
 
- - **[Tasks]** are kernel objects whose execution is controlled by application code. Each task encapsulates a variety of state data necessary for the execution and scheduling of the associated thread, such as [a stack region] to store local variables and activation frames, the current [priority], the [parking] state of the task, and a memory region used to save the state of CPU registers when the task is blocked or preempted. The associated thread can be started by **[activating]** that task. A task-based thread can make blocking system calls, which will temporarily block the execution of the thread until certain conditions are met. Task-based threads can be preempted by any kind of thread.
+**A task** ([`Task`]) creates a thread whose execution is controlled by application code. Each task encapsulates a variety of state data necessary for the execution and scheduling of the associated thread, such as [a stack region] to store local variables and activation frames, the current [priority], the [parking] state of the task, and a memory region used to save the state of CPU registers when the task is blocked or preempted. The associated thread can be started by **[activating]** that task. A task-based thread can make blocking system calls, which will temporarily block the execution of the thread until certain conditions are met. Task-based threads can be preempted by any kind of thread.
 
-[Tasks]: crate::kernel::Task
+[`Task`]: crate::kernel::Task
 [a stack region]: crate::kernel::cfg::CfgTaskBuilder::stack_size
 [priority]: crate::kernel::cfg::CfgTaskBuilder::priority
 [parking]: crate::kernel::Task::unpark
@@ -267,9 +270,7 @@ There are two types of kernel objects that can create threads. The threads' prop
 
 <div class="admonition-follows"></div>
 
-> **Relation to Other Specifications:** Not many kernel designs use the word “thread” to describe the concept that applies to both of interrupts and tasks (one notable exception being [TI-RTOS]), most likely because threads are used to refer to a specific concept in general-purpose operating systems, or they are simply considered synonymous with tasks. Despite that, it was decided that “thread” was an appropriate term to refer to this concept. The primary factors that drove this decision include: (1) the need for a conceptual entity that can “own” locks, and (2) that this concept is important for discussing thread safety without substituting every mention of “thread” with “task or interrupt handler”.
->
-> The closest concept in [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html) is *processing units*.
+> **Relation to Other Specifications:** Not many kernel designs use the word “thread” to describe the concept that applies to both of interrupts and tasks (one notable exception being [TI-RTOS]), most likely because threads are used to refer to a specific concept in general-purpose operating systems, or they are simply considered synonymous with tasks. For example, the closest concept in [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html) is *processing units*. Despite that, it was decided that “thread” was an appropriate term to refer to this concept. The primary factors that drove this decision include: (1) the need for a conceptual entity that can “own” locks, and (2) that this concept is important for discussing thread safety without substituting every mention of “thread” with “task or interrupt handler”.
 
 [TI-RTOS]: http://software-dl.ti.com/lprf/simplelink_cc13x0_sdk/1_30_00_06/exports/docs/ti154stack/ti154stack-sdg/ti154stack-sdg/tirtos/rtos-overview.html
 
