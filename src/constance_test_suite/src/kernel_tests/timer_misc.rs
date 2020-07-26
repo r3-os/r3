@@ -14,6 +14,7 @@ pub struct App<System> {
     timer1: Timer<System>,
     timer2: Timer<System>,
     timer3: Timer<System>,
+    timer4: Timer<System>,
     task: Task<System>,
     seq: Hunk<System, SeqTracker>,
 }
@@ -36,7 +37,13 @@ impl<System: Kernel> App<System> {
 
         let timer3 = Timer::build()
             .period(Duration::from_millis(0))
-            .start(timer3_body::<System, D>)
+            .start(unreachable_timer_body::<System, D>)
+            .finish(b);
+
+        let timer4 = Timer::build()
+            .delay(Duration::from_millis(0))
+            .period(Duration::from_millis(0))
+            .start(unreachable_timer_body::<System, D>)
             .finish(b);
 
         let task = Task::build()
@@ -51,6 +58,7 @@ impl<System: Kernel> App<System> {
             timer1,
             timer2,
             timer3,
+            timer4,
             task,
             seq,
         }
@@ -58,26 +66,39 @@ impl<System: Kernel> App<System> {
 }
 
 fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    let App { seq, timer3, .. } = D::app();
+    let App {
+        seq,
+        timer2,
+        timer3,
+        timer4,
+        ..
+    } = D::app();
 
     // Start `timer3`. `timer3` is now in the Active state, but it will never
     // fire because its delay is `None` (infinity).
     timer3.start().unwrap();
 
+    // The same goes for `timer4`.
+    timer4.set_delay(None).unwrap();
+    timer4.start().unwrap();
+
+    // `timer2` is already active, so this is no-op
+    timer2.start().unwrap();
+
+    // `timer2` wake-up time
     System::park().unwrap();
     seq.expect_and_replace(1, 2);
 
-    // `timer2` wake up time
     let now = Time::from_millis(100);
     let now_got = System::time().unwrap();
     log::trace!("time = {:?} (expected {:?})", now_got, now);
     assert!(now_got.as_micros() >= now.as_micros());
     assert!(now_got.as_micros() <= now.as_micros() + 100_000);
 
+    // `timer1` wake-up time
     System::park().unwrap();
     seq.expect_and_replace(3, 4);
 
-    // `timer1` wake up time
     let now = Time::from_millis(200);
     let now_got = System::time().unwrap();
     log::trace!("time = {:?} (expected {:?})", now_got, now);
@@ -188,6 +209,6 @@ fn timer2_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     task.unpark().unwrap();
 }
 
-fn timer3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn unreachable_timer_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     unreachable!()
 }
