@@ -101,7 +101,7 @@ macro_rules! build {
                 (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_attr());
             static TIMER_CB_POOL:
                 [TimerCb<$sys>; _] =
-                    (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_state(&TIMER_ATTR_POOL[i]));
+                    (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_state(&TIMER_ATTR_POOL[i], i));
         }
 
         // Instantiate hunks
@@ -157,7 +157,7 @@ macro_rules! build {
         }
 
         // Calculate the required storage of the timeout heap
-        const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len();
+        const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len() + CFG.timers.len();
         type TimeoutHeap = StaticVec<TimeoutRef<$sys>, TIMEOUT_HEAP_LEN>;
 
         // Safety: We are `build!`, so it's okay to `impl` this

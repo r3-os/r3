@@ -44,6 +44,10 @@ impl<T> Init for mem::MaybeUninit<T> {
     const INIT: Self = mem::MaybeUninit::uninit();
 }
 
+impl<T: Init> Init for mem::ManuallyDrop<T> {
+    const INIT: Self = mem::ManuallyDrop::new(T::INIT);
+}
+
 impl<T, const N: usize> Init for staticvec::StaticVec<T, N> {
     const INIT: Self = Self::new();
 }

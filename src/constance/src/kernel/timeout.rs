@@ -367,6 +367,17 @@ pub(super) type TimeoutFn<System> = fn(usize, CpuLockGuard<System>) -> CpuLockGu
 /// heap.
 const HEAP_POS_NONE: usize = usize::MAX;
 
+impl<System: Kernel> Init for Timeout<System> {
+    const INIT: Self = Self {
+        at: Init::INIT,
+        heap_pos: Init::INIT,
+        callback: |_, x| x,
+        callback_param: Init::INIT,
+        _pin: PhantomPinned,
+        _phantom: core::marker::PhantomData,
+    };
+}
+
 impl<System: Kernel> Drop for Timeout<System> {
     #[inline]
     fn drop(&mut self) {
@@ -385,6 +396,17 @@ impl<System: Kernel> Drop for Timeout<System> {
     }
 }
 
+impl<System: Kernel> fmt::Debug for Timeout<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Timeout")
+            .field("at", &self.at)
+            .field("heap_pos", &self.heap_pos)
+            .field("callback", &self.callback)
+            .field("callback_param", &self.callback_param)
+            .finish()
+    }
+}
+
 impl<System: Kernel> Timeout<System> {
     /// Construct a `Timeout`.
     ///
@@ -399,6 +421,11 @@ impl<System: Kernel> Timeout<System> {
             _pin: PhantomPinned,
             _phantom: core::marker::PhantomData,
         }
+    }
+
+    /// Get a flag indicating whether the `Timeout` is currently in the heap.
+    pub(super) fn is_linked(&self, _lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
+        self.heap_pos.load(Ordering::Relaxed) != HEAP_POS_NONE
     }
 
     /// Configure the `Timeout` to expire in the specified duration.
@@ -430,6 +457,46 @@ impl<System: Kernel> Timeout<System> {
             .load(Ordering::Relaxed)
             .wrapping_add(duration_time32);
         self.at.store(at, Ordering::Relaxed);
+    }
+
+    #[inline]
+    pub(super) fn saturating_duration_until_timeout(
+        &self,
+        lock: CpuLockGuardBorrowMut<'_, System>,
+    ) -> Time32 {
+        saturating_duration_until_timeout(self, current_time(lock))
+    }
+
+    /// Get the raw expiration time.
+    pub(super) fn at_raw(&self, _lock: CpuLockGuardBorrowMut<'_, System>) -> Time32 {
+        self.at.load(Ordering::Relaxed)
+    }
+
+    /// Set the raw expiration time.
+    ///
+    /// This might be useful for storing arbitrary data in an unlinked `Timeout`.
+    pub(super) fn set_at_raw(&self, _lock: CpuLockGuardBorrowMut<'_, System>, value: Time32) {
+        self.at.store(value, Ordering::Relaxed);
+    }
+
+    /// Set the raw expiration time, returning the modified instance of `self`.
+    ///
+    /// This might be useful for storing arbitrary data in an unlinked `Timeout`.
+    pub(super) const fn with_at_raw(mut self, at: Time32) -> Self {
+        self.at = AtomicTime32::new(at);
+        self
+    }
+
+    /// Set the expiration time with a duration since boot, returning the
+    /// modified instance of `self`.
+    pub(super) const fn with_expiration_at(mut self, at: Time32) -> Self {
+        // FIXME: Work-around for `assert!` being unsupported in `const fn`
+        if at == BAD_DURATION32 {
+            panic!("`at` must be a valid duration");
+        }
+
+        self.at = AtomicTime32::new(at);
+        self
     }
 }
 

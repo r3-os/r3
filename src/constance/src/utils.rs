@@ -24,6 +24,7 @@ pub(crate) mod convert;
 mod init;
 mod int;
 pub mod intrusive_list;
+pub(crate) mod pin;
 mod prio_bitmap;
 mod rawcell;
 #[macro_use]

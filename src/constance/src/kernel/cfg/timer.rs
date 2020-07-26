@@ -1,7 +1,7 @@
-use core::{marker::PhantomData, num::NonZeroUsize};
+use core::{marker::PhantomData, mem::ManuallyDrop, num::NonZeroUsize};
 
 use crate::{
-    kernel::{cfg::CfgBuilder, timeout, timer, Port},
+    kernel::{cfg::CfgBuilder, timeout, timer, utils::CpuLockCell, Kernel, Port},
     time::Duration,
 };
 
@@ -147,17 +147,33 @@ impl Clone for CfgBuilderTimer {
 impl Copy for CfgBuilderTimer {}
 
 impl CfgBuilderTimer {
-    pub const fn to_state<System: Port>(
+    /// `i` is an index into [`super::super::KernelCfg2::timer_cb_pool`].
+    pub const fn to_state<System: Kernel>(
         &self,
         attr: &'static timer::TimerAttr<System>,
+        i: usize,
     ) -> timer::TimerCb<System> {
-        timer::TimerCb { attr }
+        let timeout = timeout::Timeout::new(timer::timer_timeout_handler::<System>, i);
+
+        let timeout = if self.delay == timeout::BAD_DURATION32 {
+            timeout.with_at_raw(self.delay)
+        } else {
+            timeout.with_expiration_at(self.delay)
+        };
+
+        timer::TimerCb {
+            attr,
+            timeout: ManuallyDrop::new(timeout),
+            period: CpuLockCell::new(self.period),
+            active: CpuLockCell::new(false),
+        }
     }
 
     pub const fn to_attr<System: Port>(&self) -> timer::TimerAttr<System> {
         timer::TimerAttr {
             entry_point: self.start,
             entry_param: self.param,
+            init_active: self.active,
             _phantom: PhantomData,
         }
     }
