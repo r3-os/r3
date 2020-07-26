@@ -255,10 +255,11 @@ The initial thread that starts up the kernel (by calling [`PortToKernel::boot`])
 [`PortToKernel::boot`]: crate::kernel::PortToKernel::boot
 [**startup hooks**]: crate::kernel::StartupHook
 
-**[A first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`InterruptHandler`]).
+**[A first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`InterruptHandler`]) as well as the callback functions of **timers** ([`Timer`]) through a port timer driver and the kernel timing core.
 
 [A first-level interrupt handler]: #interrupt-handling-framework
 [`InterruptHandler`]: crate::kernel::InterruptHandler
+[`Timer`]: crate::kernel::Timer
 
 **A task** ([`Task`]) creates a thread whose execution is controlled by application code. Each task encapsulates a variety of state data necessary for the execution and scheduling of the associated thread, such as [a stack region] to store local variables and activation frames, the current [priority], the [parking] state of the task, and a memory region used to save the state of CPU registers when the task is blocked or preempted. The associated thread can be started by **[activating]** that task. A task-based thread can make blocking system calls, which will temporarily block the execution of the thread until certain conditions are met. Task-based threads can be preempted by any kind of thread.
 

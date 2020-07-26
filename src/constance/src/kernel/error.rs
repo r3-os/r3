@@ -616,3 +616,59 @@ define_error! {
         BadParam,
     }
 }
+
+define_error! {
+    mod start_timer_error {}
+    /// Error type for [`Timer::start`].
+    ///
+    /// [`Timer::start`]: super::Timer::start
+    pub enum StartTimerError: BadContextError, BadIdError {
+        /// The timer ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+    }
+}
+
+define_error! {
+    mod stop_timer_error {}
+    /// Error type for [`Timer::stop`].
+    ///
+    /// [`Timer::stop`]: super::Timer::stop
+    pub enum StopTimerError: BadContextError, BadIdError {
+        /// The timer ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+    }
+}
+
+define_error! {
+    mod set_timer_delay_error {}
+    /// Error type for [`Timer::set_delay`].
+    ///
+    /// [`Timer::set_delay`]: super::Timer::set_delay
+    pub enum SetTimerDelayError: BadContextError, BadIdError, BadParamError {
+        /// The timer ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        /// The duration is negative.
+        BadParam,
+    }
+}
+
+define_error! {
+    mod set_timer_period_error {}
+    /// Error type for [`Timer::set_period`].
+    ///
+    /// [`Timer::set_period`]: super::Timer::set_period
+    pub enum SetTimerPeriodError: BadContextError, BadIdError, BadParamError {
+        /// The timer ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        /// The duration is negative.
+        BadParam,
+    }
+}

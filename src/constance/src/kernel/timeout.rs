@@ -126,7 +126,6 @@
 //! ```
 //!
 use core::{
-    convert::TryInto,
     fmt,
     marker::PhantomPinned,
     pin::Pin,
@@ -233,6 +232,11 @@ pub(super) type Time32 = u32;
 /// Atomic cell of [`Time32`].
 type AtomicTime32 = AtomicU32;
 
+/// A value of type [`Time32`] that can be used to represent a “null” value.
+/// [`time32_from_duration`] and [`time32_from_neg_duration`] never returns this
+/// value. Do not pass this value to any of this module's methods.
+pub(super) const BAD_DURATION32: Time32 = u32::MAX;
+
 #[inline]
 fn time64_from_sys_time(sys_time: Time) -> Time64 {
     sys_time.as_micros()
@@ -244,11 +248,19 @@ fn sys_time_from_time64(sys_time: Time64) -> Time {
 }
 
 #[inline]
-pub(super) fn time32_from_duration(duration: Duration) -> Result<Time32, BadParamError> {
-    Ok(duration
-        .as_micros()
-        .try_into()
-        .map_err(|_| BadParamError::BadParam)?)
+pub(super) const fn time32_from_duration(duration: Duration) -> Result<Time32, BadParamError> {
+    // Ok(duration
+    //     .as_micros()
+    //     .try_into()
+    //     .map_err(|_| BadParamError::BadParam)?)
+
+    // FIXME: This is a work-around for `TryFrom` being unavailable in `const fn`
+    //        and `map_err` being unavailable in `const fn`
+    if let Some(x) = crate::utils::convert::try_i32_into_u32(duration.as_micros()) {
+        Ok(x)
+    } else {
+        Err(BadParamError::BadParam)
+    }
 }
 
 /// Convert the negation of `duration` to `Time32`.
@@ -395,6 +407,8 @@ impl<System: Kernel> Timeout<System> {
         lock: CpuLockGuardBorrowMut<'_, System>,
         duration_time32: Time32,
     ) {
+        debug_assert_ne!(duration_time32, BAD_DURATION32);
+
         let current_time = current_time(lock);
         let at = current_time.wrapping_add(duration_time32);
         self.at.store(at, Ordering::Relaxed);
@@ -409,6 +423,8 @@ impl<System: Kernel> Timeout<System> {
         _lock: CpuLockGuardBorrowMut<'_, System>,
         duration_time32: Time32,
     ) {
+        debug_assert_ne!(duration_time32, BAD_DURATION32);
+
         let at = self
             .at
             .load(Ordering::Relaxed)
