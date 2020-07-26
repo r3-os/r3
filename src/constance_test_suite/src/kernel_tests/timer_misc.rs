@@ -13,6 +13,7 @@ use crate::utils::SeqTracker;
 pub struct App<System> {
     timer1: Timer<System>,
     timer2: Timer<System>,
+    timer3: Timer<System>,
     task: Task<System>,
     seq: Hunk<System, SeqTracker>,
 }
@@ -33,6 +34,11 @@ impl<System: Kernel> App<System> {
             .param(52)
             .finish(b);
 
+        let timer3 = Timer::build()
+            .period(Duration::from_millis(0))
+            .start(timer3_body::<System, D>)
+            .finish(b);
+
         let task = Task::build()
             .active(true)
             .start(task_body::<System, D>)
@@ -44,6 +50,7 @@ impl<System: Kernel> App<System> {
         App {
             timer1,
             timer2,
+            timer3,
             task,
             seq,
         }
@@ -51,7 +58,11 @@ impl<System: Kernel> App<System> {
 }
 
 fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    let App { seq, .. } = D::app();
+    let App { seq, timer3, .. } = D::app();
+
+    // Start `timer3`. `timer3` is now in the Active state, but it will never
+    // fire because its delay is `None` (infinity).
+    timer3.start().unwrap();
 
     System::park().unwrap();
     seq.expect_and_replace(1, 2);
@@ -82,6 +93,7 @@ fn timer1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
         timer2,
         task,
         seq,
+        ..
     } = D::app();
 
     assert_eq!(param, 42);
@@ -174,4 +186,8 @@ fn timer2_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     // (`System::time` is disallowed in a non-task context)
     seq.expect_and_replace(0, 1);
     task.unpark().unwrap();
+}
+
+fn timer3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    unreachable!()
 }

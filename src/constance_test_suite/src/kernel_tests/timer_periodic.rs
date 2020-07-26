@@ -2,15 +2,16 @@
 //! moments.
 //!
 //! ```text
-//!       __          __               __       __     __
-//! Task |__|        |__|             |__|     |__|   |__|
-//!      0→1                          2→3      4→5    6→7
-//!                                  _       _       _
-//! Timer callback                  |_|     |_|     |_|
-//!                                 1→2     3→4     5→6
-//!      ├──┬──┬──┬──┼──┬──┬──┬──┬──┼──┬──┬──┼──┬──┬──┤
-//!      ↑   400ms   ↑     500ms      300ms    300ms
-//! system boot    start
+//!       __          __               __        __            __
+//! Task |__|        |__|             |__|      |__|          |__|
+//!      0→1                          2→3       4→5           6→7
+//!                                  _        _              _
+//! Timer callback                  |_|      |_|            |_|
+//!                                 1→2      3→4            5→6
+//!      ├──┬──┬──┬──┼──┬──┬──┬──┬──┼──┬──┬──┼──┬──┬──┬──┬──┤
+//!      ↑   400ms   ↑     500ms       300ms       500ms
+//! system boot    start             ↑
+//!                             period ← 400ms
 //! ```
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Task, Timer},
@@ -88,7 +89,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Third tick
     System::park().unwrap();
     seq.expect_and_replace(6, 7);
-    now += Duration::from_millis(300); // period
+    now += Duration::from_millis(500); // period (new)
     check_time!();
 
     timer.stop().unwrap();
@@ -97,11 +98,14 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 }
 
 fn timer_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    let App { task, seq, .. } = D::app();
+    let App {
+        task, timer, seq, ..
+    } = D::app();
 
     match seq.get() {
         1 => {
             seq.expect_and_replace(1, 2);
+            timer.set_period(Some(Duration::from_millis(500))).unwrap();
             task.unpark_exact().unwrap();
         }
         3 => {
