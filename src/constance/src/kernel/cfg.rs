@@ -210,16 +210,21 @@ macro_rules! array_item_from_fn {
         $static_or_const:tt $out:ident: [$ty:ty; _] = (0..$len:expr).map(|$var:ident| $map:expr);
     )*) => {$(
         $static_or_const $out: [$ty; { $len }] = {
-            let mut values = [$crate::prelude::Init::INIT; { $len }];
+            use $crate::{core::mem::MaybeUninit, utils::mem};
+            let mut values: [MaybeUninit<$ty>; { $len }] = mem::uninit_array();
             let mut i = 0;
             while i < $len {
-                values[i] = {
+                values[i] = MaybeUninit::<$ty>::new({
                     let $var = i;
                     $map
-                };
+                });
                 i += 1;
             }
-            values
+
+            // Safety:  The memory layout of `[MaybeUninit<$ty>; $len]` is
+            // identical to `[$ty; $len]`. We initialized all elements, so it's
+            // safe to reinterpret that range as `[$ty; $len]`.
+            unsafe { mem::transmute(values) }
         };
     )*};
 }
