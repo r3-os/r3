@@ -312,7 +312,7 @@ pub struct TaskCb<
     pub port_task_state: PortTaskState,
 
     /// The static properties of the task.
-    pub attr: &'static TaskAttr<System>,
+    pub attr: &'static TaskAttr<System, TaskPriority>,
 
     pub priority: TaskPriority,
 
@@ -333,20 +333,6 @@ pub struct TaskCb<
     pub(super) park_token: utils::CpuLockCell<System, bool>,
 }
 
-impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> Init
-    for TaskCb<System, PortTaskState, TaskPriority>
-{
-    const INIT: Self = Self {
-        port_task_state: Init::INIT,
-        attr: &TaskAttr::INIT,
-        priority: Init::INIT,
-        st: Init::INIT,
-        link: Init::INIT,
-        wait: Init::INIT,
-        park_token: Init::INIT,
-    };
-}
-
 impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Debug + 'static>
     fmt::Debug for TaskCb<System, PortTaskState, TaskPriority>
 {
@@ -360,7 +346,7 @@ impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Deb
 }
 
 /// The static properties of a task.
-pub struct TaskAttr<System> {
+pub struct TaskAttr<System, TaskPriority: 'static = <System as KernelCfg1>::TaskPriority> {
     /// The entry point of the task.
     ///
     /// # Safety
@@ -377,22 +363,17 @@ pub struct TaskAttr<System> {
     //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>
     /// The hunk representing the stack region for the task.
     pub stack: StackHunk<System>,
+
+    pub priority: TaskPriority,
 }
 
-impl<System> Init for TaskAttr<System> {
-    const INIT: Self = Self {
-        entry_point: |_| {},
-        entry_param: 0,
-        stack: StackHunk::INIT,
-    };
-}
-
-impl<System: Kernel> fmt::Debug for TaskAttr<System> {
+impl<System: Kernel, TaskPriority: fmt::Debug> fmt::Debug for TaskAttr<System, TaskPriority> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskAttr")
             .field("entry_point", &self.entry_point)
             .field("entry_param", &self.entry_param)
             .field("stack", &self.stack)
+            .field("priority", &self.priority)
             .finish()
     }
 }
