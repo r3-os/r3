@@ -1,11 +1,14 @@
 //! Tasks
-use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, mem, sync::atomic::Ordering};
+use core::{
+    cell::UnsafeCell, convert::TryFrom, fmt, hash, marker::PhantomData, mem, sync::atomic::Ordering,
+};
 use num_traits::ToPrimitive;
 
 use super::{
     hunk::Hunk, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
     GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, ParkTimeoutError,
-    Port, PortThreading, SleepError, UnparkError, UnparkExactError, WaitTimeoutError,
+    Port, PortThreading, SetTaskPriorityError, SleepError, UnparkError, UnparkExactError,
+    WaitTimeoutError,
 };
 use crate::{
     time::Duration,
@@ -217,6 +220,27 @@ impl<System: Kernel> Task<System> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
         unpark_exact(lock, task_cb)
+    }
+
+    /// Set the task's priority.
+    ///
+    /// Tasks with lower priority values execute first. The priority is reset to
+    /// the initial value specified by [`CfgTaskBuilder::priority`] upon
+    /// activation.
+    ///
+    /// [`CfgTaskBuilder::priority`]: crate::kernel::cfg::CfgTaskBuilder::priority
+    ///
+    /// The value must be in range `0..`[`num_task_priority_levels`]. Otherwise,
+    /// this method will return [`SetTaskPriorityError::BadParam`].
+    ///
+    /// The task shouldn't be in the Dormant state. Otherwise, this method will
+    /// return [`SetTaskPriorityError::BadObjectState`].
+    ///
+    /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
+    pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError> {
+        let lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+        set_task_priority(lock, task_cb, priority)
     }
 }
 
@@ -794,4 +818,19 @@ pub(super) fn put_current_task_on_sleep_timeout<System: Kernel>(
         Err(WaitTimeoutError::Interrupted) => Err(SleepError::Interrupted),
         Err(WaitTimeoutError::Timeout) => Ok(()),
     }
+}
+
+/// Implements [`Task::set_priority`].
+fn set_task_priority<System: Kernel>(
+    mut lock: utils::CpuLockGuard<System>,
+    task_cb: &'static TaskCb<System>,
+    priority: usize,
+) -> Result<(), SetTaskPriorityError> {
+    // Validate the given priority
+    if priority >= System::NUM_TASK_PRIORITY_LEVELS {
+        return Err(SetTaskPriorityError::BadParam);
+    }
+    let priority = System::TaskPriority::try_from(priority);
+
+    todo!()
 }

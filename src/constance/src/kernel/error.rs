@@ -293,6 +293,23 @@ define_error! {
 }
 
 define_error! {
+    mod set_task_priority_error {}
+    /// Error type for [`Task::set_priority`].
+    ///
+    /// [`Task::set_priority`]: super::Task::set_priority
+    pub enum SetTaskPriorityError: BadContextError, BadIdError {
+        /// The task ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        /// The priority is out of range.
+        BadParam,
+        /// The task is in the Dormant state.
+        BadObjectState,
+    }
+}
+
+define_error! {
     mod exit_task_error {}
     /// Error type for [`Kernel::exit_task`].
     ///
