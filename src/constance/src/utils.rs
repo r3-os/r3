@@ -20,9 +20,11 @@ mod binary_search;
 mod sort;
 mod aligned_storage;
 pub mod binary_heap;
+pub(crate) mod convert;
 mod init;
 mod int;
 pub mod intrusive_list;
+pub(crate) mod pin;
 mod prio_bitmap;
 mod rawcell;
 #[macro_use]

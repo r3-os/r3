@@ -24,10 +24,12 @@ mod startup;
 mod state;
 mod task;
 mod timeout;
+mod timer;
 mod utils;
 mod wait;
 pub use self::{
-    error::*, event_group::*, hunk::*, interrupt::*, startup::*, task::*, timeout::*, wait::*,
+    error::*, event_group::*, hunk::*, interrupt::*, startup::*, task::*, timeout::*, timer::*,
+    wait::*,
 };
 
 /// Numeric value used to identify various kinds of kernel objects.
@@ -671,6 +673,10 @@ impl<System: Kernel> PortToKernel for System {
         // Initialize the timekeeping system
         System::state().timeout.init(lock.borrow_mut());
 
+        for cb in Self::timer_cb_pool() {
+            timer::init_timer(lock.borrow_mut(), cb);
+        }
+
         // Initialize all interrupt lines
         // Safety: The contents of `INTERRUPT_ATTR` has been generated and
         // verified by `panic_if_unmanaged_safety_is_violated` for *unsafe
@@ -768,6 +774,18 @@ pub unsafe trait KernelCfg2: Port + Sized {
     #[inline(always)]
     fn get_event_group_cb(i: usize) -> Option<&'static EventGroupCb<Self>> {
         Self::event_group_cb_pool().get(i)
+    }
+
+    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
+    //        to be resolved because `TimerCb` includes interior mutability
+    //        and can't be referred to by `const`
+    #[doc(hidden)]
+    fn timer_cb_pool() -> &'static [TimerCb<Self>];
+
+    #[doc(hidden)]
+    #[inline(always)]
+    fn get_timer_cb(i: usize) -> Option<&'static TimerCb<Self>> {
+        Self::timer_cb_pool().get(i)
     }
 }
 

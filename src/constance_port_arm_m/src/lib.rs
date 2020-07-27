@@ -179,6 +179,10 @@ macro_rules! use_port {
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
                     $crate::constance::utils::Init::INIT;
 
+                // The minimum stack size for all tests to pass. I found debug
+                // formatting to be particularly memory-hungry.
+                const STACK_DEFAULT_SIZE: usize = 2048;
+
                 unsafe fn dispatch_first_task() -> ! {
                     PORT_STATE.dispatch_first_task::<Self>()
                 }

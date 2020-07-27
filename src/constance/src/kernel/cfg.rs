@@ -11,7 +11,8 @@ mod hunk;
 mod interrupt;
 mod startup;
 mod task;
-pub use self::{event_group::*, hunk::*, interrupt::*, startup::*, task::*};
+mod timer;
+pub use self::{event_group::*, hunk::*, interrupt::*, startup::*, task::*, timer::*};
 
 /// Attach [a configuration function] to a "system" type by implementing
 /// [`KernelCfg2`].
@@ -28,7 +29,8 @@ macro_rules! build {
                     InterruptHandlerTable,
                 },
                 EventGroupCb, HunkAttr, HunkInitAttr, InterruptAttr, InterruptLineInit, KernelCfg1,
-                KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef,
+                KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
+                TimerCb,
             },
             staticvec::StaticVec,
             utils::{
@@ -93,6 +95,15 @@ macro_rules! build {
                     (0..CFG.event_groups.len()).map(|i| CFG.event_groups.get(i).to_state());
         }
 
+        // Instantiiate timer structures
+        $crate::array_item_from_fn! {
+            const TIMER_ATTR_POOL: [TimerAttr<$sys>; _] =
+                (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_attr());
+            static TIMER_CB_POOL:
+                [TimerCb<$sys>; _] =
+                    (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_state(&TIMER_ATTR_POOL[i], i));
+        }
+
         // Instantiate hunks
         static HUNK_POOL: RawCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>> =
             Init::INIT;
@@ -146,7 +157,7 @@ macro_rules! build {
         }
 
         // Calculate the required storage of the timeout heap
-        const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len();
+        const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len() + CFG.timers.len();
         type TimeoutHeap = StaticVec<TimeoutRef<$sys>, TIMEOUT_HEAP_LEN>;
 
         // Safety: We are `build!`, so it's okay to `impl` this
@@ -180,6 +191,11 @@ macro_rules! build {
             #[inline(always)]
             fn event_group_cb_pool() -> &'static [EventGroupCb<$sys>] {
                 &EVENT_GROUP_CB_POOL
+            }
+
+            #[inline(always)]
+            fn timer_cb_pool() -> &'static [TimerCb<$sys>] {
+                &TIMER_CB_POOL
             }
         }
 
@@ -229,6 +245,7 @@ pub struct CfgBuilderInner<System> {
     pub interrupt_handlers: ComptimeVec<CfgBuilderInterruptHandler>,
     pub startup_hooks: ComptimeVec<CfgBuilderStartupHook>,
     pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
+    pub timers: ComptimeVec<CfgBuilderTimer>,
 }
 
 impl<System> CfgBuilder<System> {
@@ -255,6 +272,7 @@ impl<System> CfgBuilder<System> {
                 interrupt_handlers: ComptimeVec::new(),
                 startup_hooks: ComptimeVec::new(),
                 event_groups: ComptimeVec::new(),
+                timers: ComptimeVec::new(),
             },
         }
     }

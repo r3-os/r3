@@ -170,6 +170,11 @@ pub mod kernel_tests {
         (mod time_misc {}, "time_misc"),
         (mod time_set_event {}, "time_set_event"),
         (mod time_stress {}, "time_stress"),
+        (mod timer_misc {}, "timer_misc"),
+        (mod timer_overdue {}, "timer_overdue"),
+        (mod timer_periodic {}, "timer_periodic"),
+        (mod timer_stop {}, "timer_stop"),
+        (mod timer_zero_period {}, "timer_zero_period"),
     }
 
     /// Invoke the specified macro with a description of test cases
