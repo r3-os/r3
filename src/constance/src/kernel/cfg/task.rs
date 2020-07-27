@@ -180,7 +180,7 @@ impl<System: Port> CfgBuilderTask<System> {
             port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
             // `self.priority` has already been checked by `to_attr`
-            priority: System::TASK_PRIORITY_LEVELS[self.priority],
+            priority: CpuLockCell::new(System::TASK_PRIORITY_LEVELS[self.priority]),
             st: CpuLockCell::new(if self.active {
                 task::TaskSt::PendingActivation
             } else {

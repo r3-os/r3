@@ -296,13 +296,16 @@ impl<System: Kernel> WaitQueue<System> {
                 None
             }
             QueueOrder::TaskPriority => {
-                let cur_task_pri = task.priority;
+                let cur_task_pri = task.priority.read(&**accessor.cell_key());
                 let mut insert_at = None;
                 let mut cursor = accessor.back();
                 while let Some(next_cursor) = cursor {
                     // Should the new wait object inserted at this or an earlier
                     // position?
-                    if accessor.pool()[next_cursor].task.priority > cur_task_pri {
+                    let next_cursor_task = accessor.pool()[next_cursor].task;
+                    let next_cursor_task_pri =
+                        next_cursor_task.priority.read(&**accessor.cell_key());
+                    if next_cursor_task_pri > cur_task_pri {
                         // If so, update `insert_at`. Continue searching because
                         // there might be a viable position that is even
                         // earlier.

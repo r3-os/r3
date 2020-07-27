@@ -314,7 +314,7 @@ pub struct TaskCb<
     /// The static properties of the task.
     pub attr: &'static TaskAttr<System, TaskPriority>,
 
-    pub priority: TaskPriority,
+    pub(super) priority: utils::CpuLockCell<System, TaskPriority>,
 
     pub(super) st: utils::CpuLockCell<System, TaskSt>,
 
@@ -532,7 +532,7 @@ pub(super) unsafe fn make_ready<System: Kernel>(
     task_cb.st.replace(&mut *lock, TaskSt::Ready);
 
     // Insert the task to a ready queue
-    let pri = task_cb.priority.to_usize().unwrap();
+    let pri = task_cb.priority.read(&*lock).to_usize().unwrap();
     list_accessor!(<System>::state().task_ready_queue[pri], lock.borrow_mut())
         .push_back(Ident(task_cb));
 
@@ -560,7 +560,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLo
     }
 
     let prev_task_priority = if let Some(running_task) = System::state().running_task() {
-        running_task.priority.to_usize().unwrap()
+        running_task.priority.read(&*lock).to_usize().unwrap()
     } else {
         usize::MAX
     };
@@ -600,7 +600,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     let prev_running_task = System::state().running_task();
     let prev_task_priority = if let Some(running_task) = prev_running_task {
         if *running_task.st.read(&*lock) == TaskSt::Running {
-            running_task.priority.to_usize().unwrap()
+            running_task.priority.read(&*lock).to_usize().unwrap()
         } else {
             usize::MAX
         }

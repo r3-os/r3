@@ -183,6 +183,10 @@ where
         self.pool
     }
 
+    pub fn cell_key(&self) -> &CellKey {
+        &self.cell_key
+    }
+
     pub fn is_empty(&self) -> bool {
         self.head().is_empty()
     }
