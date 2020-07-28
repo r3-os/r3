@@ -566,10 +566,9 @@ where
     // FIXME: Work-around for `for` being unsupported in `const fn`
     while i < 16 {
         if i != INTERRUPT_SYSTICK {
-            // FIXME: `Option::is_some` is not `const fn` yet
             // TODO: This check trips even if no handler is registered at `i`
             #[cfg(any())]
-            if let Some(_) = System::INTERRUPT_HANDLERS.get(i) {
+            if System::INTERRUPT_HANDLERS.get(i).is_some() {
                 panic!(
                     "registering a handler for a non-internal exception is \
                     disallowed except for SysTick"

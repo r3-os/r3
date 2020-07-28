@@ -60,8 +60,7 @@ impl<System: Port> CfgTaskBuilder<System> {
 
     /// Specify the task's stack size.
     pub const fn stack_size(self, stack_size: usize) -> Self {
-        // FIXME: `Option::is_some` is not `const fn` yet
-        if let Some(_) = self.stack {
+        if self.stack.is_some() {
             panic!("the task's stack is already specified");
         }
 
@@ -73,8 +72,7 @@ impl<System: Port> CfgTaskBuilder<System> {
 
     /// Specify the task's hunk.
     pub const fn stack_hunk(self, stack_hunk: task::StackHunk<System>) -> Self {
-        // FIXME: `Option::is_some` is not `const fn` yet
-        if let Some(_) = self.stack {
+        if self.stack.is_some() {
             panic!("the task's stack is already specified");
         }
 
