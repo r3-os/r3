@@ -88,11 +88,21 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
         app.task2.interrupt(),
         Err(constance::kernel::InterruptTaskError::BadObjectState)
     );
+    assert_eq!(
+        app.task2.set_priority(1),
+        Err(constance::kernel::SetTaskPriorityError::BadObjectState)
+    );
 
     // The task is running
     assert_eq!(
         app.task1.interrupt(),
         Err(constance::kernel::InterruptTaskError::BadObjectState)
+    );
+
+    // Priority is out of range
+    assert_eq!(
+        app.task1.set_priority(usize::MAX),
+        Err(constance::kernel::SetTaskPriorityError::BadParam)
     );
 
     // Current task
@@ -119,6 +129,10 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     assert_eq!(
         System::park(),
         Err(constance::kernel::ParkError::BadContext)
+    );
+    assert_eq!(
+        app.task1.set_priority(2),
+        Err(constance::kernel::SetTaskPriorityError::BadContext)
     );
     unsafe { System::release_cpu_lock().unwrap() };
 
