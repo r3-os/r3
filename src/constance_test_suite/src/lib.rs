@@ -164,6 +164,7 @@ pub mod kernel_tests {
         (mod task_park_priority_boost {}, "task_park_priority_boost"),
         (mod task_park_reset {}, "task_park_reset"),
         (mod task_priority_boost_reset {}, "task_priority_boost_reset"),
+        (mod task_priority_reset {}, "task_priority_reset"),
         (mod task_queue_fifo {}, "task_queue_fifo"),
         (mod task_set_priority {}, "task_set_priority"),
         (mod task_take_interrupt_at_return {}, "task_take_interrupt_at_return"),
