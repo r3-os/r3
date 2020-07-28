@@ -104,7 +104,7 @@ impl std::str::FromStr for TestFilter {
     ///    support yet.)
     ///
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut i = s.find(&['-', '+'][..]).unwrap_or(s.len());
+        let mut i = s.find(&['-', '+'][..]).unwrap_or_else(|| s.len());
         let mut flt = TestFilter::CaseNameContains(s[0..i].to_owned());
 
         while i < s.len() {
@@ -119,7 +119,7 @@ impl std::str::FromStr for TestFilter {
             let k = s[i..]
                 .find(&['-', '+'][..])
                 .map(|k| k + i)
-                .unwrap_or(s.len());
+                .unwrap_or_else(|| s.len());
 
             let feature = &s[i..k];
 

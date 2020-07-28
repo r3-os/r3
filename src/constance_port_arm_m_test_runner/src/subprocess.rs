@@ -155,12 +155,10 @@ impl CmdBuilder {
 
         match command.spawn() {
             Ok(child) => Ok(child),
-            Err(e) => {
-                return Err(SubprocessError::Spawn {
-                    cmd: self.into_cmd(),
-                    error: e,
-                })
-            }
+            Err(e) => Err(SubprocessError::Spawn {
+                cmd: self.into_cmd(),
+                error: e,
+            }),
         }
     }
 }

@@ -21,6 +21,7 @@ impl<System: Kernel> App<System> {
             .active(true)
             .finish(b);
 
+        #[allow(clippy::len_zero)] // for symmetry
         let int = [
             if D::INTERRUPT_LINES.len() >= 1 {
                 let int_line = D::INTERRUPT_LINES[0];

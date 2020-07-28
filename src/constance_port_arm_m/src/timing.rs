@@ -272,14 +272,12 @@ where
             let new_value = self.inner + t_rhs;
             self.inner = new_value % (t_max + T::from(1));
             new_value >= t_max + T::from(1)
+        } else if t_max - self.inner >= t_rhs {
+            self.inner = self.inner + t_rhs;
+            false
         } else {
-            if t_max - self.inner >= t_rhs {
-                self.inner = self.inner + t_rhs;
-                false
-            } else {
-                self.inner = t_rhs - (t_max - self.inner) - T::from(1);
-                true
-            }
+            self.inner = t_rhs - (t_max - self.inner) - T::from(1);
+            true
         }
     }
 }

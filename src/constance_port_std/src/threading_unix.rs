@@ -116,13 +116,11 @@ impl ThreadData {
             park_sock.assume_init()
         };
 
-        let this = Self {
+        Self {
             park_sock,
             park_count: AtomicUsize::new(0),
             pthread_id: Atomic::<libc::pthread_t>::new(0),
-        };
-
-        this
+        }
     }
 
     /// Assign `self.pthread_id` using `pthread_self`.
