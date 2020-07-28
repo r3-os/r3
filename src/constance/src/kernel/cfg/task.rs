@@ -132,6 +132,7 @@ impl<System: Port> CfgTaskBuilder<System> {
         let inner = &mut cfg.inner;
 
         inner.tasks.push(CfgBuilderTask {
+            // FIXME: Work-around for `Option::expect` being not `const fn`
             start: if let Some(x) = self.start {
                 x
             } else {
@@ -139,6 +140,7 @@ impl<System: Port> CfgTaskBuilder<System> {
             },
             param: self.param,
             stack,
+            // FIXME: Work-around for `Option::expect` being not `const fn`
             priority: if let Some(x) = self.priority {
                 x
             } else {

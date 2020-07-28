@@ -87,6 +87,7 @@ impl<System: Port> CfgStartupHookBuilder<System> {
 
         let order = inner.startup_hooks.len();
         inner.startup_hooks.push(CfgBuilderStartupHook {
+            // FIXME: Work-around for `Option::expect` being not `const fn`
             start: if let Some(x) = self.start {
                 x
             } else {

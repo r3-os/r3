@@ -86,6 +86,7 @@ impl<System: Port> CfgTimerBuilder<System> {
         let inner = &mut cfg.inner;
 
         let period = if let Some(period) = self.period {
+            // FIXME: Work-around for `Result::expect` being not `const fn`
             if let Ok(x) = timeout::time32_from_duration(period) {
                 x
             } else {
@@ -97,6 +98,7 @@ impl<System: Port> CfgTimerBuilder<System> {
         };
 
         let delay = if let Some(delay) = self.delay {
+            // FIXME: Work-around for `Result::expect` being not `const fn`
             if let Ok(x) = timeout::time32_from_duration(delay) {
                 x
             } else {
@@ -108,6 +110,7 @@ impl<System: Port> CfgTimerBuilder<System> {
         };
 
         inner.timers.push(CfgBuilderTimer {
+            // FIXME: Work-around for `Option::expect` being not `const fn`
             start: if let Some(x) = self.start {
                 x
             } else {
