@@ -42,8 +42,7 @@ impl<System: Port> CfgInterruptLineBuilder<System> {
 
     /// [**Required**] Specify the interrupt line to confiigure.
     pub const fn line(self, line: interrupt::InterruptNum) -> Self {
-        // FIXME: `Option::is_some` is not `const fn` yet
-        if let Some(_) = self.line {
+        if self.line.is_some() {
             panic!("`line` is specified twice");
         }
         Self {
@@ -54,8 +53,7 @@ impl<System: Port> CfgInterruptLineBuilder<System> {
 
     /// Specify the initial priority.
     pub const fn priority(self, priority: interrupt::InterruptPriority) -> Self {
-        // FIXME: `Option::is_some` is not `const fn` yet
-        if let Some(_) = self.priority {
+        if self.priority.is_some() {
             panic!("`priority` is specified twice");
         }
         Self {
@@ -98,8 +96,7 @@ impl<System: Port> CfgInterruptLineBuilder<System> {
         let cfg_interrupt_line = inner.interrupt_lines.get_mut(i);
 
         if let Some(priority) = self.priority {
-            // FIXME: `Option::is_some` is not `const fn` yet
-            if let Some(_) = cfg_interrupt_line.priority {
+            if cfg_interrupt_line.priority.is_some() {
                 panic!("`priority` is already specified for this interrupt line");
             }
             cfg_interrupt_line.priority = Some(priority);
@@ -140,8 +137,7 @@ impl CfgBuilderInterruptLine {
             priority: if let Some(i) = self.priority { i } else { 0 },
             flags: {
                 let mut f = 0;
-                // FIXME: `Option::is_some` is not `const fn` yet
-                if let Some(_) = self.priority {
+                if self.priority.is_some() {
                     f |= interrupt::InterruptLineInitFlags::SET_PRIORITY.bits();
                 }
                 if self.enabled {
@@ -201,8 +197,7 @@ impl<System: Port> CfgInterruptHandlerBuilder<System> {
     /// [**Required**] Specify the interrupt line to attach the interrupt
     /// handler to.
     pub const fn line(self, line: interrupt::InterruptNum) -> Self {
-        // FIXME: `Option::is_some` is not `const fn` yet
-        if let Some(_) = self.line {
+        if self.line.is_some() {
             panic!("`line` is specified twice");
         }
         Self {
@@ -302,14 +297,11 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: Port>(
             continue;
         }
 
-        // FIXME: Work-around for `Option::is_none` not being `const fn`
-        let line_unmanaged = matches!(
-            vec_position!(interrupt_lines, |line| line.num == handler.line
-                && line.is_initially_managed::<System>()),
-            None
-        );
+        let managed_line_i = vec_position!(interrupt_lines, |line| line.num == handler.line
+            && line.is_initially_managed::<System>());
+        let is_line_unmanaged = managed_line_i.is_none();
 
-        if line_unmanaged {
+        if is_line_unmanaged {
             panic!(
                 "An interrupt handler that is not marked with `unmanaged` \
                 is attached to an interrupt line whose priority value is \
@@ -578,10 +570,9 @@ pub const unsafe fn new_interrupt_handler_table<
                 // Return the combined handler
                 let handler = T::COMBINED_HANDLERS[i];
 
-                // FIXME: Work-around for `Option::is_none` not being `const fn`
                 // FIXME: Work-around for `Option::unwrap` not being `const fn`
                 // FIXME: Work-around for `assert!` not being allowed in `const fn`
-                if let None = handler {
+                if handler.is_none() {
                     panic!("assertion failed: T::COMBINED_HANDLERS[i] should be Some but got None");
                 }
 
