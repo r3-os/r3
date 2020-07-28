@@ -296,26 +296,12 @@ impl<System: Kernel> WaitQueue<System> {
                 None
             }
             QueueOrder::TaskPriority => {
-                let cur_task_pri = task.priority.read(&**accessor.cell_key());
-                let mut insert_at = None;
-                let mut cursor = accessor.back();
-                while let Some(next_cursor) = cursor {
-                    // Should the new wait object inserted at this or an earlier
-                    // position?
-                    let next_cursor_task = accessor.pool()[next_cursor].task;
-                    let next_cursor_task_pri =
-                        next_cursor_task.priority.read(&**accessor.cell_key());
-                    if next_cursor_task_pri > cur_task_pri {
-                        // If so, update `insert_at`. Continue searching because
-                        // there might be a viable position that is even
-                        // earlier.
-                        insert_at = Some(next_cursor);
-                        cursor = accessor.prev(next_cursor);
-                    } else {
-                        break;
-                    }
-                }
-                insert_at
+                let cur_task_pri = *task.priority.read(&**accessor.cell_key());
+                // TODO: It's unfortunate that we need to pass
+                //       `&ListAccessorCell`, which incurs a runtime cost because
+                //       `&T` is always pointer-sized. Find a way to eliminate
+                //       this runtime cost.
+                Self::find_insertion_position_by_task_priority(cur_task_pri, &accessor)
             }
         };
         accessor.insert(wait_ref, insert_at);
@@ -333,6 +319,71 @@ impl<System: Kernel> WaitQueue<System> {
 
         // Return the wait result (`Ok(())` or `Err(Interrupted)`)
         task.wait.wait_result.get(&*lock)
+    }
+
+    /// Find the insertion position for a wait object owned by a task whose
+    /// priority is `cur_task_pri`.
+    fn find_insertion_position_by_task_priority<MapLink>(
+        cur_task_pri: System::TaskPriority,
+        accessor: &ListAccessorCell<
+            '_,
+            &CpuLockCell<System, intrusive_list::ListHead<WaitRef<System>>>,
+            UnsafeStatic,
+            MapLink,
+            CpuLockGuardBorrowMut<'_, System>,
+        >,
+    ) -> Option<WaitRef<System>>
+    where
+        MapLink: Fn(
+            &Wait<System>,
+        ) -> &CpuLockCell<System, Option<intrusive_list::Link<WaitRef<System>>>>,
+    {
+        let mut insert_at = None;
+        let mut cursor = accessor.back();
+        while let Some(next_cursor) = cursor {
+            // Should the new wait object inserted at this or an earlier
+            // position?
+            let next_cursor_task = accessor.pool()[next_cursor].task;
+            let next_cursor_task_pri = *next_cursor_task.priority.read(&**accessor.cell_key());
+            if next_cursor_task_pri > cur_task_pri {
+                // If so, update `insert_at`. Continue searching because
+                // there might be a viable position that is even
+                // earlier.
+                insert_at = Some(next_cursor);
+                cursor = accessor.prev(next_cursor);
+            } else {
+                break;
+            }
+        }
+        insert_at
+    }
+
+    /// Reposition `wait` in the wait queue. This is necessary after
+    /// changing the waiting task's priority.
+    fn reorder_wait(
+        &'static self,
+        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        wait: &Wait<System>,
+    ) {
+        match self.order {
+            QueueOrder::Fifo => return,
+            QueueOrder::TaskPriority => {}
+        }
+
+        let wait_ref = WaitRef(wait.into());
+        let task = wait.task;
+        debug_assert!(core::ptr::eq(wait.wait_queue.unwrap(), self));
+
+        // Safety: All elements of `self.waits` are extant.
+        let mut accessor = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) };
+
+        // Remove `wait_ref` first.
+        accessor.remove(wait_ref);
+
+        // Re-insert `wait_ref`.
+        let cur_task_pri = *task.priority.read(&**accessor.cell_key());
+        let insert_at = Self::find_insertion_position_by_task_priority(cur_task_pri, &accessor);
+        accessor.insert(wait_ref, insert_at);
     }
 
     /// Wake up up to one waiting task. Returns `true` if it has successfully
@@ -431,6 +482,27 @@ pub(super) fn with_current_wait_payload<System: Kernel, R>(
     let wait = wait_ref.map(|r| &unsafe { &*r.0.as_ptr() }.payload);
 
     f(wait)
+}
+
+/// Reposition the given task's wait object within the wait queue. This is
+/// necessary after changing the task's priority because some wait queues are
+/// configured to sort wait objects by task priority
+/// ([`QueueOrder::TaskPriority`]).
+///
+/// This function does nothing if the task is currently not in the Waiting state
+/// or the wait object is not associated with any wait queue.
+pub(super) fn reorder_wait_of_task<System: Kernel>(
+    lock: CpuLockGuardBorrowMut<'_, System>,
+    task_cb: &TaskCb<System>,
+) {
+    if let Some(wait_ref) = task_cb.wait.current_wait.get(&*lock) {
+        // Safety: `wait_ref` must point to an existing `Wait`
+        let wait = unsafe { &*wait_ref.0.as_ptr() };
+
+        if let Some(wait_queue) = wait.wait_queue {
+            wait_queue.reorder_wait(lock, wait);
+        }
+    }
 }
 
 /// Create a wait object pertaining to the currently running task but

@@ -510,6 +510,9 @@ fn activate<System: Kernel>(
     // Safety: CPU Lock active, the task is in the Dormant state
     unsafe { System::initialize_task_state(task_cb) };
 
+    // Reset the task priority
+    task_cb.priority.replace(&mut *lock, task_cb.attr.priority);
+
     // Safety: The previous state is Dormant, and we just initialized the task
     // state, so this is safe
     unsafe { make_ready(lock.borrow_mut(), task_cb) };
@@ -811,7 +814,68 @@ fn set_task_priority<System: Kernel>(
     if priority >= System::NUM_TASK_PRIORITY_LEVELS {
         return Err(SetTaskPriorityError::BadParam);
     }
-    let priority = System::TaskPriority::try_from(priority);
+    let priority_internal =
+        System::TaskPriority::try_from(priority).unwrap_or_else(|_| unreachable!());
 
-    todo!()
+    let st = *task_cb.st.read(&*lock);
+
+    if st == TaskSt::Dormant {
+        return Err(SetTaskPriorityError::BadObjectState);
+    }
+
+    // Assign the new priority
+    let old_priority = task_cb
+        .priority
+        .replace(&mut *lock, priority_internal)
+        .to_usize()
+        .unwrap();
+
+    if old_priority == priority {
+        return Ok(());
+    }
+
+    match st {
+        TaskSt::Ready => {
+            // Move the task between ready queues
+            let old_pri_empty = {
+                let mut accessor = list_accessor!(
+                    <System>::state().task_ready_queue[old_priority],
+                    lock.borrow_mut()
+                );
+                accessor.remove(Ident(task_cb));
+                accessor.is_empty()
+            };
+
+            list_accessor!(
+                <System>::state().task_ready_queue[priority],
+                lock.borrow_mut()
+            )
+            .push_back(Ident(task_cb));
+
+            // Update `task_ready_bitmap` accordingly
+            // (This code assumes `priority != old_priority`.)
+            let task_ready_bitmap = System::state().task_ready_bitmap.write(&mut *lock);
+            task_ready_bitmap.set(priority);
+            if old_pri_empty {
+                task_ready_bitmap.clear(old_priority);
+            }
+        }
+        TaskSt::Running => {}
+        TaskSt::Waiting => {
+            // Reposition the task in a wait queue if the task is currently waiting
+            wait::reorder_wait_of_task(lock.borrow_mut(), task_cb);
+        }
+        TaskSt::Dormant | TaskSt::PendingActivation => unreachable!(),
+    }
+
+    if let TaskSt::Running | TaskSt::Ready = st {
+        // - If `st == TaskSt::Running`, `task_cb` is the currently running
+        //   task. If the priority was lowered, it could be preempted by
+        //   a task in the Ready state.
+        // - If `st == TaskSt::Ready` and the priority was raised, it could
+        //   preempt the currently running task.
+        unlock_cpu_and_check_preemption(lock);
+    }
+
+    Ok(())
 }
