@@ -24,6 +24,24 @@ impl<T> Init for Option<T> {
     const INIT: Self = None;
 }
 
+impl<T: Init, const LEN: usize> Init for [T; LEN] {
+    const INIT: Self = {
+        let mut array = super::mem::uninit_array::<T, LEN>();
+
+        // FIXME: Work-around for `for` being unsupported in `const fn`
+        let mut i = 0;
+        while i < LEN {
+            array[i] = mem::MaybeUninit::new(T::INIT);
+            i += 1;
+        }
+
+        // Safety: The memory layout of `[MaybeUninit<T>; LEN]` is
+        // identical to `[T; LEN]`. We initialized all elements, so it's
+        // safe to reinterpret that range as `[T; LEN]`.
+        unsafe { super::mem::transmute(array) }
+    };
+}
+
 impl<T> Init for atomic::AtomicPtr<T> {
     const INIT: Self = atomic::AtomicPtr::new(core::ptr::null_mut());
 }
@@ -127,19 +145,3 @@ macro_rules! tuple_impl_init {
 tuple_impl_init! {
     A, B, C, D, E, F, G, H, I, J, K, L,
 }
-
-macro_rules! array_impl_init {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        impl<T> Init for [T; $n] where T: Init {
-            const INIT: Self = [$t::INIT, $($ts::INIT),*];
-        }
-        array_impl_init!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        impl<T> Init for [T; $n] {
-            const INIT: Self = [];
-        }
-    };
-}
-
-array_impl_init! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
