@@ -1,4 +1,4 @@
-use core::{fmt, ops};
+use core::{convert, fmt, ops};
 use num_integer::Integer;
 
 use super::{Init, ZeroInit};
@@ -35,6 +35,7 @@ pub trait BinInteger:
     + Send
     + Sync
     + num_traits::cast::ToPrimitive
+    + convert::TryFrom<usize>
     + 'static
 {
     type OneDigits: Iterator<Item = u32>;

@@ -179,11 +179,8 @@ impl<System: Port> CfgBuilderTask<System> {
         task::TaskCb {
             port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
-            priority: if self.priority < System::NUM_TASK_PRIORITY_LEVELS {
-                System::TASK_PRIORITY_LEVELS[self.priority]
-            } else {
-                panic!("task's `priority` must be less than `num_task_priority_levels`");
-            },
+            // `self.priority` has already been checked by `to_attr`
+            priority: CpuLockCell::new(System::TASK_PRIORITY_LEVELS[self.priority]),
             st: CpuLockCell::new(if self.active {
                 task::TaskSt::PendingActivation
             } else {
@@ -200,6 +197,11 @@ impl<System: Port> CfgBuilderTask<System> {
             entry_point: self.start,
             entry_param: self.param,
             stack: self.stack,
+            priority: if self.priority < System::NUM_TASK_PRIORITY_LEVELS {
+                System::TASK_PRIORITY_LEVELS[self.priority]
+            } else {
+                panic!("task's `priority` must be less than `num_task_priority_levels`");
+            },
         }
     }
 }

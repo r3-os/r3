@@ -1,11 +1,14 @@
 //! Tasks
-use core::{cell::UnsafeCell, fmt, hash, marker::PhantomData, mem, sync::atomic::Ordering};
+use core::{
+    cell::UnsafeCell, convert::TryFrom, fmt, hash, marker::PhantomData, mem, sync::atomic::Ordering,
+};
 use num_traits::ToPrimitive;
 
 use super::{
     hunk::Hunk, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
     GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, ParkTimeoutError,
-    Port, PortThreading, SleepError, UnparkError, UnparkExactError, WaitTimeoutError,
+    Port, PortThreading, SetTaskPriorityError, SleepError, UnparkError, UnparkExactError,
+    WaitTimeoutError,
 };
 use crate::{
     time::Duration,
@@ -218,6 +221,27 @@ impl<System: Kernel> Task<System> {
         let task_cb = self.task_cb()?;
         unpark_exact(lock, task_cb)
     }
+
+    /// Set the task's priority.
+    ///
+    /// Tasks with lower priority values execute first. The priority is reset to
+    /// the initial value specified by [`CfgTaskBuilder::priority`] upon
+    /// activation.
+    ///
+    /// [`CfgTaskBuilder::priority`]: crate::kernel::cfg::CfgTaskBuilder::priority
+    ///
+    /// The value must be in range `0..`[`num_task_priority_levels`]. Otherwise,
+    /// this method will return [`SetTaskPriorityError::BadParam`].
+    ///
+    /// The task shouldn't be in the Dormant state. Otherwise, this method will
+    /// return [`SetTaskPriorityError::BadObjectState`].
+    ///
+    /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
+    pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError> {
+        let lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+        set_task_priority(lock, task_cb, priority)
+    }
 }
 
 /// [`Hunk`] for a task stack.
@@ -288,9 +312,9 @@ pub struct TaskCb<
     pub port_task_state: PortTaskState,
 
     /// The static properties of the task.
-    pub attr: &'static TaskAttr<System>,
+    pub attr: &'static TaskAttr<System, TaskPriority>,
 
-    pub priority: TaskPriority,
+    pub(super) priority: utils::CpuLockCell<System, TaskPriority>,
 
     pub(super) st: utils::CpuLockCell<System, TaskSt>,
 
@@ -309,20 +333,6 @@ pub struct TaskCb<
     pub(super) park_token: utils::CpuLockCell<System, bool>,
 }
 
-impl<System: Port, PortTaskState: Init + 'static, TaskPriority: Init + 'static> Init
-    for TaskCb<System, PortTaskState, TaskPriority>
-{
-    const INIT: Self = Self {
-        port_task_state: Init::INIT,
-        attr: &TaskAttr::INIT,
-        priority: Init::INIT,
-        st: Init::INIT,
-        link: Init::INIT,
-        wait: Init::INIT,
-        park_token: Init::INIT,
-    };
-}
-
 impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Debug + 'static>
     fmt::Debug for TaskCb<System, PortTaskState, TaskPriority>
 {
@@ -336,7 +346,7 @@ impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Deb
 }
 
 /// The static properties of a task.
-pub struct TaskAttr<System> {
+pub struct TaskAttr<System, TaskPriority: 'static = <System as KernelCfg1>::TaskPriority> {
     /// The entry point of the task.
     ///
     /// # Safety
@@ -353,22 +363,17 @@ pub struct TaskAttr<System> {
     //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>
     /// The hunk representing the stack region for the task.
     pub stack: StackHunk<System>,
+
+    pub priority: TaskPriority,
 }
 
-impl<System> Init for TaskAttr<System> {
-    const INIT: Self = Self {
-        entry_point: |_| {},
-        entry_param: 0,
-        stack: StackHunk::INIT,
-    };
-}
-
-impl<System: Kernel> fmt::Debug for TaskAttr<System> {
+impl<System: Kernel, TaskPriority: fmt::Debug> fmt::Debug for TaskAttr<System, TaskPriority> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskAttr")
             .field("entry_point", &self.entry_point)
             .field("entry_param", &self.entry_param)
             .field("stack", &self.stack)
+            .field("priority", &self.priority)
             .finish()
     }
 }
@@ -505,6 +510,9 @@ fn activate<System: Kernel>(
     // Safety: CPU Lock active, the task is in the Dormant state
     unsafe { System::initialize_task_state(task_cb) };
 
+    // Reset the task priority
+    task_cb.priority.replace(&mut *lock, task_cb.attr.priority);
+
     // Safety: The previous state is Dormant, and we just initialized the task
     // state, so this is safe
     unsafe { make_ready(lock.borrow_mut(), task_cb) };
@@ -527,7 +535,7 @@ pub(super) unsafe fn make_ready<System: Kernel>(
     task_cb.st.replace(&mut *lock, TaskSt::Ready);
 
     // Insert the task to a ready queue
-    let pri = task_cb.priority.to_usize().unwrap();
+    let pri = task_cb.priority.read(&*lock).to_usize().unwrap();
     list_accessor!(<System>::state().task_ready_queue[pri], lock.borrow_mut())
         .push_back(Ident(task_cb));
 
@@ -555,7 +563,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLo
     }
 
     let prev_task_priority = if let Some(running_task) = System::state().running_task() {
-        running_task.priority.to_usize().unwrap()
+        running_task.priority.read(&*lock).to_usize().unwrap()
     } else {
         usize::MAX
     };
@@ -595,7 +603,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     let prev_running_task = System::state().running_task();
     let prev_task_priority = if let Some(running_task) = prev_running_task {
         if *running_task.st.read(&*lock) == TaskSt::Running {
-            running_task.priority.to_usize().unwrap()
+            running_task.priority.read(&*lock).to_usize().unwrap()
         } else {
             usize::MAX
         }
@@ -794,4 +802,80 @@ pub(super) fn put_current_task_on_sleep_timeout<System: Kernel>(
         Err(WaitTimeoutError::Interrupted) => Err(SleepError::Interrupted),
         Err(WaitTimeoutError::Timeout) => Ok(()),
     }
+}
+
+/// Implements [`Task::set_priority`].
+fn set_task_priority<System: Kernel>(
+    mut lock: utils::CpuLockGuard<System>,
+    task_cb: &'static TaskCb<System>,
+    priority: usize,
+) -> Result<(), SetTaskPriorityError> {
+    // Validate the given priority
+    if priority >= System::NUM_TASK_PRIORITY_LEVELS {
+        return Err(SetTaskPriorityError::BadParam);
+    }
+    let priority_internal =
+        System::TaskPriority::try_from(priority).unwrap_or_else(|_| unreachable!());
+
+    let st = *task_cb.st.read(&*lock);
+
+    if st == TaskSt::Dormant {
+        return Err(SetTaskPriorityError::BadObjectState);
+    }
+
+    // Assign the new priority
+    let old_priority = task_cb
+        .priority
+        .replace(&mut *lock, priority_internal)
+        .to_usize()
+        .unwrap();
+
+    if old_priority == priority {
+        return Ok(());
+    }
+
+    match st {
+        TaskSt::Ready => {
+            // Move the task between ready queues
+            let old_pri_empty = {
+                let mut accessor = list_accessor!(
+                    <System>::state().task_ready_queue[old_priority],
+                    lock.borrow_mut()
+                );
+                accessor.remove(Ident(task_cb));
+                accessor.is_empty()
+            };
+
+            list_accessor!(
+                <System>::state().task_ready_queue[priority],
+                lock.borrow_mut()
+            )
+            .push_back(Ident(task_cb));
+
+            // Update `task_ready_bitmap` accordingly
+            // (This code assumes `priority != old_priority`.)
+            let task_ready_bitmap = System::state().task_ready_bitmap.write(&mut *lock);
+            task_ready_bitmap.set(priority);
+            if old_pri_empty {
+                task_ready_bitmap.clear(old_priority);
+            }
+        }
+        TaskSt::Running => {}
+        TaskSt::Waiting => {
+            // Reposition the task in a wait queue if the task is currently waiting
+            wait::reorder_wait_of_task(lock.borrow_mut(), task_cb);
+        }
+        TaskSt::Dormant | TaskSt::PendingActivation => unreachable!(),
+    }
+
+    if let TaskSt::Running | TaskSt::Ready = st {
+        // - If `st == TaskSt::Running`, `task_cb` is the currently running
+        //   task. If the priority was lowered, it could be preempted by
+        //   a task in the Ready state.
+        // - If `st == TaskSt::Ready` and the priority was raised, it could
+        //   preempt the currently running task.
+        unlock_cpu_and_check_preemption(lock);
+    }
+
+    Ok(())
 }

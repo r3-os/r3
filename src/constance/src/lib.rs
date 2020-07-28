@@ -4,6 +4,7 @@
 #![feature(const_generics)]
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
+#![feature(const_fn_union)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_checked_int_methods)]
@@ -12,15 +13,16 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
 #![feature(specialization)]
+#![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
 #![doc(include = "./common.md")]
 #![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)
 
-// When not using `#![no_std]`, `core` has to be manually imported to be used
-#[cfg(test)]
-extern crate core;
+// `array_item_from_fn!` requires `MaybeUninit`.
+#[doc(hidden)]
+pub extern crate core;
 
 // `build!` requires `StaticVec`
 #[doc(hidden)]
