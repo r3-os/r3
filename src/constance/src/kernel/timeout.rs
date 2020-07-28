@@ -490,10 +490,7 @@ impl<System: Kernel> Timeout<System> {
     /// Set the expiration time with a duration since boot, returning the
     /// modified instance of `self`.
     pub(super) const fn with_expiration_at(mut self, at: Time32) -> Self {
-        // FIXME: Work-around for `assert!` being unsupported in `const fn`
-        if at == BAD_DURATION32 {
-            panic!("`at` must be a valid duration");
-        }
+        assert!(at != BAD_DURATION32, "`at` must be a valid duration");
 
         self.at = AtomicTime32::new(at);
         self

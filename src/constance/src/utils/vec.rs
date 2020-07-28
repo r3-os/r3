@@ -33,9 +33,7 @@ impl<T: Copy> ComptimeVec<T> {
 
     // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
     pub const fn get(&self, i: usize) -> &T {
-        if i >= self.len() {
-            panic!("out of bounds");
-        }
+        assert!(i < self.len(), "out of bounds");
 
         // Safety: `self.storage[0..self.len]` is initialized, and `i < self.len`
         // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
@@ -44,9 +42,7 @@ impl<T: Copy> ComptimeVec<T> {
 
     // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
     pub const fn get_mut(&mut self, i: usize) -> &mut T {
-        if i >= self.len() {
-            panic!("out of bounds");
-        }
+        assert!(i < self.len(), "out of bounds");
 
         // Safety: `self.storage[0..self.len]` is initialized, and `i < self.len`
         // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
@@ -56,10 +52,8 @@ impl<T: Copy> ComptimeVec<T> {
 
 impl<T: Copy> ComptimeVec<T> {
     pub const fn to_array<const LEN: usize>(&self) -> [T; LEN] {
-        // FIXME: Work-around for `assert_eq` being unsupported in `const fn`
-        if self.len() != LEN {
-            panic!("`self.len() != LEN`");
-        }
+        // FIXME: Work-around for `assert_eq!` being unsupported in `const fn`
+        assert!(self.len() == LEN);
 
         // Safety: This is equivalent to `transmute_copy(&self.storage)`. The
         // memory layout of `[MaybeUninit<T>; LEN]` is identical to `[T; LEN]`.

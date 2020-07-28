@@ -113,9 +113,7 @@ impl<System: Port, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, T, InitTag>
 
         let inner = &mut cfg.inner;
 
-        if self.len != 1 {
-            panic!("Non-array hunk must have `len` of `1`");
-        }
+        assert!(self.len == 1, "Non-array hunk must have `len` of `1`");
 
         // Round up `hunk_pool_len`
         inner.hunk_pool_len = (inner.hunk_pool_len + align - 1) / align * align;
@@ -148,9 +146,7 @@ impl<System: Port, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, [T], InitTa
         let Self { mut align, len, .. } = self;
         let inner = &mut cfg.inner;
 
-        if !align.is_power_of_two() {
-            panic!("`align` is not power of two");
-        }
+        assert!(align.is_power_of_two(), "`align` is not power of two");
 
         if mem::align_of::<T>() > align {
             align = mem::align_of::<T>();

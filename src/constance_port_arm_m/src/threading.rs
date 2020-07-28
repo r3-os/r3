@@ -568,12 +568,11 @@ where
         if i != INTERRUPT_SYSTICK {
             // TODO: This check trips even if no handler is registered at `i`
             #[cfg(any())]
-            if System::INTERRUPT_HANDLERS.get(i).is_some() {
-                panic!(
-                    "registering a handler for a non-internal exception is \
-                    disallowed except for SysTick"
-                );
-            }
+            assert!(
+                System::INTERRUPT_HANDLERS.get(i).is_none(),
+                "registering a handler for a non-internal exception is \
+                disallowed except for SysTick"
+            );
         }
         i += 1;
     }

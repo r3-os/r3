@@ -60,9 +60,10 @@ impl<System: Port> CfgTaskBuilder<System> {
 
     /// Specify the task's stack size.
     pub const fn stack_size(self, stack_size: usize) -> Self {
-        if self.stack.is_some() {
-            panic!("the task's stack is already specified");
-        }
+        assert!(
+            self.stack.is_none(),
+            "the task's stack is already specified"
+        );
 
         Self {
             stack: Some(TaskStack::Auto(stack_size)),
@@ -72,9 +73,10 @@ impl<System: Port> CfgTaskBuilder<System> {
 
     /// Specify the task's hunk.
     pub const fn stack_hunk(self, stack_hunk: task::StackHunk<System>) -> Self {
-        if self.stack.is_some() {
-            panic!("the task's stack is already specified");
-        }
+        assert!(
+            self.stack.is_none(),
+            "the task's stack is already specified"
+        );
 
         Self {
             stack: Some(TaskStack::Hunk(stack_hunk)),
