@@ -117,7 +117,7 @@ impl State {
 
             # Release CPU Lock
             # TODO: Choose the appropriate method based on `CPU_LOCK_PRIORITY_MASK`
-            mov r0, #0
+            movs r0, #0
             msr basepri, r0
             cpsie i
         "
@@ -160,7 +160,7 @@ impl State {
             # `running_task` is `None` at this point, so the processor state
             # will be consistent with `running_task` after this operation.
             mrs r0, control
-            bic r0, #2
+            subs r0, #2
             msr control, r0
 
             # Transfer the control to the idle task. We have pended PendSV, so
@@ -237,7 +237,7 @@ impl State {
             cbz r1, ChooseTask
             mrs r2, psp
             mrs r3, control
-            sub r2, #40
+            subs r2, #40
             str r2, [r1]
             stm r2, {r4-r11}
             str lr, [r2, 32]
@@ -279,12 +279,12 @@ impl State {
             ldr r3, [r2, 36]
             msr control, r3
             ldmia r2, {r4-r11}
-            add r2, #40
+            adds r2, #40
             msr psp, r2
             bx lr
 
         RestoreIdleTask:
-            mov r0, #0
+            movs r0, #0
             mov lr, #0xfffffff9
             msr control, r0
         "
