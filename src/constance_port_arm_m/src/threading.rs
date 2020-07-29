@@ -204,7 +204,7 @@ impl State {
         //  - This is the top-level function in the PendSV handler. That is,
         //    the compiler must really inline `handle_pend_sv`.
 
-        let running_task_ref = unsafe { System::state().running_task_ref() };
+        let running_task_ptr = System::state().running_task_ptr();
 
         extern "C" fn choose_next_task<System: PortInstance>() {
             // Choose the next task to run
@@ -289,7 +289,7 @@ impl State {
             msr control, r0
         "
         :
-        :   "{r0}"(running_task_ref)
+        :   "{r0}"(running_task_ptr)
         ,   "X"(choose_next_task::<System> as extern fn())
         :
         :   "volatile");

@@ -1,5 +1,4 @@
 //! The RTOS kernel
-use atomic_ref::AtomicRef;
 use core::{
     borrow::BorrowMut,
     fmt,
@@ -634,7 +633,7 @@ pub trait PortToKernel {
     // TODO: Explain phases
     unsafe fn boot() -> !;
 
-    /// Determine the next task to run and store it in [`State::running_task_ref`].
+    /// Determine the next task to run and store it in [`State::running_task_ptr`].
     ///
     /// Precondition: CPU Lock active / Postcondition: CPU Lock active
     unsafe fn choose_running_task();
@@ -800,7 +799,8 @@ pub struct State<
 > {
     /// The currently or recently running task. Can be in a Running or Waiting
     /// state.
-    running_task: AtomicRef<'static, TaskCb<System, PortTaskState, TaskPriority>>,
+    running_task:
+        utils::CpuLockCell<System, Option<&'static TaskCb<System, PortTaskState, TaskPriority>>>,
 
     /// The task ready bitmap, in which each bit indicates whether the
     /// task ready queue corresponding to that bit contains a task or not.
@@ -831,7 +831,7 @@ impl<
     for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     const INIT: Self = Self {
-        running_task: AtomicRef::new(None),
+        running_task: utils::CpuLockCell::new(None),
         task_ready_bitmap: Init::INIT,
         task_ready_queue: Init::INIT,
         priority_boost: AtomicBool::new(false),
@@ -862,16 +862,28 @@ impl<
 
 impl<System: KernelCfg2> State<System> {
     /// Get the currently running task.
-    pub fn running_task(&self) -> Option<&'static TaskCb<System>> {
-        self.running_task.load(Ordering::Relaxed)
+    #[inline]
+    fn running_task(
+        &self,
+        lock: utils::CpuLockGuardBorrowMut<System>,
+    ) -> Option<&'static TaskCb<System>> {
+        *self.running_task.read(&*lock)
     }
 
-    /// Get a reference to the variable storing the currently running task.
+    /// Get a pointer to the variable storing the currently running task.
     ///
-    /// # Safety
+    /// Reading the variable is safe as long as the read is free of data race.
+    /// Note that only the dispatcher (that calls
+    /// [`PortToKernel::choose_running_task`]) can modify the variable
+    /// asynchonously. For example, it's safe to read it in a task context. It's
+    /// also safe to read it in the dispatcher. On the other hand, reading it in
+    /// a non-task context (except for the dispatcher, of course) may lead to
+    /// an undefined behavior unless CPU Lock is activated while reading the
+    /// variable.
     ///
-    /// Modifying the stored value is not allowed.
-    pub unsafe fn running_task_ref(&self) -> &AtomicRef<'static, TaskCb<System>> {
-        &self.running_task
+    /// Writing the variable is not allowed.
+    #[inline]
+    pub fn running_task_ptr(&self) -> *mut Option<&'static TaskCb<System>> {
+        self.running_task.as_ptr()
     }
 }

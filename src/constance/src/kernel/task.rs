@@ -135,8 +135,8 @@ impl<System: Kernel> Task<System> {
     /// handler could be interrupted by another interrrupt, which might do
     /// scheduling on return (whether this happens or not is unspecified).
     pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
-        let _lock = utils::lock_cpu::<System>()?;
-        let task_cb = if let Some(cb) = System::state().running_task() {
+        let mut lock = utils::lock_cpu::<System>()?;
+        let task_cb = if let Some(cb) = System::state().running_task(lock.borrow_mut()) {
             cb
         } else {
             return Ok(None);
@@ -425,12 +425,12 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
         .store(false, Ordering::Release);
 
     // Transition the current task to Dormant
-    let running_task = System::state().running_task().unwrap();
+    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
     running_task.st.replace(&mut *lock, TaskSt::Dormant);
 
     // Erase `running_task`
-    System::state().running_task.store(None, Ordering::Relaxed);
+    System::state().running_task.replace(&mut *lock, None);
 
     core::mem::forget(lock);
 
@@ -551,22 +551,29 @@ pub(super) unsafe fn make_ready<System: Kernel>(
 ///
 /// System services that transition a task into the Ready state should call
 /// this before returning to the caller.
-pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(lock: utils::CpuLockGuard<System>) {
+pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
+    mut lock: utils::CpuLockGuard<System>,
+) {
     // If Priority Boost is active, treat the currently running task as the
     // highest-priority task.
     if System::is_priority_boost_active() {
         debug_assert_eq!(
-            *System::state().running_task().unwrap().st.read(&*lock),
+            *System::state()
+                .running_task(lock.borrow_mut())
+                .unwrap()
+                .st
+                .read(&*lock),
             TaskSt::Running
         );
         return;
     }
 
-    let prev_task_priority = if let Some(running_task) = System::state().running_task() {
-        running_task.priority.read(&*lock).to_usize().unwrap()
-    } else {
-        usize::MAX
-    };
+    let prev_task_priority =
+        if let Some(running_task) = System::state().running_task(lock.borrow_mut()) {
+            running_task.priority.read(&*lock).to_usize().unwrap()
+        } else {
+            usize::MAX
+        };
 
     // The priority of the next task to run
     let next_task_priority = System::state()
@@ -593,14 +600,18 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     if System::is_priority_boost_active() {
         // Blocking system calls aren't allowed when Priority Boost is active
         debug_assert_eq!(
-            *System::state().running_task().unwrap().st.read(&*lock),
+            *System::state()
+                .running_task(lock.borrow_mut())
+                .unwrap()
+                .st
+                .read(&*lock),
             TaskSt::Running
         );
         return;
     }
 
     // The priority of `running_task`
-    let prev_running_task = System::state().running_task();
+    let prev_running_task = System::state().running_task(lock.borrow_mut());
     let prev_task_priority = if let Some(running_task) = prev_running_task {
         if *running_task.st.read(&*lock) == TaskSt::Running {
             running_task.priority.read(&*lock).to_usize().unwrap()
@@ -675,7 +686,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
 
     System::state()
         .running_task
-        .store(next_running_task, Ordering::Relaxed);
+        .replace(&mut *lock, next_running_task);
 }
 
 /// Transition the currently running task into the Waiting state. Returns when
@@ -691,7 +702,7 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
     debug_assert_eq!(state::expect_waitable_context::<System>(), Ok(()));
 
     // Transition the current task to Waiting
-    let running_task = System::state().running_task().unwrap();
+    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
     running_task.st.replace(&mut *lock, TaskSt::Waiting);
 
@@ -720,7 +731,7 @@ pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
     let mut lock = utils::lock_cpu::<System>()?;
     state::expect_waitable_context::<System>()?;
 
-    let running_task = System::state().running_task().unwrap();
+    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
 
     // If the task already has a park token, return immediately
     if running_task.park_token.replace(&mut *lock, false) {
@@ -741,7 +752,7 @@ pub(super) fn park_current_task_timeout<System: Kernel>(
     let mut lock = utils::lock_cpu::<System>()?;
     state::expect_waitable_context::<System>()?;
 
-    let running_task = System::state().running_task().unwrap();
+    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
 
     // If the task already has a park token, return immediately
     if running_task.park_token.replace(&mut *lock, false) {

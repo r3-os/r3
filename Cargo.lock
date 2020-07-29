@@ -187,7 +187,6 @@ dependencies = [
 name = "constance"
 version = "0.0.1"
 dependencies = [
- "atomic_ref",
  "bitflags",
  "chrono",
  "env_logger",

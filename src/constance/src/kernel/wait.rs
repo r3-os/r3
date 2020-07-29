@@ -220,10 +220,10 @@ impl<System: Kernel> WaitQueue<System> {
     #[inline]
     pub(super) fn wait(
         &'static self,
-        lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockGuardBorrowMut<'_, System>,
         payload: WaitPayload<System>,
     ) -> Result<WaitPayload<System>, WaitError> {
-        let task = System::state().running_task().unwrap();
+        let task = System::state().running_task(lock.borrow_mut()).unwrap();
         let wait = Wait {
             task,
             link: CpuLockCell::new(None),
@@ -252,7 +252,7 @@ impl<System: Kernel> WaitQueue<System> {
         payload: WaitPayload<System>,
         duration_time32: timeout::Time32,
     ) -> Result<WaitPayload<System>, WaitTimeoutError> {
-        let task = System::state().running_task().unwrap();
+        let task = System::state().running_task(lock.borrow_mut()).unwrap();
         let wait = Wait {
             task,
             link: CpuLockCell::new(None),
@@ -283,7 +283,7 @@ impl<System: Kernel> WaitQueue<System> {
 
         debug_assert!(core::ptr::eq(
             wait.task,
-            System::state().running_task().unwrap()
+            System::state().running_task(lock.borrow_mut()).unwrap()
         ));
         debug_assert!(core::ptr::eq(wait.wait_queue.unwrap(), self));
 
@@ -517,10 +517,10 @@ pub(super) fn reorder_wait_of_task<System: Kernel>(
 /// [waitable]: crate#contexts
 #[inline]
 pub(super) fn wait_no_queue<System: Kernel>(
-    lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockGuardBorrowMut<'_, System>,
     payload: WaitPayload<System>,
 ) -> Result<WaitPayload<System>, WaitError> {
-    let task = System::state().running_task().unwrap();
+    let task = System::state().running_task(lock.borrow_mut()).unwrap();
     let wait = Wait {
         task,
         link: CpuLockCell::new(None),
@@ -550,7 +550,7 @@ pub(super) fn wait_no_queue_timeout<System: Kernel>(
     payload: WaitPayload<System>,
     duration_time32: timeout::Time32,
 ) -> Result<WaitPayload<System>, WaitTimeoutError> {
-    let task = System::state().running_task().unwrap();
+    let task = System::state().running_task(lock.borrow_mut()).unwrap();
     let wait = Wait {
         task,
         link: CpuLockCell::new(None),
@@ -580,7 +580,7 @@ fn wait_no_queue_inner<System: Kernel>(
 
     debug_assert!(core::ptr::eq(
         wait.task,
-        System::state().running_task().unwrap()
+        System::state().running_task(lock.borrow_mut()).unwrap()
     ));
     debug_assert!(wait.wait_queue.is_none());
     debug_assert!(wait.link.read(&*lock).is_none());

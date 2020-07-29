@@ -342,7 +342,10 @@ impl State {
         let mut lock = self.thread_group.get().unwrap().lock();
 
         // Tell the scheduler which task to run next
-        lock.scheduler().task_thread = if let Some(task) = System::state().running_task() {
+        // Safety: `running_task` is only modified by `choose_running_task`, so
+        //         there's no data race
+        let running_task = unsafe { *System::state().running_task_ptr() };
+        lock.scheduler().task_thread = if let Some(task) = running_task {
             log::trace!("dispatching task {:p}", task);
 
             let mut tsm = task.port_task_state.tsm.lock();
