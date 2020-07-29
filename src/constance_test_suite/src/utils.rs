@@ -30,13 +30,10 @@ impl SeqTracker {
     /// `new`.
     #[track_caller]
     pub(crate) fn expect_and_replace(&self, old: usize, new: usize) {
-        log::debug!(
-            "{} (expected: {}) → {}",
-            self.counter.load(Ordering::Relaxed),
-            old,
-            new
-        );
-        let got = self.counter.compare_and_swap(old, new, Ordering::Relaxed);
+        // Note: Some targets don't support CAS atomics
+        let got = self.counter.load(Ordering::Relaxed);
+        log::debug!("{} (expected: {}) → {}", got, old, new);
         assert_eq!(got, old, "expected {}, got {}", old, got);
+        self.counter.store(new, Ordering::Relaxed);
     }
 }

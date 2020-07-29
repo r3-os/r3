@@ -19,6 +19,10 @@ impl log::Log for Logger {
 }
 
 pub fn init() {
-    log::set_logger(&Logger).unwrap();
+    // Note: Some targets don't support CAS atomics. This is why we need to use
+    //       `set_logger_racy` here.
+    // Safety: There are no other threads calling `set_logger_racy` at the
+    //         same time.
+    unsafe { log::set_logger_racy(&Logger).unwrap() };
     log::set_max_level(log::LevelFilter::Trace);
 }

@@ -137,6 +137,8 @@ fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
     // Safety: A mutable reference to `ref_output` doesn't exist at this point
     let ref_output = unsafe { &*state.ref_output.get() };
 
+    let run_count = &state.run_count[worker_id];
+
     let mut i = 0;
 
     while !state.stop.load(Ordering::Relaxed) {
@@ -156,7 +158,10 @@ fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
         }
 
         log::trace!("[{}] Iteration {}: complete", worker_id, i);
-        state.run_count[worker_id].fetch_add(1, Ordering::Relaxed);
+
+        // Note: Some targets don't support CAS atomics. Non-atomic load/store
+        //       suffices because `run_count` is only written by this task.
+        run_count.store(run_count.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
     }
 }
 
