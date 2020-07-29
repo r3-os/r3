@@ -95,10 +95,16 @@ jobs:
           sudo apt-get install libusb-1.0-0-dev qemu-system-arm
 
       - name: Install Additional Target of the Rust Toolchain
-        run: rustup target add thumbv7m-none-eabi
+        run: rustup target add thumbv6m-none-eabi thumbv7m-none-eabi
 
-      - name: Test (MPS2+ AN385)
+      - name: Test (MPS2+ AN385, Armv7-M)
         uses: actions-rs/cargo@v1
         with:
           command: run
           args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385 -l debug
+
+      - name: Test (MPS2+ AN385, Armv6-M)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385_v6m -l debug
