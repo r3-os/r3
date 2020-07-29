@@ -302,13 +302,15 @@ impl State {
 
     #[inline(always)]
     unsafe fn enter_cpu_lock_inner<System: PortInstance>() {
+        #[cfg(not(any(armv6m, armv8m_base)))]
         if System::CPU_LOCK_PRIORITY_MASK > 0 {
             // Set `BASEPRI` to `CPU_LOCK_PRIORITY_MASK`
             unsafe { cortex_m::register::basepri::write(System::CPU_LOCK_PRIORITY_MASK) };
-        } else {
-            // Set `PRIMASK` to `1`
-            cortex_m::interrupt::disable();
+            return;
         }
+
+        // Set `PRIMASK` to `1`
+        cortex_m::interrupt::disable();
     }
 
     #[inline(always)]
@@ -318,13 +320,15 @@ impl State {
 
     #[inline(always)]
     unsafe fn leave_cpu_lock_inner<System: PortInstance>() {
+        #[cfg(not(any(armv6m, armv8m_base)))]
         if System::CPU_LOCK_PRIORITY_MASK > 0 {
             // Set `BASEPRI` to `0` (no masking)
             unsafe { cortex_m::register::basepri::write(0) };
-        } else {
-            // Set `PRIMASK` to `0`
-            unsafe { cortex_m::interrupt::enable() };
+            return;
         }
+
+        // Set `PRIMASK` to `0`
+        unsafe { cortex_m::interrupt::enable() };
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
@@ -396,11 +400,12 @@ impl State {
 
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
+        #[cfg(not(any(armv6m, armv8m_base)))]
         if System::CPU_LOCK_PRIORITY_MASK > 0 {
-            cortex_m::register::basepri::read() != 0
-        } else {
-            cortex_m::register::primask::read().is_inactive()
+            return cortex_m::register::basepri::read() != 0;
         }
+
+        cortex_m::register::primask::read().is_inactive()
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
@@ -578,4 +583,14 @@ where
     }
 
     table
+}
+
+/// Used by `use_port!`
+pub const fn validate<System: PortInstance>() {
+    #[cfg(any(armv6m, armv8m_base))]
+    assert!(
+        System::CPU_LOCK_PRIORITY_MASK == 0,
+        "`CPU_LOCK_PRIORITY_MASK` must be zero because the target architecture \
+         does not have a BASEPRI register"
+    );
 }
