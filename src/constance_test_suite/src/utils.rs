@@ -2,6 +2,9 @@
 use constance::utils::Init;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+pub(crate) mod compute;
+mod trig;
+
 /// An atomic counter for checking an execution sequence.
 pub(crate) struct SeqTracker {
     counter: AtomicUsize,

@@ -295,6 +295,7 @@ name = "constance_test_suite"
 version = "0.0.1"
 dependencies = [
  "constance",
+ "env_logger",
  "log",
  "wyhash",
 ]

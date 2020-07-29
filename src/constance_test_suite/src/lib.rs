@@ -1,5 +1,6 @@
 #![feature(external_doc)] // `#[doc(include = ...)]`
 #![feature(const_fn)]
+#![feature(const_panic)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
@@ -137,6 +138,7 @@ pub mod kernel_tests {
     define_kernel_tests! {
         [$]
         (mod basic {}, "basic"),
+        (mod compute_round_robin {}, "compute_round_robin"),
         (mod cpu_lock {}, "cpu_lock"),
         (mod event_group_interrupt {}, "event_group_interrupt"),
         (mod event_group_misc {}, "event_group_misc"),
