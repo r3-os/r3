@@ -1,6 +1,7 @@
 #![feature(external_doc)]
 #![feature(const_fn)]
 #![feature(llvm_asm)]
+#![feature(decl_macro)]
 #![feature(const_panic)]
 #![feature(const_generics)]
 #![feature(slice_ptr_len)]
