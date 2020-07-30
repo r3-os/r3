@@ -234,11 +234,11 @@ impl State {
             #    r1 = running_task
             #    if r1.is_some() {
             #        r2 = psp as *u32 - 10
-            #
-            #        r2[0..8] = {r4-r11}
-            #        r2[8] = lr (EXC_RETURN)
-            #        r2[9] = control
             #        r1.port_task_state.sp = r2
+            #
+            #        r2[0] = lr (EXC_RETURN)
+            #        r2[1] = control
+            #        r2[2..10] = {r4-r11}
             #    }
             #
             #    [r0 = &running_task]
@@ -255,19 +255,17 @@ impl State {
             subs r2, #40
             str r2, [r1]                                                    "
             if cfg!(any(armv6m, armv8m_base)) {                             "
-                stm r2!, {r4-r7}
+                mov r1, lr
+                stmia r2!, {r1, r3}
+                stmia r2!, {r4-r7}
                 mov r4, r8
                 mov r5, r9
                 mov r6, r10
                 mov r7, r11
-                stm r2!, {r4-r7}
-                mov r4, lr
-                str r4, [r2]
-                str r3, [r2, 4]
+                stmia r2!, {r4-r7}
         "   } else {                                                        "
-                stm r2, {r4-r11}
-                str lr, [r2, 32]
-                str r3, [r2, 36]
+                strd lr, r3, [r2], #8
+                stmea r2, {r4-r11}
         "   }                                                               "
 
             # Choose the next task to run
@@ -284,9 +282,9 @@ impl State {
             #    if r1.is_some() {
             #        r2 = r1.port_task_state.sp
             #
-            #        {r4-r11} = r2[0..8]
-            #        lr = r2[8]
-            #        control = r2[9]
+            #        lr = r2[0]
+            #        control = r2[1]
+            #        {r4-r11} = r2[2..10]
             #        psp = &r2[10]
             #    } else {
             #        // The idle task only uses r0-r3, so we can skip most steps
@@ -308,24 +306,20 @@ impl State {
         "   }                                                               "
             ldr r2, [r1]                                                    "
             if cfg!(any(armv6m, armv8m_base)) {                             "
-                adds r2, #16
-                ldmia r2!, {r4-r7}
-                mov r8, r4
-                mov r9, r5
-                mov r10, r6
-                mov r11, r7
-                subs r2, #32
-                ldmia r2!, {r4-r7}
-                adds r2, #16
                 ldmia r2!, {r0, r3}
                 mov lr, r0
+                ldmia r2!, {r4-r7}
+                ldmia r2!, {r0, r1}
+                mov r8, r0
+                mov r9, r1
+                ldmia r2!, {r0, r1}
+                mov r10, r0
+                mov r11, r1
         "   } else {                                                        "
-                ldr lr, [r2, 32]
-                ldr r3, [r2, 36]
-                msr control, r3
-                ldmia r2, {r4-r11}
-                adds r2, #40
+                ldrd lr, r3, [r2], #8
+                ldmia r2!, {r4-r11}
         "   }                                                               "
+            msr control, r3
             msr psp, r2
             bx lr
 
@@ -426,26 +420,27 @@ impl State {
             slice::from_raw_parts_mut(sp, 10)
         };
 
-        // R4-R11: Uninitialized
-        extra_ctx[0] = MaybeUninit::new(0x04040404);
-        extra_ctx[1] = MaybeUninit::new(0x05050505);
-        extra_ctx[2] = MaybeUninit::new(0x06060606);
-        extra_ctx[3] = MaybeUninit::new(0x07070707);
-        extra_ctx[4] = MaybeUninit::new(0x08080808);
-        extra_ctx[5] = MaybeUninit::new(0x09090909);
-        extra_ctx[6] = MaybeUninit::new(0x10101010);
-        extra_ctx[7] = MaybeUninit::new(0x11111111);
         // EXC_RETURN: 0xfffffffd (“Return to Thread Mode; Exception return gets
         //             state from the Process stack; On return execution uses
         //             the Process Stack.”)
         // TODO: This differs for Armv8-M
         // TODO: Plus, we shouldn't hard-code this here
-        extra_ctx[8] = MaybeUninit::new(0xfffffffd);
+        extra_ctx[0] = MaybeUninit::new(0xfffffffd);
         // CONTROL: SPSEL = 1 (Use PSP)
-        extra_ctx[9] = MaybeUninit::new(0x00000002);
+        extra_ctx[1] = MaybeUninit::new(0x00000002);
         // TODO: Secure context (Armv8-M)
         // TODO: Floating point registers
         // TODO: PSPLIM
+
+        // R4-R11: Uninitialized
+        extra_ctx[2] = MaybeUninit::new(0x04040404);
+        extra_ctx[3] = MaybeUninit::new(0x05050505);
+        extra_ctx[4] = MaybeUninit::new(0x06060606);
+        extra_ctx[5] = MaybeUninit::new(0x07070707);
+        extra_ctx[6] = MaybeUninit::new(0x08080808);
+        extra_ctx[7] = MaybeUninit::new(0x09090909);
+        extra_ctx[8] = MaybeUninit::new(0x10101010);
+        extra_ctx[9] = MaybeUninit::new(0x11111111);
 
         let task_state = &task.port_task_state;
         unsafe { *task_state.sp.get() = sp as _ };
