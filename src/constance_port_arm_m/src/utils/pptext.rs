@@ -1,4 +1,5 @@
 //! Conditional string literal generation
+#![allow(unused_macros)]
 
 /// Define a macro that produces a string literal whose contents is revealed
 /// and masked based on the current build configuration (`cfg!`).
