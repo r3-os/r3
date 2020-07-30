@@ -1,10 +1,9 @@
 //! Launches multiple tasks, each of which calls `sleep` repeatedly.
 use constance::{
-    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Hunk, Task},
+    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Task},
     prelude::*,
     time::{Duration, Time},
 };
-use core::sync::atomic::{AtomicUsize, Ordering};
 
 use super::Driver;
 
