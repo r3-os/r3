@@ -128,7 +128,15 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         selection::TestFilter::Disjuction(opt.tests.clone())
     };
-    let test_runs: Vec<_> = test_filter.all_matching_test_runs().collect();
+    let supports_basepri = {
+        // v6-M and v8-M Baseline don't support BASEPRI
+        let triple = opt.target.target_triple();
+        !triple.starts_with("thumbv6m") && !triple.starts_with("thumbv8m.base")
+    };
+    let test_runs: Vec<_> = test_filter
+        .all_matching_test_runs()
+        .filter(|r| supports_basepri || !r.cpu_lock_by_basepri)
+        .collect();
 
     log::info!("Performing {} test run(s)", test_runs.len());
 

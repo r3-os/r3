@@ -4,6 +4,9 @@
 //! otherwise. It's exposed only because it's needed by macros.
 use core::marker::PhantomData;
 
+#[macro_use]
+mod pptext;
+
 /// Conditional type
 macro_rules! If {
     ( if ($cond:expr) { $t:ty } else { $f:ty } ) => {

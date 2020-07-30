@@ -41,6 +41,12 @@ type DynAsyncRead<'a> = Pin<Box<dyn AsyncRead + 'a>>;
 pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("nucleo_f401re", &NucleoF401re),
     ("qemu_mps2_an385", &QemuMps2An385),
+    // QEMU doesn't provide any predefined machine with Armv6-M, so just use
+    // the Armv7-M machine
+    (
+        "qemu_mps2_an385_v6m",
+        &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An385),
+    ),
 ];
 
 pub struct NucleoF401re;
@@ -120,5 +126,27 @@ impl Target for QemuMps2An385 {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async { Ok(Box::new(qemu::QemuDebugProbe::new()) as Box<dyn DebugProbe>) })
+    }
+}
+
+pub struct OverrideTargetTriple<T>(&'static str, T);
+
+impl<T: Target> Target for OverrideTargetTriple<T> {
+    fn target_triple(&self) -> &str {
+        self.0
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        self.1.cargo_features()
+    }
+
+    fn memory_layout_script(&self) -> String {
+        self.1.memory_layout_script()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        self.1.connect()
     }
 }

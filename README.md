@@ -23,7 +23,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | :--------------- | :-------------- | :----------------- |
 | ☑︎ Tasks          | ☐ `Mutex`       | ☑︎ `std` (Hosted)   |
 | ☑︎ Hunks          | ☐ `RwLock`      | ☑︎ Armv7-M (no FPU) |
-| ☑︎ Wait Objects   | ☐ `Once`        |                    |
+| ☑︎ Wait Objects   | ☐ `Once`        | ☑︎ Armv6-M          |
 | ☑︎ Timeouts       | ☐ Logger        |                    |
 | ☐ Semaphores     | ☐ C API         |                    |
 | ☑︎ Event Groups   |                 |                    |
@@ -132,5 +132,6 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 ### How to Run Tests
 
  - Hosted platform and target-independent tests: `cargo test --all`
- - The Arm-M port and NUCLEO-F401RE: `cargo run -p constance_port_arm_m_test_runner -- -t nucleo_f401re`
- - The Arm-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385`
+ - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_port_arm_m_test_runner -- -t nucleo_f401re`
+ - The Armv7-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385`
+ - The Armv6-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385_v6m`

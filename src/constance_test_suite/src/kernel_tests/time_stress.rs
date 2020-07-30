@@ -1,15 +1,14 @@
 //! Launches multiple tasks, each of which calls `sleep` repeatedly.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Task},
     prelude::*,
     time::{Duration, Time},
 };
-use core::sync::atomic::{AtomicUsize, Ordering};
 
 use super::Driver;
 
 pub struct App<System> {
-    counter: Hunk<System, AtomicUsize>,
+    done: EventGroup<System>,
 }
 
 const TASKS: &[usize] = &[300, 150, 300, 320, 580, 900, 500, 750, 170];
@@ -28,9 +27,15 @@ impl<System: Kernel> App<System> {
             i += 1;
         }
 
-        let counter = Hunk::<_, AtomicUsize>::build().finish(b);
+        Task::build()
+            .start(completion_task_body::<System, D>)
+            .priority(2)
+            .active(true)
+            .finish(b);
 
-        App { counter }
+        let done = EventGroup::build().finish(b);
+
+        App { done }
     }
 }
 
@@ -57,7 +62,15 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(i: usize) {
         assert!(delta.unwrap().as_millis() < 100);
     }
 
-    if D::app().counter.fetch_add(1, Ordering::Relaxed) == TASKS.len() - 1 {
-        D::success();
-    }
+    D::app().done.set(1 << i).unwrap();
+}
+
+fn completion_task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    // Wait until all tasks run to completion
+    D::app()
+        .done
+        .wait((1 << TASKS.len()) - 1, EventGroupWaitFlags::ALL)
+        .unwrap();
+
+    D::success();
 }

@@ -105,7 +105,7 @@ impl State {
         // Safety: Only the port can call this method
         let msp_top = unsafe { System::interrupt_stack_top() };
 
-        llvm_asm!("
+        pp_asm!("
             # Reset MSP to the top of the stack, effectively discarding the
             # current context. Beyond this point, this code is considered to be
             # running in the idle task.
@@ -116,9 +116,11 @@ impl State {
             # TODO: Set MSPLIM on Armv8-M
 
             # Release CPU Lock
-            # TODO: Choose the appropriate method based on `CPU_LOCK_PRIORITY_MASK`
-            mov r0, #0
-            msr basepri, r0
+            # TODO: Choose the appropriate method based on `CPU_LOCK_PRIORITY_MASK` "
+            if cfg!(not(any(armv6m, armv8m_base))) {                            "
+                movs r0, #0
+                msr basepri, r0
+        "   }                                                                   "
             cpsie i
         "
         :
@@ -154,13 +156,13 @@ impl State {
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
 
-        llvm_asm!("
+        pp_asm!("
             # Activate the idle task's context by switching the current SP to
             # MSP.
             # `running_task` is `None` at this point, so the processor state
             # will be consistent with `running_task` after this operation.
             mrs r0, control
-            bic r0, #2
+            subs r0, #2
             msr control, r0
 
             # Transfer the control to the idle task. We have pended PendSV, so
@@ -171,9 +173,17 @@ impl State {
             #  - `CONTROL.SPSEL == 0` (we just set it)
             #  - Thread mode (because `exit_and_dispatch` is called in a task
             #    context),
-            #  - CPU Lock active (`exit_and_dispatch`'s requirement)
-            b $0
-        "
+            #  - CPU Lock active (`exit_and_dispatch`'s requirement)        "
+            if cfg!(armv6m) {                                               "
+                ldr r0, IdleTaskConst
+                bx r0
+
+                .align 2
+            IdleTaskConst:
+                .word $0
+        "   } else {                                                        "
+                b $0
+        "   }
         :
         :   "X"(Self::idle_task::<System> as unsafe extern fn() -> !)
         :
@@ -216,7 +226,7 @@ impl State {
             unsafe { State::leave_cpu_lock_inner::<System>() };
         }
 
-        llvm_asm!("
+        pp_asm!("
             # Save the context of the previous task
             #
             #    [r0 = &running_task, r4-r11 = context, lr = EXC_RETURN]
@@ -233,15 +243,32 @@ impl State {
             #
             #    [r0 = &running_task]
 
-            ldr r1, [r0]
-            cbz r1, ChooseTask
+            ldr r1, [r0]                                                    "
+            if cfg!(armv6m) {                                               "
+                cmp r1, #0
+                beq ChooseTask
+        "   } else {                                                        "
+                cbz r1, ChooseTask
+        "   }                                                               "
             mrs r2, psp
             mrs r3, control
-            sub r2, #40
-            str r2, [r1]
-            stm r2, {r4-r11}
-            str lr, [r2, 32]
-            str r3, [r2, 36]
+            subs r2, #40
+            str r2, [r1]                                                    "
+            if cfg!(any(armv6m, armv8m_base)) {                             "
+                stm r2!, {r4-r7}
+                mov r4, r8
+                mov r5, r9
+                mov r6, r10
+                mov r7, r11
+                stm r2!, {r4-r7}
+                mov r4, lr
+                str r4, [r2]
+                str r3, [r2, 4]
+        "   } else {                                                        "
+                stm r2, {r4-r11}
+                str lr, [r2, 32]
+                str r3, [r2, 36]
+        "   }                                                               "
 
             # Choose the next task to run
         ChooseTask:
@@ -272,20 +299,46 @@ impl State {
             #
             #    [r4-r11 = context, lr = EXC_RETURN]
 
-            ldr r1, [r0]
-            cbz r1, RestoreIdleTask
-            ldr r2, [r1]
-            ldr lr, [r2, 32]
-            ldr r3, [r2, 36]
-            msr control, r3
-            ldmia r2, {r4-r11}
-            add r2, #40
+            ldr r1, [r0]                                                    "
+            if cfg!(armv6m) {                                               "
+                cmp r1, #0
+                beq RestoreIdleTask
+        "   } else {                                                        "
+                cbz r1, RestoreIdleTask
+        "   }                                                               "
+            ldr r2, [r1]                                                    "
+            if cfg!(any(armv6m, armv8m_base)) {                             "
+                adds r2, #16
+                ldmia r2!, {r4-r7}
+                mov r8, r4
+                mov r9, r5
+                mov r10, r6
+                mov r11, r7
+                subs r2, #32
+                ldmia r2!, {r4-r7}
+                adds r2, #16
+                ldmia r2!, {r0, r3}
+                mov lr, r0
+        "   } else {                                                        "
+                ldr lr, [r2, 32]
+                ldr r3, [r2, 36]
+                msr control, r3
+                ldmia r2, {r4-r11}
+                adds r2, #40
+        "   }                                                               "
             msr psp, r2
             bx lr
 
         RestoreIdleTask:
-            mov r0, #0
-            mov lr, #0xfffffff9
+            movs r0, #0                                                     "
+            if cfg!(any(armv6m, armv8m_base)) {                             "
+                # 0x00000006 = !0xfffffff9
+                movs r1, #6
+                mvns r1, r1
+                mov lr, r1
+        "   } else {                                                        "
+                mov lr, #0xfffffff9
+        "   }                                                               "
             msr control, r0
         "
         :
@@ -302,13 +355,15 @@ impl State {
 
     #[inline(always)]
     unsafe fn enter_cpu_lock_inner<System: PortInstance>() {
+        #[cfg(not(any(armv6m, armv8m_base)))]
         if System::CPU_LOCK_PRIORITY_MASK > 0 {
             // Set `BASEPRI` to `CPU_LOCK_PRIORITY_MASK`
             unsafe { cortex_m::register::basepri::write(System::CPU_LOCK_PRIORITY_MASK) };
-        } else {
-            // Set `PRIMASK` to `1`
-            cortex_m::interrupt::disable();
+            return;
         }
+
+        // Set `PRIMASK` to `1`
+        cortex_m::interrupt::disable();
     }
 
     #[inline(always)]
@@ -318,13 +373,15 @@ impl State {
 
     #[inline(always)]
     unsafe fn leave_cpu_lock_inner<System: PortInstance>() {
+        #[cfg(not(any(armv6m, armv8m_base)))]
         if System::CPU_LOCK_PRIORITY_MASK > 0 {
             // Set `BASEPRI` to `0` (no masking)
             unsafe { cortex_m::register::basepri::write(0) };
-        } else {
-            // Set `PRIMASK` to `0`
-            unsafe { cortex_m::interrupt::enable() };
+            return;
         }
+
+        // Set `PRIMASK` to `0`
+        unsafe { cortex_m::interrupt::enable() };
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
@@ -396,11 +453,12 @@ impl State {
 
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
+        #[cfg(not(any(armv6m, armv8m_base)))]
         if System::CPU_LOCK_PRIORITY_MASK > 0 {
-            cortex_m::register::basepri::read() != 0
-        } else {
-            cortex_m::register::primask::read().is_inactive()
+            return cortex_m::register::basepri::read() != 0;
         }
+
+        cortex_m::register::primask::read().is_inactive()
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
@@ -540,7 +598,9 @@ pub union InterruptHandler {
     defined: constance::kernel::cfg::InterruptHandlerFn,
 }
 
-pub type InterruptHandlerTable = [InterruptHandler; 240];
+const NUM_INTERRUPTS: usize = if cfg!(armv6m) { 32 } else { 240 };
+
+pub type InterruptHandlerTable = [InterruptHandler; NUM_INTERRUPTS];
 
 /// Used by `use_port!`
 pub const fn make_interrupt_handler_table<System: PortInstance>() -> InterruptHandlerTable
@@ -548,7 +608,7 @@ where
     // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
     System::TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
 {
-    let mut table = [InterruptHandler { undefined: 0 }; 240];
+    let mut table = [InterruptHandler { undefined: 0 }; NUM_INTERRUPTS];
     let mut i = 0;
 
     // FIXME: Work-around for `for` being unsupported in `const fn`
@@ -578,4 +638,14 @@ where
     }
 
     table
+}
+
+/// Used by `use_port!`
+pub const fn validate<System: PortInstance>() {
+    #[cfg(any(armv6m, armv8m_base))]
+    assert!(
+        System::CPU_LOCK_PRIORITY_MASK == 0,
+        "`CPU_LOCK_PRIORITY_MASK` must be zero because the target architecture \
+         does not have a BASEPRI register"
+    );
 }

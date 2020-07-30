@@ -1,6 +1,7 @@
 #![feature(external_doc)]
 #![feature(const_fn)]
 #![feature(llvm_asm)]
+#![feature(decl_macro)]
 #![feature(const_panic)]
 #![feature(const_generics)]
 #![feature(slice_ptr_len)]
@@ -63,7 +64,8 @@ pub trait ThreadingOptions {
     ///
     /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
-    /// Must be `0` on an Armv6-M target because it doesn't support `BASEPRI`.
+    /// Must be `0` on Armv6-M and Armv8-M Baseline because they don't support
+    /// `BASEPRI`.
     const CPU_LOCK_PRIORITY_MASK: u8 = 0;
 
     /// Enables the use of the `wfi` instruction in the idle task to save power.
@@ -252,6 +254,8 @@ macro_rules! use_port {
                 }
             }
         }
+
+        const _: () = $crate::threading::validate::<$sys>();
 
         #[link_section = ".vector_table.interrupts"]
         #[no_mangle]
