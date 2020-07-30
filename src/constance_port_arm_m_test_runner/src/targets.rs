@@ -47,14 +47,14 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
         "qemu_mps2_an385_v6m",
         &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An385),
     ),
+    // TODO: Add an emulated target of `thumbv7em-none-eabihf`
 ];
 
 pub struct NucleoF401re;
 
 impl Target for NucleoF401re {
     fn target_triple(&self) -> &str {
-        // TODO: use `eabihf` when FPU is supported by the Arm-M port
-        "thumbv7em-none-eabi"
+        "thumbv7em-none-eabihf"
     }
 
     fn cargo_features(&self) -> &[&str] {

@@ -229,16 +229,23 @@ impl State {
         pp_asm!("
             # Save the context of the previous task
             #
-            #    [r0 = &running_task, r4-r11 = context, lr = EXC_RETURN]
+            #    [r0 = &running_task, r4-r11 = context,
+            #     s16-s31 = context, lr = EXC_RETURN]
             #
             #    r1 = running_task
             #    if r1.is_some() {
-            #        r2 = psp as *u32 - 10
+            #        let fpu_active = cfg!(has_fpu) && (lr & FType) == 0;
+            #        r2 = psp as *u32 - if fpu_active { 26 } else { 10 }
             #        r1.port_task_state.sp = r2
             #
             #        r2[0] = lr (EXC_RETURN)
             #        r2[1] = control
-            #        r2[2..10] = {r4-r11}
+            #        r2 += 2;
+            #        if fpu_active {
+            #            r2[0..16] = {s16-s31}
+            #            r2 += 16;
+            #        }
+            #        r2[0..8] = {r4-r11}
             #    }
             #
             #    [r0 = &running_task]
@@ -252,7 +259,12 @@ impl State {
         "   }                                                               "
             mrs r2, psp
             mrs r3, control
-            subs r2, #40
+            subs r2, #40                                                    "
+            if cfg!(has_fpu) {                                              "
+                tst lr, #0x10
+                it eq
+                subeq r2, #64
+        "   }                                                               "
             str r2, [r1]                                                    "
             if cfg!(any(armv6m, armv8m_base)) {                             "
                 mov r1, lr
@@ -264,8 +276,12 @@ impl State {
                 mov r7, r11
                 stmia r2!, {r4-r7}
         "   } else {                                                        "
-                strd lr, r3, [r2], #8
-                stmea r2, {r4-r11}
+                strd lr, r3, [r2], #8                                       "
+                if cfg!(has_fpu) {                                          "
+                    it eq
+                    vstmiaeq r2!, {s16-s31}
+        "       }                                                           "
+                stmia r2, {r4-r11}
         "   }                                                               "
 
             # Choose the next task to run
@@ -284,8 +300,17 @@ impl State {
             #
             #        lr = r2[0]
             #        control = r2[1]
-            #        {r4-r11} = r2[2..10]
-            #        psp = &r2[10]
+            #        r2 += 2;
+            #
+            #        let fpu_active = cfg!(has_fpu) && (lr & FType) == 0;
+            #        if fpu_active {
+            #            {s16-s31} = r2[0..16]
+            #            r2 += 16;
+            #        }
+            #
+            #        {r4-r11} = r2[0..8]
+            #        r2 += 8;
+            #        psp = r2
             #    } else {
             #        // The idle task only uses r0-r3, so we can skip most steps
             #        // in this case
@@ -295,7 +320,7 @@ impl State {
             #           execution uses the Main Stack.” */
             #    }
             #
-            #    [r4-r11 = context, lr = EXC_RETURN]
+            #    [r4-r11 = context, s16-s31 = context, lr = EXC_RETURN]
 
             ldr r1, [r0]                                                    "
             if cfg!(armv6m) {                                               "
@@ -316,7 +341,12 @@ impl State {
                 mov r10, r0
                 mov r11, r1
         "   } else {                                                        "
-                ldrd lr, r3, [r2], #8
+                ldrd lr, r3, [r2], #8                                       "
+                if cfg!(has_fpu) {                                          "
+                    tst lr, #0x10
+                    it eq
+                    vldmiaeq r2!, {s16-s31}
+        "       }                                                           "
                 ldmia r2!, {r4-r11}
         "   }                                                               "
             msr control, r3
@@ -429,7 +459,6 @@ impl State {
         // CONTROL: SPSEL = 1 (Use PSP)
         extra_ctx[1] = MaybeUninit::new(0x00000002);
         // TODO: Secure context (Armv8-M)
-        // TODO: Floating point registers
         // TODO: PSPLIM
 
         // R4-R11: Uninitialized
