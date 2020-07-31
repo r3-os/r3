@@ -19,20 +19,42 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 
 ## Implementation Status
 
-|       Core       |     Library     |        Ports        |
-| :--------------- | :-------------- | :------------------ |
-| ☑︎ Tasks          | ☐ `Mutex`       | ☑︎ `std` (Hosted)    |
-| ☑︎ Hunks          | ☐ `RwLock`      | ☑︎ Armv8-M (no CMSE) |
-| ☑︎ Wait Objects   | ☐ `Once`        | ☑︎ Armv7-M           |
-| ☑︎ Timeouts       | ☐ Logger        | ☑︎ Armv6-M           |
-| ☐ Semaphores     | ☐ C API         |                     |
-| ☑︎ Event Groups   |                 |                     |
-| ☐ Mutexes        | **Tools**       | **Boards**          |
-| ☑︎ Timers         | ☑︎ Test Harness  | ☑︎ Hosted            |
-| ☑︎ Interrupts     | ☑︎ Test Suite    | ☑︎ F401RE            |
-| ☑︎ Startup Hooks  | ☑︎ Configurator  |                     |
-| ☐ CPU Exceptions |                 |                     |
-| ☐ Panicking      |                 |                     |
+| Category               | Status       |
+| ---------------------- | ------------ |
+| System Topology        | ![Uniprocessor: Supported] ![Homogeneous Multiprocessor: Under Consideration] ![Heterogeneous Multiprocessor: Not Considering] |
+| Kernel Core            | ![Tasks: Supported] ![Hunks: Supported] ![Wait Objects: Supported] ![Timeouts: Supported] ![Timers: Supported] ![Interrupts: Supported] ![Startup Hooks: Supported] ![CPU Exceptions: Under Consideration] ![Panicking: Under Consideration] |
+| Kernel Synchronization | ![Semaphores: Under Consideration] ![Event Groups: Supported] ![Mutexes: Under Consideration] |
+| Library                | ![Mutex: Under Consideration] ![RwLock: Under Consideration] ![Once: Under Consideration] ![C API: Under Consideration] |
+| Ports                  | ![Simulator: Supported] ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] ![RV32IMAC: Under Consideration] |
+
+[Uniprocessor: Supported]: https://img.shields.io/badge/Uniprocessor-Supported-success?style=flat-square
+[Homogeneous Multiprocessor: Under Consideration]: https://img.shields.io/badge/Homogeneous%20Multiprocessor-Under%20Consideration-cc7070?style=flat-square
+[Heterogeneous Multiprocessor: Not Considering]: https://img.shields.io/badge/Heterogeneous%20Multiprocessor-Not%20Considering-inactive?style=flat-square
+
+[Tasks: Supported]: https://img.shields.io/badge/Tasks-Supported-success?style=flat-square
+[Hunks: Supported]: https://img.shields.io/badge/Hunks-Supported-success?style=flat-square
+[Wait Objects: Supported]: https://img.shields.io/badge/Wait%20Objects-Supported-success?style=flat-square
+[Timeouts: Supported]: https://img.shields.io/badge/Timeouts-Supported-success?style=flat-square
+[Semaphores: Under Consideration]: https://img.shields.io/badge/Semaphores-Under%20Consideration-cc7070?style=flat-square
+[Event Groups: Supported]: https://img.shields.io/badge/Event%20Groups-Supported-success?style=flat-square
+[Mutexes: Under Consideration]: https://img.shields.io/badge/Mutexes-Under%20Consideration-cc7070?style=flat-square
+[Timers: Supported]: https://img.shields.io/badge/Timers-Supported-success?style=flat-square
+[Interrupts: Supported]: https://img.shields.io/badge/Interrupts-Supported-success?style=flat-square
+[Startup Hooks: Supported]: https://img.shields.io/badge/Startup%20Hooks-Supported-success?style=flat-square
+[CPU Exceptions: Under Consideration]: https://img.shields.io/badge/CPU%20Exceptions-Under%20Consideration-cc7070?style=flat-square
+[Panicking: Under Consideration]: https://img.shields.io/badge/Panicking-Under%20Consideration-cc7070?style=flat-square
+
+[Mutex: Under Consideration]: https://img.shields.io/badge/Mutex-Under%20Consideration-cc7070?style=flat-square
+[RwLock: Under Consideration]: https://img.shields.io/badge/RwLock-Under%20Consideration-cc7070?style=flat-square
+[Once: Under Consideration]: https://img.shields.io/badge/Once-Under%20Consideration-cc7070?style=flat-square
+[C API: Under Consideration]: https://img.shields.io/badge/C%20API-Under%20Consideration-cc7070?style=flat-square
+
+[Simulator: Supported]: https://img.shields.io/badge/Simulator-Supported-success?style=flat-square
+[Armv8-M Mainline (no CMSE): Supported]: https://img.shields.io/badge/Armv8--M%20Mainline%20(no%20CMSE)-Supported-success?style=flat-square
+[Armv8-M Baseline (no CMSE): Supported]: https://img.shields.io/badge/Armv8--M%20Baseline%20(no%20CMSE)-Supported-success?style=flat-square
+[Armv7-M: Supported]: https://img.shields.io/badge/Armv7--M-Supported-success?style=flat-square
+[Armv6-M: Supported]: https://img.shields.io/badge/Armv6--M-Supported-success?style=flat-square
+[RV32IMAC: Under Consideration]: https://img.shields.io/badge/RV32IMAC-Under%20Consideration-cc7070?style=flat-square
 
 ## Example
 
