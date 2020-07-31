@@ -21,14 +21,14 @@ impl<System: Port, T: ?Sized> hunk::Hunk<System, T> {
 /// should be initialized with [`Init`].
 ///
 /// [`Init`]: crate::utils::Init
-/// [the hunk]: crate::kernel::Hunk
+/// [hunk]: crate::kernel::Hunk
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct DefaultInitTag;
 
 /// As a generic parameter of [`CfgHunkBuilder`], indicates that the [hunk]
 /// should be zero-initialized.
 ///
-/// [the hunk]: crate::kernel::Hunk
+/// [hunk]: crate::kernel::Hunk
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct ZeroInitTag;
 
