@@ -17,3 +17,18 @@ rustflags = [
 rustflags = [
   "-C", "link-arg=-Tlink.x",
 ]
+
+[target.thumbv8m.base-none-eabi]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
+
+[target.thumbv8m.main-none-eabi]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
+
+[target.thumbv8m.main-none-eabihf]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]

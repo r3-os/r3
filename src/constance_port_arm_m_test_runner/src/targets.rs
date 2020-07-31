@@ -47,14 +47,45 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
         "qemu_mps2_an385_v6m",
         &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An385),
     ),
+    (
+        "qemu_mps2_an505",
+        &OverrideTargetTriple("thumbv8m.main-none-eabihf", QemuMps2An505),
+    ),
+    (
+        "qemu_mps2_an505_v8mml",
+        &OverrideTargetTriple("thumbv8m.main-none-eabi", QemuMps2An505),
+    ),
+    (
+        "qemu_mps2_an505_v8mbl",
+        &OverrideTargetTriple("thumbv8m.base-none-eabi", QemuMps2An505),
+    ),
+    (
+        "qemu_mps2_an505_v7em_hf",
+        &OverrideTargetTriple("thumbv7em-none-eabihf", QemuMps2An505),
+    ),
+    (
+        "qemu_mps2_an505_v7m_hf",
+        &OverrideTargetTriple("thumbv7m-none-eabihf", QemuMps2An505),
+    ),
+    (
+        "qemu_mps2_an505_v7em",
+        &OverrideTargetTriple("thumbv7em-none-eabi", QemuMps2An505),
+    ),
+    (
+        "qemu_mps2_an505_v7m",
+        &OverrideTargetTriple("thumbv7m-none-eabi", QemuMps2An505),
+    ),
+    (
+        "qemu_mps2_an505_v6m",
+        &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An505),
+    ),
 ];
 
 pub struct NucleoF401re;
 
 impl Target for NucleoF401re {
     fn target_triple(&self) -> &str {
-        // TODO: use `eabihf` when FPU is supported by the Arm-M port
-        "thumbv7em-none-eabi"
+        "thumbv7em-none-eabihf"
     }
 
     fn cargo_features(&self) -> &[&str] {
@@ -125,7 +156,50 @@ impl Target for QemuMps2An385 {
     fn connect(
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
-        Box::pin(async { Ok(Box::new(qemu::QemuDebugProbe::new()) as Box<dyn DebugProbe>) })
+        Box::pin(async {
+            Ok(
+                Box::new(qemu::QemuDebugProbe::new(&["-machine", "mps2-an385"]))
+                    as Box<dyn DebugProbe>,
+            )
+        })
+    }
+}
+
+pub struct QemuMps2An505;
+
+impl Target for QemuMps2An505 {
+    fn target_triple(&self) -> &str {
+        "thumbv8m-none-eabihf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-semihosting"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        "
+            MEMORY
+            {
+              /* ZBT SRAM (SSRAM1) Secure alias */
+              FLASH : ORIGIN = 0x10000000, LENGTH = 4096k
+              /* ZBT SRAM (SSRAM2 and SSRAM3) Secure alias */
+              RAM : ORIGIN = 0x38000000, LENGTH = 4096K
+            }
+
+            _stack_start = ORIGIN(RAM) + LENGTH(RAM);
+        "
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async {
+            Ok(
+                Box::new(qemu::QemuDebugProbe::new(&["-machine", "mps2-an505"]))
+                    as Box<dyn DebugProbe>,
+            )
+        })
     }
 }
 

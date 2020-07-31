@@ -11,11 +11,13 @@ use tokio::{io::AsyncRead, process::Child};
 use super::{DebugProbe, DynAsyncRead};
 use crate::subprocess;
 
-pub(super) struct QemuDebugProbe {}
+pub(super) struct QemuDebugProbe {
+    qemu_args: &'static [&'static str],
+}
 
 impl QemuDebugProbe {
-    pub(super) fn new() -> Self {
-        Self {}
+    pub(super) fn new(qemu_args: &'static [&'static str]) -> Self {
+        Self { qemu_args }
     }
 }
 
@@ -27,9 +29,8 @@ impl DebugProbe for QemuDebugProbe {
         let result = subprocess::CmdBuilder::new("qemu-system-arm")
             .arg("-kernel")
             .arg(exe)
+            .args(self.qemu_args)
             .args(&[
-                "-machine",
-                "mps2-an385",
                 "-nographic",
                 "-d",
                 "guest_errors",
