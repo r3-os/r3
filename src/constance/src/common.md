@@ -73,6 +73,10 @@ span.center img, center img {
 body.theme-dark span.center img, body.theme-dark center img {
     filter: invert(88%);
 }
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
 </style>
 <script type="application/javascript">
 <!--
