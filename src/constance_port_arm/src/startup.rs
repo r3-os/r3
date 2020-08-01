@@ -93,16 +93,6 @@ pub fn start<System: PortInstance>() {
 }
 
 extern "C" fn reset_handler1<System: PortInstance>() {
-    extern "C" {
-        // These symbols come from `link.x`
-        static mut __sbss: u32;
-        static mut __ebss: u32;
-
-        static mut __sdata: u32;
-        static mut __edata: u32;
-        static __sidata: u32;
-    }
-
     arm::SCTLR.modify(
         // Disable data and unified caches
         arm::SCTLR::C::Disable,
@@ -129,12 +119,6 @@ extern "C" fn reset_handler1<System: PortInstance>() {
         // Enable branch prediction
         arm::SCTLR::Z::Enable,
     );
-
-    // Initialize RAM
-    unsafe {
-        r0::zero_bss(&mut __sbss, &mut __ebss);
-        r0::init_data(&mut __sdata, &mut __edata, &__sidata);
-    }
 
     unsafe { System::port_state().port_boot::<System>() };
 }

@@ -11,7 +11,6 @@ SECTIONS
     KEEP(*(.vector_table));
   } > RAM
 
-  /* ### .text */
   .text :
   {
     *(.text .text.*);
@@ -19,27 +18,16 @@ SECTIONS
     __etext = .;
   } > RAM
 
-  /* ### .rodata */
   .rodata __etext : ALIGN(4)
   {
     *(.rodata .rodata.*);
-
-    /* 4-byte align the end (VMA) of this section.
-       This is required by LLD to ensure the LMA of the following .data
-       section will have the correct alignment. */
     . = ALIGN(4);
-    __erodata = .;
   } > RAM
 
-  /* ## Sections in RAM */
-  /* ### .data */
-  .data : AT(__erodata) ALIGN(4)
+  .data : ALIGN(4)
   {
-    . = ALIGN(4);
-    __sdata = .;
     *(.data .data.*);
-    . = ALIGN(4); /* 4-byte align the end (VMA) of this section */
-    __edata = .;
+    . = ALIGN(4);
   } > RAM
 
   /* LMA of .data */
@@ -48,11 +36,8 @@ SECTIONS
   /* ### .bss */
   .bss : ALIGN(4)
   {
-    . = ALIGN(4);
-    __sbss = .;
     *(.bss .bss.*);
-    . = ALIGN(4); /* 4-byte align the end (VMA) of this section */
-    __ebss = .;
+    . = ALIGN(4);
   } > RAM
 
   /* Initial, IRQ, and Abort stack */
