@@ -115,8 +115,7 @@ name = "basic_gr_peach"
 version = "0.1.0"
 dependencies = [
  "constance",
- "r0",
- "register",
+ "constance_port_arm",
  "rtt-target 0.2.0",
 ]
 
@@ -230,6 +229,15 @@ dependencies = [
  "nucleo-f401re",
  "panic-rtt-target",
  "rtt-target 0.2.0",
+]
+
+[[package]]
+name = "constance_port_arm"
+version = "0.0.1"
+dependencies = [
+ "constance",
+ "r0",
+ "register",
 ]
 
 [[package]]

@@ -1,24 +1,7 @@
-use core::{fmt::Write, panic::PanicInfo};
+//! Provides a standard startup and entry code implementation.
 use register::cpu::{RegisterReadWrite, RegisterWriteOnly};
-use rtt_target::{ChannelMode, UpChannel};
 
-use crate::arm;
-
-// Install a global panic handler that uses RTT
-#[inline(never)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    // Disable IRQ
-    unsafe { llvm_asm!("cpsid i"::::"volatile") };
-
-    if let Some(mut channel) = unsafe { UpChannel::conjure(0) } {
-        channel.set_mode(ChannelMode::BlockIfFull);
-
-        writeln!(channel, "{}", info).ok();
-    }
-
-    loop {}
-}
+use crate::{arm, threading::PortInstance};
 
 #[link_section = ".vector_table"]
 #[naked]
@@ -67,8 +50,8 @@ fn vector_table() {
 }
 
 #[naked]
-#[no_mangle]
-fn reset_handler() {
+#[inline(always)]
+pub fn start<System: PortInstance>() {
     unsafe {
         // Set the stack pointer before calling Rust code
         llvm_asm!("
@@ -103,13 +86,13 @@ fn reset_handler() {
             b $0
         "
         :
-        :   "X"(reset_handler1 as extern "C" fn())
+        :   "X"(reset_handler1::<System> as extern "C" fn())
         :
         :   "volatile");
     }
 }
 
-extern "C" fn reset_handler1() {
+extern "C" fn reset_handler1<System: PortInstance>() {
     extern "C" {
         // These symbols come from `link.x`
         static mut __sbss: u32;
@@ -129,6 +112,8 @@ extern "C" fn reset_handler1() {
     arm::ICIALLU.set(0);
 
     // TODO: invalidate data and unified cache
+
+    // TODO: Configure MMU
 
     arm::SCTLR.modify(
         // Enable data and unified caches
@@ -151,10 +136,7 @@ extern "C" fn reset_handler1() {
         r0::init_data(&mut __sdata, &mut __edata, &__sidata);
     }
 
-    // TODO: Remap `.vector_table` to `0x00000000`
-    //       (this feature is RZ/A1H-specific)
-
-    super::main();
+    unsafe { System::port_state().port_boot::<System>() };
 }
 
 extern "C" fn unhandled_exception_handler() {

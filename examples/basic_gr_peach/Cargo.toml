@@ -5,8 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 
 [dependencies]
+constance_port_arm = { path = "../../src/constance_port_arm" }
 constance = { path = "../../src/constance" }
 
 rtt-target = { version = "0.2.0" }
-register = "0.5.1"
-r0 = "0.2.2"
