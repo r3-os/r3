@@ -23,9 +23,9 @@ jobs:
 
       - name: Exclude Crates
         run: |
-          # `basic_nucleo_f401re` doesn't compile unless you
+          # `basic_*` fail to compile unless you
           # provide an appropriate target triple.
-          sed -E -i.bak 's/.*basic_nucleo_f401re.*//' Cargo.toml
+          sed -E -i.bak 's/.*basic_.*//' Cargo.toml
 
       - name: Clippy
         uses: actions-rs/clippy-check@v1
