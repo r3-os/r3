@@ -1,9 +1,5 @@
-MEMORY
-{
-  /* On-chip RAM. We are loading everything to this region. */
-  RAM : ORIGIN = 0x20000000, LENGTH = 10240K
-}
-
+/* This will be provided by the user (see `memory.x`) or by a Board Support Crate */
+INCLUDE memory.x
 ENTRY(start);
 
 SECTIONS

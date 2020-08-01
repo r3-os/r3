@@ -37,10 +37,13 @@ mod arm;
 /// The configuration of the port.
 pub trait ThreadingOptions {}
 
-/// Generate startup code.
+/// Generate [startup code].
 ///
 /// This macro produces an entry point function whose symbol name is `start`.
-/// You should specify it as an entry point in your linker script.
+/// You should specify it as an entry point in your linker script (the provided
+/// linker scripts automatically do this for you).
+///
+/// [startup code]: crate#startup-code
 #[macro_export]
 macro_rules! use_startup {
     (unsafe $sys:ty) => {
