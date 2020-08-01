@@ -1,6 +1,7 @@
 /// Implements `register::cpu::RegisterReadWrite::get`.
 macro_rules! sys_coproc_read_raw {
     ($width:ty, [$cp:ident, $crn:ident, $opc1:literal, $crm:ident, $opc2:literal]) => {
+        #[inline]
         fn get(&self) -> u32 {
             let reg;
             unsafe {
@@ -22,7 +23,8 @@ macro_rules! sys_coproc_read_raw {
 /// Implements `register::cpu::RegisterReadWrite::set`.
 macro_rules! sys_coproc_write_raw {
     ($width:ty, [$cp:ident, $crn:ident, $opc1:literal, $crm:ident, $opc2:literal]) => {
-    fn set(&self, value: u32) {
+        #[inline]
+        fn set(&self, value: u32) {
             unsafe {
                 llvm_asm!(
                     concat!(
