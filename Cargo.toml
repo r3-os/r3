@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "examples/basic",
+    "examples/basic_gr_peach",
     "examples/basic_nucleo_f401re",
     "src/constance",
     "src/constance_port_arm_m",
