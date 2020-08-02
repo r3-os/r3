@@ -1,7 +1,7 @@
 //! Provides a standard startup and entry code implementation.
 use register::cpu::{RegisterReadWrite, RegisterWriteOnly};
 
-use crate::{arm, startup_cfg::MemoryRegionAttributes, threading::PortInstance, StartupOptions};
+use crate::{arm, startup_cfg::MemoryRegionAttributes, EntryPoint, StartupOptions};
 
 #[repr(align(4096), C)]
 struct VectorTable {
@@ -32,7 +32,7 @@ impl VectorTable {
 
 #[naked]
 #[inline(always)]
-pub fn start<System: PortInstance + StartupOptions>() {
+pub fn start<System: EntryPoint + StartupOptions>() {
     unsafe {
         // Set the stack pointer before calling Rust code
         llvm_asm!("
@@ -73,7 +73,7 @@ pub fn start<System: PortInstance + StartupOptions>() {
     }
 }
 
-extern "C" fn reset_handler1<System: PortInstance + StartupOptions>() {
+extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
     arm::SCTLR.modify(
         // Disable data and unified caches
         arm::SCTLR::C::Disable +
@@ -138,7 +138,7 @@ extern "C" fn reset_handler1<System: PortInstance + StartupOptions>() {
     // Ensure the changes made here take effect immediately
     unsafe { llvm_asm!("isb") };
 
-    unsafe { System::port_state().port_boot::<System>() };
+    unsafe { System::start() };
 }
 
 // FIXME: `pub` in these functions is to work around an ICE issue

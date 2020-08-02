@@ -42,8 +42,21 @@ pub use self::startup_cfg::*;
 /// The configuration of the port.
 pub trait ThreadingOptions {}
 
-/// Generate [startup code]. The specified system type should implement
-/// [`StartupOptions`].
+/// Defines the entry points of a port instantiation. Implemented by
+/// [`use_port!`].
+pub trait EntryPoint {
+    /// Proceed with the boot process.
+    ///
+    /// # Safety
+    ///
+    ///  - The processor should be in System mode.
+    ///  - This method hasn't been entered yet.
+    ///
+    unsafe fn start() -> !;
+}
+
+/// Generate [startup code]. **Requires [`StartupOptions`] and [`EntryPoint`] to
+/// be implemented.**
 ///
 /// This macro produces an entry point function whose symbol name is `start`.
 /// You should specify it as an entry point in your linker script (the provided
@@ -61,7 +74,8 @@ macro_rules! use_startup {
     };
 }
 
-/// Define a system type implementing [`PortThreading`].
+/// Define a system type implementing [`PortThreading`] and [`EntryPoint`].
+/// **Requires [`ThreadingOptions`].**
 ///
 /// [`PortThreading`]: constance::kernel::PortThreading
 #[macro_export]
@@ -77,7 +91,7 @@ macro_rules! use_port {
                 TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
             use $crate::core::ops::Range;
-            use $crate::{threading::{State, TaskState, PortInstance}, ThreadingOptions};
+            use $crate::{threading::{State, TaskState, PortInstance}, ThreadingOptions, EntryPoint};
 
             pub(super) static PORT_STATE: State = State::new();
 
@@ -85,6 +99,12 @@ macro_rules! use_port {
                 #[inline(always)]
                 fn port_state() -> &'static State {
                     &PORT_STATE
+                }
+            }
+
+            impl EntryPoint for $sys {
+                unsafe fn start() -> !{
+                    unsafe { PORT_STATE.port_boot::<Self>() };
                 }
             }
 
