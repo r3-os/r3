@@ -18,6 +18,18 @@ port::use_gic!(unsafe impl PortInterrupts for System);
 
 impl port::ThreadingOptions for System {}
 
+impl port::StartupOptions for System {
+    const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
+        // On-chip RAM (10MB)
+        port::MemoryMapSection::new(0x2000_0000..0x20a0_0000, 0x2000_0000).with_executable(true),
+        // I/O areas
+        port::MemoryMapSection::new(0x3fe0_0000..0x4000_0000, 0x3fe0_0000).as_device_memory(),
+        port::MemoryMapSection::new(0xe800_0000..0xe830_0000, 0xe800_0000).as_device_memory(),
+        port::MemoryMapSection::new(0xfc00_0000..0xfc10_0000, 0xfc00_0000).as_device_memory(),
+        port::MemoryMapSection::new(0xfcf0_0000..0xfd00_0000, 0xfcf0_0000).as_device_memory(),
+    ];
+}
+
 impl constance::kernel::PortTimer for System {
     // TODO
     const MAX_TICK_COUNT: constance::kernel::UTicks = 0xffffffff;

@@ -4,13 +4,6 @@ ENTRY(start);
 
 SECTIONS
 {
-  /* The beginning of the on-chip RAM region (0x20000000) can be remapped to
-     0x00000000, which is the low vector table address (SCTLR.V == 0).  */
-  .vector_table :
-  {
-    KEEP(*(.vector_table));
-  } > RAM
-
   .text :
   {
     *(.text .text.*);

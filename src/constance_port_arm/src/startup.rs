@@ -1,57 +1,38 @@
 //! Provides a standard startup and entry code implementation.
 use register::cpu::{RegisterReadWrite, RegisterWriteOnly};
 
-use crate::{arm, threading::PortInstance};
+use crate::{arm, startup_cfg::MemoryRegionAttributes, threading::PortInstance, StartupOptions};
 
-#[link_section = ".vector_table"]
-#[naked]
-#[no_mangle]
-fn vector_table() {
-    unsafe {
-        llvm_asm!("
-            b UnhandledException
-            b UndefinedInstruction
-            b SupervisorCall
-            b PrefetchAbort
-            b DataAbort
-            b UnhandledException
-            b IRQHandler
-            b FIQHandler
+#[repr(align(4096), C)]
+struct VectorTable {
+    _trampolines: [u32; 8],
+    _targets: [unsafe extern "C" fn(); 8],
+}
 
-            # The vector table may be located in a non-canonical location (an
-            # alias of the location in which our code is supposed to execute).
-            # Perform an absolute jump to bring us back to a canonical location.
-        UnhandledException:
-            ldr pc, =$0
-        UndefinedInstruction:
-            ldr pc, =$1
-        SupervisorCall:
-            ldr pc, =$2
-        PrefetchAbort:
-            ldr pc, =$3
-        DataAbort:
-            ldr pc, =$4
-        IRQHandler:
-            ldr pc, =$5
-        FIQHandler:
-            ldr pc, =$6
-        "
-        :
-        :   "X"(unhandled_exception_handler as extern "C" fn())
-        ,   "X"(undefined_instruction_handler as extern "C" fn())
-        ,   "X"(supervisor_call_handler as extern "C" fn())
-        ,   "X"(prefetch_abort_handler as extern "C" fn())
-        ,   "X"(data_abort_handler as extern "C" fn())
-        ,   "X"(irq_handler as extern "C" fn())
-        ,   "X"(fiq_handler as extern "C" fn())
-        :
-        :   "volatile");
+impl VectorTable {
+    const fn new() -> Self {
+        Self {
+            // trampolines[N]:
+            //      ldr pc, [pc, #24]   ; targets + N * 4
+            _trampolines: [0xe59ff018; 8],
+            // trampolines[N]
+            _targets: [
+                unhandled_exception_handler,
+                undefined_instruction_handler,
+                supervisor_call_handler,
+                prefetch_abort_handler,
+                data_abort_handler,
+                unhandled_exception_handler,
+                irq_handler,
+                fiq_handler,
+            ],
+        }
     }
 }
 
 #[naked]
 #[inline(always)]
-pub fn start<System: PortInstance>() {
+pub fn start<System: PortInstance + StartupOptions>() {
     unsafe {
         // Set the stack pointer before calling Rust code
         llvm_asm!("
@@ -92,10 +73,12 @@ pub fn start<System: PortInstance>() {
     }
 }
 
-extern "C" fn reset_handler1<System: PortInstance>() {
+extern "C" fn reset_handler1<System: PortInstance + StartupOptions>() {
     arm::SCTLR.modify(
         // Disable data and unified caches
-        arm::SCTLR::C::Disable,
+        arm::SCTLR::C::Disable +
+        // Disable MMU
+        arm::SCTLR::M::Disable,
     );
 
     // Invalidate instruction cache
@@ -103,50 +86,328 @@ extern "C" fn reset_handler1<System: PortInstance>() {
 
     // TODO: invalidate data and unified cache
 
-    // TODO: Configure MMU
+    // Configure MMU
+    let page_table_ptr = (&System::PAGE_TABLE) as *const _ as usize;
+    arm::TTBCR.write(
+        // Only use `TTBR0`
+        arm::TTBCR::N.val(0) +
+        // Security Extensions: Don't fault on TTBR0 TLB miss
+        arm::TTBCR::PD0::Default +
+        // Security Extensions: Don't fault on TTBR1 TLB miss
+        arm::TTBCR::PD1::Default +
+        // Disable extended address
+        arm::TTBCR::EAE::CLEAR,
+    );
+    arm::DACR.write(arm::DACR::D0::Client);
+    arm::TTBR0.write(
+        // Table walk is Cachable
+        arm::TTBR0::C::SET +
+        // Table walk is Non-shareable
+        arm::TTBR0::S::CLEAR +
+        // Table walk is Normal memory, Outer Write-Back Write-Allocate cachable
+        arm::TTBR0::RGN::OuterWriteBackWriteAllocate +
+        // Table walk is Outer Shareable (ignored because `S == 0`)
+        arm::TTBR0::NOS::OuterShareable +
+        // Page table
+        arm::TTBR0::BASE.val(page_table_ptr as u32 >> 14),
+    );
+
+    // Invalidate TLB
+    arm::TLBIALL.set(0);
+    unsafe { llvm_asm!("isb") };
 
     arm::SCTLR.modify(
         // Enable data and unified caches
         // TODO: arm::SCTLR::C::Enable +
         // Enable instruction caches
         arm::SCTLR::I::Enable +
-        // Disable MMU
-        arm::SCTLR::M::Disable +
-        // Use the low vector table base address
-        arm::SCTLR::V::Low +
+        // Enable MMU
+        arm::SCTLR::M::Enable +
+        // Specify the vector table base address
+        if System::VECTOR_HIGH {
+            arm::SCTLR::V::High
+        } else {
+            arm::SCTLR::V::Low
+        } +
         // Enable alignment fault checking
         arm::SCTLR::A::Enable +
         // Enable branch prediction
         arm::SCTLR::Z::Enable,
     );
 
+    // Ensure the changes made here take effect immediately
+    unsafe { llvm_asm!("isb") };
+
     unsafe { System::port_state().port_boot::<System>() };
 }
 
-extern "C" fn unhandled_exception_handler() {
+// FIXME: `pub` in these functions is to work around an ICE issue
+//        `error: internal compiler error: src/librustc_mir/monomorphize/
+//         collector.rs:802:9: cannot create local mono-item for DefId(4:27 ~
+//         constance_port_arm[c8c4]::startup[0]::unhandled_exception_handler[0])`
+pub extern "C" fn unhandled_exception_handler() {
     panic!("reserved exception");
 }
 
-extern "C" fn undefined_instruction_handler() {
+pub extern "C" fn undefined_instruction_handler() {
     panic!("undefined instruction");
 }
 
-extern "C" fn supervisor_call_handler() {
+pub extern "C" fn supervisor_call_handler() {
     panic!("unexpected supervisor call");
 }
 
-extern "C" fn prefetch_abort_handler() {
+pub extern "C" fn prefetch_abort_handler() {
     panic!("prefetch abort");
 }
 
-extern "C" fn data_abort_handler() {
+pub extern "C" fn data_abort_handler() {
     panic!("data abort");
 }
 
-extern "C" fn irq_handler() {
+pub extern "C" fn irq_handler() {
     panic!("unexpecte irq");
 }
 
-extern "C" fn fiq_handler() {
+pub extern "C" fn fiq_handler() {
     panic!("unexpecte fiq");
+}
+
+// Page table generation
+// -----------------------------------------------------------------------
+
+/// The extension trait for deriving static data based on `StartupOptions`.
+trait StartupExt {
+    const VECTOR_TABLE: VectorTable;
+
+    /// The vector table base address. `false` = `0x00000000`, `true` =
+    /// `0xffff0000`.
+    const VECTOR_HIGH: bool;
+
+    /// The page table for `0x000xxxxx` or `0xfffxxxxx` (depending on
+    /// `VECTOR_HIGH`).
+    const VECTOR_PAGE_TABLE: SecondLevelPageTable;
+
+    const PAGE_TABLE: FirstLevelPageTable;
+}
+
+impl<T: StartupOptions> StartupExt for T {
+    const VECTOR_TABLE: VectorTable = VectorTable::new();
+
+    const VECTOR_HIGH: bool = {
+        // Find an unmapped location. Prefer `0xffff0000` so that we can catch
+        // null pointer dereferences.
+        if !memory_map_maps_va::<T>(0xffff0000) {
+            true
+        } else if !memory_map_maps_va::<T>(0x00000000) {
+            false
+        } else {
+            panic!(
+                "couldn't determine the vector table base address. at least \
+                one of 0x0000_0000 and 0xffff_0000 must be left unmapped \
+                by `StartupOptions::MEMORY_MAP`."
+            );
+        }
+    };
+
+    const VECTOR_PAGE_TABLE: SecondLevelPageTable = {
+        let mut table = SecondLevelPageTable {
+            entries: [SecondLevelPageEntry::fault(); 256],
+        };
+
+        let vector_table = &Self::VECTOR_TABLE as *const _ as *mut u8;
+
+        let attr = MemoryRegionAttributes::NORMAL_WB_WA_SHARABLE_READ_WRITE
+            .with_sharable(false)
+            .with_writable(false)
+            .with_executable(true);
+
+        if Self::VECTOR_HIGH {
+            // This second-level table is for `0xfffxxxxx`.
+            // Make a page entry for the virtual address `0xffff0xxx`.
+            table.entries[0xf0] = SecondLevelPageEntry::page_ptr(vector_table, attr);
+        } else {
+            // This second-level table is for `0x000xxxxx`.
+            // Make a page entry for the virtual address `0x00000xxx`.
+            table.entries[0x00] = SecondLevelPageEntry::page_ptr(vector_table, attr);
+        }
+
+        table
+    };
+
+    const PAGE_TABLE: FirstLevelPageTable = {
+        let mut table = FirstLevelPageTable {
+            entries: [FirstLevelPageEntry::fault(); 4096],
+        };
+        let mut occupied = [false; 4096];
+
+        if Self::VECTOR_HIGH {
+            table.entries[0xfff] = FirstLevelPageEntry::page_table(&Self::VECTOR_PAGE_TABLE);
+            occupied[0xfff] = true;
+        } else {
+            table.entries[0x000] = FirstLevelPageEntry::page_table(&Self::VECTOR_PAGE_TABLE);
+            occupied[0x000] = true;
+        }
+
+        // Create section entries based on `MEMORY_MAP`
+        let mmap = Self::MEMORY_MAP;
+        // FIXME: Work-around for `for` being unsupported in `const fn`
+        let mut i = 0;
+        while i < mmap.len() {
+            let section = &mmap[i];
+            let start_i = section.virtual_start / 0x100000;
+            let end_i = start_i + section.len / 0x100000;
+
+            // FIXME: Work-around for `for` being unsupported in `const fn`
+            let mut k = start_i;
+            while k < end_i {
+                if occupied[k] {
+                    panic!("region overlap; some address ranges are specified more than once");
+                }
+                table.entries[k] = FirstLevelPageEntry::section(
+                    section.physical_start as u32 + ((k - start_i) * 0x100000) as u32,
+                    section.attr,
+                );
+                occupied[k] = true;
+                k += 1;
+            }
+
+            i += 1;
+        }
+
+        table
+    };
+}
+
+const fn memory_map_maps_va<T: StartupOptions>(va: usize) -> bool {
+    let mmap = T::MEMORY_MAP;
+    // FIXME: Work-around for `for` being unsupported in `const fn`
+    let mut i = 0;
+    while i < mmap.len() {
+        let section = &mmap[i];
+        if va >= section.virtual_start && va <= section.virtual_start + (section.len - 1) {
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
+
+#[repr(align(16384))]
+#[derive(Clone, Copy)]
+struct FirstLevelPageTable {
+    entries: [FirstLevelPageEntry; 0x1000],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+union FirstLevelPageEntry {
+    int: u32,
+    ptr: *mut u8,
+}
+
+impl FirstLevelPageEntry {
+    /// Construct a faulting entry.
+    const fn fault() -> Self {
+        Self { int: 0 }
+    }
+
+    /// Construct a page table entry.
+    const fn page_table(table: *const SecondLevelPageTable) -> Self {
+        let domain = 0u32;
+        let ns = true; // Non-Secure access
+        let pxn = false; // not using Large Physical Address Extension
+
+        Self {
+            // Assuming physical address == virtual address for `table`
+            ptr: (table as *mut u8).wrapping_add(
+                ((domain << 5) | ((ns as u32) << 3) | ((pxn as u32) << 2) | 0b01) as usize,
+            ),
+        }
+    }
+
+    /// Construct a section entry.
+    const fn section(pa: u32, attr: MemoryRegionAttributes) -> Self {
+        let MemoryRegionAttributes {
+            tex,
+            c,
+            b,
+            s,
+            ap,
+            xn,
+        } = attr;
+        let domain = 0u32;
+        let ns = true; // Non-Secure access
+        let ng = false; // global (not Not-Global)
+        let pxn = false; // not using Large Physical Address Extension
+
+        assert!(pa & 0xfffff == 0);
+
+        Self {
+            int: pa
+                | ((ns as u32) << 19)
+                | (1 << 18)
+                | ((ng as u32) << 17)
+                | ((s as u32) << 16)
+                | ((ap as u32 >> 2) << 15)
+                | ((tex as u32) << 12)
+                | ((ap as u32 & 0b11) << 10)
+                | (domain << 5)
+                | ((xn as u32) << 4)
+                | ((c as u32) << 3)
+                | ((b as u32) << 2)
+                | 0b10
+                | (pxn as u32),
+        }
+    }
+}
+
+#[repr(align(1024))]
+#[derive(Clone, Copy)]
+struct SecondLevelPageTable {
+    entries: [SecondLevelPageEntry; 256],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+union SecondLevelPageEntry {
+    int: u32,
+    ptr: *mut u8,
+}
+
+impl SecondLevelPageEntry {
+    /// Construct a faulting entry.
+    const fn fault() -> Self {
+        Self { int: 0 }
+    }
+
+    /// Construct a page entry. Assumes physical address == virtual address for
+    /// `ptr`. This method essentially creates an alias for `ptr`.
+    ///
+    /// The 12 LSBs of `ptr` must be zero.
+    const fn page_ptr(ptr: *mut u8, attr: MemoryRegionAttributes) -> Self {
+        let MemoryRegionAttributes {
+            tex,
+            c,
+            b,
+            s,
+            ap,
+            xn,
+        } = attr;
+        let ng = false; // global (not Not-Global)
+
+        Self {
+            ptr: ptr.wrapping_add(
+                (((ng as u32) << 11)
+                    | ((s as u32) << 10)
+                    | ((ap as u32 >> 2) << 9)
+                    | ((tex as u32) << 6)
+                    | ((ap as u32 & 0b11) << 4)
+                    | ((c as u32) << 3)
+                    | ((b as u32) << 2)
+                    | 0b10
+                    | (xn as u32)) as usize,
+            ),
+        }
+    }
 }

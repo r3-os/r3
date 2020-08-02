@@ -1,5 +1,7 @@
 #![feature(external_doc)]
 #![feature(const_fn)]
+#![feature(const_panic)]
+#![feature(const_ptr_offset)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
@@ -34,10 +36,14 @@ pub mod gic;
 #[cfg(target_os = "none")]
 mod arm;
 
+mod startup_cfg;
+pub use self::startup_cfg::*;
+
 /// The configuration of the port.
 pub trait ThreadingOptions {}
 
-/// Generate [startup code].
+/// Generate [startup code]. The specified system type should implement
+/// [`StartupOptions`].
 ///
 /// This macro produces an entry point function whose symbol name is `start`.
 /// You should specify it as an entry point in your linker script (the provided

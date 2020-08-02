@@ -41,7 +41,20 @@ macro_rules! sys_coproc_write_raw {
     };
 }
 
+mod dacr;
 mod iciallu;
 mod sctlr;
+mod tlbiall;
+mod ttbcr;
+mod ttbr0;
+pub use self::dacr::*;
 pub use self::iciallu::*;
 pub use self::sctlr::*;
+pub use self::tlbiall::*;
+pub use self::ttbcr::*;
+pub use self::ttbr0::*;
+
+#[inline]
+pub fn dsb() {
+    unsafe { llvm_asm!("dsb"::::"volatile") };
+}

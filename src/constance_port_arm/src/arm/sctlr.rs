@@ -1,4 +1,3 @@
-
 register::register_bitfields! {u32,
     pub SCTLR [
         /// Enables or disables MMU.
