@@ -49,7 +49,7 @@ pub trait EntryPoint {
     ///
     /// # Safety
     ///
-    ///  - The processor should be in System mode.
+    ///  - The processor should be in Supervisor mode.
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;

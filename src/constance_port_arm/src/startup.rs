@@ -38,9 +38,6 @@ pub fn start<System: EntryPoint + StartupOptions>() {
         llvm_asm!("
             ldr r0, =_stack_start
 
-            # Set the stack for User/System mode
-            mov sp, r0
-
             # Set the stack for IRQ mode
             msr cpsr_c, #0xd2
             mov sp, r0
@@ -57,12 +54,10 @@ pub fn start<System: EntryPoint + StartupOptions>() {
             msr cpsr_c, #0xdb
             mov sp, r0
 
-            # Set the stack for Supervisor mode
+            # Back to Supervisor mode, (IRQ and FIQ both masked, Arm instruction
+            # set) set the stack for Supervisor mode
             msr cpsr_c, #0xd3
             mov sp, r0
-
-            # Back to System mode (IRQ and FIQ both masked, Arm instruction set)
-            msr cpsr_c, #0xdf
 
             b $0
         "
