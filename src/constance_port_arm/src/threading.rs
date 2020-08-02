@@ -69,12 +69,13 @@ impl State {
 
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
-        todo!()
+        // TODO: support unmanaged interrupts
+        unsafe { llvm_asm!("cpsid i"::::"volatile") };
     }
 
     #[inline(always)]
     pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
-        todo!()
+        unsafe { llvm_asm!("cpsie i"::::"volatile") };
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
@@ -86,7 +87,9 @@ impl State {
 
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
-        todo!()
+        let cpsr: u32;
+        unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr)) };
+        (cpsr & (1 << 7)) != 0
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
