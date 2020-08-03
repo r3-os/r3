@@ -166,6 +166,7 @@ macro_rules! build {
             type TaskReadyQueue = [StaticListHead<TaskCb<Self>>; CFG.num_task_priority_levels];
             type TimeoutHeap = TimeoutHeap;
 
+            #[inline(always)]
             fn state() -> &'static KernelState {
                 &KERNEL_STATE
             }
