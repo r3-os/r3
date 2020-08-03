@@ -1,11 +1,11 @@
 use constance::{
     kernel::{Port, PortToKernel, TaskCb},
     prelude::*,
-    utils::Init,
+    utils::{intrusive_list::StaticListHead, Init},
 };
-use core::cell::UnsafeCell;
+use core::{borrow::BorrowMut, cell::UnsafeCell};
 
-use super::ThreadingOptions;
+use super::{InterruptController, ThreadingOptions};
 
 /// Implemented on a system type by [`use_port!`].
 ///
@@ -13,7 +13,7 @@ use super::ThreadingOptions;
 ///
 /// Only meant to be implemented by [`use_port!`].
 pub unsafe trait PortInstance:
-    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions
+    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController
 {
     fn port_state() -> &'static State;
 }
@@ -42,7 +42,6 @@ impl Init for TaskState {
 }
 
 impl State {
-    // TODO: Expose `port_boot` in case users don't want to use `use_startup!`
     pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<System>() };
 
@@ -82,7 +81,6 @@ impl State {
         &self,
         _task: &'static TaskCb<System>,
     ) {
-        todo!()
     }
 
     #[inline(always)]
@@ -93,7 +91,50 @@ impl State {
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
-        todo!()
+        false
+    }
+
+    /// Implements [`crate::EntryPoint::irq_entry`]
+    #[inline(always)]
+    pub unsafe fn irq_entry<System: PortInstance>() -> !
+    where
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
+    {
+        unsafe {
+            llvm_asm!("
+                push {r0-r3, r12, lr}
+                bl $0
+                pop {r0-r3, r12, lr}
+
+                # Return to the background context
+                # TODO: check context switch
+                subs pc, lr, #8
+                "
+            :
+            :   "X"(Self::handle_irq::<System> as unsafe fn())
+            :
+            :   "volatile"
+            );
+            core::hint::unreachable_unchecked();
+        }
+    }
+
+    unsafe fn handle_irq<System: PortInstance>()
+    where
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
+    {
+        if let Some(line) = System::acknowledge_interrupt() {
+            // TODO: Disable CPU lock before calling the handler
+            // TODO: Support nested interrupts
+            // TODO: `is_task_context` should return `true` here
+            if let Some(handler) = System::INTERRUPT_HANDLERS.get(line) {
+                // Safety: The first-level interrupt handler is the only code
+                //         allowed to call this
+                unsafe { handler() };
+            }
+        }
     }
 }
 

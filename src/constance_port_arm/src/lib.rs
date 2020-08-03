@@ -42,6 +42,17 @@ pub use self::startup_cfg::*;
 /// The configuration of the port.
 pub trait ThreadingOptions {}
 
+/// An abstract interface to an interrupt controller. Implemented by
+/// [`use_gic!`].
+pub trait InterruptController {
+    /// Get the currently signaled interrupt and acknowledge it.
+    fn acknowledge_interrupt() -> Option<constance::kernel::InterruptNum>;
+
+    /// Notify that the kernel has completed the processing of the specified
+    /// interrupt.
+    fn end_interrupt(num: constance::kernel::InterruptNum);
+}
+
 /// Defines the entry points of a port instantiation. Implemented by
 /// [`use_port!`].
 pub trait EntryPoint {
@@ -53,6 +64,17 @@ pub trait EntryPoint {
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;
+
+    /// The IRQ handler.
+    ///
+    /// # Safety
+    ///
+    ///  - The processor should be in IRQ mode.
+    ///  - IRQs should be masked.
+    ///  - The register state of the background context should be preserved so
+    ///    that the handler can restore it later.
+    ///
+    unsafe fn irq_entry() -> !;
 }
 
 /// Generate [startup code]. **Requires [`StartupOptions`] and [`EntryPoint`] to
@@ -105,6 +127,11 @@ macro_rules! use_port {
             impl EntryPoint for $sys {
                 unsafe fn start() -> !{
                     unsafe { PORT_STATE.port_boot::<Self>() };
+                }
+
+                #[inline(always)]
+                unsafe fn irq_entry() -> ! {
+                    unsafe { State::irq_entry::<Self>() };
                 }
             }
 
@@ -210,6 +237,16 @@ macro_rules! use_gic {
                 _line: $crate::constance::kernel::InterruptNum,
             ) -> Result<bool, $crate::constance::kernel::QueryInterruptLineError> {
                 todo!()
+            }
+        }
+
+        impl $crate::InterruptController for $sys {
+            fn acknowledge_interrupt() -> Option<$crate::constance::kernel::InterruptNum> {
+                $crate::gic::acknowledge_interrupt::<Self>()
+            }
+
+            fn end_interrupt(num: $crate::constance::kernel::InterruptNum) {
+                $crate::gic::end_interrupt::<Self>(num);
             }
         }
     };

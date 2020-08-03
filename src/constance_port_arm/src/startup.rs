@@ -10,7 +10,7 @@ struct VectorTable {
 }
 
 impl VectorTable {
-    const fn new() -> Self {
+    const fn new<System: EntryPoint>() -> Self {
         Self {
             // trampolines[N]:
             //      ldr pc, [pc, #24]   ; targets + N * 4
@@ -23,7 +23,7 @@ impl VectorTable {
                 prefetch_abort_handler,
                 data_abort_handler,
                 unhandled_exception_handler,
-                irq_handler,
+                irq_handler::<System>,
                 fiq_handler,
             ],
         }
@@ -160,8 +160,9 @@ pub extern "C" fn data_abort_handler() {
     panic!("data abort");
 }
 
-pub extern "C" fn irq_handler() {
-    panic!("unexpecte irq");
+#[naked]
+pub extern "C" fn irq_handler<System: EntryPoint>() {
+    unsafe { System::irq_entry() };
 }
 
 pub extern "C" fn fiq_handler() {
@@ -186,8 +187,8 @@ trait StartupExt {
     const PAGE_TABLE: FirstLevelPageTable;
 }
 
-impl<T: StartupOptions> StartupExt for T {
-    const VECTOR_TABLE: VectorTable = VectorTable::new();
+impl<T: StartupOptions + EntryPoint> StartupExt for T {
+    const VECTOR_TABLE: VectorTable = VectorTable::new::<Self>();
 
     const VECTOR_HIGH: bool = {
         // Find an unmapped location. Prefer `0xffff0000` so that we can catch
