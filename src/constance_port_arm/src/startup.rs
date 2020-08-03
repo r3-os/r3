@@ -133,6 +133,17 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
     // Ensure the changes made here take effect immediately
     unsafe { llvm_asm!("isb") };
 
+    extern "C" {
+        // These symbols come from `link.x`
+        static mut __sbss: u32;
+        static mut __ebss: u32;
+    }
+
+    // Initialize RAM
+    unsafe {
+        r0::zero_bss(&mut __sbss, &mut __ebss);
+    }
+
     unsafe { System::start() };
 }
 

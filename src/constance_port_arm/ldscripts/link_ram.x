@@ -29,8 +29,10 @@ SECTIONS
   /* ### .bss */
   .bss : ALIGN(4)
   {
+    __sbss = .;
     *(.bss .bss.*);
     . = ALIGN(4);
+    __ebss = .;
   } > RAM
 
   /* Initial, IRQ, and Abort stack */

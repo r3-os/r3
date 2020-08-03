@@ -13,3 +13,4 @@ repository = "https://github.com/yvt/Constance"
 constance = { path = "../constance" }
 
 register = "0.5.1"
+r0 = "0.2.2"
