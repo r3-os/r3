@@ -4,6 +4,7 @@
 #![feature(const_ptr_offset)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
+#![feature(slice_ptr_len)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
