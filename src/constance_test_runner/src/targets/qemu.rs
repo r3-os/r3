@@ -37,6 +37,8 @@ impl DebugProbe for QemuDebugProbe {
                 "-semihosting",
                 "-semihosting-config",
                 "target=native",
+                "-audiodev",
+                "id=none,driver=none",
             ])
             .spawn_and_get_child()
             .map(|child| Box::pin(OutputReader { child }) as DynAsyncRead<'static>)
