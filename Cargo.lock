@@ -63,6 +63,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "arm_semihosting"
+version = "0.3.5"
+
+[[package]]
 name = "as-slice"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
