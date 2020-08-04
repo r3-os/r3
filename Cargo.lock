@@ -275,6 +275,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "constance_port_arm_test_driver"
+version = "0.1.0"
+dependencies = [
+ "arm_semihosting",
+ "constance",
+ "constance_port_arm",
+ "constance_test_suite",
+ "log",
+]
+
+[[package]]
 name = "constance_port_std"
 version = "0.0.1"
 dependencies = [
