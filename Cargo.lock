@@ -271,7 +271,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "constance_port_arm_m_test_runner"
+name = "constance_port_std"
+version = "0.0.1"
+dependencies = [
+ "atomic_ref",
+ "constance",
+ "constance_test_suite",
+ "env_logger",
+ "errno",
+ "libc",
+ "log",
+ "once_cell",
+ "try-lock",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "constance_test_runner"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
@@ -289,22 +305,6 @@ dependencies = [
  "tempdir",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "constance_port_std"
-version = "0.0.1"
-dependencies = [
- "atomic_ref",
- "constance",
- "constance_test_suite",
- "env_logger",
- "errno",
- "libc",
- "log",
- "once_cell",
- "try-lock",
- "winapi 0.3.9",
 ]
 
 [[package]]

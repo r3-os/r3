@@ -10,7 +10,7 @@ runCommand "dummy" rec {
     # needed by probe-rs
     libusb1
 
-    # needed by `constance_port_arm_m_test_runner`
+    # needed by `constance_test_runner`
     qemu
   ];
 } ""

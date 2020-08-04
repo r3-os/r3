@@ -17,7 +17,7 @@ mod utils;
 #[tokio::main]
 async fn main() {
     env_logger::from_env(
-        env_logger::Env::default().default_filter_or("constance_port_arm_m_test_runner=info"),
+        env_logger::Env::default().default_filter_or("constance_test_runner=info"),
     )
     .init();
 
@@ -149,8 +149,8 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(MainError::ConnectTarget)?;
 
     // Put the linker script in a directory
-    let link_dir = tempdir::TempDir::new("constance_port_arm_m_test_runner")
-        .map_err(MainError::TempDirError)?;
+    let link_dir =
+        tempdir::TempDir::new("constance_test_runner").map_err(MainError::TempDirError)?;
     {
         let memory_x_path = link_dir.path().join("memory.x");
         log::debug!("Writing '{}'", memory_x_path.display());
