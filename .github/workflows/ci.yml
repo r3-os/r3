@@ -98,6 +98,13 @@ jobs:
         run: |
           rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabihf
           rustup target add thumbv8m.base-none-eabi thumbv8m.main-none-eabi thumbv8m.main-none-eabihf
+          rustup target add armv7a-none-eabi
+
+      - name: Test (Arm RealView PBX for Cortex-A9, Armv7-A)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: -p constance_test_runner -- -t qemu_realview_pbx_a9 -l debug
 
       - name: Test (MPS2+ AN505, Armv8-M Mainline + FPU)
         uses: actions-rs/cargo@v1
