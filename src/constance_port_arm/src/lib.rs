@@ -198,57 +198,67 @@ macro_rules! use_port {
 #[macro_export]
 macro_rules! use_gic {
     (unsafe impl PortInterrupts for $sys:ty) => {
-        unsafe impl $crate::constance::kernel::PortInterrupts for $sys {
-            const MANAGED_INTERRUPT_PRIORITY_RANGE: $crate::core::ops::Range<
-                $crate::constance::kernel::InterruptPriority,
-            > = 0..255;
+        const _: () = {
+            use $crate::{
+                constance::kernel::{
+                    ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
+                    InterruptPriority, PendInterruptLineError, PortInterrupts,
+                    QueryInterruptLineError, SetInterruptLinePriorityError,
+                },
+                core::ops::Range,
+                gic, InterruptController,
+            };
 
-            unsafe fn set_interrupt_line_priority(
-                _line: $crate::constance::kernel::InterruptNum,
-                _priority: $crate::constance::kernel::InterruptPriority,
-            ) -> Result<(), $crate::constance::kernel::SetInterruptLinePriorityError> {
-                todo!()
+            unsafe impl PortInterrupts for $sys {
+                const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..255;
+
+                unsafe fn set_interrupt_line_priority(
+                    _line: InterruptNum,
+                    _priority: InterruptPriority,
+                ) -> Result<(), SetInterruptLinePriorityError> {
+                    todo!()
+                }
+
+                unsafe fn enable_interrupt_line(
+                    _line: InterruptNum,
+                ) -> Result<(), EnableInterruptLineError> {
+                    todo!()
+                }
+
+                unsafe fn disable_interrupt_line(
+                    _line: InterruptNum,
+                ) -> Result<(), EnableInterruptLineError> {
+                    todo!()
+                }
+
+                unsafe fn pend_interrupt_line(
+                    _line: InterruptNum,
+                ) -> Result<(), PendInterruptLineError> {
+                    todo!()
+                }
+
+                unsafe fn clear_interrupt_line(
+                    _line: InterruptNum,
+                ) -> Result<(), ClearInterruptLineError> {
+                    todo!()
+                }
+
+                unsafe fn is_interrupt_line_pending(
+                    _line: InterruptNum,
+                ) -> Result<bool, QueryInterruptLineError> {
+                    todo!()
+                }
             }
 
-            unsafe fn enable_interrupt_line(
-                _line: $crate::constance::kernel::InterruptNum,
-            ) -> Result<(), $crate::constance::kernel::EnableInterruptLineError> {
-                todo!()
-            }
+            impl InterruptController for $sys {
+                fn acknowledge_interrupt() -> Option<InterruptNum> {
+                    gic::acknowledge_interrupt::<Self>()
+                }
 
-            unsafe fn disable_interrupt_line(
-                _line: $crate::constance::kernel::InterruptNum,
-            ) -> Result<(), $crate::constance::kernel::EnableInterruptLineError> {
-                todo!()
+                fn end_interrupt(num: InterruptNum) {
+                    gic::end_interrupt::<Self>(num);
+                }
             }
-
-            unsafe fn pend_interrupt_line(
-                _line: $crate::constance::kernel::InterruptNum,
-            ) -> Result<(), $crate::constance::kernel::PendInterruptLineError> {
-                todo!()
-            }
-
-            unsafe fn clear_interrupt_line(
-                _line: $crate::constance::kernel::InterruptNum,
-            ) -> Result<(), $crate::constance::kernel::ClearInterruptLineError> {
-                todo!()
-            }
-
-            unsafe fn is_interrupt_line_pending(
-                _line: $crate::constance::kernel::InterruptNum,
-            ) -> Result<bool, $crate::constance::kernel::QueryInterruptLineError> {
-                todo!()
-            }
-        }
-
-        impl $crate::InterruptController for $sys {
-            fn acknowledge_interrupt() -> Option<$crate::constance::kernel::InterruptNum> {
-                $crate::gic::acknowledge_interrupt::<Self>()
-            }
-
-            fn end_interrupt(num: $crate::constance::kernel::InterruptNum) {
-                $crate::gic::end_interrupt::<Self>(num);
-            }
-        }
+        };
     };
 }
