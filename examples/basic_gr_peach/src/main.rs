@@ -30,6 +30,11 @@ impl port::StartupOptions for System {
     ];
 }
 
+impl port::GicOptions for System {
+    const GIC_DISTRIBUTOR_BASE: usize = 0xe8201000;
+    const GIC_CPU_BASE: usize = 0xe8202000;
+}
+
 impl constance::kernel::PortTimer for System {
     // TODO
     const MAX_TICK_COUNT: constance::kernel::UTicks = 0xffffffff;

@@ -20,7 +20,8 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use constance::kernel::{StartupHook, UTicks, cfg::CfgBuilder};
+        use constance::kernel::{StartupHook, UTicks, InterruptPriority, InterruptNum,
+            cfg::CfgBuilder};
         use constance_test_suite::kernel_tests;
         use constance_port_arm as port;
         use $path as test_case;
@@ -48,7 +49,14 @@ macro_rules! instantiate_test {
             const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
                 port::MemoryMapSection::new(0x0100_0000..0x01a0_0000, 0x0100_0000)
                     .with_executable(true),
+                port::MemoryMapSection::new(0x1f00_0000..0x1f10_0000, 0x1f00_0000)
+                    .as_device_memory(),
             ];
+        }
+
+        impl port::GicOptions for System {
+            const GIC_DISTRIBUTOR_BASE: usize = 0x1f001000;
+            const GIC_CPU_BASE: usize = 0x1f000100;
         }
 
         impl constance::kernel::PortTimer for System {
@@ -77,7 +85,11 @@ macro_rules! instantiate_test {
             fn fail() {
                 report_fail();
             }
-            // TODO: `INTERRUPT_LINES`
+            // Chose PPIs.
+            // SGIs (software-generated interrupts) don't support disabling.
+            const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
+            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0x60;
+            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0x20;
         }
 
         static COTTAGE: test_case::App<System> =
@@ -88,6 +100,15 @@ macro_rules! instantiate_test {
             #[cfg(feature = "output-semihosting")]
             StartupHook::build().start(|_| {
                 logger_semihosting::init();
+            }).finish(b);
+
+            // Configure the interrupt lines as edge-triggered
+            StartupHook::build().start(|_| {
+                use port::Gic;
+                for &i in &[0, 1, 2, 3] {
+                    System::set_interrupt_line_trigger_mode(
+                        i, port::InterruptLineTriggerMode::RisingEdge);
+                }
             }).finish(b);
 
             test_case::App::new::<Driver>(b)

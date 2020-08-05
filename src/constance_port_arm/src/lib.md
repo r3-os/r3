@@ -36,6 +36,23 @@ fn main() {
 }
 ```
 
+# Interrupt Controller
+
+Your system type should be combined with an interrupt controller driver by implementing [`PortInterrupts`] and [`InterruptController`]. Most systems are equipped with Arm Generic Interrupt Controller (GIC), whose driver is provided by [`use_gic!`].
+
+The maximum possible range of valid interrupt numbers is `0..1020` (the upper bound varies across implementations). The range is statically partitioned as follows:
+
+ - `0..16` is used for SGIs (Software-Generated Interrupts), which are used for inter-processor communication. SGIs don't support enabling, disabling, or changing their trigger modes.
+ - `16..32` is used for PPIs (Private Peripheral Interrupts), which are peripheral interrupts specific to a single processor.
+ - `16..` is used for SPIs (Shared Peripheral Interrupts), which are peripheral interrupts that the Distributor can route to a specified set of processors. The current implementation of the GIC driver routes all interrupts to CPU 0, assuming that's where the application runs.
+
+The valid priority range is `0..255`. All priorities are [*managed*] - unmanaged interrupts aren't supported yet.
+
+The GIC driver exposes additional operations on interrupt lines through [`Gic`] implemented on your system type.
+
+[`PortInterrupts`]: constance::kernel::PortInterrupts
+[*managed*]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+
 # Implementation
 
 ## Context state

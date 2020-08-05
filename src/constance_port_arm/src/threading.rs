@@ -50,10 +50,11 @@ impl State {
     pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<System>() };
 
-        // Safety: We are a port, so it's okay to call this
-        unsafe {
-            <System as PortToKernel>::boot();
-        }
+        // Safety: We are the port, so it's okay to call this
+        unsafe { <System as InterruptController>::init() };
+
+        // Safety: We are the port, so it's okay to call this
+        unsafe { <System as PortToKernel>::boot() };
     }
 
     pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
@@ -549,7 +550,8 @@ impl State {
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
-        if let Some(line) = System::acknowledge_interrupt() {
+        // Safety: We are the port, so it's okay to call this
+        if let Some(line) = unsafe { System::acknowledge_interrupt() } {
             // Now that we have signaled the acknowledgement of the current
             // exception, we can start accepting nested exceptions.
             unsafe { llvm_asm!("cpsie i"::::"volatile") };
@@ -560,7 +562,8 @@ impl State {
                 unsafe { handler() };
             }
 
-            System::end_interrupt(line);
+            // Safety: We are the port, so it's okay to call this
+            unsafe { System::end_interrupt(line) };
         }
     }
 }
