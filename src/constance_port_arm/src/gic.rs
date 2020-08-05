@@ -2,7 +2,6 @@ use constance::kernel::{
     ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
     PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
 };
-use register::FieldValue;
 
 use super::{gic_regs, Gic, GicRegs};
 

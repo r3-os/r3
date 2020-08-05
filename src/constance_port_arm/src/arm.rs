@@ -53,8 +53,3 @@ pub use self::sctlr::*;
 pub use self::tlbiall::*;
 pub use self::ttbcr::*;
 pub use self::ttbr0::*;
-
-#[inline]
-pub fn dsb() {
-    unsafe { llvm_asm!("dsb"::::"volatile") };
-}
