@@ -247,8 +247,8 @@ impl State {
         unsafe {
             llvm_asm!("
                 # Read `dispatch_pending`
-                ldrb r0, [r0]
-                tst r0, r0
+                ldrb r1, [r0]
+                tst r1, r1
                 bne NotShortcutting
 
                 # `dispatch_pending` is clear, meaning we are returning to the
@@ -266,8 +266,8 @@ impl State {
                 # different task. Clear `dispatch_pending` and branch to
                 # `push_second_level_state_and_dispatch`.
             NotShortcutting:
-                movs r0, #0
-                strb r0, [r0]
+                movs r1, #0
+                strb r1, [r0]
                 b $1
             "
             :
