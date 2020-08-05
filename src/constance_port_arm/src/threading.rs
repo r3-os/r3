@@ -20,6 +20,7 @@ pub unsafe trait PortInstance:
 
 pub struct State {
     dispatch_pending: UnsafeCell<bool>,
+    main_stack: UnsafeCell<usize>,
 }
 
 unsafe impl Sync for State {}
@@ -36,6 +37,7 @@ impl State {
     pub const fn new() -> Self {
         Self {
             dispatch_pending: UnsafeCell::new(false),
+            main_stack: UnsafeCell::new(0),
         }
     }
 }
@@ -70,10 +72,13 @@ impl State {
                 # `Dispatch` needs stack
                 mov sp, r0
 
+                # Save the stack pointer for later use
+                str r0, [r1]
+
                 b Dispatch
                 "
             :
-            :
+            :   "{r1}"(self.main_stack.get())
             :
             :   "volatile");
             core::hint::unreachable_unchecked();
@@ -129,8 +134,9 @@ impl State {
     /// Do the following steps:
     ///
     ///  - **Don't** push the first-level state.
-    ///  - Push the second-level state.
-    ///  - Store SP to the current task's `TaskState`.
+    ///  - If the current task is not an idle task,
+    ///     - Push the second-level state.
+    ///     - Store SP to the current task's `TaskState`.
     ///  - `Dispatch:`
     ///     - Call [`constance::kernel::PortToKernel::choose_running_task`].
     ///     - Restore SP from the next scheduled task's `TaskState`.
@@ -142,7 +148,10 @@ impl State {
     /// # Safety
     ///
     ///  - The processor should be in System mode (task context).
-    ///  - SP should point to the first-level state on the current task's stack.
+    ///  - If the current task is an idle task, SP should point to the
+    ///    first-level state on the current task's stack. Otherwise, SP must be
+    ///    zero.
+    ///  - This function may overwrite any contents in the main stack.
     ///
     #[naked]
     unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> !
@@ -166,9 +175,27 @@ impl State {
         //  - The compiled code does not trash any registers other than r0-r3
         //    before entering the inline assembly code below.
         let running_task_ptr = System::state().running_task_ptr();
+        let main_stack_ptr = System::port_state().main_stack.get();
 
         unsafe {
             llvm_asm!("
+                # Skip saving the second-level state if the current context
+                # is an idle task. Also, in this case, we don't have a stack,
+                # but `choose_and_get_next_task` needs one. Therefore we borrow
+                # the main stack.
+                #
+                #   if sp_usr == 0 {
+                #       [running_task is None]
+                #       sp_usr = *main_stack_ptr;
+                #   } else {
+                #       /* ... */
+                #   }
+                #   choose_and_get_next_task();
+                #
+                tst sp, sp
+                ldreq sp, [r1]
+                beq Dispatch
+
                 # Push the second-level context state.
                 push {r4-r11}
 
@@ -224,6 +251,7 @@ impl State {
             :   "{r0}"(running_task_ptr)
             ,   "X"(choose_and_get_next_task::<System> as extern fn() -> _)
             ,   "X"(Self::idle_task::<System> as unsafe fn() -> !)
+            ,   "{r1}"(main_stack_ptr)
             :
             :   "volatile");
             core::hint::unreachable_unchecked();
