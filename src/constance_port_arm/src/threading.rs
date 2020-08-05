@@ -385,14 +385,14 @@ impl State {
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
         let cpsr: u32;
-        unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr)) };
+        unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr):::"volatile") };
         (cpsr & (1 << 7)) != 0
     }
 
     #[inline(always)]
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
         let cpsr: u32;
-        unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr)) };
+        unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr):::"volatile") };
         (cpsr & 0xf) == 0xf // System mode
     }
 
