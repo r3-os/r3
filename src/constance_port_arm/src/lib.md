@@ -44,7 +44,7 @@ The maximum possible range of valid interrupt numbers is `0..1020` (the upper bo
 
  - `0..16` is used for SGIs (Software-Generated Interrupts), which are used for inter-processor communication. SGIs don't support enabling, disabling, or changing their trigger modes.
  - `16..32` is used for PPIs (Private Peripheral Interrupts), which are peripheral interrupts specific to a single processor.
- - `16..` is used for SPIs (Shared Peripheral Interrupts), which are peripheral interrupts that the Distributor can route to a specified set of processors. The current implementation of the GIC driver routes all interrupts to CPU 0, assuming that's where the application runs.
+ - `32..` is used for SPIs (Shared Peripheral Interrupts), which are peripheral interrupts that the Distributor can route to a specified set of processors. The current implementation of the GIC driver routes all interrupts to CPU 0, assuming that's where the application runs.
 
 The valid priority range is `0..255`. All priorities are [*managed*] - unmanaged interrupts aren't supported yet.
 
