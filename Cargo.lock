@@ -240,6 +240,12 @@ name = "constance_port_arm"
 version = "0.0.1"
 dependencies = [
  "constance",
+ "env_logger",
+ "log",
+ "num-integer",
+ "num-rational",
+ "quickcheck",
+ "quickcheck_macros",
  "r0",
  "register",
 ]

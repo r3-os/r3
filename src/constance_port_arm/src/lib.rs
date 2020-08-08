@@ -1,7 +1,10 @@
 #![feature(external_doc)]
 #![feature(const_fn)]
+#![feature(const_generics)]
 #![feature(const_panic)]
 #![feature(const_ptr_offset)]
+#![feature(const_saturating_int_methods)]
+#![feature(decl_macro)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
@@ -13,6 +16,10 @@
 /// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate constance;
+
+#[doc(hidden)]
+#[macro_use]
+pub mod utils;
 
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -40,6 +47,8 @@ mod arm;
 mod gic_cfg;
 mod gic_regs;
 mod startup_cfg;
+#[doc(hidden)]
+pub mod timing;
 pub use self::gic_cfg::*;
 pub use self::startup_cfg::*;
 
