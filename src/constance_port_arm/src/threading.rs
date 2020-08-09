@@ -328,11 +328,14 @@ impl State {
     #[naked]
     unsafe fn idle_task<System: PortInstance>() -> ! {
         unsafe {
-            // TODO: Use WFI
             llvm_asm!("
                 movs sp, #0
                 cpsie i
             IdleLoop:
+                # Ensure all outstanding memory transactions are complete before
+                # halting the processor
+                dsb
+                wfi
                 b IdleLoop
             "
             :
