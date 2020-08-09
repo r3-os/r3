@@ -26,11 +26,6 @@ pub mod utils;
 #[cfg(target_os = "none")]
 pub extern crate core;
 
-/// Used by `use_startup!`
-#[doc(hidden)]
-#[cfg(target_os = "none")]
-pub mod startup;
-
 /// Used by `use_port!`
 #[doc(hidden)]
 #[cfg(target_os = "none")]
@@ -48,14 +43,15 @@ mod arm;
 pub mod gic;
 mod sp804_cfg;
 mod sp804_regs;
-mod startup_cfg;
+#[doc(hidden)]
+pub mod startup;
 #[doc(hidden)]
 pub mod timing;
 pub use self::gic::{
     Gic, GicOptions, GicRegs, InterruptLineTriggerMode, SetInterruptLineTriggerModeError,
 };
 pub use self::sp804_cfg::*;
-pub use self::startup_cfg::*;
+pub use self::startup::cfg::*;
 
 /// The configuration of the port.
 pub trait ThreadingOptions {}
@@ -125,25 +121,6 @@ pub trait EntryPoint {
     ///    that the handler can restore it later.
     ///
     unsafe fn irq_entry() -> !;
-}
-
-/// Generate [startup code]. **Requires [`StartupOptions`] and [`EntryPoint`] to
-/// be implemented.**
-///
-/// This macro produces an entry point function whose symbol name is `start`.
-/// You should specify it as an entry point in your linker script (the provided
-/// linker scripts automatically do this for you).
-///
-/// [startup code]: crate#startup-code
-#[macro_export]
-macro_rules! use_startup {
-    (unsafe $sys:ty) => {
-        #[no_mangle]
-        #[naked]
-        pub unsafe fn start() {
-            $crate::startup::start::<$sys>();
-        }
-    };
 }
 
 /// Define a system type implementing [`PortThreading`] and [`EntryPoint`].

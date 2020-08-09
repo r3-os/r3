@@ -1,5 +1,25 @@
 use core::ops::Range;
 
+/// Generate [startup code]. **Requires [`StartupOptions`] and [`EntryPoint`] to
+/// be implemented.**
+///
+/// This macro produces an entry point function whose symbol name is `start`.
+/// You should specify it as an entry point in your linker script (the provided
+/// linker scripts automatically do this for you).
+///
+/// [startup code]: crate#startup-code
+/// [`EntryPoint`]: crate::EntryPoint
+#[macro_export]
+macro_rules! use_startup {
+    (unsafe $sys:ty) => {
+        #[no_mangle]
+        #[naked]
+        pub unsafe fn start() {
+            $crate::startup::imp::start::<$sys>();
+        }
+    };
+}
+
 /// The options for [`use_startup!`].
 pub trait StartupOptions {
     /// The memory map.
