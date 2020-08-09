@@ -684,6 +684,7 @@ mod tests {
 
     use super::*;
     use core::convert::TryInto;
+    use itertools::merge;
     use quickcheck_macros::quickcheck;
     use std::{prelude::v1::*, vec};
 
@@ -840,7 +841,11 @@ mod tests {
                     // waiting for the next tick
                     let mut last_tick_count = start_tick_count;
                     let mut elapsed = 0;
-                    for hw_elapsed in choose_values_from_range(0..=late_len_hw_tick_count) {
+                    let sample_points = merge(
+                        choose_values_from_range(0..=late_len_hw_tick_count),
+                        vec![len_hw_tick_count.saturating_sub(1), len_hw_tick_count],
+                    );
+                    for hw_elapsed in sample_points {
                         log::trace!("    - HW = {} + {}", hw_tick_count, hw_elapsed);
 
                         let hw_tick_count = add_mod(hw_tick_count, hw_elapsed, HW_PERIOD);
@@ -859,12 +864,16 @@ mod tests {
                         // `CFG.max_tick_count()` between timer interrupts or
                         // the kernel would lose track of time
                         assert!(elapsed <= CFG.max_tick_count());
+
+                        if hw_elapsed < len_hw_tick_count {
+                            // `len_hw_tick_count` must be the minimum amount
+                            // of waiting required to fulfill the request
+                            assert!(elapsed < op.timeout);
+                        }
                     }
 
                     // Must wait at least for the specified duration
                     assert!(elapsed >= op.timeout);
-
-                    // TODO: check that we didn't wait too long
 
                     hw_tick_count = add_mod(hw_tick_count, late_len_hw_tick_count, HW_PERIOD);
                 }
