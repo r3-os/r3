@@ -36,11 +36,6 @@ pub mod startup;
 #[cfg(target_os = "none")]
 pub mod threading;
 
-/// Used by `use_gic!`
-#[doc(hidden)]
-#[cfg(target_os = "none")]
-pub mod gic;
-
 /// Used by `use_sp804!`
 #[doc(hidden)]
 #[cfg(target_os = "none")]
@@ -49,14 +44,16 @@ pub mod sp804;
 #[cfg(target_os = "none")]
 mod arm;
 
-mod gic_cfg;
-mod gic_regs;
+#[doc(hidden)]
+pub mod gic;
 mod sp804_cfg;
 mod sp804_regs;
 mod startup_cfg;
 #[doc(hidden)]
 pub mod timing;
-pub use self::gic_cfg::*;
+pub use self::gic::{
+    Gic, GicOptions, GicRegs, InterruptLineTriggerMode, SetInterruptLineTriggerModeError,
+};
 pub use self::sp804_cfg::*;
 pub use self::startup_cfg::*;
 
@@ -235,107 +232,6 @@ macro_rules! use_port {
         }
 
         const _: () = $crate::threading::validate::<$sys>();
-    };
-}
-
-/// Implement [`PortInterrupts`], [`InterruptController`], and [`Gic`] on
-/// the given system type using the General Interrupt Controller (GIC) on the
-/// target.
-/// **Requires [`GicOptions`].**
-///
-/// [`PortInterrupts`]: constance::kernel::PortInterrupts
-///
-/// # Safety
-///
-///  - The target must really include a GIC.
-///  - `GicOptions` should be configured correctly and the memory-mapped
-///    registers should be accessible.
-///
-#[macro_export]
-macro_rules! use_gic {
-    (unsafe impl PortInterrupts for $sys:ty) => {
-        const _: () = {
-            use $crate::{
-                constance::kernel::{
-                    ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
-                    InterruptPriority, PendInterruptLineError, PortInterrupts,
-                    QueryInterruptLineError, SetInterruptLinePriorityError,
-                },
-                core::ops::Range,
-                gic, Gic, GicRegs, InterruptController,
-            };
-
-            unsafe impl Gic for $sys {
-                #[inline(always)]
-                fn gic_regs() -> GicRegs {
-                    unsafe { GicRegs::from_system::<Self>() }
-                }
-            }
-
-            unsafe impl PortInterrupts for $sys {
-                const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..255;
-
-                #[inline]
-                unsafe fn set_interrupt_line_priority(
-                    line: InterruptNum,
-                    priority: InterruptPriority,
-                ) -> Result<(), SetInterruptLinePriorityError> {
-                    gic::set_interrupt_line_priority::<Self>(line, priority)
-                }
-
-                #[inline]
-                unsafe fn enable_interrupt_line(
-                    line: InterruptNum,
-                ) -> Result<(), EnableInterruptLineError> {
-                    gic::enable_interrupt_line::<Self>(line)
-                }
-
-                #[inline]
-                unsafe fn disable_interrupt_line(
-                    line: InterruptNum,
-                ) -> Result<(), EnableInterruptLineError> {
-                    gic::disable_interrupt_line::<Self>(line)
-                }
-
-                #[inline]
-                unsafe fn pend_interrupt_line(
-                    line: InterruptNum,
-                ) -> Result<(), PendInterruptLineError> {
-                    gic::pend_interrupt_line::<Self>(line)
-                }
-
-                #[inline]
-                unsafe fn clear_interrupt_line(
-                    line: InterruptNum,
-                ) -> Result<(), ClearInterruptLineError> {
-                    gic::clear_interrupt_line::<Self>(line)
-                }
-
-                #[inline]
-                unsafe fn is_interrupt_line_pending(
-                    line: InterruptNum,
-                ) -> Result<bool, QueryInterruptLineError> {
-                    gic::is_interrupt_line_pending::<Self>(line)
-                }
-            }
-
-            impl InterruptController for $sys {
-                #[inline]
-                unsafe fn init() {
-                    gic::init::<Self>()
-                }
-
-                #[inline]
-                unsafe fn acknowledge_interrupt() -> Option<InterruptNum> {
-                    gic::acknowledge_interrupt::<Self>()
-                }
-
-                #[inline]
-                unsafe fn end_interrupt(num: InterruptNum) {
-                    gic::end_interrupt::<Self>(num);
-                }
-            }
-        };
     };
 }
 

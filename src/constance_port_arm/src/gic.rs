@@ -1,168 +1,200 @@
-use constance::kernel::{
-    ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-    PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
-};
+use constance::kernel::InterruptNum;
+use register::FieldValue;
 
-use super::{gic_regs, Gic, GicRegs};
+mod gic_regs;
 
-/// Implements [`crate::InterruptController::init`].
-pub fn init<System: Gic>() {
-    let GicRegs {
-        distributor,
-        cpu_interface,
-    } = System::gic_regs();
+/// Used by `use_gic!`
+#[doc(hidden)]
+#[cfg(target_os = "none")]
+pub mod imp;
 
-    // Disable the distributor
-    distributor
-        .CTLR
-        .modify(gic_regs::GICD_CTLR::Enable::Disable);
+/// The options for [`use_gic!`].
+pub trait GicOptions {
+    /// The base address of GIC distributor registers.
+    const GIC_DISTRIBUTOR_BASE: usize;
 
-    let num_lines = System::num_interrupt_lines();
-
-    // Disable all interrupt lines
-    for r in &distributor.ICENABLE[0..(num_lines + 31) / 32] {
-        r.set(0xffffffff);
-    }
-
-    // Clear all interrupt lines
-    for r in &distributor.ICPEND[0..(num_lines + 31) / 32] {
-        r.set(0xffffffff);
-    }
-
-    // Configure all interrupt lines as level-triggered
-    for r in &distributor.ICFGR[0..(num_lines + 15) / 16] {
-        r.set(0);
-    }
-
-    // Configure all interrupt lines to target CPU interface 0
-    for r in &distributor.ITARGETS[0..(num_lines + 3) / 4] {
-        r.set(0x01010101);
-    }
-
-    // Unmask all priorities in range `0..255`
-    cpu_interface.PMR.set(0xff);
-
-    // Allocate all priority bits for group priority
-    cpu_interface.BPR.set(0);
-
-    // Enable the distributor
-    distributor.CTLR.modify(gic_regs::GICD_CTLR::Enable::Enable);
-
-    // Enable the CPU interface
-    cpu_interface
-        .CTLR
-        .modify(gic_regs::GICC_CTLR::Enable::Enable);
+    /// The base address of GIC CPU interface registers.
+    const GIC_CPU_BASE: usize;
 }
 
-/// Implements [`crate::InterruptController::acknowledge_interrupt`].
-#[inline]
-pub fn acknowledge_interrupt<System: Gic>() -> Option<InterruptNum> {
-    let cpu_interface = System::gic_regs().cpu_interface;
-    let raw = cpu_interface.IAR.get();
-    let interrupt_id = raw & 0x3ff;
-    if interrupt_id == 0x3ff {
-        None
-    } else {
-        Some(interrupt_id as _)
+/// Provides access to a system-global GIC instance. Implemented by [`use_gic!`].
+pub unsafe trait Gic {
+    #[doc(hidden)]
+    /// Get `GicRegs` representing the system-global GIC instance.
+    fn gic_regs() -> GicRegs;
+
+    /// Get the number of supported interrupt lines.
+    fn num_interrupt_lines() -> InterruptNum {
+        let distributor = Self::gic_regs().distributor;
+        let raw = distributor.TYPER.read(gic_regs::GICD_TYPER::ITLinesNumber);
+        (raw as usize + 1) * 32
+    }
+
+    /// Set the trigger mode of the specified interrupt line.
+    fn set_interrupt_line_trigger_mode(
+        num: InterruptNum,
+        mode: InterruptLineTriggerMode,
+    ) -> Result<(), SetInterruptLineTriggerModeError> {
+        let distributor = Self::gic_regs().distributor;
+
+        // SGI (num = `0..16`) doesn't support changing trigger mode
+        if num < 16 || num >= Self::num_interrupt_lines() {
+            return Err(SetInterruptLineTriggerModeError::BadParam);
+        }
+
+        let int_config = mode as u32 * 2;
+        distributor.ICFGR[num / 16].modify(FieldValue::<u32, ()>::new(
+            0b10,
+            (num % 16) * 2,
+            int_config,
+        ));
+
+        Ok(())
     }
 }
 
-/// Implements [`crate::InterruptController::end_interrupt`].
-#[inline]
-pub fn end_interrupt<System: Gic>(num: InterruptNum) {
-    let cpu_interface = System::gic_regs().cpu_interface;
-    cpu_interface.EOIR.set(num as _);
+#[doc(hidden)]
+/// Represents a GIC instance.
+#[derive(Clone, Copy)]
+pub struct GicRegs {
+    pub(super) distributor: &'static gic_regs::GicDistributor,
+    pub(super) cpu_interface: &'static gic_regs::GicCpuInterface,
 }
 
-/// Implements [`constance::kernel::PortInterrupts::set_interrupt_line_priority`].
-pub fn set_interrupt_line_priority<System: Gic>(
-    line: InterruptNum,
-    priority: InterruptPriority,
-) -> Result<(), SetInterruptLinePriorityError> {
-    let distributor = System::gic_regs().distributor;
-
-    if line >= System::num_interrupt_lines() || priority < 0 || priority > 255 {
-        return Err(SetInterruptLinePriorityError::BadParam);
-    }
-
-    distributor.IPRIORITY[line].set(priority as u8);
-
-    Ok(())
+/// Specifies the type of signal transition that pends an interrupt.
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum InterruptLineTriggerMode {
+    /// Asserts an interrupt whenever the interrupt signal level is active and
+    /// deasserts whenever the level is not active.
+    Level = 0,
+    /// Asserts an interrupt upon detection of a rising edge of an interrupt
+    /// signal.
+    RisingEdge = 1,
 }
 
-/// Implements [`constance::kernel::PortInterrupts::enable_interrupt_line`].
-pub fn enable_interrupt_line<System: Gic>(
-    line: InterruptNum,
-) -> Result<(), EnableInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
-
-    // SGI (line `0..16`) does not support enabling/disabling.
-    if line < 16 || line >= System::num_interrupt_lines() {
-        return Err(EnableInterruptLineError::BadParam);
-    }
-
-    distributor.ISENABLE[line / 32].set(1 << (line % 32));
-
-    Ok(())
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum SetInterruptLineTriggerModeError {
+    /// The interrupt number is out of range.
+    BadParam,
 }
 
-/// Implements [`constance::kernel::PortInterrupts::disable_interrupt_line`].
-pub fn disable_interrupt_line<System: Gic>(
-    line: InterruptNum,
-) -> Result<(), EnableInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
-
-    // SGI (line `0..16`) does not support enabling/disabling.
-    if line < 16 || line >= System::num_interrupt_lines() {
-        return Err(EnableInterruptLineError::BadParam);
+impl GicRegs {
+    /// Construct a `GicRegs`.
+    ///
+    /// # Safety
+    ///
+    /// `GicOptions` should be configured correctly and the memory-mapped
+    /// registers should be accessible.
+    #[inline(always)]
+    pub unsafe fn from_system<System: GicOptions>() -> Self {
+        Self {
+            distributor: unsafe {
+                &*(System::GIC_DISTRIBUTOR_BASE as *const gic_regs::GicDistributor)
+            },
+            cpu_interface: unsafe { &*(System::GIC_CPU_BASE as *const gic_regs::GicCpuInterface) },
+        }
     }
-
-    distributor.ICENABLE[line / 32].set(1 << (line % 32));
-
-    Ok(())
 }
 
-/// Implements [`constance::kernel::PortInterrupts::pend_interrupt_line`].
-pub fn pend_interrupt_line<System: Gic>(line: InterruptNum) -> Result<(), PendInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+/// Implement [`PortInterrupts`], [`InterruptController`], and [`Gic`] on
+/// the given system type using the General Interrupt Controller (GIC) on the
+/// target.
+/// **Requires [`GicOptions`].**
+///
+/// [`PortInterrupts`]: constance::kernel::PortInterrupts
+/// [`InterruptController`]: crate::InterruptController
+///
+/// # Safety
+///
+///  - The target must really include a GIC.
+///  - `GicOptions` should be configured correctly and the memory-mapped
+///    registers should be accessible.
+///
+#[macro_export]
+macro_rules! use_gic {
+    (unsafe impl PortInterrupts for $sys:ty) => {
+        const _: () = {
+            use $crate::{
+                constance::kernel::{
+                    ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
+                    InterruptPriority, PendInterruptLineError, PortInterrupts,
+                    QueryInterruptLineError, SetInterruptLinePriorityError,
+                },
+                core::ops::Range,
+                gic::imp,
+                Gic, GicRegs, InterruptController,
+            };
 
-    if line >= System::num_interrupt_lines() {
-        return Err(PendInterruptLineError::BadParam);
-    } else if line < 16 {
-        distributor.SPENDSGIR[line].set(1);
-    } else {
-        distributor.ISPEND[line / 32].set(1 << (line % 32));
-    }
+            unsafe impl Gic for $sys {
+                #[inline(always)]
+                fn gic_regs() -> GicRegs {
+                    unsafe { GicRegs::from_system::<Self>() }
+                }
+            }
 
-    Ok(())
-}
+            unsafe impl PortInterrupts for $sys {
+                const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..255;
 
-/// Implements [`constance::kernel::PortInterrupts::clear_interrupt_line`].
-pub fn clear_interrupt_line<System: Gic>(
-    line: InterruptNum,
-) -> Result<(), ClearInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+                #[inline]
+                unsafe fn set_interrupt_line_priority(
+                    line: InterruptNum,
+                    priority: InterruptPriority,
+                ) -> Result<(), SetInterruptLinePriorityError> {
+                    imp::set_interrupt_line_priority::<Self>(line, priority)
+                }
 
-    if line >= System::num_interrupt_lines() {
-        return Err(ClearInterruptLineError::BadParam);
-    } else if line < 16 {
-        distributor.CPENDSGIR[line].set(1);
-    } else {
-        distributor.ICPEND[line / 32].set(1 << (line % 32));
-    }
+                #[inline]
+                unsafe fn enable_interrupt_line(
+                    line: InterruptNum,
+                ) -> Result<(), EnableInterruptLineError> {
+                    imp::enable_interrupt_line::<Self>(line)
+                }
 
-    Ok(())
-}
+                #[inline]
+                unsafe fn disable_interrupt_line(
+                    line: InterruptNum,
+                ) -> Result<(), EnableInterruptLineError> {
+                    imp::disable_interrupt_line::<Self>(line)
+                }
 
-/// Implements [`constance::kernel::PortInterrupts::is_interrupt_line_pending`].
-pub fn is_interrupt_line_pending<System: Gic>(
-    line: InterruptNum,
-) -> Result<bool, QueryInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+                #[inline]
+                unsafe fn pend_interrupt_line(
+                    line: InterruptNum,
+                ) -> Result<(), PendInterruptLineError> {
+                    imp::pend_interrupt_line::<Self>(line)
+                }
 
-    if line >= System::num_interrupt_lines() {
-        return Err(QueryInterruptLineError::BadParam);
-    }
+                #[inline]
+                unsafe fn clear_interrupt_line(
+                    line: InterruptNum,
+                ) -> Result<(), ClearInterruptLineError> {
+                    imp::clear_interrupt_line::<Self>(line)
+                }
 
-    Ok((distributor.ISPEND[line / 32].get() & (1 << (line % 32))) != 0)
+                #[inline]
+                unsafe fn is_interrupt_line_pending(
+                    line: InterruptNum,
+                ) -> Result<bool, QueryInterruptLineError> {
+                    imp::is_interrupt_line_pending::<Self>(line)
+                }
+            }
+
+            impl InterruptController for $sys {
+                #[inline]
+                unsafe fn init() {
+                    imp::init::<Self>()
+                }
+
+                #[inline]
+                unsafe fn acknowledge_interrupt() -> Option<InterruptNum> {
+                    imp::acknowledge_interrupt::<Self>()
+                }
+
+                #[inline]
+                unsafe fn end_interrupt(num: InterruptNum) {
+                    imp::end_interrupt::<Self>(num);
+                }
+            }
+        };
+    };
 }

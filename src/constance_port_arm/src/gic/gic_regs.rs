@@ -1,13 +1,6 @@
 #![allow(non_snake_case)]
 use register::mmio::{ReadOnly, ReadWrite};
 
-mod gicc_ctlr;
-mod gicd_ctlr;
-mod gicd_typer;
-pub use self::gicc_ctlr::*;
-pub use self::gicd_ctlr::*;
-pub use self::gicd_typer::*;
-
 #[repr(C)]
 pub struct GicDistributor {
     /// Distributor Control Register
@@ -79,4 +72,48 @@ pub struct GicCpuInterface {
     pub AEOIR: ReadWrite<u32>,
     /// Aliased Highest Priority Pending Interrupt Register
     pub AHPPIR: ReadWrite<u32>,
+}
+
+register::register_bitfields! {u32,
+    pub GICC_CTLR [
+        /// Enable for the signaling of Group 1 interrupts by the CPU interface
+        /// to the connected processor.
+        Enable OFFSET(0) NUMBITS(1) [
+            Disable = 0,
+            Enable = 1
+        ]
+    ]
+}
+
+register::register_bitfields! {u32,
+    pub GICD_CTLR [
+        /// Global enable for forwarding pending interrupts from the Distributor
+        /// to the CPU interfaces
+        Enable OFFSET(0) NUMBITS(1) [
+            Disable = 0,
+            Enable = 1
+        ]
+    ]
+}
+
+register::register_bitfields! {u32,
+    pub GICD_TYPER [
+        /// Indicates whether the GIC implements the Security Extensions.
+        SecurityExtn OFFSET(10) NUMBITS(1) [
+            Unimplemented = 0,
+            Implemented = 1
+        ],
+
+        /// Indicates the number of implemented CPU interfaces. The number of
+        /// implemented CPU interfaces is one more than the value of this field,
+        /// for example if this field is 0b011, there are four CPU interfaces.
+        /// If the GIC implements the Virtualization Extensions, this is also
+        /// the number of virtual CPU interfaces.
+        CPUNumber OFFSET(5) NUMBITS(3) [],
+
+        /// Indicates the maximum number of interrupts that the GIC supports.
+        /// If ITLinesNumber=N, the maximum number of interrupts is 32(N+1). The
+        /// interrupt ID range is from 0 to (number of IDs – 1).
+        ITLinesNumber OFFSET(0) NUMBITS(5) []
+    ]
 }
