@@ -47,9 +47,7 @@ mod sp804_regs;
 pub mod startup;
 #[doc(hidden)]
 pub mod timing;
-pub use self::gic::{
-    Gic, GicOptions, GicRegs, InterruptLineTriggerMode, SetInterruptLineTriggerModeError,
-};
+pub use self::gic::cfg::*;
 pub use self::sp804_cfg::*;
 pub use self::startup::cfg::*;
 

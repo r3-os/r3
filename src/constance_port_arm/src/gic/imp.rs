@@ -1,9 +1,39 @@
+//! Under the hood
 use constance::kernel::{
     ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
     PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
 };
 
-use super::{gic_regs, Gic, GicRegs};
+use super::{
+    cfg::{Gic, GicOptions},
+    gic_regs,
+};
+
+#[doc(hidden)]
+/// Represents a GIC instance.
+#[derive(Clone, Copy)]
+pub struct GicRegs {
+    pub(super) distributor: &'static gic_regs::GicDistributor,
+    pub(super) cpu_interface: &'static gic_regs::GicCpuInterface,
+}
+
+impl GicRegs {
+    /// Construct a `GicRegs`.
+    ///
+    /// # Safety
+    ///
+    /// `GicOptions` should be configured correctly and the memory-mapped
+    /// registers should be accessible.
+    #[inline(always)]
+    pub unsafe fn from_system<System: GicOptions>() -> Self {
+        Self {
+            distributor: unsafe {
+                &*(System::GIC_DISTRIBUTOR_BASE as *const gic_regs::GicDistributor)
+            },
+            cpu_interface: unsafe { &*(System::GIC_CPU_BASE as *const gic_regs::GicCpuInterface) },
+        }
+    }
+}
 
 /// Implements [`crate::InterruptController::init`].
 pub fn init<System: Gic>() {
