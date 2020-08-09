@@ -44,7 +44,6 @@ mod arm;
 pub mod gic {
     pub mod cfg;
     mod gic_regs;
-    #[cfg(target_os = "none")]
     pub mod imp;
 }
 
