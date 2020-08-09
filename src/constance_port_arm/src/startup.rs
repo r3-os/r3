@@ -1,5 +1,5 @@
 //! Provides a standard startup and entry code implementation.
-use register::cpu::{RegisterReadWrite, RegisterWriteOnly};
+use register::cpu::{RegisterReadOnly, RegisterReadWrite, RegisterWriteOnly};
 
 use crate::{arm, startup_cfg::MemoryRegionAttributes, EntryPoint, StartupOptions};
 
@@ -79,7 +79,45 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
     // Invalidate instruction cache
     arm::ICIALLU.set(0);
 
-    // TODO: invalidate data and unified cache
+    // Invalidate branch prediction array
+    arm::BPIALL.set(0);
+
+    // Invalidate data and unified cache
+    // This part is based on the section “8.9.1. Example code for cache
+    // maintenance operations” of Cortex-A Series Programmers Guide 4.0.
+    //
+    // Level of Coherency: “This field defines the last level of cache that must
+    // be cleaned or invalidated when cleaning or invalidating to the point of
+    // coherency.”
+    let clidr = arm::CLIDR.extract();
+    let level_of_coherency = clidr.read(arm::CLIDR::LoC);
+    for level_and_d in 0..level_of_coherency * 2 {
+        let cache_type = (clidr.get() >> ((level_and_d >> 1) * 3)) & 0b111;
+
+        // Does this cache level include a data or unified cache?
+        if cache_type >= 2 {
+            // Level = level_and_d / 2, InD = level_and_d % 2
+            // Use `isb` to make sure the change to CSSELR takes effect.
+            arm::CSSELR.set(level_and_d);
+            unsafe { llvm_asm!("isb") };
+
+            let cssidr = arm::CSSIDR.extract();
+            let log2_line_size = cssidr.read(arm::CSSIDR::LineSize) + 2;
+            let max_way_index = cssidr.read(arm::CSSIDR::Associativity);
+            let max_set_index = cssidr.read(arm::CSSIDR::NumSets);
+
+            let way_offset = max_way_index.leading_zeros();
+
+            for way in (0..=max_way_index).rev() {
+                for set in (0..=max_set_index).rev() {
+                    let set_way = level_and_d | (way << way_offset) | (set << log2_line_size);
+
+                    // Invalidate by set/way
+                    arm::DCISW.set(set_way);
+                }
+            }
+        }
+    }
 
     // Configure MMU
     let page_table_ptr = (&System::PAGE_TABLE) as *const _ as usize;
@@ -109,11 +147,16 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
 
     // Invalidate TLB
     arm::TLBIALL.set(0);
+
+    // DSB causes completion of all preceding cache and branch predictor
+    // mantenance operations. ISB causes the effect to be visible to all
+    // subsequent instructions.
+    unsafe { llvm_asm!("dsb") };
     unsafe { llvm_asm!("isb") };
 
     arm::SCTLR.modify(
         // Enable data and unified caches
-        // TODO: arm::SCTLR::C::Enable +
+        arm::SCTLR::C::Enable +
         // Enable instruction caches
         arm::SCTLR::I::Enable +
         // Enable MMU
@@ -130,7 +173,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
         arm::SCTLR::Z::Enable,
     );
 
-    // Ensure the changes made here take effect immediately
+    // Ensure the changes made to `SCTLR` here take effect immediately
     unsafe { llvm_asm!("isb") };
 
     extern "C" {

@@ -41,13 +41,25 @@ macro_rules! sys_coproc_write_raw {
     };
 }
 
+mod bpiall;
+mod clidr;
+mod csselr;
+mod cssidr;
 mod dacr;
+mod dccsw;
+mod dcisw;
 mod iciallu;
 mod sctlr;
 mod tlbiall;
 mod ttbcr;
 mod ttbr0;
+pub use self::bpiall::*;
+pub use self::clidr::*;
+pub use self::csselr::*;
+pub use self::cssidr::*;
 pub use self::dacr::*;
+pub use self::dccsw::*;
+pub use self::dcisw::*;
 pub use self::iciallu::*;
 pub use self::sctlr::*;
 pub use self::tlbiall::*;
