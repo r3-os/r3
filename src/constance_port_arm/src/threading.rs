@@ -5,7 +5,7 @@ use constance::{
 };
 use core::{borrow::BorrowMut, cell::UnsafeCell, mem::MaybeUninit, slice};
 
-use super::{InterruptController, ThreadingOptions};
+use super::{InterruptController, ThreadingOptions, Timer};
 
 /// Implemented on a system type by [`use_port!`].
 ///
@@ -13,7 +13,7 @@ use super::{InterruptController, ThreadingOptions};
 ///
 /// Only meant to be implemented by [`use_port!`].
 pub unsafe trait PortInstance:
-    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController
+    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController + Timer
 {
     fn port_state() -> &'static State;
 }
@@ -54,6 +54,9 @@ impl State {
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <System as InterruptController>::init() };
+
+        // Safety: We are the port, so it's okay to call this
+        unsafe { <System as Timer>::init() };
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <System as PortToKernel>::boot() };

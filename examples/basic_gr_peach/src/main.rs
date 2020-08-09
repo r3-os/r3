@@ -44,6 +44,8 @@ impl constance::kernel::PortTimer for System {
     }
 }
 
+impl port::Timer for System {}
+
 // -----------------------------------------------------------------------
 
 use constance::{

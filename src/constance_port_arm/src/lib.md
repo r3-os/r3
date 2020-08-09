@@ -36,6 +36,12 @@ fn main() {
 }
 ```
 
+# Kernel Timing
+
+As far as kernel timing is concerned, there is no universal solution for a Cortex-A system. This crate provides a port timer driver for [Arm PrimeCell SP804 Dual Timer], which can be instantiated by [`use_sp804!`].
+
+[Arm PrimeCell SP804 Dual Timer]: https://developer.arm.com/documentation/ddi0271/d/
+
 # Interrupt Controller
 
 Your system type should be combined with an interrupt controller driver by implementing [`PortInterrupts`] and [`InterruptController`]. Most systems are equipped with Arm Generic Interrupt Controller (GIC), whose driver is provided by [`use_gic!`].
