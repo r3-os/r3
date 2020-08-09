@@ -143,8 +143,8 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 ### Prerequisites
 
  - [rustup], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
- - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M port.
- - libusb 1.x to test the Arm-M port.
+ - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M/-A port.
+ - libusb 1.x to test the Arm-M/-A port.
 
 [rustup]: https://rustup.rs/
 
