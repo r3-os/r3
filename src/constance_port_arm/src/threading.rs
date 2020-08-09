@@ -234,6 +234,10 @@ impl State {
 
             .global PopFirstLevelState
             PopFirstLevelState:
+                # Reset the local monitor's state (this will cause a
+                # subsequent Store-Exclusive to fail)
+                clrex
+
                 # Resume the next task by restoring the first-level state
                 #
                 #   [{r4-r11, sp_usr} = resumed context]
@@ -312,6 +316,9 @@ impl State {
     }
 
     /// Enters an idle loop with IRQs unmasked.
+    ///
+    /// When context switching to the idle task, you don't need to execute
+    /// `clrex`.
     ///
     /// # Safety
     ///
@@ -575,7 +582,6 @@ impl State {
 
             ReturnToTask:
                 cpsid i
-                clrex
 
                 # Back to System mode...
                 cps #0x1f
