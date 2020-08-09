@@ -39,12 +39,25 @@ pub mod sp804;
 #[cfg(target_os = "none")]
 mod arm;
 
+/// The Arm Generic Interrupt Controller driver.
 #[doc(hidden)]
-pub mod gic;
+pub mod gic {
+    pub mod cfg;
+    mod gic_regs;
+    #[cfg(target_os = "none")]
+    pub mod imp;
+}
+
+/// The standard startup code.
+#[doc(hidden)]
+pub mod startup {
+    pub mod cfg;
+    #[cfg(target_os = "none")]
+    pub mod imp;
+}
+
 mod sp804_cfg;
 mod sp804_regs;
-#[doc(hidden)]
-pub mod startup;
 #[doc(hidden)]
 pub mod timing;
 pub use self::gic::cfg::*;
