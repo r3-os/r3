@@ -67,6 +67,7 @@ pub enum InterruptLineTriggerMode {
     RisingEdge = 1,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SetInterruptLineTriggerModeError {
     /// The interrupt number is out of range.
     BadParam,
