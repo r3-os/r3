@@ -1,3 +1,9 @@
+//! <div class="distractor"><a style="background-image:
+//! url(https://derpicdn.net/img/2019/6/30/2079083/medium.png);
+//! padding-bottom: 100%" href="http://derpibooru.org/2079083"
+//! title="Screwdriver"></a></div>
+#![doc(include = "../../constance/src/common.md")]
+#![feature(external_doc)] // `#[doc(include = ...)]`
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
 #![feature(naked_functions)]
@@ -20,7 +26,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use constance::kernel::{StartupHook, UTicks, InterruptPriority, InterruptNum,
+        use constance::kernel::{StartupHook, InterruptPriority, InterruptNum,
             cfg::CfgBuilder};
         use constance_test_suite::kernel_tests;
         use constance_port_arm as port;
@@ -41,6 +47,7 @@ macro_rules! instantiate_test {
         port::use_port!(unsafe struct System);
         port::use_startup!(unsafe System);
         port::use_gic!(unsafe impl PortInterrupts for System);
+        port::use_sp804!(unsafe impl PortTimer for System);
 
         impl port::ThreadingOptions for System {}
 
@@ -49,6 +56,8 @@ macro_rules! instantiate_test {
             const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
                 port::MemoryMapSection::new(0x0100_0000..0x01a0_0000, 0x0100_0000)
                     .with_executable(true),
+                port::MemoryMapSection::new(0x1000_0000..0x1010_0000, 0x1000_0000)
+                    .as_device_memory(),
                 port::MemoryMapSection::new(0x1f00_0000..0x1f10_0000, 0x1f00_0000)
                     .as_device_memory(),
             ];
@@ -59,18 +68,10 @@ macro_rules! instantiate_test {
             const GIC_CPU_BASE: usize = 0x1f000100;
         }
 
-        impl constance::kernel::PortTimer for System {
-            // TODO
-            const MAX_TICK_COUNT: UTicks = 0xffffffff;
-            const MAX_TIMEOUT: UTicks = 0x80000000;
-            unsafe fn tick_count() -> UTicks {
-                0
-            }
-            unsafe fn pend_tick_after(tick_count_delta: UTicks) {
-                if tick_count_delta < Self::MAX_TIMEOUT {
-                    todo!("pend_tick_after")
-                }
-            }
+        impl port::Sp804Options for System {
+            const SP804_BASE: usize = 0x10011000;
+            const FREQUENCY: u64 = 1_000_000;
+            const INTERRUPT_NUM: InterruptNum = 36;
         }
 
         struct Driver;
@@ -96,6 +97,8 @@ macro_rules! instantiate_test {
             constance::build!(System, configure_app => test_case::App<System>);
 
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+            System::configure_sp804(b);
+
             // Redirect the log output to stderr
             #[cfg(feature = "output-semihosting")]
             StartupHook::build().start(|_| {
