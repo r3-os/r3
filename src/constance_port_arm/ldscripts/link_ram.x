@@ -37,6 +37,7 @@ SECTIONS
 
   /* Initial, IRQ, and Abort stack */
   . += 4096;
+  . = ALIGN(8);
   _stack_start = .;
 
   /* Place the heap right after `.uninit` */
