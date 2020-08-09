@@ -105,15 +105,6 @@ macro_rules! instantiate_test {
                 logger_semihosting::init();
             }).finish(b);
 
-            // Configure the interrupt lines as edge-triggered
-            StartupHook::build().start(|_| {
-                use port::Gic;
-                for &i in &[0, 1, 2, 3] {
-                    System::set_interrupt_line_trigger_mode(
-                        i, port::InterruptLineTriggerMode::RisingEdge);
-                }
-            }).finish(b);
-
             test_case::App::new::<Driver>(b)
         }
     };
