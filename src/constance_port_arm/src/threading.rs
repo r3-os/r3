@@ -519,9 +519,28 @@ impl State {
                 # Save `spsr_saved`
                 push {r3}
 
-                # TODO: align stack to 8-byte address
+                # Align `sp_svc` to 8 bytes and save the original `sp_svc`
+                # (This is required by AAPCS)
+                #   match sp % 8 {
+                #       0 => {
+                #           sp[-2] = sp;
+                #           sp -= 2;
+                #       }
+                #       4 => {
+                #           sp[-1] = sp;
+                #           sp -= 1;
+                #       }
+                #   }
+                mov r3, sp
+                subs sp, #4
+                bic sp, #4
+                str r3, [sp]
 
+                # Call `handle_irq`
                 bl $0
+
+                # Restore the original `sp_svc`
+                ldr sp, [sp]
 
                 # Are we returning to a task context?
                 #
