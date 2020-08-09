@@ -436,7 +436,7 @@ impl State {
             llvm_asm!("
                 # Adjust `lr_irq` to get the preferred return address. (The
                 # required adjustment is different for each exception type.)
-                adds lr, #8
+                subs lr, #4
 
                 # Switch back to the background mode. The background mode is
                 # indicated by SPSR.M on handler entry.
@@ -456,10 +456,10 @@ impl State {
                 mrs sp, SPSR
                 tst sp, #0x8
                 bne BackgroundIsTask
-                cps #0x1f
+                cps #0x13
                 b SwitchToBackgroundEnd
             BackgroundIsTask:
-                cps #0x13
+                cps #0x1f
             SwitchToBackgroundEnd:
 
                 # Skip saving the first-level state if the background context
