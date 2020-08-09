@@ -477,7 +477,7 @@ impl State {
                 #
                 tst sp, sp
                 it eq
-                moveq r3, #8
+                moveq r1, #8
                 beq PushFirstLevelStateEnd
 
                 # Save the first-level state to the background context's stack
@@ -491,12 +491,12 @@ impl State {
                 #   sp_xxx[4] = r12;
                 #   sp_xxx[5] = lr_xxx;
                 #
-                #   [r0 = sp_xxx, {r4-r11, sp_xxx, SPSR} = background context,
+                #   [r2 = sp_xxx, {r4-r11, sp_xxx, SPSR} = background context,
                 #    lr_irq = preferred return address]
                 #
                 subs sp, #8
                 push {r0-r3, r12, lr}
-                mov r0, sp
+                mov r2, sp
 
                 # Switch to IRQ mode. Save the return address to the background
                 # context's stack.
@@ -505,53 +505,52 @@ impl State {
                 #   sp_xxx[7] = SPSR;
                 #   spsr_saved = SPSR;
                 #
-                #   [r3 = spsr_saved, {r4-r11, sp_xxx} = background context]
+                #   [r1 = spsr_saved, {r4-r11, sp_xxx} = background context]
                 #
                 cps #0x12
-                mov r2, lr
-                mrs r3, SPSR
-                strd r2, r3, [r0, #24]
+                mov r0, lr
+                mrs r1, SPSR
+                strd r0, r1, [r2, #24]
             PushFirstLevelStateEnd:
 
                 # Switch to Supervisor mode.
                 cps #0x13
 
-                # Save `spsr_saved`
-                push {r3}
-
                 # Align `sp_svc` to 8 bytes and save the original `sp_svc`
-                # (This is required by AAPCS)
+                # (this is required by AAPCS). At the same time, save `spsr_saved`
+                #   [r1 = spsr_saved]
                 #   match sp % 8 {
                 #       0 => {
-                #           sp[-2] = sp;
+                #           sp[-2] = spsr_saved;
+                #           sp[-1] = sp;
                 #           sp -= 2;
                 #       }
                 #       4 => {
-                #           sp[-1] = sp;
-                #           sp -= 1;
+                #           sp[-3] = spsr_saved;
+                #           sp[-2] = sp;
+                #           sp -= 3;
                 #       }
                 #   }
-                mov r3, sp
-                subs sp, #4
+                mov r2, sp
                 bic sp, #4
-                str r3, [sp]
+                push {r1, r2}
 
                 # Call `handle_irq`
                 bl $0
 
-                # Restore the original `sp_svc`
-                ldr sp, [sp]
+                # Restore the original `sp_svc` snd `spsr_saved`
+                ldrd ip, sp, [sp]
 
                 # Are we returning to a task context?
                 #
+                #   [ip = spsr_saved]
                 #   match spsr_saved.M {
                 #       Supervisor => {}
                 #       System => {
                 #           goto ReturnToTask;
                 #       }
                 #   }
-                pop {r3}
-                tst r3, #0x8
+                tst ip, #0x8
                 bne ReturnToTask
 
                 # We are returning to an outer interrupt handler. Switching the
