@@ -43,7 +43,8 @@ macro_rules! use_sp804 {
                 kernel::{cfg::CfgBuilder, PortTimer, UTicks},
                 utils::Init,
             };
-            use $crate::{sp804, timing, Sp804Options, Timer};
+            use $crate::constance_portkit::tickless;
+            use $crate::{sp804, Sp804Options, Timer};
 
             impl PortTimer for $ty {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;
@@ -71,19 +72,19 @@ macro_rules! use_sp804 {
                 }
             }
 
-            const TICKLESS_CFG: timing::TicklessCfg = timing::TicklessCfg::new(
+            const TICKLESS_CFG: tickless::TicklessCfg = tickless::TicklessCfg::new(
                 <$ty as Sp804Options>::FREQUENCY,
                 <$ty as Sp804Options>::FREQUENCY_DENOMINATOR,
                 <$ty as Sp804Options>::HEADROOM,
             );
 
-            static mut TIMER_STATE: timing::TicklessState<TICKLESS_CFG> = Init::INIT;
+            static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
 
             // Safety: Only `use_sp804!` is allowed to `impl` this
             unsafe impl sp804::imp::Sp804Instance for $ty {
-                const TICKLESS_CFG: timing::TicklessCfg = TICKLESS_CFG;
+                const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
 
-                type TicklessState = timing::TicklessState<TICKLESS_CFG>;
+                type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
 
                 fn tickless_state() -> *mut Self::TicklessState {
                     // FIXME: Use `core::ptr::raw_mut!` when it's stable

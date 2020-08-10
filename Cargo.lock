@@ -240,13 +240,8 @@ name = "constance_port_arm"
 version = "0.0.1"
 dependencies = [
  "constance",
- "env_logger",
- "itertools",
- "log",
- "num-integer",
+ "constance_portkit",
  "num-rational",
- "quickcheck",
- "quickcheck_macros",
  "r0",
  "register",
 ]
@@ -256,13 +251,9 @@ name = "constance_port_arm_m"
 version = "0.0.1"
 dependencies = [
  "constance",
+ "constance_portkit",
  "cortex-m",
  "cortex-m-rt",
- "log",
- "num-integer",
- "num-rational",
- "quickcheck",
- "quickcheck_macros",
 ]
 
 [[package]]
@@ -311,6 +302,16 @@ dependencies = [
 [[package]]
 name = "constance_portkit"
 version = "0.0.1"
+dependencies = [
+ "constance",
+ "env_logger",
+ "itertools",
+ "log",
+ "num-integer",
+ "num-rational",
+ "quickcheck",
+ "quickcheck_macros",
+]
 
 [[package]]
 name = "constance_test_runner"

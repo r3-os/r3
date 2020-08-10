@@ -1,7 +1,8 @@
 //! Implements the core algorithm for `systick_tickful`.
-use constance::utils::Init;
 use core::ops;
 use num_rational::Ratio;
+
+use crate::utils::Init;
 
 /// The precomputed parameters for the tickful implementation of
 /// [`constance::kernel::PortTimer`].

@@ -2,11 +2,9 @@
 use constance::kernel::{
     cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, UTicks,
 };
+use constance_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 
-use crate::{
-    sp804::{cfg::Sp804Options, sp804_regs},
-    timing::{TicklessCfg, TicklessStateTrait},
-};
+use crate::sp804::{cfg::Sp804Options, sp804_regs};
 
 /// Implemented on a system type by [`use_sp804!`].
 ///

@@ -4,6 +4,9 @@
 //! otherwise. It's exposed only because it's needed by macros.
 use core::marker::PhantomData;
 
+#[doc(no_inline)]
+pub use constance::utils::Init;
+
 /// Conditional type
 macro_rules! If {
     ( if ($cond:expr) { $t:ty } else { $f:ty } ) => {

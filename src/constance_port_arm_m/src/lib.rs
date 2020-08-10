@@ -40,9 +40,6 @@ pub use cortex_m_rt;
 #[cfg(target_os = "none")]
 pub mod systick_tickful;
 
-#[doc(hidden)]
-pub mod timing;
-
 pub const INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..256;
 
 /// `InterruptNum` for SysTick.

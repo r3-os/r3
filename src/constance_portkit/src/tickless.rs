@@ -1,7 +1,8 @@
 //! Implements the core algorithm for tickless timing.
-use constance::utils::Init;
 use core::ops;
 use num_rational::Ratio;
+
+use crate::utils::Init;
 
 /// The precomputed parameters for the tickless implementation of
 /// [`constance::kernel::PortTimer`].

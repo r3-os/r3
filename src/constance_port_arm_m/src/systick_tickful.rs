@@ -5,12 +5,10 @@ use constance::{
     },
     utils::Init,
 };
+use constance_portkit::tickful::{TickfulCfg, TickfulState, TickfulStateTrait};
 use core::cell::UnsafeCell;
 
-use super::{
-    timing::{TickfulCfg, TickfulState, TickfulStateTrait},
-    SysTickOptions, INTERRUPT_SYSTICK,
-};
+use super::{SysTickOptions, INTERRUPT_SYSTICK};
 
 /// Implemented on a system type by [`use_systick_tickful!`].
 ///
