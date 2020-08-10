@@ -194,11 +194,26 @@ fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
     let mut local_counter = 0;
 
     while !state.stop.load(Ordering::Relaxed) {
-        // `fetch_update` is realized by LR/SC on Arm and RISC-V
-        state
-            .counter
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |x| Some(x + 1))
-            .unwrap();
+        match () {
+            #[cfg(target_has_atomic = "ptr")]
+            () => {
+                // `fetch_update` is realized by LR/SC on Arm and RISC-V
+                state
+                    .counter
+                    .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |x| Some(x + 1))
+                    .unwrap();
+            }
+
+            #[cfg(not(target_has_atomic = "ptr"))]
+            () => {
+                System::acquire_cpu_lock().unwrap();
+                state.counter.store(
+                    state.counter.load(Ordering::Relaxed).wrapping_add(1),
+                    Ordering::Relaxed,
+                );
+                unsafe { System::release_cpu_lock().unwrap() };
+            }
+        }
 
         local_counter += 1;
         state.local_counters[worker_id].store(local_counter, Ordering::Relaxed);

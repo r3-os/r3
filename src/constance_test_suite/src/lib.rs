@@ -1,6 +1,7 @@
 #![feature(external_doc)] // `#[doc(include = ...)]`
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![feature(cfg_target_has_atomic)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
