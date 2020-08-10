@@ -19,4 +19,3 @@ constance = { path = "../constance" }
 [target."cfg(target_os = \"none\")".dependencies]
 cortex-m-rt = "0.6.12"
 cortex-m = "0.6.2"
-

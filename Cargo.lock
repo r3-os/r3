@@ -241,7 +241,6 @@ version = "0.0.1"
 dependencies = [
  "constance",
  "constance_portkit",
- "num-rational",
  "r0",
  "register",
 ]
