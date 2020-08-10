@@ -1,10 +1,10 @@
+//! The implementation of the SP804 Dual Timer driver.
 use constance::kernel::{
     cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, UTicks,
 };
 
 use crate::{
-    sp804_cfg::Sp804Options,
-    sp804_regs,
+    sp804::{cfg::Sp804Options, sp804_regs},
     timing::{TicklessCfg, TicklessStateTrait},
 };
 

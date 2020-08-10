@@ -31,11 +31,6 @@ pub extern crate core;
 #[cfg(target_os = "none")]
 pub mod threading;
 
-/// Used by `use_sp804!`
-#[doc(hidden)]
-#[cfg(target_os = "none")]
-pub mod sp804;
-
 #[cfg(target_os = "none")]
 mod arm;
 
@@ -55,12 +50,18 @@ pub mod startup {
     pub mod imp;
 }
 
-mod sp804_cfg;
-mod sp804_regs;
+/// The SP804 Dual Timer driver.
+#[doc(hidden)]
+pub mod sp804 {
+    pub mod cfg;
+    pub mod imp;
+    mod sp804_regs;
+}
+
 #[doc(hidden)]
 pub mod timing;
 pub use self::gic::cfg::*;
-pub use self::sp804_cfg::*;
+pub use self::sp804::cfg::*;
 pub use self::startup::cfg::*;
 
 /// The configuration of the port.
@@ -219,103 +220,5 @@ macro_rules! use_port {
         }
 
         const _: () = $crate::threading::validate::<$sys>();
-    };
-}
-
-/// Attach the implementation of [`PortTimer`] that is based on
-/// [Arm PrimeCell SP804 Dual Timer] to a given system type. This macro also
-/// implements [`Timer`] on the system type.
-/// **Requires [`Sp804Options`].**
-///
-/// [`PortTimer`]: constance::kernel::PortTimer
-/// [Arm PrimeCell SP804 Dual Timer]: https://developer.arm.com/documentation/ddi0271/d/
-///
-/// You should do the following:
-///
-///  - Implement [`Sp804Options`] on the system type `$ty`.
-///  - Call `$ty::configure_sp804()` in your configuration function.
-///    See the following example.
-///
-/// ```rust,ignore
-/// constance_port_arm::use_sp804!(unsafe impl PortTimer for System);
-///
-/// impl constance_port_arm::Sp804Options for System {
-///     const SP804_BASE: usize = 0x1001_1000;
-///     const FREQUENCY: u64 = 1_000_000;
-///     const INTERRUPT_NUM: InterruptNum = 36;
-/// }
-///
-/// const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
-///     System::configure_sp804(b);
-///     /* ... */
-/// }
-/// ```
-///
-/// # Safety
-///
-///  - `Sp804Options` must be configured correctly.
-///
-#[macro_export]
-macro_rules! use_sp804 {
-    (unsafe impl PortTimer for $ty:ty) => {
-        const _: () = {
-            use $crate::constance::{
-                kernel::{cfg::CfgBuilder, PortTimer, UTicks},
-                utils::Init,
-            };
-            use $crate::{sp804, timing, Sp804Options, Timer};
-
-            impl PortTimer for $ty {
-                const MAX_TICK_COUNT: UTicks = u32::MAX;
-                const MAX_TIMEOUT: UTicks = u32::MAX;
-
-                unsafe fn tick_count() -> UTicks {
-                    // Safety: We are just forwarding the call
-                    unsafe { sp804::tick_count::<Self>() }
-                }
-
-                unsafe fn pend_tick() {
-                    // Safety: We are just forwarding the call
-                    unsafe { sp804::pend_tick::<Self>() }
-                }
-
-                unsafe fn pend_tick_after(tick_count_delta: UTicks) {
-                    // Safety: We are just forwarding the call
-                    unsafe { sp804::pend_tick_after::<Self>(tick_count_delta) }
-                }
-            }
-
-            impl Timer for $ty {
-                unsafe fn init() {
-                    unsafe { sp804::init::<Self>() }
-                }
-            }
-
-            const TICKLESS_CFG: timing::TicklessCfg = timing::TicklessCfg::new(
-                <$ty as Sp804Options>::FREQUENCY,
-                <$ty as Sp804Options>::FREQUENCY_DENOMINATOR,
-                <$ty as Sp804Options>::HEADROOM,
-            );
-
-            static mut TIMER_STATE: $crate::timing::TicklessState<TICKLESS_CFG> = Init::INIT;
-
-            // Safety: Only `use_sp804!` is allowed to `impl` this
-            unsafe impl sp804::Sp804Instance for $ty {
-                const TICKLESS_CFG: timing::TicklessCfg = TICKLESS_CFG;
-
-                type TicklessState = $crate::timing::TicklessState<TICKLESS_CFG>;
-
-                fn tickless_state() -> *mut Self::TicklessState {
-                    // FIXME: Use `core::ptr::raw_mut!` when it's stable
-                    unsafe { &mut TIMER_STATE }
-                }
-            }
-
-            impl $ty {
-                pub const fn configure_sp804(b: &mut CfgBuilder<Self>) {
-                    sp804::configure(b);
-                }
-            }
-        };
     };
 }
