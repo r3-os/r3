@@ -1,11 +1,15 @@
 [workspace]
 members = [
     "examples/basic",
+    "examples/basic_gr_peach",
     "examples/basic_nucleo_f401re",
+    "src/arm_semihosting",
     "src/constance",
+    "src/constance_port_arm",
     "src/constance_port_arm_m",
     "src/constance_port_arm_m_test_driver",
-    "src/constance_port_arm_m_test_runner",
+    "src/constance_port_arm_test_driver",
     "src/constance_port_std",
+    "src/constance_test_runner",
     "src/constance_test_suite",
 ]

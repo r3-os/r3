@@ -1,0 +1,11 @@
+[package]
+name = "basic_gr_peach"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+
+[dependencies]
+constance_port_arm = { path = "../../src/constance_port_arm" }
+constance = { path = "../../src/constance" }
+
+rtt-target = { version = "0.2.0" }

@@ -1,0 +1,25 @@
+[package]
+name = "constance_port_arm"
+version = "0.0.1"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Arm-A port for Constance"
+categories = ["embedded", "no-std"]
+keywords = ["constance", "arm"]
+repository = "https://github.com/yvt/Constance"
+
+[dependencies]
+constance = { path = "../constance" }
+
+num-rational = { version = "0.3.0", default-features = false }
+register = "0.5.1"
+r0 = "0.2.2"
+
+[dev-dependencies]
+quickcheck_macros = { version = "0.9.1" }
+num-integer = { version = "0.1.43", default-features = false }
+env_logger = { version = "0.7.1" }
+quickcheck = { version = "0.9.2" }
+itertools = { version = "0.9.0" }
+log = { version = "0.4.8" }

@@ -17,7 +17,7 @@ mod utils;
 #[tokio::main]
 async fn main() {
     env_logger::from_env(
-        env_logger::Env::default().default_filter_or("constance_port_arm_m_test_runner=info"),
+        env_logger::Env::default().default_filter_or("constance_test_runner=info"),
     )
     .init();
 
@@ -109,14 +109,22 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     // Hard-coded paths and commands
     let cargo_cmd = "cargo";
 
-    let driver_path = {
+    let driver_base_path = {
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         log::debug!("CARGO_MANIFEST_DIR = {}", manifest_dir);
         Path::new(manifest_dir)
             .parent()
             .expect("Couldn't get the parent of `CARGO_MANIFEST_DIR`")
-            .join("constance_port_arm_m_test_driver")
     };
+
+    let driver_name = if opt.target.target_triple().starts_with("thumb") {
+        // Arm-M
+        "constance_port_arm_m_test_driver"
+    } else {
+        // Other Arm
+        "constance_port_arm_test_driver"
+    };
+    let driver_path = driver_base_path.join(driver_name);
 
     if !driver_path.is_dir() {
         return Err(MainError::BadDriverPath(driver_path).into());
@@ -129,9 +137,11 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
         selection::TestFilter::Disjuction(opt.tests.clone())
     };
     let supports_basepri = {
-        // v6-M and v8-M Baseline don't support BASEPRI
+        // v6-M, v8-M Baseline, and non-M architectures don't support BASEPRI
         let triple = opt.target.target_triple();
-        !triple.starts_with("thumbv6m") && !triple.starts_with("thumbv8m.base")
+        !triple.starts_with("thumbv6m")
+            && !triple.starts_with("thumbv8m.base")
+            && triple.starts_with("thumb")
     };
     let test_runs: Vec<_> = test_filter
         .all_matching_test_runs()
@@ -149,8 +159,8 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(MainError::ConnectTarget)?;
 
     // Put the linker script in a directory
-    let link_dir = tempdir::TempDir::new("constance_port_arm_m_test_runner")
-        .map_err(MainError::TempDirError)?;
+    let link_dir =
+        tempdir::TempDir::new("constance_test_runner").map_err(MainError::TempDirError)?;
     {
         let memory_x_path = link_dir.path().join("memory.x");
         log::debug!("Writing '{}'", memory_x_path.display());
@@ -188,7 +198,8 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     // Executable path
     let exe_path = target_dir
         .join(opt.target.target_triple())
-        .join("release/constance_port_arm_m_test_driver");
+        .join("release")
+        .join(driver_name);
     log::debug!("exe_path = '{}'", exe_path.display());
 
     let mut failed_tests = Vec::new();

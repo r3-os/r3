@@ -646,6 +646,8 @@ pub trait PortToKernel {
     /// the calls made by the kernel to figure out the optimal moment to call
     /// `timer_tick`.
     ///
+    /// This method will call `pend_tick` or `pend_tick_after`.
+    ///
     /// [a port timer driver]: PortTimer
     /// [`pend_tick_after`]: PortTimer::pend_tick_after
     ///

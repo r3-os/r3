@@ -23,9 +23,9 @@ jobs:
 
       - name: Exclude Crates
         run: |
-          # `basic_nucleo_f401re` doesn't compile unless you
+          # `basic_*` fail to compile unless you
           # provide an appropriate target triple.
-          sed -E -i.bak 's/.*basic_nucleo_f401re.*//' Cargo.toml
+          sed -E -i.bak 's/.*basic_.*//' Cargo.toml
 
       - name: Clippy
         uses: actions-rs/clippy-check@v1
@@ -98,39 +98,46 @@ jobs:
         run: |
           rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabihf
           rustup target add thumbv8m.base-none-eabi thumbv8m.main-none-eabi thumbv8m.main-none-eabihf
+          rustup target add armv7a-none-eabi
+
+      - name: Test (Arm RealView PBX for Cortex-A9, Armv7-A)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: -p constance_test_runner -- -t qemu_realview_pbx_a9 -l debug
 
       - name: Test (MPS2+ AN505, Armv8-M Mainline + FPU)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an505 -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an505 -l debug
 
       - name: Test (MPS2+ AN505, Armv8-M Mainline)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an505_v8mml -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an505_v8mml -l debug
 
       - name: Test (MPS2+ AN505, Armv8-M Baseline)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an505_v8mbl -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an505_v8mbl -l debug
 
       - name: Test (MPS2+ AN505, Armv7-M + FPU + DSP)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an505_v7em_hf -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an505_v7em_hf -l debug
 
       - name: Test (MPS2+ AN385, Armv7-M)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385 -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an385 -l debug
 
       - name: Test (MPS2+ AN385, Armv6-M)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385_v6m -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an385_v6m -l debug

@@ -1,5 +1,5 @@
 [package]
-name = "constance_port_arm_m_test_runner"
+name = "constance_test_runner"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"

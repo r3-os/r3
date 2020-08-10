@@ -7,6 +7,7 @@ mod qemu;
 pub trait Target: Send + Sync {
     /// Get the target triple.
     ///
+    ///  - `armv7a-none-eabi`: Armv7-A
     ///  - `thumbv7m-none-eabi`: Armv7-M
     ///  - `thumbv7em-none-eabi`: Armv7-M + DSP
     ///  - `thumbv7em-none-eabihf`: Armv7-M + DSP + FPU
@@ -17,8 +18,8 @@ pub trait Target: Send + Sync {
     /// `constance_port_arm_m_test_driver`.
     fn cargo_features(&self) -> &[&str];
 
-    /// Generate the `memory.x` file to be included by `cortex-m-rt`'s linker
-    /// script.
+    /// Generate the `memory.x` file to be included by the linker script of
+    /// `cortex-m-rt` or `constance_port_arm`.
     fn memory_layout_script(&self) -> String;
 
     /// Connect to the target.
@@ -79,6 +80,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
         "qemu_mps2_an505_v6m",
         &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An505),
     ),
+    ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
 ];
 
 pub struct NucleoF401re;
@@ -197,6 +199,42 @@ impl Target for QemuMps2An505 {
         Box::pin(async {
             Ok(
                 Box::new(qemu::QemuDebugProbe::new(&["-machine", "mps2-an505"]))
+                    as Box<dyn DebugProbe>,
+            )
+        })
+    }
+}
+
+/// ARM RealView Platform Baseboard Explore for Cortex-A9 on QEMU
+pub struct QemuRealviewPbxA9;
+
+impl Target for QemuRealviewPbxA9 {
+    fn target_triple(&self) -> &str {
+        "armv7a-none-eabi"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-semihosting"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        // TODO: test `link_ram.x`
+        "
+            MEMORY
+            {
+              RAM_CODE : ORIGIN = 0x01000000, LENGTH = 4096K
+              RAM_DATA : ORIGIN = 0x01400000, LENGTH = 4096K
+            }
+        "
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async {
+            Ok(
+                Box::new(qemu::QemuDebugProbe::new(&["-machine", "realview-pbx-a9"]))
                     as Box<dyn DebugProbe>,
             )
         })

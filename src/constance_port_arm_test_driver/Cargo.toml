@@ -1,0 +1,34 @@
+[package]
+name = "constance_port_arm_test_driver"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[features]
+test = [
+    "constance_test_suite",
+    "constance_port_arm",
+    "constance",
+    "log",
+]
+output-semihosting = [
+    "arm_semihosting"
+]
+
+[dependencies]
+constance_port_arm = { path = "../constance_port_arm", optional = true }
+arm_semihosting = { path = "../arm_semihosting", optional = true }
+constance = { path = "../constance", optional = true }
+
+log = { version = "0.4.8", optional = true }
+
+[dependencies.constance_test_suite]
+path = "../constance_test_suite"
+default-features = false
+features = [
+    # compile the test case specified by `CONSTANCE_TEST`
+    "tests_selective"
+]
+optional = true

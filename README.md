@@ -25,7 +25,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | Kernel Core            | ![Tasks: Supported] ![Hunks: Supported] ![Wait Objects: Supported] ![Timeouts: Supported] ![Timers: Supported] ![Interrupts: Supported] ![Startup Hooks: Supported] ![CPU Exceptions: Under Consideration] ![Panicking: Under Consideration] |
 | Kernel Synchronization | ![Semaphores: Under Consideration] ![Event Groups: Supported] ![Mutexes: Under Consideration] |
 | Library                | ![Mutex: Under Consideration] ![RwLock: Under Consideration] ![Once: Under Consideration] ![C API: Under Consideration] |
-| Ports                  | ![Simulator: Supported] ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] ![RV32IMAC: Under Consideration] |
+| Ports                  | ![Simulator: Supported] ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] ![Armv7-A (no FPU): Supported] ![RV32IMAC: Under Consideration] |
 
 [Uniprocessor: Supported]: https://img.shields.io/badge/Uniprocessor-Supported-success?style=flat-square
 [Homogeneous Multiprocessor: Under Consideration]: https://img.shields.io/badge/Homogeneous%20Multiprocessor-Under%20Consideration-cc7070?style=flat-square
@@ -54,6 +54,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 [Armv8-M Baseline (no CMSE): Supported]: https://img.shields.io/badge/Armv8--M%20Baseline%20(no%20CMSE)-Supported-success?style=flat-square
 [Armv7-M: Supported]: https://img.shields.io/badge/Armv7--M-Supported-success?style=flat-square
 [Armv6-M: Supported]: https://img.shields.io/badge/Armv6--M-Supported-success?style=flat-square
+[Armv7-A (no FPU): Supported]: https://img.shields.io/badge/Armv7--A%20(no%20FPU)-Supported-success?style=flat-square
 [RV32IMAC: Under Consideration]: https://img.shields.io/badge/RV32IMAC-Under%20Consideration-cc7070?style=flat-square
 
 ## Example
@@ -142,8 +143,8 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 ### Prerequisites
 
  - [rustup], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
- - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M port.
- - libusb 1.x to test the Arm-M port.
+ - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M/-A port.
+ - libusb 1.x to test the Arm-M/-A port.
 
 [rustup]: https://rustup.rs/
 
@@ -154,6 +155,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 ### How to Run Tests
 
  - Hosted platform and target-independent tests: `cargo test --all`
- - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_port_arm_m_test_runner -- -t nucleo_f401re`
- - The Armv7-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385`
- - The Armv6-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_port_arm_m_test_runner -- -t qemu_mps2_an385_v6m`
+ - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re`
+ - The Armv7-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385`
+ - The Armv6-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385_v6m`
+ - The Armv7-A port and Arm RealView Platform Baseboard Explore for Cortex-A9 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_realview_pbx_a9`
