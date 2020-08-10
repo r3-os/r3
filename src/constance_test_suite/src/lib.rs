@@ -138,6 +138,7 @@ pub mod kernel_tests {
     define_kernel_tests! {
         [$]
         (mod basic {}, "basic"),
+        (mod compute_atomics_round_robin {}, "compute_atomics_round_robin"),
         (mod compute_round_robin {}, "compute_round_robin"),
         (mod cpu_lock {}, "cpu_lock"),
         (mod event_group_interrupt {}, "event_group_interrupt"),
