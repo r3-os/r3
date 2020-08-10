@@ -1,0 +1,11 @@
+[package]
+name = "constance_portkit"
+version = "0.0.1"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Utilities for writing a port of Constance"
+keywords = ["constance", "simulator"]
+repository = "https://github.com/yvt/Constance"
+
+[dependencies]

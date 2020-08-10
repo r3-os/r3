@@ -309,6 +309,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "constance_portkit"
+version = "0.0.1"
+
+[[package]]
 name = "constance_test_runner"
 version = "0.1.0"
 dependencies = [

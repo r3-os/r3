@@ -10,6 +10,7 @@ members = [
     "src/constance_port_arm_m_test_driver",
     "src/constance_port_arm_test_driver",
     "src/constance_port_std",
+    "src/constance_portkit",
     "src/constance_test_runner",
     "src/constance_test_suite",
 ]
