@@ -1,4 +1,4 @@
 [target.armv7a-none-eabi]
 rustflags = [
-  "-C", "link-arg=-Tlink_ram.x",
+  "-C", "link-arg=-Tlink_ram_harvard.x",
 ]

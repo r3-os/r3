@@ -218,10 +218,12 @@ impl Target for QemuRealviewPbxA9 {
     }
 
     fn memory_layout_script(&self) -> String {
+        // TODO: test `link_ram.x`
         "
             MEMORY
             {
-              RAM : ORIGIN = 0x01000000, LENGTH = 10240K
+              RAM_CODE : ORIGIN = 0x01000000, LENGTH = 4096K
+              RAM_DATA : ORIGIN = 0x01400000, LENGTH = 4096K
             }
         "
         .to_owned()

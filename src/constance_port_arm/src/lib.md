@@ -1,12 +1,12 @@
 The Arm-A port for [Constance](::constance).
 
-TODO
-
 # Startup Code
 
 [`use_startup!`] generates an entry point (with a symbol name `start`), which is expected to be called by a bootloader. The startup code configures MMU to assign appropriate memory attributes based on the memory map supplied by [`StartupOptions::MEMORY_MAP`] and to map an exception vector table at `0x0000_0000` or `0xffff_0000`.
 
-This crate also provides a linker script `link_ram.x` that defines some standard sections, suitable for use with a bootloader that can handle ELF sections. Put files as follows under your crate's directory:
+## Linker Scripts
+
+This crate provides linker scripts that define some standard sections, suitable for use with a bootloader that can handle ELF sections. Put files as follows under your crate's directory:
 
 `.cargo/config.toml`:
 
@@ -15,7 +15,7 @@ This crate also provides a linker script `link_ram.x` that defines some standard
 rustflags = ["-C", "link-arg=-Tlink_ram.x"]
 ```
 
-`link_ram.x`:
+`memory.x`:
 
 ```text
 MEMORY
@@ -35,6 +35,13 @@ fn main() {
     );
 }
 ```
+
+The following linker scripts are provided:
+
+ - `link_ram.x` places all sections in `RAM`.
+ - `link_ram_harvard.x` places `.text` in `RAM_CODE` and all remaining sections in `RAM_DATA`. Combined with an approriate MMU configuration, this can be used to implement the W⊕X ([write xor execute]) memory policy for enhanced security. It might also lead to a performance improvement on a processor having separate buses for instruction and data access.
+
+[write xor execute]: https://en.wikipedia.org/wiki/W%5EX
 
 # Kernel Timing
 
