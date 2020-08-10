@@ -35,7 +35,7 @@ trait Sp804InstanceExt: Sp804Instance {
 impl<T: Sp804Instance> Sp804InstanceExt for T {}
 
 /// The configuration function.
-pub const fn configure<System: Sp804Instance>(b: &mut CfgBuilder<System>) -> () {
+pub const fn configure<System: Sp804Instance>(b: &mut CfgBuilder<System>) {
     InterruptLine::build()
         .line(System::INTERRUPT_NUM)
         .priority(System::INTERRUPT_PRIORITY)
