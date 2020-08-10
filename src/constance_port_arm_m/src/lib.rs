@@ -13,11 +13,6 @@
 use constance::kernel::{InterruptNum, InterruptPriority};
 use core::ops::Range;
 
-/// Used by `use_port!` and this crate's code
-#[doc(hidden)]
-#[macro_use]
-pub mod utils;
-
 /// Used by `use_port!`
 #[doc(hidden)]
 #[cfg(target_os = "none")]

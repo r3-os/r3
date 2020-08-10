@@ -7,6 +7,7 @@ use constance::{
     prelude::*,
     utils::{intrusive_list::StaticListHead, Init},
 };
+use constance_portkit::pp_asm;
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
 use super::{
