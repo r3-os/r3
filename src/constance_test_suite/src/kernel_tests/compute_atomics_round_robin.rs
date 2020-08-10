@@ -95,6 +95,7 @@ use constance::{
 };
 use core::{
     cell::UnsafeCell,
+    num::Wrapping,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
@@ -191,7 +192,7 @@ impl Init for SchedState {
 fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
     let App { state, .. } = D::app();
 
-    let mut local_counter = 0;
+    let mut local_counter = Wrapping(0usize);
 
     while !state.stop.load(Ordering::Relaxed) {
         match () {
@@ -215,8 +216,8 @@ fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
             }
         }
 
-        local_counter += 1;
-        state.local_counters[worker_id].store(local_counter, Ordering::Relaxed);
+        local_counter += Wrapping(1);
+        state.local_counters[worker_id].store(local_counter.0, Ordering::Relaxed);
     }
 }
 
@@ -229,7 +230,7 @@ fn judge_task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         *y = x.load(Ordering::Relaxed);
     }
 
-    let local_counter_sum = local_counters.iter().sum();
+    let Wrapping(local_counter_sum) = local_counters.iter().cloned().map(Wrapping).sum();
 
     log::debug!("counter = {}", counter);
     log::debug!(
