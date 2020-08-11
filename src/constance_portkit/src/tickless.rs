@@ -1,4 +1,5 @@
 //! Implements the core algorithm for tickless timing.
+use core::fmt;
 use num_rational::Ratio;
 
 use crate::{
@@ -8,6 +9,63 @@ use crate::{
     },
     utils::Init,
 };
+
+/// The parameters of the tickless timing algorithm.
+///
+/// It can be passed to [`TicklessCfg::new`] to construct [`TicklessCfg`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct TicklessOptions {
+    /// The numerator of the hardware timer frequency.
+    pub hw_freq_num: u64,
+    /// The denominator of the hardware timer frequency.
+    pub hw_freq_denom: u64,
+    /// The headroom for interrupt latency, measured in hardware timer cycles.
+    pub hw_headroom_ticks: u32,
+}
+
+/// Error type for [`TicklessCfg::new`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum CfgError {
+    /// The numerator of the clock frequency is zero.
+    FreqNumZero,
+    /// The denominator of the clock frequency is zero.
+    FreqDenomZero,
+    /// The clock frequency is too high.
+    FreqTooHigh,
+    /// Intermediate calculation overflowed. the clock frequency might be too
+    /// complex or too low.
+    InternalOverflow,
+    /// The calculated value of [`TicklessCfg::max_timeout`] is too low.
+    OSMaxTimeoutTooLow,
+}
+
+impl CfgError {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::FreqNumZero => "the numerator of the clock frequency must not be zero",
+            Self::FreqDenomZero => "the denominator of the clock frequency must not be zero",
+            Self::FreqTooHigh => "the timer frequency is too fast",
+            Self::InternalOverflow => {
+                "intermediate calculation overflowed. the clock frequency might \
+                 be too complex or too low"
+            }
+            Self::OSMaxTimeoutTooLow => {
+                "the calculated maximum OS timeout is too low. lowering the \
+                 interrupt latency headroom might help"
+            }
+        }
+    }
+
+    pub const fn panic(self) -> ! {
+        core::panicking::panic(self.as_str());
+    }
+}
+
+impl fmt::Display for CfgError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// The precomputed parameters for the tickless implementation of
 /// [`constance::kernel::PortTimer`].
@@ -43,15 +101,22 @@ enum TicklessAlgorithm {
 impl TicklessCfg {
     /// Construct a `TicklessCfg`.
     #[allow(clippy::int_plus_one)] // for consistency
-    pub const fn new(freq_num: u64, freq_denom: u64, hw_headroom_ticks: u32) -> Self {
-        if freq_denom == 0 {
-            panic!("the denominator of the clock frequency must not be zero");
-        } else if freq_num == 0 {
-            panic!("the numerator of the clock frequency must not be zero");
+    pub const fn new(
+        TicklessOptions {
+            hw_freq_num,
+            hw_freq_denom,
+            hw_headroom_ticks,
+        }: TicklessOptions,
+    ) -> Result<Self, CfgError> {
+        if hw_freq_denom == 0 {
+            return Err(CfgError::FreqDenomZero);
+        } else if hw_freq_num == 0 {
+            return Err(CfgError::FreqNumZero);
         }
 
         // `hw_ticks_per_micro = freq_num / freq_denom / 1_000_000`
-        let hw_ticks_per_micro = Ratio::new_raw(freq_num as u128, freq_denom as u128 * 1_000_000);
+        let hw_ticks_per_micro =
+            Ratio::new_raw(hw_freq_num as u128, hw_freq_denom as u128 * 1_000_000);
         let hw_ticks_per_micro = reduce_ratio128(hw_ticks_per_micro);
         assert!(*hw_ticks_per_micro.numer() >= 1);
         assert!(*hw_ticks_per_micro.numer() <= 0xffff_ffff_ffff_ffff);
@@ -65,18 +130,11 @@ impl TicklessCfg {
         assert!(hw_subticks_per_micro <= *hw_ticks_per_micro.denom() - 1);
 
         if hw_ticks_per_micro_floor > u32::MAX as u128 {
-            panic!(
-                "cannot satisfy the timing requirements; \
-               the timer frequency is too fast"
-            );
+            return Err(CfgError::FreqTooHigh);
         }
 
         if *hw_ticks_per_micro.denom() > u64::MAX as u128 {
-            panic!(
-                "cannot satisfy the timing requirements; \
-               intermediate calculation overflowed. the clock frequency might \
-               be too complex or too low"
-            );
+            return Err(CfgError::InternalOverflow);
         }
 
         // Try the stateless algorithm first. Find the period at which HW ticks
@@ -157,7 +215,7 @@ impl TicklessCfg {
             ) / *hw_ticks_per_micro.numer();
 
             if max_timeout == 0 {
-                panic!("The calculated `MAX_TIMEOUT` is too low - lower the headroom");
+                return Err(CfgError::OSMaxTimeoutTooLow);
             }
             assert!(max_timeout <= u32::MAX as u128);
 
@@ -217,20 +275,20 @@ impl TicklessCfg {
             ) / *hw_ticks_per_micro.numer();
 
             if max_timeout == 0 {
-                panic!("The calculated `MAX_TIMEOUT` is too low - lower the headroom");
+                return Err(CfgError::OSMaxTimeoutTooLow);
             }
             assert!(max_timeout <= u32::MAX as u128);
 
             (TicklessAlgorithm::Stateful, max_timeout as u32)
         };
 
-        Self {
+        Ok(Self {
             hw_ticks_per_micro: hw_ticks_per_micro_floor as u32,
             hw_subticks_per_micro: hw_subticks_per_micro as u64,
             algorithm,
             division: *hw_ticks_per_micro.denom() as u64,
             max_timeout,
-        }
+        })
     }
 
     /// Get the maximum hardware tick count (period minus one cycle).
@@ -507,7 +565,12 @@ mod tests {
     fn tickless_known_values() {
         // 1Hz clock, 1-cycle period = 1s, 1-cycle latency tolerance
         assert_eq!(
-            TicklessCfg::new(1, 1, 1),
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 1,
+                hw_headroom_ticks: 1
+            })
+            .unwrap(),
             TicklessCfg {
                 hw_ticks_per_micro: 0,
                 hw_subticks_per_micro: 1,
@@ -522,35 +585,59 @@ mod tests {
     }
 
     /// The clock frequency given to `TicklessCfg` must not be zero.
-    #[should_panic(expected = "the numerator of the clock frequency must not be zero")]
     #[test]
     fn tickless_zero_freq() {
-        TicklessCfg::new(0, 1, 1);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 0,
+                hw_freq_denom: 1,
+                hw_headroom_ticks: 1
+            }),
+            Err(CfgError::FreqNumZero)
+        );
     }
 
     /// The denominator of the clock frequency given to `TicklessCfg` must not be
     /// zero.
-    #[should_panic(expected = "the denominator of the clock frequency must not be zero")]
     #[test]
     fn tickless_zero_denom() {
-        TicklessCfg::new(1, 0, 1);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 0,
+                hw_headroom_ticks: 1
+            }),
+            Err(CfgError::FreqDenomZero)
+        );
     }
 
     /// `TicklessCfg` should reject a timer frequency that is too fast.
-    #[should_panic(expected = "the timer frequency is too fast")]
     #[test]
     fn tickless_tick_too_fast() {
         // 2³²MHz → 2³² HW ticks/μs
-        TicklessCfg::new(1_000_000 * 0x1_0000_0000, 1, 0);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 1_000_000 * 0x1_0000_0000,
+                hw_freq_denom: 1,
+                hw_headroom_ticks: 0
+            }),
+            Err(CfgError::FreqTooHigh)
+        );
     }
 
     /// `TicklessCfg` should reject if an intermediate value overflows.
-    #[should_panic(expected = "intermediate calculation overflowed")]
     #[test]
     fn tickless_tick_too_complex() {
         // 1.00000000000000000043368086899420177... Hz
         // (0x1fffffffffffffff is a Mersenne prime number.)
-        TicklessCfg::new(0x1fffffffffffffff, 0x1ffffffffffffffe, 0);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 0x1fffffffffffffff,
+                hw_freq_denom: 0x1ffffffffffffffe,
+                hw_headroom_ticks: 0
+            }),
+            Err(CfgError::InternalOverflow)
+        );
     }
 
     #[derive(Debug, Copy, Clone)]
@@ -602,7 +689,14 @@ mod tests {
         mod $ident {
             use super::*;
 
-            const CFG: TicklessCfg = TicklessCfg::new($freq_num, $freq_denom, $hw_headroom_ticks);
+            const CFG: TicklessCfg = match TicklessCfg::new(TicklessOptions {
+                hw_freq_num: $freq_num,
+                hw_freq_denom: $freq_denom,
+                hw_headroom_ticks: $hw_headroom_ticks,
+            }) {
+                Ok(x) => x,
+                Err(e) => e.panic(),
+            };
             const MAX_TIMEOUT: u32 = CFG.max_timeout();
             const HW_PERIOD: u64 = CFG.hw_max_tick_count() as u64 + 1;
             const PERIOD: u64 = CFG.max_tick_count() as u64 + 1;

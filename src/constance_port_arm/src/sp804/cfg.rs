@@ -72,11 +72,15 @@ macro_rules! use_sp804 {
                 }
             }
 
-            const TICKLESS_CFG: tickless::TicklessCfg = tickless::TicklessCfg::new(
-                <$ty as Sp804Options>::FREQUENCY,
-                <$ty as Sp804Options>::FREQUENCY_DENOMINATOR,
-                <$ty as Sp804Options>::HEADROOM,
-            );
+            const TICKLESS_CFG: tickless::TicklessCfg =
+                match tickless::TicklessCfg::new(tickless::TicklessOptions {
+                    hw_freq_num: <$ty as Sp804Options>::FREQUENCY,
+                    hw_freq_denom: <$ty as Sp804Options>::FREQUENCY_DENOMINATOR,
+                    hw_headroom_ticks: <$ty as Sp804Options>::HEADROOM,
+                }) {
+                    Ok(x) => x,
+                    Err(e) => e.panic(),
+                };
 
             static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
 

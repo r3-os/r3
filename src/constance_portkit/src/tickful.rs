@@ -1,4 +1,5 @@
-//! Implements the core algorithm for `systick_tickful`.
+//! Implements the core algorithm for tickful timing.
+use core::fmt;
 use num_rational::Ratio;
 
 use crate::{
@@ -8,6 +9,69 @@ use crate::{
     },
     utils::Init,
 };
+
+/// The parameters of the tickful timing algorithm.
+///
+/// It can be passed to [`TickfulCfg::new`] to construct [`TickfulCfg`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct TickfulOptions {
+    /// The numerator of the hardware timer frequency.
+    pub hw_freq_num: u64,
+    /// The denominator of the hardware timer frequency.
+    pub hw_freq_denom: u64,
+    /// The tick period measured in hardware timer cycles.
+    /// [`TickfulStateTrait::tick`] should be called in this period.
+    pub hw_tick_period: u64,
+}
+
+/// Error type for [`TicklessCfg::new`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum CfgError {
+    /// The numerator of the clock frequency is zero.
+    FreqNumZero,
+    /// The denominator of the clock frequency is zero.
+    FreqDenomZero,
+    /// The tick period is zero.
+    PeriodZero,
+    /// The tick period does not fit in 32 bits when measured in microseconds.
+    PeriodOverflowsU32,
+    /// The tick period is longer than [`TIME_HARD_HEADROOM`].
+    ///
+    /// [`TIME_HARD_HEADROOM`]: constance::kernel::TIME_HARD_HEADROOM
+    PeriodExceedsKernelHeadroom,
+    /// The tick period does not fit in 24 bits.
+    PeriodOverflowsSysTick, // TODO: remove this restriction
+}
+
+impl CfgError {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::FreqNumZero => "the numerator of the clock frequency must not be zero",
+            Self::FreqDenomZero => "the denominator of the clock frequency must not be zero",
+            Self::PeriodZero => "the tick period must not be zero",
+            Self::PeriodOverflowsU32 => {
+                "the tick period is too long and \
+                does not fit in 32 bits when measured in microseconds"
+            }
+            Self::PeriodExceedsKernelHeadroom => {
+                "the tick period must not be longer than `TIME_HARD_HEADROOM`"
+            }
+            Self::PeriodOverflowsSysTick => {
+                "the tick period measured in cycles must be in range `0..=0x1000000`"
+            }
+        }
+    }
+
+    pub const fn panic(self) -> ! {
+        core::panicking::panic(self.as_str());
+    }
+}
+
+impl fmt::Display for CfgError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// The precomputed parameters for the tickful implementation of
 /// [`constance::kernel::PortTimer`].
@@ -24,15 +88,23 @@ pub struct TickfulCfg {
 
 impl TickfulCfg {
     /// Construct a `TickfulCfg`.
-    pub const fn new(freq_num: u64, freq_denom: u64, tick_period_cycles: u64) -> TickfulCfg {
+    pub const fn new(
+        TickfulOptions {
+            hw_freq_num: freq_num,
+            hw_freq_denom: freq_denom,
+            hw_tick_period: tick_period_cycles,
+        }: TickfulOptions,
+    ) -> Result<TickfulCfg, CfgError> {
         if freq_denom == 0 {
-            panic!("the denominator of the clock frequency must not be zero");
+            return Err(CfgError::FreqDenomZero);
         } else if freq_num == 0 {
-            panic!("the numerator of the clock frequency must not be zero");
-        } else if tick_period_cycles == 0 || tick_period_cycles > 0x1000000 {
+            return Err(CfgError::FreqNumZero);
+        } else if tick_period_cycles == 0 {
+            return Err(CfgError::PeriodZero);
+        } else if tick_period_cycles > 0x1000000 {
             // `tick_period_cycles` must be <= `0x1000000` because SysTick is
             // a 24-bit timer
-            panic!("the tick period measured in cycles must be in range `0..=0x1000000`");
+            return Err(CfgError::PeriodOverflowsSysTick);
         }
 
         // `tick_period = tick_period_cycles / (freq_num / freq_denom)`
@@ -65,11 +137,7 @@ impl TickfulCfg {
         // 32-bit range for the kernel to be able to figure out the correct
         // elapsed time.
         if tick_period_micros_ceil >= 0x1_0000_0000 {
-            panic!(
-                "cannot satisfy the timing requirements; \
-               the period of SysTick is too long and does not fit in 32 bits \
-               when measured in microseconds"
-            );
+            return Err(CfgError::PeriodOverflowsU32);
         }
 
         // Furthermore, there is some limitation on the timer interrupt latency
@@ -83,17 +151,14 @@ impl TickfulCfg {
         //    have to take the *real* interrupt latency into account.
         //
         if tick_period_micros_ceil > constance::kernel::TIME_HARD_HEADROOM.as_micros() as u128 {
-            panic!(
-                "cannot satisfy the timing requirements; \
-               the period of SysTick must not be longer than `TIME_HARD_HEADROOM`"
-            );
+            return Err(CfgError::PeriodExceedsKernelHeadroom);
         }
 
-        TickfulCfg {
+        Ok(TickfulCfg {
             tick_period_micros: tick_period_micros_floor as u32,
             tick_period_submicros: tick_period_submicros as u64,
             division: *tick_period_micros.denom() as u64,
-        }
+        })
     }
 
     pub const fn is_exact(&self) -> bool {
@@ -118,7 +183,10 @@ pub struct TickfulStateCore<Submicros> {
 }
 
 pub trait TickfulStateTrait: Init {
+    /// Advance the time by one tick period ([`TickfulOptions::hw_tick_period`]).
     fn tick(&mut self, cfg: &TickfulCfg);
+
+    /// Get the OS tick count.
     fn tick_count(&self) -> u32;
 }
 
@@ -130,7 +198,6 @@ impl<Submicros: Init> Init for TickfulStateCore<Submicros> {
 }
 
 impl<Submicros: WrappingTrait> TickfulStateTrait for TickfulStateCore<Submicros> {
-    /// Advance the counter by one hardware tick.
     #[inline]
     fn tick(&mut self, cfg: &TickfulCfg) {
         self.tick_count_micros = self.tick_count_micros.wrapping_add(cfg.tick_period_micros);
@@ -142,7 +209,6 @@ impl<Submicros: WrappingTrait> TickfulStateTrait for TickfulStateCore<Submicros>
         }
     }
 
-    /// Get the tick count.
     #[inline]
     fn tick_count(&self) -> u32 {
         self.tick_count_micros
@@ -160,7 +226,12 @@ mod tests {
     fn tickful_known_values() {
         // 1Hz clock, 1-cycle period = 1s
         assert_eq!(
-            TickfulCfg::new(1, 1, 1),
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 1,
+                hw_tick_period: 1
+            })
+            .unwrap(),
             TickfulCfg {
                 tick_period_micros: 1_000_000,
                 tick_period_submicros: 0,
@@ -170,7 +241,12 @@ mod tests {
 
         // 1Hz clock, 1073-cycle period = 1073s
         assert_eq!(
-            TickfulCfg::new(1, 1, 1073),
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 1,
+                hw_tick_period: 1073
+            })
+            .unwrap(),
             TickfulCfg {
                 tick_period_micros: 1073_000_000,
                 tick_period_submicros: 0,
@@ -180,7 +256,12 @@ mod tests {
 
         // 10MHz clock, 1-cycle period = (1/10)μs
         assert_eq!(
-            TickfulCfg::new(10_000_000, 1, 1),
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 10_000_000,
+                hw_freq_denom: 1,
+                hw_tick_period: 1
+            })
+            .unwrap(),
             TickfulCfg {
                 tick_period_micros: 0,
                 tick_period_submicros: 1,
@@ -190,7 +271,12 @@ mod tests {
 
         // 125MHz clock, 125-cycle period = 1μs
         assert_eq!(
-            TickfulCfg::new(125_000_000, 1, 125),
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 125_000_000,
+                hw_freq_denom: 1,
+                hw_tick_period: 125
+            })
+            .unwrap(),
             TickfulCfg {
                 tick_period_micros: 1,
                 tick_period_submicros: 0,
@@ -200,7 +286,12 @@ mod tests {
 
         // (125/3)MHz clock, 1250-cycle period = 30μs
         assert_eq!(
-            TickfulCfg::new(125_000_000, 3, 1250),
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 125_000_000,
+                hw_freq_denom: 3,
+                hw_tick_period: 1250
+            })
+            .unwrap(),
             TickfulCfg {
                 tick_period_micros: 30,
                 tick_period_submicros: 0,
@@ -210,7 +301,12 @@ mod tests {
 
         // 375MHz clock, 1250-cycle period = (10/3)μs
         assert_eq!(
-            TickfulCfg::new(375_000_000, 1, 1250),
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 375_000_000,
+                hw_freq_denom: 1,
+                hw_tick_period: 1250
+            })
+            .unwrap(),
             TickfulCfg {
                 tick_period_micros: 3,
                 tick_period_submicros: 1,
@@ -220,39 +316,70 @@ mod tests {
     }
 
     /// The clock frequency given to `TickfulCfg` must not be zero.
-    #[should_panic]
     #[test]
     fn tickful_zero_freq() {
-        TickfulCfg::new(0, 1, 1);
+        assert_eq!(
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 0,
+                hw_freq_denom: 1,
+                hw_tick_period: 1
+            }),
+            Err(CfgError::FreqNumZero)
+        );
     }
 
     /// The denominator of the clock frequency given to `TickfulCfg` must not be
     /// zero.
-    #[should_panic]
     #[test]
     fn tickful_zero_denom() {
-        TickfulCfg::new(1, 0, 1);
+        assert_eq!(
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 0,
+                hw_tick_period: 1
+            }),
+            Err(CfgError::FreqDenomZero)
+        );
     }
 
     /// `TickfulCfg` should reject a tick period that does not fit in the
     /// 32-bit tick count.
-    #[should_panic]
     #[test]
     fn tickful_tick_too_long1() {
-        TickfulCfg::new(1, 1, 5000); // 5000 [s] > 2³² [μs]
+        assert_eq!(
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 1,
+                hw_tick_period: 5000
+            }),
+            Err(CfgError::PeriodOverflowsU32)
+        ); // 5000 [s] > 2³² [μs]
     }
 
     /// `TickfulCfg` should reject a tick period that is larger than
     /// [`constance::kernel::TIME_HARD_HEADROOM`].
-    #[should_panic]
     #[test]
     fn tickful_tick_too_long2() {
-        TickfulCfg::new(1, 1, 1074); // 1074 [s] > 2³⁰ [μs]
+        assert_eq!(
+            TickfulCfg::new(TickfulOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 1,
+                hw_tick_period: 1074
+            }),
+            Err(CfgError::PeriodExceedsKernelHeadroom)
+        ); // 1074 [s] > 2³⁰ [μs]
     }
 
     macro_rules! tickful_simulate {
         ($freq_num:expr, $freq_denom:expr, $tick_period_cycles:expr) => {{
-            const CFG: TickfulCfg = TickfulCfg::new($freq_num, $freq_denom, $tick_period_cycles);
+            const CFG: TickfulCfg = match TickfulCfg::new(TickfulOptions {
+                hw_freq_num: $freq_num,
+                hw_freq_denom: $freq_denom,
+                hw_tick_period: $tick_period_cycles,
+            }) {
+                Ok(x) => x,
+                Err(e) => e.panic(),
+            };
             let period =
                 Ratio::new($tick_period_cycles, 1u128) / Ratio::new($freq_num, $freq_denom);
 
