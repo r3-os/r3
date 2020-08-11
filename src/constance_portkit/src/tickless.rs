@@ -364,8 +364,13 @@ pub struct TicklessStateCore<Subticks> {
     ref_hw_subtick_count: Subticks,
 }
 
+/// Operations implemented by all valid instantiations of [`TicklessState`].
 pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
-    /// Mark a reference point. Returns the reference point's OS tick count.
+    /// Mark a reference point. Returns the reference point's OS tick count
+    /// (in range `0..=cfg.`[`max_tick_count`]`()`).
+    ///
+    /// `hw_tick_count` should be in range `0..=cfg.`[`hw_max_tick_count`]`()`
+    /// and satisfy the requirements of [`TicklessStateTrait::tick_count`].
     ///
     /// All reference points are exactly aligned to OS ticks (microseconds).
     ///
@@ -376,17 +381,22 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     ///
     /// `cfg` must be the instance of [`TicklessCfg`] that was passed to
     /// [`TicklessState`] to derive `Self`.
+    ///
+    /// [`max_tick_count`]: TicklessCfg::max_tick_count
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     fn mark_reference(&mut self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32;
 
     /// Calculate the earliest hardware tick count representing a point of time
     /// that coincides or follows the one represented by the specified OS tick
     /// count.
     ///
+    /// Returns a value in range `0..=cfg.`[`hw_max_tick_count`]`()`.
+    ///
     /// `tick_count` must satisfy the following condition: Given a last
     /// reference point `ref_tick_count` (a value returned by
     /// [`mark_reference`]), there must exist `i` such that
-    /// `i ∈ 1..=cfg.max_timeout()` and `tick_count == (ref_tick_count + i) %
-    /// (cfg.max_tick_count() + 1)`.
+    /// `i ∈ 1..=cfg.`[`max_timeout`]`()` and `tick_count == (ref_tick_count +
+    /// i) % (cfg.`[`max_tick_count`]`() + 1)`.
     ///
     /// In particular, `tick_count` must not be identical to `ref_tick_count`.
     /// If this was allowed, the result could refer to the past. Consider the
@@ -414,20 +424,33 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// [`TicklessState`] to derive `Self`.
     ///
     /// [`mark_reference`]: Self::mark_reference
+    /// [`max_timeout`]: TicklessCfg::max_timeout
+    /// [`max_tick_count`]: TicklessCfg::max_tick_count
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     fn tick_count_to_hw_tick_count(&self, cfg: &TicklessCfg, tick_count: u32) -> u32;
 
-    /// Get the OS tick count.
+    /// Get the OS tick count
+    /// (in range `0..=cfg.`[`max_tick_count`]`()`).
     ///
     /// `cfg` must be the instance of [`TicklessCfg`] that was passed to
     /// [`TicklessState`] to derive `Self`.
     ///
-    /// `hw_tick_count` must satisfy the following condition: Given a last
-    /// reference point `ref_hw_tick_count` (a value passed to
+    /// `hw_tick_count` should be in range `0..=cfg.`[`hw_max_tick_count`]`()`.
+    /// In addition, `hw_tick_count` must satisfy the following condition: Given
+    /// a last reference point `ref_tick_count` (the last value returned by
     /// [`mark_reference`]), there must exist `timeout` and `latency` such that
-    /// `timeout ∈ 0..=cfg.max_timeout()`, `latency ∈ 0..= hw_headroom_ticks`,
-    /// and `hw_tick_count == (ref_hw_tick_count + i) % (cfg.hw_max_tick_count()
+    /// `timeout ∈ 1..=cfg.`[`max_timeout`]`()`, `latency ∈ 0..=
+    /// hw_headroom_ticks`, and `hw_tick_count ==
+    /// (tick_count_to_hw_tick_count((ref_tick_count + timeout) %
+    /// (cfg.`[`max_tick_count`]`() + 1)) + latency) % (cfg.hw_max_tick_count()
     /// + 1)`.
     ///
+    /// TODO: In the above formulae, take into account the case where
+    /// `∂tick_count_to_hw_tick_count(x) / ∂x > latency`
+    ///
+    /// [`max_tick_count`]: TicklessCfg::max_tick_count
+    /// [`max_timeout`]: TicklessCfg::max_timeout
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     /// [`mark_reference`]: Self::mark_reference
     fn tick_count(&self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32;
 }

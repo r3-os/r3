@@ -24,7 +24,7 @@ pub struct TickfulOptions {
     pub hw_tick_period: u32,
 }
 
-/// Error type for [`TicklessCfg::new`].
+/// Error type for [`TickfulCfg::new`].
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CfgError {
     /// The numerator of the clock frequency is zero.
@@ -173,11 +173,15 @@ pub struct TickfulStateCore<Submicros> {
     tick_count_submicros: Submicros,
 }
 
+/// Operations implemented by all valid instantiations of [`TickfulState`].
 pub trait TickfulStateTrait: Init {
     /// Advance the time by one tick period ([`TickfulOptions::hw_tick_period`]).
+    ///
+    /// `cfg` must be the instance of [`TickfulCfg`] that was passed to
+    /// [`TickfulState`] to derive `Self`.
     fn tick(&mut self, cfg: &TickfulCfg);
 
-    /// Get the OS tick count.
+    /// Get the OS tick count in range `0..=u32::MAX`.
     fn tick_count(&self) -> u32;
 }
 
