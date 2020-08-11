@@ -498,17 +498,41 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// [`TicklessState`] to derive `Self`.
     ///
     /// `hw_tick_count` should be in range `0..=cfg.`[`hw_max_tick_count`]`()`.
-    /// In addition, `hw_tick_count` must satisfy the following condition: Given
-    /// a last reference point `ref_tick_count` (the last value returned by
-    /// [`mark_reference`]), there must exist `timeout` and `latency` such that
-    /// `timeout ∈ 1..=cfg.`[`max_timeout`]`()`, `latency ∈ 0..=
-    /// hw_headroom_ticks`, and `hw_tick_count ==
-    /// (tick_count_to_hw_tick_count((ref_tick_count + timeout) %
-    /// (cfg.`[`max_tick_count`]`() + 1)) + latency) % (cfg.hw_max_tick_count()
-    /// + 1)`.
+    /// In addition, `hw_tick_count` must satisfy the following condition:
     ///
-    /// TODO: In the above formulae, take into account the case where
-    /// `∂tick_count_to_hw_tick_count(x) / ∂x > latency`
+    ///  - Let `ref_hw_tick_count` and `ref_tick_count` be the last reference
+    ///    point (the last values passed to and returned by [`mark_reference`],
+    ///    respectively).
+    ///  - Let `period = cfg.`[`max_tick_count`]`() + 1`.
+    ///  - Let `hw_period = cfg.`[`hw_max_tick_count`]`() + 1`.
+    ///  - Let `hw_max_timeout = (tick_count_to_hw_tick_count((ref_tick_count +
+    ///    cfg.max_timeout) % period) + hw_period - ref_hw_tick_count) %
+    ///    hw_period`.
+    ///  - There must exist `hw_timeout` and `latency` such that
+    ///    `hw_timeout ∈ 0..=hw_max_timeout`, `latency ∈ 0..=hw_headroom_ticks`,
+    ///    and `hw_tick_count == (ref_hw_tick_count + hw_timeout + latency) %
+    ///    hw_period`.
+    ///
+    /// **Note:** `ref_hw_tick_count` should not be confused with the
+    /// identically-named private field of [`TicklessStateCore`].
+    ///
+    /// ```text
+    ///          hw_headroom_ticks          hw_max_timeout
+    ///                  │     ref_hw_tick_count  │
+    ///              ────┴───────┐     ↓╶─────────┴──────┐┌─────
+    ///              ░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░░░░░░░░░░
+    ///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
+    ///  ³/₇μs/tick  0                 ╷  7              ╷     14
+    ///                            ┌───┘                ┌┘
+    ///                            ╵                    ╵
+    ///  OS ticks    ┌──────┬──────┬──────┬──────┬──────┬──────┐
+    ///  1μs/tick    0             ↑╶─────────────┬─────┘      6
+    ///                      ref_tick_count       ╵
+    ///                                      max_timeout
+    /// ```
+    ///
+    /// In the above diagram, `hw_tick_count` should fall within the filled zone
+    /// (`░░░░░░░░`).
     ///
     /// [`max_tick_count`]: TicklessCfg::max_tick_count
     /// [`max_timeout`]: TicklessCfg::max_timeout
