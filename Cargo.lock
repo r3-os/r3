@@ -310,6 +310,7 @@ dependencies = [
  "num-rational",
  "quickcheck",
  "quickcheck_macros",
+ "svgbobdoc",
 ]
 
 [[package]]

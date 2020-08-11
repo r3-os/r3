@@ -12,6 +12,7 @@ repository = "https://github.com/yvt/Constance"
 constance = { path = "../constance" }
 
 num-rational = { version = "0.3.0", default-features = false }
+svgbobdoc = { version = "0.2.2" }
 
 [dev-dependencies]
 quickcheck_macros = { version = "0.9.1" }

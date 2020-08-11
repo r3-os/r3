@@ -5,6 +5,7 @@
 #![feature(const_saturating_int_methods)]
 #![feature(core_panic)]
 #![feature(decl_macro)]
+#![feature(external_doc)]
 #![no_std]
 
 #[macro_use]
