@@ -4,7 +4,7 @@ use num_rational::Ratio;
 use crate::{
     num::{
         ceil_ratio128, floor_ratio128, reduce_ratio128,
-        wrapping::{WrappingCounter, WrappingCounterTrait},
+        wrapping::{Wrapping, WrappingTrait},
     },
     utils::Init,
 };
@@ -107,8 +107,7 @@ impl TickfulCfg {
 
 /// Instantiates the optimal version of [`TickfulStateCore`] using a
 /// given [`TickfulCfg`]. All instances implement [`TickfulStateTrait`].
-pub type TickfulState<const CFG: TickfulCfg> =
-    TickfulStateCore<WrappingCounter<{ CFG.division() - 1 }>>;
+pub type TickfulState<const CFG: TickfulCfg> = TickfulStateCore<Wrapping<{ CFG.division() - 1 }>>;
 
 /// The internal state of the tickful implementation of
 /// [`constance::kernel::PortTimer`].
@@ -130,7 +129,7 @@ impl<Submicros: Init> Init for TickfulStateCore<Submicros> {
     };
 }
 
-impl<Submicros: WrappingCounterTrait> TickfulStateTrait for TickfulStateCore<Submicros> {
+impl<Submicros: WrappingTrait> TickfulStateTrait for TickfulStateCore<Submicros> {
     /// Advance the counter by one hardware tick.
     #[inline]
     fn tick(&mut self, cfg: &TickfulCfg) {

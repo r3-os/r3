@@ -4,7 +4,7 @@ use num_rational::Ratio;
 use crate::{
     num::{
         ceil_div128, floor_ratio128, gcd128, min128, reduce_ratio128,
-        wrapping::{WrappingCounter, WrappingCounterTrait},
+        wrapping::{Wrapping, WrappingTrait},
     },
     utils::Init,
 };
@@ -268,7 +268,7 @@ impl TicklessCfg {
 /// given [`TicklessCfg`]. All instances implement [`TicklessStateTrait`].
 pub type TicklessState<const CFG: TicklessCfg> = If! {
     if (matches!(CFG.algorithm, TicklessAlgorithm::Stateful)) {
-        TicklessStateCore<WrappingCounter<{ CFG.division() - 1 }>>
+        TicklessStateCore<Wrapping<{ CFG.division() - 1 }>>
     } else {
         TicklessStatelessCore
     }
@@ -428,7 +428,7 @@ impl TicklessStateTrait for TicklessStatelessCore {
     }
 }
 
-impl<Subticks: WrappingCounterTrait> TicklessStateTrait for TicklessStateCore<Subticks> {
+impl<Subticks: WrappingTrait> TicklessStateTrait for TicklessStateCore<Subticks> {
     #[inline]
     fn mark_reference(&mut self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32 {
         // Calculate the tick count

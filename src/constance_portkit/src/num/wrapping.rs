@@ -3,35 +3,35 @@ use core::ops;
 
 use crate::utils::Init;
 
-/// Get a type implementing [`WrappingCounterTrait`] that wraps around when
-/// incremented past `MAX`.
+/// Get a type implementing [`WrappingTrait`] that wraps around when incremented
+/// past `MAX`.
 ///
 /// This type alias tries to choose the most efficient data type to do the job.
-pub type WrappingCounter<const MAX: u64> = If! {
+pub type Wrapping<const MAX: u64> = If! {
     if (MAX == 0) {
         ()
     } else if (MAX < u8::MAX as u64) {
-        FractionalWrappingCounter<u8, MAX>
+        FractionalWrapping<u8, MAX>
     } else if (MAX == u8::MAX as u64) {
         u8
     } else if (MAX < u16::MAX as u64) {
-        FractionalWrappingCounter<u16, MAX>
+        FractionalWrapping<u16, MAX>
     } else if (MAX == u16::MAX as u64) {
         u16
     } else if (MAX < u32::MAX as u64) {
-        FractionalWrappingCounter<u32, MAX>
+        FractionalWrapping<u32, MAX>
     } else if (MAX == u32::MAX as u64) {
         u32
     } else if (MAX < u64::MAX) {
-        FractionalWrappingCounter<u64, MAX>
+        FractionalWrapping<u64, MAX>
     } else {
         u64
     }
 };
 
 /// Represents a counter type that wraps around when incremented past a
-/// predetermined upper bound `MAX` (this bound is not exposed but measurable).
-pub trait WrappingCounterTrait: Init + Copy + core::fmt::Debug {
+/// predetermined upper bound `MAX` (this bound is not exposed).
+pub trait WrappingTrait: Init + Copy + core::fmt::Debug {
     /// Add a value to `self`. Returns `true` iff wrap-around has occurred.
     ///
     /// `rhs` must be less than or equal to `MAX`.
@@ -46,7 +46,7 @@ pub trait WrappingCounterTrait: Init + Copy + core::fmt::Debug {
     fn to_u128(&self) -> u128;
 }
 
-impl WrappingCounterTrait for () {
+impl WrappingTrait for () {
     #[inline]
     fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
         rhs != 0
@@ -63,7 +63,7 @@ impl WrappingCounterTrait for () {
     }
 }
 
-impl WrappingCounterTrait for u8 {
+impl WrappingTrait for u8 {
     #[inline]
     fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
         let (out, overflow) = self.overflowing_add(rhs as u8);
@@ -85,7 +85,7 @@ impl WrappingCounterTrait for u8 {
     }
 }
 
-impl WrappingCounterTrait for u16 {
+impl WrappingTrait for u16 {
     #[inline]
     fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
         let (out, overflow) = self.overflowing_add(rhs as u16);
@@ -107,7 +107,7 @@ impl WrappingCounterTrait for u16 {
     }
 }
 
-impl WrappingCounterTrait for u32 {
+impl WrappingTrait for u32 {
     #[inline]
     fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
         let (out, overflow) = self.overflowing_add(rhs as u32);
@@ -129,7 +129,7 @@ impl WrappingCounterTrait for u32 {
     }
 }
 
-impl WrappingCounterTrait for u64 {
+impl WrappingTrait for u64 {
     #[inline]
     fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
         let (out, overflow) = self.overflowing_add(rhs as u64);
@@ -151,21 +151,21 @@ impl WrappingCounterTrait for u64 {
     }
 }
 
-/// Implementation of `WrappingCounterTrait` that wraps around at some boundary
+/// Implementation of `WrappingTrait` that wraps around at some boundary
 /// that does not naturally occur from the binary representation of the integer
 /// type.
 ///
 /// `MAX` must be less than `T::MAX`.
 #[derive(Debug, Copy, Clone)]
-pub struct FractionalWrappingCounter<T, const MAX: u64> {
+pub struct FractionalWrapping<T, const MAX: u64> {
     inner: T,
 }
 
-impl<T: Init, const MAX: u64> Init for FractionalWrappingCounter<T, MAX> {
+impl<T: Init, const MAX: u64> Init for FractionalWrapping<T, MAX> {
     const INIT: Self = Self { inner: Init::INIT };
 }
 
-impl<T, const MAX: u64> WrappingCounterTrait for FractionalWrappingCounter<T, MAX>
+impl<T, const MAX: u64> WrappingTrait for FractionalWrapping<T, MAX>
 where
     T: From<u8>
         + core::convert::TryFrom<u64>
@@ -235,17 +235,17 @@ mod tests {
     use quickcheck_macros::quickcheck;
     use std::{prelude::v1::*, vec};
 
-    /// The naïve implementation of `WrappingCounterTrait`.
+    /// The naïve implementation of `WrappingTrait`.
     #[derive(Debug, Copy, Clone)]
-    struct NaiveWrappingCounter<const MAX: u64> {
+    struct NaiveWrapping<const MAX: u64> {
         inner: u128,
     }
 
-    impl<const MAX: u64> Init for NaiveWrappingCounter<MAX> {
+    impl<const MAX: u64> Init for NaiveWrapping<MAX> {
         const INIT: Self = Self { inner: 0 };
     }
 
-    impl<const MAX: u64> WrappingCounterTrait for NaiveWrappingCounter<MAX> {
+    impl<const MAX: u64> WrappingTrait for NaiveWrapping<MAX> {
         fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
             assert!(rhs <= MAX);
             let new_value = self.inner + rhs as u128;
@@ -273,8 +273,8 @@ mod tests {
                 const MAX: u128 = $max;
 
                 fn do_test_add_assign64(values: impl IntoIterator<Item = u64>) {
-                    let mut counter_got: WrappingCounter<{MAX as u64}> = Init::INIT;
-                    let mut counter_expected: NaiveWrappingCounter<{MAX as u64}> = Init::INIT;
+                    let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
+                    let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
                     log::trace!("do_test_add_assign64 (MAX = {})", MAX);
                     for value in values {
                         log::trace!(
@@ -326,8 +326,8 @@ mod tests {
                 }
 
                 fn do_test_add_assign128_multi32(values: impl IntoIterator<Item = u128>) {
-                    let mut counter_got: WrappingCounter<{MAX as u64}> = Init::INIT;
-                    let mut counter_expected: NaiveWrappingCounter<{MAX as u64}> = Init::INIT;
+                    let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
+                    let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
                     log::trace!("do_test_add_assign128_multi32 (MAX = {})", MAX);
                     for value in values {
                         log::trace!(
@@ -376,7 +376,7 @@ mod tests {
                 #[test]
                 #[should_panic]
                 fn add_assign128_multi32_result_overflow() {
-                    // `NaiveWrappingCounter` is guaranteed to panic on overflow
+                    // `NaiveWrapping` is guaranteed to panic on overflow
                     do_test_add_assign128_multi32(vec![MAX, (MAX + 1) * 0xffff_ffff + 1]);
                 }
 
