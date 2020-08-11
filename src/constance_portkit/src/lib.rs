@@ -10,7 +10,7 @@
 #[macro_use]
 pub mod utils;
 
+pub mod num;
 pub mod pptext;
 pub mod tickful;
 pub mod tickless;
-pub mod num;
