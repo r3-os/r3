@@ -181,9 +181,8 @@ pub macro pp_text_macro {
     },
 }
 
-// TODO: rename to `pp_llvm_asm!`
 /// Preprocessed `llvm_asm!`.
-pub macro pp_asm {
+pub macro pp_llvm_asm {
     // -------------------------------------------------------------------
     // Munch the input until `:` or EOF is found
     (
@@ -191,7 +190,7 @@ pub macro pp_asm {
         unprocessed: [{ : $($unprocessed:tt)* }],
         code: [{ $($code:tt)* }],
     ) => {{
-        $crate::pptext::pp_asm!(
+        $crate::pptext::pp_llvm_asm!(
             @done,
             unprocessed: [{ : $($unprocessed)* }],
             code: [{ $($code)* }],
@@ -202,7 +201,7 @@ pub macro pp_asm {
         unprocessed: [{}],
         code: [{ $($code:tt)* }],
     ) => {{
-        $crate::pptext::pp_asm!(
+        $crate::pptext::pp_llvm_asm!(
             @done,
             unprocessed: [{}],
             code: [{ $($code)* }],
@@ -214,7 +213,7 @@ pub macro pp_asm {
         unprocessed: [{ $fragment:tt $($unprocessed:tt)* }],
         code: [{ $($code:tt)* }],
     ) => {{
-        $crate::pptext::pp_asm!(
+        $crate::pptext::pp_llvm_asm!(
             @internal,
             unprocessed: [{ $($unprocessed)* }],
             code: [{ $($code)* $fragment }],
@@ -227,9 +226,9 @@ pub macro pp_asm {
         code: [{ $($code:tt)* }],
     ) => {{
         $crate::pptext::pp_text_macro! {
-            macro pp_asm_code { $($code)* }
+            macro pp_llvm_asm_code { $($code)* }
         }
-        llvm_asm!(pp_asm_code!() $($unprocessed)*);
+        llvm_asm!(pp_llvm_asm_code!() $($unprocessed)*);
     }},
     // -------------------------------------------------------------------
     // The entry point
@@ -237,7 +236,7 @@ pub macro pp_asm {
         // TODO: remove `$l:lit`
         $l:literal $($rest:tt)*
     ) => {
-        $crate::pptext::pp_asm!(
+        $crate::pptext::pp_llvm_asm!(
             @internal,
             unprocessed: [{ $l $($rest)* }],
             code: [{}],
