@@ -2,7 +2,10 @@
 use core::ops;
 use num_rational::Ratio;
 
-use crate::utils::Init;
+use crate::{
+    num::{ceil_div128, floor_ratio128, gcd128, min128, reduce_ratio128},
+    utils::Init,
+};
 
 /// The precomputed parameters for the tickless implementation of
 /// [`constance::kernel::PortTimer`].
@@ -646,39 +649,6 @@ where
     }
 }
 
-// Integers and rational numbers
-// -------------------------------------------------------------------------
-
-const fn gcd128(x: u128, y: u128) -> u128 {
-    if y == 0 {
-        x
-    } else {
-        gcd128(y, x % y)
-    }
-}
-
-#[inline]
-const fn ceil_div128(x: u128, y: u128) -> u128 {
-    (x + y - 1) / y
-}
-
-const fn reduce_ratio128(r: Ratio<u128>) -> Ratio<u128> {
-    let gcd = gcd128(*r.numer(), *r.denom());
-    Ratio::new_raw(*r.numer() / gcd, *r.denom() / gcd)
-}
-
-const fn floor_ratio128(r: Ratio<u128>) -> u128 {
-    *r.numer() / *r.denom()
-}
-
-const fn min128(x: u128, y: u128) -> u128 {
-    if x < y {
-        x
-    } else {
-        y
-    }
-}
-
 #[cfg(test)]
 mod tests {
     extern crate std;
@@ -1114,24 +1084,4 @@ mod tests {
         c_u64_max_m1 => u64::MAX as u128 - 1,
         c_u64_max => u64::MAX as u128,
     );
-
-    // ---------------------------------------------------------------------
-
-    #[test]
-    fn test_gcd128() {
-        for &(x, y) in &[(0, 0), (0, 1), (1, 0), (1, 1)] {
-            assert_eq!(gcd128(x, y), num_integer::gcd(x, y));
-        }
-    }
-
-    #[quickcheck]
-    fn quickcheck_gcd128(x: u128, y: u128) {
-        assert_eq!(gcd128(x, y), num_integer::gcd(x, y));
-    }
-
-    #[quickcheck]
-    fn quickcheck_gcd128_large(x: u128, y: u128) {
-        let (x, y) = (!x, !y);
-        assert_eq!(gcd128(x, y), num_integer::gcd(x, y));
-    }
 }
