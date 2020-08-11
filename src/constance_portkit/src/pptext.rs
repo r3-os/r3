@@ -3,13 +3,13 @@
 /// Define a macro that produces a string literal whose contents is revealed
 /// and masked based on the current build configuration (`cfg!`).
 #[macro_export]
-macro_rules! pp_text_macro {
+pub macro pp_text_macro {
     (
         $vis:vis macro $name:ident {
             $($text:tt)*
         }
     ) => {
-        $crate::pp_text_macro! {
+        $crate::pptext::pp_text_macro! {
             @internal,
             text: [{ $($text)* }],
             free_idents: [{
@@ -22,7 +22,7 @@ macro_rules! pp_text_macro {
             macro_inner: [{}],
             define_macro: [{ $vis $name }],
         }
-    };
+    },
     // -----------------------------------------------------------------
     // Each step processes the first element in the given `text`. This continues
     // until none are left.
@@ -41,7 +41,7 @@ macro_rules! pp_text_macro {
         macro_inner: [{ $($macro_inner:tt)* }],
         define_macro: [$define_macro:tt],
     ) => {
-        $crate::pp_text_macro! {
+        $crate::pptext::pp_text_macro! {
             @internal,
             text: [{ $($rest_text)* }],
             free_idents: [{ $($free_idents)* }],
@@ -53,7 +53,7 @@ macro_rules! pp_text_macro {
             }],
             define_macro: [$define_macro],
         }
-    };
+    },
 
     (
         @internal,
@@ -70,7 +70,7 @@ macro_rules! pp_text_macro {
         macro_inner: [{ $($macro_inner:tt)* }],
         define_macro: [{ $vis:vis $name:ident }],
     ) => {
-        $crate::pp_text_macro! {
+        $crate::pptext::pp_text_macro! {
             @internal,
             text: [{ $($rest_text)* }],
             free_idents: [{ $($rest_free_idents)* }],
@@ -78,13 +78,13 @@ macro_rules! pp_text_macro {
                 $($private_mod)*
 
                 #[cfg($($cfg)*)]
-                $crate::pp_text_macro! {
-                    pub(super) macro $free_ident { $($true_text)* }
+                $crate::pptext::pp_text_macro! {
+                    pub macro $free_ident { $($true_text)* }
                 }
 
                 #[cfg(not($($cfg)*))]
-                $crate::pp_text_macro! {
-                    pub(super) macro $free_ident { $($false_text)* }
+                $crate::pptext::pp_text_macro! {
+                    pub macro $free_ident { $($false_text)* }
                 }
             }],
             macro_inner: [{
@@ -95,7 +95,7 @@ macro_rules! pp_text_macro {
             }],
             define_macro: [{ $vis $name }],
         }
-    };
+    },
 
     (
         @internal,
@@ -110,7 +110,7 @@ macro_rules! pp_text_macro {
         macro_inner: [{ $($macro_inner:tt)* }],
         define_macro: [{ $vis:vis $name:ident }],
     ) => {
-        $crate::pp_text_macro! {
+        $crate::pptext::pp_text_macro! {
             @internal,
             text: [{ $($rest_text)* }],
             free_idents: [{ $($rest_free_idents)* }],
@@ -118,12 +118,14 @@ macro_rules! pp_text_macro {
                 $($private_mod)*
 
                 #[cfg($($cfg)*)]
-                $crate::pp_text_macro! {
-                    pub(super) macro $free_ident { $($true_text)* }
+                $crate::pptext::pp_text_macro! {
+                    pub macro $free_ident { $($true_text)* }
                 }
 
+                // FIXME: Using `pub` in place of `pub(super)` work arounds
+                //        “visibilities can only be restricted to ancestor modules”
                 #[cfg(not($($cfg)*))]
-                pub(super) macro $free_ident () { "" }
+                pub macro $free_ident () { "" }
             }],
             macro_inner: [{
                 $($macro_inner)*
@@ -133,7 +135,7 @@ macro_rules! pp_text_macro {
             }],
             define_macro: [{ $vis $name }],
         }
-    };
+    },
 
     (
         @internal,
@@ -145,14 +147,15 @@ macro_rules! pp_text_macro {
     ) => {
         // No more text to munch, define the macro
         mod $name { $($private_mod)* }
+
+        #[doc(hidden)]
         $vis macro $name () { concat!( $($macro_inner)* ) }
-    };
+    },
 }
 
 // TODO: rename to `pp_llvm_asm!`
 /// Preprocessed `llvm_asm!`.
-#[macro_export]
-macro_rules! pp_asm {
+pub macro pp_asm {
     // -------------------------------------------------------------------
     // Munch the input until `:` or EOF is found
     (
@@ -160,58 +163,58 @@ macro_rules! pp_asm {
         unprocessed: [{ : $($unprocessed:tt)* }],
         code: [{ $($code:tt)* }],
     ) => {{
-        $crate::pp_asm!(
+        $crate::pptext::pp_asm!(
             @done,
             unprocessed: [{ : $($unprocessed)* }],
             code: [{ $($code)* }],
         );
-    }};
+    }},
     (
         @internal,
         unprocessed: [{}],
         code: [{ $($code:tt)* }],
     ) => {{
-        $crate::pp_asm!(
+        $crate::pptext::pp_asm!(
             @done,
             unprocessed: [{}],
             code: [{ $($code)* }],
         );
-    }};
+    }},
 
     (
         @internal,
         unprocessed: [{ $fragment:tt $($unprocessed:tt)* }],
         code: [{ $($code:tt)* }],
     ) => {{
-        $crate::pp_asm!(
+        $crate::pptext::pp_asm!(
             @internal,
             unprocessed: [{ $($unprocessed)* }],
             code: [{ $($code)* $fragment }],
         );
-    }};
+    }},
     // -------------------------------------------------------------------
     (
         @done,
         unprocessed: [{ $($unprocessed:tt)* }],
         code: [{ $($code:tt)* }],
     ) => {{
-        $crate::pp_text_macro! {
+        $crate::pptext::pp_text_macro! {
             macro pp_asm_code { $($code)* }
         }
         llvm_asm!(pp_asm_code!() $($unprocessed)*);
-    }};
+    }},
     // -------------------------------------------------------------------
     // The entry point
     (
         // TODO: remove `$l:lit`
         $l:literal $($rest:tt)*
     ) => {
-        $crate::pp_asm!(
+        $crate::pptext::pp_asm!(
             @internal,
             unprocessed: [{ $l $($rest)* }],
             code: [{}],
         );
-    };
+    },
 }
 
 #[cfg(test)]
