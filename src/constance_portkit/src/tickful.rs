@@ -1,9 +1,11 @@
 //! Implements the core algorithm for `systick_tickful`.
-use core::ops;
 use num_rational::Ratio;
 
 use crate::{
-    num::{ceil_ratio128, floor_ratio128, reduce_ratio128},
+    num::{
+        ceil_ratio128, floor_ratio128, reduce_ratio128,
+        wrapping::{WrappingCounter, WrappingCounterTrait},
+    },
     utils::Init,
 };
 
@@ -148,151 +150,11 @@ impl<Submicros: WrappingCounterTrait> TickfulStateTrait for TickfulStateCore<Sub
     }
 }
 
-// Wrapping counter types
-// -------------------------------------------------------------------------
-
-/// Get a type implementing [`WrappingCounterTrait`] that wraps around when
-/// incremented past `MAX`.
-///
-/// This type alias tries to choose the most efficient data type to do the job.
-pub type WrappingCounter<const MAX: u64> = If! {
-    if (MAX == 0) {
-        ()
-    } else if (MAX < u8::MAX as u64) {
-        FractionalWrappingCounter<u8, MAX>
-    } else if (MAX == u8::MAX as u64) {
-        u8
-    } else if (MAX < u16::MAX as u64) {
-        FractionalWrappingCounter<u16, MAX>
-    } else if (MAX == u16::MAX as u64) {
-        u16
-    } else if (MAX < u32::MAX as u64) {
-        FractionalWrappingCounter<u32, MAX>
-    } else if (MAX == u32::MAX as u64) {
-        u32
-    } else if (MAX < u64::MAX) {
-        FractionalWrappingCounter<u64, MAX>
-    } else {
-        u64
-    }
-};
-
-/// Represents a counter type that wraps around when incremented past a
-/// predetermined upper bound `MAX` (this bound is not exposed but measurable).
-pub trait WrappingCounterTrait: Init {
-    /// Add a value to `self`. Returns `true` iff wrap-around has occurred.
-    ///
-    /// `rhs` must be less than or equal to `MAX`.
-    fn wrapping_add_assign64(&mut self, rhs: u64) -> bool;
-}
-
-impl WrappingCounterTrait for () {
-    #[inline]
-    fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-        rhs != 0
-    }
-}
-
-impl WrappingCounterTrait for u8 {
-    #[inline]
-    fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-        let (out, overflow) = self.overflowing_add(rhs as u8);
-        *self = out;
-        overflow
-    }
-}
-
-impl WrappingCounterTrait for u16 {
-    #[inline]
-    fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-        let (out, overflow) = self.overflowing_add(rhs as u16);
-        *self = out;
-        overflow
-    }
-}
-
-impl WrappingCounterTrait for u32 {
-    #[inline]
-    fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-        let (out, overflow) = self.overflowing_add(rhs as u32);
-        *self = out;
-        overflow
-    }
-}
-
-impl WrappingCounterTrait for u64 {
-    #[inline]
-    fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-        let (out, overflow) = self.overflowing_add(rhs as u64);
-        *self = out;
-        overflow
-    }
-}
-
-/// Implementation of `WrappingCounterTrait` that wraps around at some boundary
-/// that does not naturally occur from the binary representation of the integer
-/// type.
-///
-/// `MAX` must be less than `T::MAX`.
-#[derive(Debug, Copy, Clone)]
-pub struct FractionalWrappingCounter<T, const MAX: u64> {
-    inner: T,
-}
-
-impl<T: Init, const MAX: u64> Init for FractionalWrappingCounter<T, MAX> {
-    const INIT: Self = Self { inner: Init::INIT };
-}
-
-impl<T, const MAX: u64> WrappingCounterTrait for FractionalWrappingCounter<T, MAX>
-where
-    T: From<u8>
-        + core::convert::TryFrom<u64>
-        + ops::Add<Output = T>
-        + ops::Sub<Output = T>
-        + ops::Rem<Output = T>
-        + PartialOrd
-        + Copy
-        + Init,
-{
-    #[inline]
-    fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-        let t_max = if let Ok(x) = T::try_from(MAX) {
-            x
-        } else {
-            unreachable!()
-        };
-        let t_rhs = if let Ok(x) = T::try_from(rhs) {
-            x
-        } else {
-            unreachable!()
-        };
-        if MAX < u64::MAX && (MAX + 1).is_power_of_two() {
-            // In this case, `x % (MAX + 1)` can be optimized to a fast bit-wise
-            // operation.
-            //
-            // The conjunction of `MAX < T::MAX` and `(MAX + 1).is_power_of_two()`
-            // entails `MAX < T::MAX / 2`. Therefore `self.inner + rhs` does
-            // not overflow `T`.
-            let new_value = self.inner + t_rhs;
-            self.inner = new_value % (t_max + T::from(1));
-            new_value >= t_max + T::from(1)
-        } else if t_max - self.inner >= t_rhs {
-            self.inner = self.inner + t_rhs;
-            false
-        } else {
-            self.inner = t_rhs - (t_max - self.inner) - T::from(1);
-            true
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     extern crate std;
 
     use super::*;
-    use quickcheck_macros::quickcheck;
-    use std::{vec, vec::Vec};
 
     /// Compare the output of `TickfulCfg` to known values.
     #[test]
@@ -461,104 +323,4 @@ mod tests {
     fn tickful_simulate8() {
         tickful_simulate!(0xffff_ffff_ffff_ffff, 0xffff_ffff_fffe, 0x41c4);
     }
-
-    // ---------------------------------------------------------------------
-
-    /// The naïve implementation of `WrappingCounterTrait`.
-    struct NaiveWrappingCounter<const MAX: u64> {
-        inner: u128,
-    }
-
-    impl<const MAX: u64> Init for NaiveWrappingCounter<MAX> {
-        const INIT: Self = Self { inner: 0 };
-    }
-
-    impl<const MAX: u64> WrappingCounterTrait for NaiveWrappingCounter<MAX> {
-        fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-            assert!(rhs <= MAX);
-            let new_value = self.inner + rhs as u128;
-            self.inner = new_value % (MAX as u128 + 1);
-            new_value > MAX as u128
-        }
-    }
-
-    macro_rules! gen_counter_tests {
-        ($($name:ident => $max:expr ,)*) => {$(
-            mod $name {
-                use super::*;
-
-                const MAX: u64 = $max;
-
-                fn do_test(values: impl IntoIterator<Item = u64>) {
-                    let mut counter_got: WrappingCounter<MAX> = Init::INIT;
-                    let mut counter_expected: NaiveWrappingCounter<MAX> = Init::INIT;
-                    log::trace!("do_test (MAX = {})", MAX);
-                    for value in values {
-                        log::trace!(
-                            " - ({} + {}) % (MAX + 1) = {} % (MAX + 1) = {}",
-                            counter_expected.inner,
-                            value,
-                            (counter_expected.inner + value as u128),
-                            (counter_expected.inner + value as u128) % (MAX as u128 + 1),
-                        );
-                        let got = counter_got.wrapping_add_assign64(value);
-                        let expected = counter_expected.wrapping_add_assign64(value);
-                        assert_eq!(got, expected);
-                    }
-                }
-
-                #[test]
-                fn test_zero() {
-                    do_test(vec![0, 0, 0,0, 0]);
-                }
-
-                #[test]
-                fn test_mixed() {
-                    do_test(vec![0, 1u64.min(MAX), MAX, MAX / 2, MAX / 10, 0, 4u64.min(MAX)]);
-                }
-
-                #[test]
-                fn test_max() {
-                    do_test(vec![MAX, MAX, MAX, MAX, MAX]);
-                }
-
-                #[test]
-                fn test_half() {
-                    do_test(vec![MAX / 2, MAX / 2, MAX / 2, MAX / 2, MAX / 2]);
-                }
-
-                #[quickcheck]
-                fn sanity(cmds: Vec<u32>) {
-                    do_test(cmds.iter().map(|&cmd| {
-                        match cmd % 4 {
-                            0 => MAX / 2,
-                            1 => (MAX / 2).saturating_add(1).min(MAX),
-                            2 => MAX.saturating_sub(1),
-                            3 => MAX,
-                            _ => unreachable!(),
-                        }.saturating_sub(cmd as u64 >> 2).min(MAX)
-                    }));
-                }
-            }
-        )*};
-    }
-
-    gen_counter_tests!(
-        c0 => 0,
-        c1 => 1,
-        c_u8_max_m1 => u8::MAX as u64 - 1,
-        c_u8_max => u8::MAX as u64,
-        c_u8_max2 => u8::MAX as u64 * 2,
-        c_u8_max_p1 => u8::MAX as u64 + 1,
-        c_u16_max_m1 => u16::MAX as u64 - 1,
-        c_u16_max => u16::MAX as u64,
-        c_u16_max2 => u16::MAX as u64 * 2,
-        c_u16_max_p1 => u16::MAX as u64 + 1,
-        c_u32_max_m1 => u32::MAX as u64 - 1,
-        c_u32_max => u32::MAX as u64,
-        c_u32_max2 => u32::MAX as u64 * 2,
-        c_u32_max_p1 => u32::MAX as u64 + 1,
-        c_u64_max_m1 => u64::MAX as u64 - 1,
-        c_u64_max => u64::MAX as u64,
-    );
 }

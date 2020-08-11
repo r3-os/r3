@@ -12,4 +12,4 @@ pub mod utils;
 pub mod pptext;
 pub mod tickful;
 pub mod tickless;
-mod num;
+pub mod num;
