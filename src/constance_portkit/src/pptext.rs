@@ -1,7 +1,35 @@
 //! Conditional string literal generation
 
 /// Define a macro that produces a string literal whose contents is revealed
-/// and masked based on the current build configuration (`cfg!`).
+/// or masked based on the current build configuration (`cfg!`).
+///
+/// # Examples
+///
+/// ```
+/// #![feature(decl_macro)]
+///
+/// constance_portkit::pptext::pp_text_macro! {
+///     macro get_text {
+///         "endianness = "
+///         if cfg!(target_endian = "little") { "little" } else { "big" } ", "
+///         "running on "
+///         if cfg!(unix) { "a unix-like system" } else { "an unknown kind of system" }
+///     }
+/// }
+///
+/// // `get_text!()` expands to a string literal that can be used in many
+/// // places where a string literal is expected
+/// const TEXT: &str = concat!(get_text!(), "\n");
+///
+/// assert_eq!(
+///     TEXT,
+///     format!(
+///         "endianness = {}, running on {}\n",
+///         if cfg!(target_endian = "little") { "little" } else { "big" },
+///         if cfg!(unix) { "a unix-like system" } else { "an unknown kind of system" },
+///     ),
+/// );
+/// ```
 #[macro_export]
 pub macro pp_text_macro {
     (
