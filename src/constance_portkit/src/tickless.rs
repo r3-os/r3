@@ -303,6 +303,7 @@ impl TicklessCfg {
     }
 
     /// Get the maximum OS tick count (period minus one cycle).
+    #[inline]
     pub const fn max_tick_count(&self) -> u32 {
         match self.algorithm {
             TicklessAlgorithm::Stateless { max_tick_count, .. } => max_tick_count,
@@ -312,11 +313,13 @@ impl TicklessCfg {
 
     /// Get the maximum time interval that can be reliably measured, taking an
     /// interrupt latency into account.
+    #[inline]
     pub const fn max_timeout(&self) -> u32 {
         self.max_timeout
     }
 
     /// Get the subtick division.
+    #[inline]
     pub const fn division(&self) -> u64 {
         self.division
     }
