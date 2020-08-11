@@ -18,9 +18,9 @@
 #[doc(hidden)]
 pub extern crate constance;
 
+/// Used by `use_sp804!`
 #[doc(hidden)]
-#[macro_use]
-pub mod utils;
+pub extern crate constance_portkit;
 
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -59,8 +59,6 @@ pub mod sp804 {
     mod sp804_regs;
 }
 
-#[doc(hidden)]
-pub mod timing;
 pub use self::gic::cfg::*;
 pub use self::sp804::cfg::*;
 pub use self::startup::cfg::*;

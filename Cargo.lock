@@ -240,13 +240,7 @@ name = "constance_port_arm"
 version = "0.0.1"
 dependencies = [
  "constance",
- "env_logger",
- "itertools",
- "log",
- "num-integer",
- "num-rational",
- "quickcheck",
- "quickcheck_macros",
+ "constance_portkit",
  "r0",
  "register",
 ]
@@ -256,13 +250,9 @@ name = "constance_port_arm_m"
 version = "0.0.1"
 dependencies = [
  "constance",
+ "constance_portkit",
  "cortex-m",
  "cortex-m-rt",
- "log",
- "num-integer",
- "num-rational",
- "quickcheck",
- "quickcheck_macros",
 ]
 
 [[package]]
@@ -306,6 +296,21 @@ dependencies = [
  "once_cell",
  "try-lock",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "constance_portkit"
+version = "0.0.1"
+dependencies = [
+ "constance",
+ "env_logger",
+ "itertools",
+ "log",
+ "num-integer",
+ "num-rational",
+ "quickcheck",
+ "quickcheck_macros",
+ "svgbobdoc",
 ]
 
 [[package]]

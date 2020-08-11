@@ -7,6 +7,7 @@ use constance::{
     prelude::*,
     utils::{intrusive_list::StaticListHead, Init},
 };
+use constance_portkit::pptext::pp_llvm_asm;
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
 use super::{
@@ -105,7 +106,7 @@ impl State {
         // Safety: Only the port can call this method
         let msp_top = unsafe { System::interrupt_stack_top() };
 
-        pp_asm!("
+        pp_llvm_asm!("
             # Reset MSP to the top of the stack, effectively discarding the
             # current context. Beyond this point, this code is considered to be
             # running in the idle task.
@@ -156,7 +157,7 @@ impl State {
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
 
-        pp_asm!("
+        pp_llvm_asm!("
             # Activate the idle task's context by switching the current SP to
             # MSP.
             # `running_task` is `None` at this point, so the processor state
@@ -226,7 +227,7 @@ impl State {
             unsafe { State::leave_cpu_lock_inner::<System>() };
         }
 
-        pp_asm!("
+        pp_llvm_asm!("
             # Save the context of the previous task
             #
             #    [r0 = &running_task, r4-r11 = context,

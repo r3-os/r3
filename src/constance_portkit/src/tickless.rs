@@ -1,7 +1,71 @@
 //! Implements the core algorithm for tickless timing.
-use constance::utils::Init;
-use core::ops;
+use core::fmt;
 use num_rational::Ratio;
+
+use crate::{
+    num::{
+        ceil_div128, floor_ratio128, gcd128, min128, reduce_ratio128,
+        wrapping::{Wrapping, WrappingTrait},
+    },
+    utils::Init,
+};
+
+/// The parameters of the tickless timing algorithm.
+///
+/// It can be passed to [`TicklessCfg::new`] to construct [`TicklessCfg`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct TicklessOptions {
+    /// The numerator of the hardware timer frequency.
+    pub hw_freq_num: u64,
+    /// The denominator of the hardware timer frequency.
+    pub hw_freq_denom: u64,
+    /// The headroom for interrupt latency, measured in hardware timer cycles.
+    pub hw_headroom_ticks: u32,
+}
+
+/// Error type for [`TicklessCfg::new`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum CfgError {
+    /// The numerator of the clock frequency is zero.
+    FreqNumZero,
+    /// The denominator of the clock frequency is zero.
+    FreqDenomZero,
+    /// The clock frequency is too high.
+    FreqTooHigh,
+    /// Intermediate calculation overflowed. the clock frequency might be too
+    /// complex or too low.
+    InternalOverflow,
+    /// The calculated value of [`TicklessCfg::max_timeout`] is too low.
+    OSMaxTimeoutTooLow,
+}
+
+impl CfgError {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::FreqNumZero => "the numerator of the clock frequency must not be zero",
+            Self::FreqDenomZero => "the denominator of the clock frequency must not be zero",
+            Self::FreqTooHigh => "the timer frequency is too fast",
+            Self::InternalOverflow => {
+                "intermediate calculation overflowed. the clock frequency might \
+                 be too complex or too low"
+            }
+            Self::OSMaxTimeoutTooLow => {
+                "the calculated maximum OS timeout is too low. lowering the \
+                 interrupt latency headroom might help"
+            }
+        }
+    }
+
+    pub const fn panic(self) -> ! {
+        core::panicking::panic(self.as_str());
+    }
+}
+
+impl fmt::Display for CfgError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// The precomputed parameters for the tickless implementation of
 /// [`constance::kernel::PortTimer`].
@@ -37,15 +101,22 @@ enum TicklessAlgorithm {
 impl TicklessCfg {
     /// Construct a `TicklessCfg`.
     #[allow(clippy::int_plus_one)] // for consistency
-    pub const fn new(freq_num: u64, freq_denom: u64, hw_headroom_ticks: u32) -> Self {
-        if freq_denom == 0 {
-            panic!("the denominator of the clock frequency must not be zero");
-        } else if freq_num == 0 {
-            panic!("the numerator of the clock frequency must not be zero");
+    pub const fn new(
+        TicklessOptions {
+            hw_freq_num,
+            hw_freq_denom,
+            hw_headroom_ticks,
+        }: TicklessOptions,
+    ) -> Result<Self, CfgError> {
+        if hw_freq_denom == 0 {
+            return Err(CfgError::FreqDenomZero);
+        } else if hw_freq_num == 0 {
+            return Err(CfgError::FreqNumZero);
         }
 
         // `hw_ticks_per_micro = freq_num / freq_denom / 1_000_000`
-        let hw_ticks_per_micro = Ratio::new_raw(freq_num as u128, freq_denom as u128 * 1_000_000);
+        let hw_ticks_per_micro =
+            Ratio::new_raw(hw_freq_num as u128, hw_freq_denom as u128 * 1_000_000);
         let hw_ticks_per_micro = reduce_ratio128(hw_ticks_per_micro);
         assert!(*hw_ticks_per_micro.numer() >= 1);
         assert!(*hw_ticks_per_micro.numer() <= 0xffff_ffff_ffff_ffff);
@@ -59,18 +130,11 @@ impl TicklessCfg {
         assert!(hw_subticks_per_micro <= *hw_ticks_per_micro.denom() - 1);
 
         if hw_ticks_per_micro_floor > u32::MAX as u128 {
-            panic!(
-                "cannot satisfy the timing requirements; \
-               the timer frequency is too fast"
-            );
+            return Err(CfgError::FreqTooHigh);
         }
 
         if *hw_ticks_per_micro.denom() > u64::MAX as u128 {
-            panic!(
-                "cannot satisfy the timing requirements; \
-               intermediate calculation overflowed. the clock frequency might \
-               be too complex or too low"
-            );
+            return Err(CfgError::InternalOverflow);
         }
 
         // Try the stateless algorithm first. Find the period at which HW ticks
@@ -151,7 +215,7 @@ impl TicklessCfg {
             ) / *hw_ticks_per_micro.numer();
 
             if max_timeout == 0 {
-                panic!("The calculated `MAX_TIMEOUT` is too low - lower the headroom");
+                return Err(CfgError::OSMaxTimeoutTooLow);
             }
             assert!(max_timeout <= u32::MAX as u128);
 
@@ -211,20 +275,20 @@ impl TicklessCfg {
             ) / *hw_ticks_per_micro.numer();
 
             if max_timeout == 0 {
-                panic!("The calculated `MAX_TIMEOUT` is too low - lower the headroom");
+                return Err(CfgError::OSMaxTimeoutTooLow);
             }
             assert!(max_timeout <= u32::MAX as u128);
 
             (TicklessAlgorithm::Stateful, max_timeout as u32)
         };
 
-        Self {
+        Ok(Self {
             hw_ticks_per_micro: hw_ticks_per_micro_floor as u32,
             hw_subticks_per_micro: hw_subticks_per_micro as u64,
             algorithm,
             division: *hw_ticks_per_micro.denom() as u64,
             max_timeout,
-        }
+        })
     }
 
     /// Get the maximum hardware tick count (period minus one cycle).
@@ -239,6 +303,7 @@ impl TicklessCfg {
     }
 
     /// Get the maximum OS tick count (period minus one cycle).
+    #[inline]
     pub const fn max_tick_count(&self) -> u32 {
         match self.algorithm {
             TicklessAlgorithm::Stateless { max_tick_count, .. } => max_tick_count,
@@ -248,11 +313,13 @@ impl TicklessCfg {
 
     /// Get the maximum time interval that can be reliably measured, taking an
     /// interrupt latency into account.
+    #[inline]
     pub const fn max_timeout(&self) -> u32 {
         self.max_timeout
     }
 
     /// Get the subtick division.
+    #[inline]
     pub const fn division(&self) -> u64 {
         self.division
     }
@@ -262,12 +329,13 @@ impl TicklessCfg {
 /// given [`TicklessCfg`]. All instances implement [`TicklessStateTrait`].
 pub type TicklessState<const CFG: TicklessCfg> = If! {
     if (matches!(CFG.algorithm, TicklessAlgorithm::Stateful)) {
-        TicklessStateCore<WrappingCounter<{ CFG.division() - 1 }>>
+        TicklessStateCore<Wrapping<{ CFG.division() - 1 }>>
     } else {
         TicklessStatelessCore
     }
 };
 
+#[cfg_attr(doc, svgbobdoc::transform)]
 /// The stateless and tickless implementation of
 /// [`constance::kernel::PortTimer`].
 ///
@@ -275,15 +343,18 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 /// up” periodically with a period shorter than the representable ranges of both
 /// tick counts.
 ///
-/// ```text
-///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
-///  ³/₇μs/tick  0                    7                    14
-///              ╎                    ╎           (hw_max_tick_count + 1)
-///              ╎                    ╎                    ╎
-///  OS ticks    ┌──────┬──────┬──────┬──────┬──────┬──────┐
-///  1μs/tick    0                                         6
-///                                                (max_tick_count + 1)
+/// <center>
+/// ```svgbob
+///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
+///  ³/₇μs/tick  0                    7                    14                   21
+///              ,                    ,                    ,           (hw_max_tick_count + 1)
+///              |                    |                    |                    ,
+///              '                    '                    '                    '
+///  OS ticks    ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+///  1μs/tick    0                    3                    6                    9
+///                                                                     (max_tick_count + 1)
 /// ```
+/// </center>
 #[derive(Debug, Copy, Clone)]
 pub struct TicklessStatelessCore;
 
@@ -300,8 +371,14 @@ pub struct TicklessStateCore<Subticks> {
     ref_hw_subtick_count: Subticks,
 }
 
+/// Operations implemented by all valid instantiations of [`TicklessState`].
+#[doc(include = "../../constance/src/common.md")]
 pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
-    /// Mark a reference point. Returns the reference point's OS tick count.
+    /// Mark a reference point. Returns the reference point's OS tick count
+    /// (in range `0..=cfg.`[`max_tick_count`]`()`).
+    ///
+    /// `hw_tick_count` should be in range `0..=cfg.`[`hw_max_tick_count`]`()`
+    /// and satisfy the requirements of [`TicklessStateTrait::tick_count`].
     ///
     /// All reference points are exactly aligned to OS ticks (microseconds).
     ///
@@ -312,17 +389,82 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     ///
     /// `cfg` must be the instance of [`TicklessCfg`] that was passed to
     /// [`TicklessState`] to derive `Self`.
+    ///
+    /// [`max_tick_count`]: TicklessCfg::max_tick_count
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     fn mark_reference(&mut self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32;
 
+    /// [Mark a reference point] and start measuring the specified time interval
+    /// `ticks` (measured in OS ticks = microseconds).
+    ///
+    /// The caller can use the information contained in the returned
+    /// [`Measurement`] to configure timer hardware and receive an interrupt
+    /// at the end of measurement.
+    ///
+    /// `hw_tick_count` should be in range `0..=cfg.`[`hw_max_tick_count`]`()`
+    /// and satisfy the requirements of [`TicklessStateTrait::tick_count`].
+    ///
+    /// `ticks` should be in range `1..=cfg.`[`max_timeout`]`()`.
+    ///
+    /// [Mark a reference point]: Self::mark_reference
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
+    /// [`max_timeout`]: TicklessCfg::max_timeout
+    #[inline]
+    fn mark_reference_and_measure(
+        &mut self,
+        cfg: &TicklessCfg,
+        hw_tick_count: u32,
+        ticks: u32,
+    ) -> Measurement {
+        debug_assert_ne!(ticks, 0);
+
+        let cur_tick_count = self.mark_reference(cfg, hw_tick_count);
+        let end_tick_count = add_mod_u32(cur_tick_count, ticks, cfg.max_tick_count());
+        let end_hw_tick_count = self.tick_count_to_hw_tick_count(cfg, end_tick_count);
+        let hw_ticks = sub_mod_u32(end_hw_tick_count, hw_tick_count, cfg.hw_max_tick_count());
+
+        #[track_caller]
+        #[inline]
+        fn add_mod_u32(x: u32, y: u32, max: u32) -> u32 {
+            debug_assert!(x <= max);
+            debug_assert!(y <= max);
+            if max == u32::MAX || (max - x) >= y {
+                x.wrapping_add(y)
+            } else {
+                x.wrapping_add(y).wrapping_add(u32::MAX - max)
+            }
+        }
+
+        #[track_caller]
+        #[inline]
+        fn sub_mod_u32(x: u32, y: u32, max: u32) -> u32 {
+            debug_assert!(x <= max);
+            debug_assert!(y <= max);
+            if max == u32::MAX || y < x {
+                x.wrapping_sub(y)
+            } else {
+                x.wrapping_sub(y).wrapping_sub(u32::MAX - max)
+            }
+        }
+
+        Measurement {
+            end_hw_tick_count,
+            hw_ticks,
+        }
+    }
+
+    #[cfg_attr(doc, svgbobdoc::transform)]
     /// Calculate the earliest hardware tick count representing a point of time
     /// that coincides or follows the one represented by the specified OS tick
     /// count.
     ///
+    /// Returns a value in range `0..=cfg.`[`hw_max_tick_count`]`()`.
+    ///
     /// `tick_count` must satisfy the following condition: Given a last
     /// reference point `ref_tick_count` (a value returned by
     /// [`mark_reference`]), there must exist `i` such that
-    /// `i ∈ 1..=cfg.max_timeout()` and `tick_count == (ref_tick_count + i) %
-    /// (cfg.max_tick_count() + 1)`.
+    /// `i ∈ 1..=cfg.`[`max_timeout`]`()` and `tick_count == (ref_tick_count +
+    /// i) % (cfg.`[`max_tick_count`]`() + 1)`.
     ///
     /// In particular, `tick_count` must not be identical to `ref_tick_count`.
     /// If this was allowed, the result could refer to the past. Consider the
@@ -333,41 +475,106 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// wrap-around arithmetics, it's impossible to tell if the returned value
     /// refers to the past or not.
     ///
-    /// ```text
-    ///                         timer interrupt,
-    ///                       calls mark_reference
-    ///                                ↓
+    /// <center>
+    /// ```svgbob
+    ///                          timer interrupt,
+    ///                        calls mark_reference
+    ///                                |
+    ///                                v
     ///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
-    ///  ³/₇μs/tick  0                    7                    14
-    ///                                ╎
-    ///                                ╎
+    ///  ³/₇μs/tick  0                 ,  7                    14
+    ///                            ┌───┘
+    ///                            '
     ///  OS ticks    ┌──────┬──────┬──────┬──────┬──────┬──────┐
-    ///  1μs/tick    0             ↑                           6
+    ///  1μs/tick    0             ^                           6
+    ///                            |
     ///                      ref_tick_count
     /// ```
+    /// </center>
     ///
     /// `cfg` must be the instance of [`TicklessCfg`] that was passed to
     /// [`TicklessState`] to derive `Self`.
     ///
     /// [`mark_reference`]: Self::mark_reference
+    /// [`max_timeout`]: TicklessCfg::max_timeout
+    /// [`max_tick_count`]: TicklessCfg::max_tick_count
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     fn tick_count_to_hw_tick_count(&self, cfg: &TicklessCfg, tick_count: u32) -> u32;
 
-    /// Get the OS tick count.
+    #[cfg_attr(doc, svgbobdoc::transform)]
+    /// Get the OS tick count
+    /// (in range `0..=cfg.`[`max_tick_count`]`()`).
     ///
     /// `cfg` must be the instance of [`TicklessCfg`] that was passed to
     /// [`TicklessState`] to derive `Self`.
     ///
-    /// `hw_tick_count` must satisfy the following condition: Given a last
-    /// reference point `ref_hw_tick_count` (a value passed to
-    /// [`mark_reference`]), there must exist `timeout` and `latency` such that
-    /// `timeout ∈ 0..=cfg.max_timeout()`, `latency ∈ 0..= hw_headroom_ticks`,
-    /// and `hw_tick_count == (ref_hw_tick_count + i) % (cfg.hw_max_tick_count()
-    /// + 1)`.
+    /// `hw_tick_count` should be in range `0..=cfg.`[`hw_max_tick_count`]`()`.
+    /// In addition, `hw_tick_count` must satisfy the following condition:
     ///
+    ///  - Let `ref_hw_tick_count` and `ref_tick_count` be the last reference
+    ///    point (the last values passed to and returned by [`mark_reference`],
+    ///    respectively).
+    ///  - Let `period = cfg.`[`max_tick_count`]`() + 1`.
+    ///  - Let `hw_period = cfg.`[`hw_max_tick_count`]`() + 1`.
+    ///  - Let `hw_max_timeout = (tick_count_to_hw_tick_count((ref_tick_count +
+    ///    cfg.max_timeout) % period) + hw_period - ref_hw_tick_count) %
+    ///    hw_period`.
+    ///  - There must exist `hw_timeout` and `latency` such that
+    ///    `hw_timeout ∈ 0..=hw_max_timeout`, `latency ∈ 0..=hw_headroom_ticks`,
+    ///    and `hw_tick_count == (ref_hw_tick_count + hw_timeout + latency) %
+    ///    hw_period`.
+    ///
+    /// **Note:** `ref_hw_tick_count` should not be confused with the
+    /// identically-named private field of [`TicklessStateCore`].
+    ///
+    /// <center>
+    /// ```svgbob
+    ///                       ref_hw_tick_count
+    ///                                │
+    ///          hw_headroom_ticks     │            hw_max_timeout
+    ///                  │             v                    │
+    ///              ────┴───────,     ,────────────────────┴─────────────────, ,────
+    ///                          '     '                                      ' '
+    ///              ░░░░░░░░░░░░░     ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+    ///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
+    ///  ³/₇μs/tick  0                 ,  7                    14             ,     21
+    ///                            ┌───┘                                     ┌┘  hw_period
+    ///                            '                                         '
+    ///  OS ticks    ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+    ///  1μs/tick    0             ,      3                    6             ,      12
+    ///                            '───────────────────────────────────┬─────'    period
+    ///                            ^                                   │
+    ///                            |                              max_timeout
+    ///                   ref_tick_count
+    /// ```
+    /// </center>
+    ///
+    /// In the above diagram, `hw_tick_count` should fall within the filled
+    /// zone.
+    ///
+    /// [`max_tick_count`]: TicklessCfg::max_tick_count
+    /// [`max_timeout`]: TicklessCfg::max_timeout
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     /// [`mark_reference`]: Self::mark_reference
     fn tick_count(&self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32;
 }
 
+/// Result type of [`TicklessStateTrait::mark_reference_and_measure`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Measurement {
+    /// The hardware tick count at which the measurement ends.
+    ///
+    /// This value is equal to `(hw_tick_count + self.hw_ticks) %
+    /// (cfg.`[`hw_max_tick_count`]`() + 1)`.
+    ///
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
+    pub end_hw_tick_count: u32,
+    /// The number of hardware ticks in the measured interval.
+    pub hw_ticks: u32,
+}
+
+// FIXME: `svgbobdoc` doesn't like `#[doc(include = ...)]`
+#[doc(include = "../../constance/src/common.md")]
 impl Init for TicklessStatelessCore {
     const INIT: Self = Self;
 }
@@ -422,7 +629,7 @@ impl TicklessStateTrait for TicklessStatelessCore {
     }
 }
 
-impl<Subticks: WrappingCounterTrait> TicklessStateTrait for TicklessStateCore<Subticks> {
+impl<Subticks: WrappingTrait> TicklessStateTrait for TicklessStateCore<Subticks> {
     #[inline]
     fn mark_reference(&mut self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32 {
         // Calculate the tick count
@@ -488,204 +695,12 @@ impl<Subticks: WrappingCounterTrait> TicklessStateTrait for TicklessStateCore<Su
     }
 }
 
-// Wrapping counter types
-// -------------------------------------------------------------------------
-
-/// Get a type implementing [`WrappingCounterTrait`] that wraps around when
-/// incremented past `MAX`.
-///
-/// This type alias tries to choose the most efficient data type to do the job.
-pub type WrappingCounter<const MAX: u64> = If! {
-    if (MAX == 0) {
-        ()
-    } else if (MAX < u8::MAX as u64) {
-        FractionalWrappingCounter<u8, MAX>
-    } else if (MAX == u8::MAX as u64) {
-        u8
-    } else if (MAX < u16::MAX as u64) {
-        FractionalWrappingCounter<u16, MAX>
-    } else if (MAX == u16::MAX as u64) {
-        u16
-    } else if (MAX < u32::MAX as u64) {
-        FractionalWrappingCounter<u32, MAX>
-    } else if (MAX == u32::MAX as u64) {
-        u32
-    } else if (MAX < u64::MAX) {
-        FractionalWrappingCounter<u64, MAX>
-    } else {
-        u64
-    }
-};
-
-/// Represents a counter type that wraps around when incremented past a
-/// predetermined upper bound `MAX` (this bound is not exposed but measurable).
-pub trait WrappingCounterTrait: Init + Copy + core::fmt::Debug {
-    /// Add a value to `self`. Returns the number of times for which wrap-around
-    /// has occurred.
-    ///
-    /// The result must not overflow.
-    fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32;
-
-    fn to_u128(&self) -> u128;
-}
-
-impl WrappingCounterTrait for () {
-    #[inline]
-    fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-        rhs as u32
-    }
-
-    #[inline]
-    fn to_u128(&self) -> u128 {
-        0
-    }
-}
-
-impl WrappingCounterTrait for u8 {
-    #[inline]
-    fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-        debug_assert!(rhs < (1 << 40));
-        let new_value = *self as u64 + rhs as u64;
-        *self = new_value as u8;
-        (new_value >> 8) as u32
-    }
-
-    #[inline]
-    fn to_u128(&self) -> u128 {
-        *self as u128
-    }
-}
-
-impl WrappingCounterTrait for u16 {
-    #[inline]
-    fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-        debug_assert!(rhs < (1 << 48));
-        let new_value = *self as u64 + rhs as u64;
-        *self = new_value as u16;
-        (new_value >> 16) as u32
-    }
-
-    #[inline]
-    fn to_u128(&self) -> u128 {
-        *self as u128
-    }
-}
-
-impl WrappingCounterTrait for u32 {
-    #[inline]
-    fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-        debug_assert!(rhs < (1 << 64));
-        let new_value = *self as u64 + rhs as u64;
-        *self = new_value as u32;
-        (new_value >> 32) as u32
-    }
-
-    #[inline]
-    fn to_u128(&self) -> u128 {
-        *self as u128
-    }
-}
-
-impl WrappingCounterTrait for u64 {
-    #[inline]
-    fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-        debug_assert!(rhs < (1 << 96));
-        let new_value = *self as u128 + rhs;
-        *self = new_value as u64;
-        (new_value >> 64) as u32
-    }
-
-    #[inline]
-    fn to_u128(&self) -> u128 {
-        *self as u128
-    }
-}
-
-/// Implementation of `WrappingCounterTrait` that wraps around at some boundary
-/// that does not naturally occur from the binary representation of the integer
-/// type.
-///
-/// `MAX` must be less than `T::MAX`.
-#[derive(Debug, Copy, Clone)]
-pub struct FractionalWrappingCounter<T, const MAX: u64> {
-    inner: T,
-}
-
-impl<T: Init, const MAX: u64> Init for FractionalWrappingCounter<T, MAX> {
-    const INIT: Self = Self { inner: Init::INIT };
-}
-
-impl<T, const MAX: u64> WrappingCounterTrait for FractionalWrappingCounter<T, MAX>
-where
-    T: From<u8>
-        + core::convert::TryFrom<u64>
-        + core::convert::TryFrom<u128>
-        + core::convert::Into<u128>
-        + ops::Add<Output = T>
-        + ops::Sub<Output = T>
-        + ops::Rem<Output = T>
-        + PartialOrd
-        + Copy
-        + Init
-        + core::fmt::Debug,
-{
-    #[inline]
-    fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-        let new_value = self.inner.into() as u128 + rhs;
-        self.inner = T::try_from(new_value % (MAX as u128 + 1)).ok().unwrap();
-
-        let wrap_count = new_value / (MAX as u128 + 1);
-        debug_assert!(wrap_count <= u32::MAX as u128);
-        wrap_count as u32
-    }
-
-    #[inline]
-    fn to_u128(&self) -> u128 {
-        self.inner.into()
-    }
-}
-
-// Integers and rational numbers
-// -------------------------------------------------------------------------
-
-const fn gcd128(x: u128, y: u128) -> u128 {
-    if y == 0 {
-        x
-    } else {
-        gcd128(y, x % y)
-    }
-}
-
-#[inline]
-const fn ceil_div128(x: u128, y: u128) -> u128 {
-    (x + y - 1) / y
-}
-
-const fn reduce_ratio128(r: Ratio<u128>) -> Ratio<u128> {
-    let gcd = gcd128(*r.numer(), *r.denom());
-    Ratio::new_raw(*r.numer() / gcd, *r.denom() / gcd)
-}
-
-const fn floor_ratio128(r: Ratio<u128>) -> u128 {
-    *r.numer() / *r.denom()
-}
-
-const fn min128(x: u128, y: u128) -> u128 {
-    if x < y {
-        x
-    } else {
-        y
-    }
-}
-
 #[cfg(test)]
 mod tests {
     extern crate std;
 
     use super::*;
-    use core::convert::TryInto;
     use itertools::merge;
-    use quickcheck_macros::quickcheck;
     use std::{prelude::v1::*, vec};
 
     /// Compare the output of `TicklessCfg` to known values.
@@ -693,7 +708,12 @@ mod tests {
     fn tickless_known_values() {
         // 1Hz clock, 1-cycle period = 1s, 1-cycle latency tolerance
         assert_eq!(
-            TicklessCfg::new(1, 1, 1),
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 1,
+                hw_headroom_ticks: 1
+            })
+            .unwrap(),
             TicklessCfg {
                 hw_ticks_per_micro: 0,
                 hw_subticks_per_micro: 1,
@@ -708,35 +728,59 @@ mod tests {
     }
 
     /// The clock frequency given to `TicklessCfg` must not be zero.
-    #[should_panic(expected = "the numerator of the clock frequency must not be zero")]
     #[test]
     fn tickless_zero_freq() {
-        TicklessCfg::new(0, 1, 1);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 0,
+                hw_freq_denom: 1,
+                hw_headroom_ticks: 1
+            }),
+            Err(CfgError::FreqNumZero)
+        );
     }
 
     /// The denominator of the clock frequency given to `TicklessCfg` must not be
     /// zero.
-    #[should_panic(expected = "the denominator of the clock frequency must not be zero")]
     #[test]
     fn tickless_zero_denom() {
-        TicklessCfg::new(1, 0, 1);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 0,
+                hw_headroom_ticks: 1
+            }),
+            Err(CfgError::FreqDenomZero)
+        );
     }
 
     /// `TicklessCfg` should reject a timer frequency that is too fast.
-    #[should_panic(expected = "the timer frequency is too fast")]
     #[test]
     fn tickless_tick_too_fast() {
         // 2³²MHz → 2³² HW ticks/μs
-        TicklessCfg::new(1_000_000 * 0x1_0000_0000, 1, 0);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 1_000_000 * 0x1_0000_0000,
+                hw_freq_denom: 1,
+                hw_headroom_ticks: 0
+            }),
+            Err(CfgError::FreqTooHigh)
+        );
     }
 
     /// `TicklessCfg` should reject if an intermediate value overflows.
-    #[should_panic(expected = "intermediate calculation overflowed")]
     #[test]
     fn tickless_tick_too_complex() {
         // 1.00000000000000000043368086899420177... Hz
         // (0x1fffffffffffffff is a Mersenne prime number.)
-        TicklessCfg::new(0x1fffffffffffffff, 0x1ffffffffffffffe, 0);
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 0x1fffffffffffffff,
+                hw_freq_denom: 0x1ffffffffffffffe,
+                hw_headroom_ticks: 0
+            }),
+            Err(CfgError::InternalOverflow)
+        );
     }
 
     #[derive(Debug, Copy, Clone)]
@@ -788,7 +832,14 @@ mod tests {
         mod $ident {
             use super::*;
 
-            const CFG: TicklessCfg = TicklessCfg::new($freq_num, $freq_denom, $hw_headroom_ticks);
+            const CFG: TicklessCfg = match TicklessCfg::new(TicklessOptions {
+                hw_freq_num: $freq_num,
+                hw_freq_denom: $freq_denom,
+                hw_headroom_ticks: $hw_headroom_ticks,
+            }) {
+                Ok(x) => x,
+                Err(e) => e.panic(),
+            };
             const MAX_TIMEOUT: u32 = CFG.max_timeout();
             const HW_PERIOD: u64 = CFG.hw_max_tick_count() as u64 + 1;
             const PERIOD: u64 = CFG.max_tick_count() as u64 + 1;
@@ -807,6 +858,7 @@ mod tests {
                 for op in ops {
                     log::debug!("  {:?}", op);
 
+                    let mut state2 = state;
                     let start_tick_count = state.mark_reference(&CFG, hw_tick_count);
 
                     log::trace!("    HW = {}, OS = {}", hw_tick_count, start_tick_count);
@@ -823,6 +875,18 @@ mod tests {
                         state.tick_count_to_hw_tick_count(&CFG, end_tick_count)
                     };
                     let len_hw_tick_count = sub_mod(end_hw_tick_count, hw_tick_count, HW_PERIOD);
+
+                    // Do the same calculatioon with `mark_reference_and_measure`.
+                    // The two results must be congruent. Skip this if `op.timeout
+                    // == 0`, in which case `mark_reference_and_measure` should
+                    // not be used.
+                    if op.timeout != 0 {
+                        let measurement =
+                            state2.mark_reference_and_measure(&CFG, hw_tick_count, op.timeout);
+
+                        assert_eq!(measurement.end_hw_tick_count, end_hw_tick_count);
+                        assert_eq!(measurement.hw_ticks, len_hw_tick_count);
+                    }
 
                     log::trace!(
                         "    Should wait for {} HW ticks (end HW = {})",
@@ -987,150 +1051,4 @@ mod tests {
     tickless_simulate!(mod sim17 {}, 0x501e_e2c2_9a0f, 0xb79a_14f3, 0x64);
     tickless_simulate!(mod sim18 {}, 0xb79a_14f3, 0x1e_e2c2_9a0f, 1);
     tickless_simulate!(mod sim19 {}, 0xff_ffff_ffff_ffff, 0xff_ffff_fffe, 0x41);
-
-    // ---------------------------------------------------------------------
-
-    /// The naïve implementation of `WrappingCounterTrait`.
-    #[derive(Debug, Copy, Clone)]
-    struct NaiveWrappingCounter<const MAX: u64> {
-        inner: u128,
-    }
-
-    impl<const MAX: u64> Init for NaiveWrappingCounter<MAX> {
-        const INIT: Self = Self { inner: 0 };
-    }
-
-    impl<const MAX: u64> WrappingCounterTrait for NaiveWrappingCounter<MAX> {
-        fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-            let new_value = self.inner + rhs;
-            self.inner = new_value % (MAX as u128 + 1);
-            let wrap_count = new_value / (MAX as u128 + 1);
-            wrap_count.try_into().unwrap()
-        }
-
-        fn to_u128(&self) -> u128 {
-            self.inner
-        }
-    }
-
-    macro_rules! gen_counter_tests {
-        ($($name:ident => $max:expr ,)*) => {$(
-            mod $name {
-                use super::*;
-
-                const MAX: u128 = $max;
-
-                fn do_test(values: impl IntoIterator<Item = u128>) {
-                    let mut counter_got: WrappingCounter<{MAX as u64}> = Init::INIT;
-                    let mut counter_expected: NaiveWrappingCounter<{MAX as u64}> = Init::INIT;
-                    log::trace!("do_test (MAX = {})", MAX);
-                    for value in values {
-                        log::trace!(
-                            " - ({} + {}) % (MAX + 1) = {} % (MAX + 1) = {}",
-                            counter_expected.inner,
-                            value,
-                            (counter_expected.inner + value),
-                            (counter_expected.inner + value) % (MAX + 1),
-                        );
-                        let got = counter_got.wrapping_add_assign128_multi32(value);
-                        let expected = counter_expected.wrapping_add_assign128_multi32(value);
-                        assert_eq!(got, expected);
-                    }
-                }
-
-                #[test]
-                fn test_zero() {
-                    do_test(vec![0; 5]);
-                }
-
-                #[test]
-                fn test_mixed() {
-                    do_test(vec![0, 1u128.min(MAX), MAX, MAX / 2, MAX / 10, 0, 4u128.min(MAX)]);
-                }
-
-                #[test]
-                fn test_max() {
-                    do_test(vec![MAX; 5]);
-                }
-
-                #[test]
-                fn test_max_p1() {
-                    do_test(vec![MAX + 1; 5]);
-                }
-
-                #[test]
-                fn test_half() {
-                    do_test(vec![MAX / 2; 5]);
-                }
-
-                #[test]
-                fn test_extreme() {
-                    do_test(vec![MAX, (MAX + 1) * 0xffff_ffff]);
-                }
-
-                #[test]
-                #[should_panic]
-                fn test_result_overflow() {
-                    // `NaiveWrappingCounter` is guaranteed to panic on overflow
-                    do_test(vec![MAX, (MAX + 1) * 0xffff_ffff + 1]);
-                }
-
-                #[quickcheck]
-                fn sanity(cmds: Vec<u32>) {
-                    do_test(cmds.iter().map(|&cmd| {
-                        match cmd % 8 {
-                            0 => MAX / 2,
-                            1 => MAX / 2 + 1,
-                            2 => MAX.saturating_sub(1),
-                            3 => MAX,
-                            4 => (MAX * 2).saturating_sub(1),
-                            5 => MAX * 2 + 1,
-                            6 => MAX * 0x1_0000_0000,
-                            7 => (MAX + 1) * 0x1_0000_0000 - 1,
-                            _ => unreachable!(),
-                        }.saturating_sub(cmd as u128 >> 2).min(MAX)
-                    }));
-                }
-            }
-        )*};
-    }
-
-    gen_counter_tests!(
-        c0 => 0,
-        c1 => 1,
-        c_u8_max_m1 => u8::MAX as u128 - 1,
-        c_u8_max => u8::MAX as u128,
-        c_u8_max2 => u8::MAX as u128 * 2,
-        c_u8_max_p1 => u8::MAX as u128 + 1,
-        c_u16_max_m1 => u16::MAX as u128 - 1,
-        c_u16_max => u16::MAX as u128,
-        c_u16_max2 => u16::MAX as u128 * 2,
-        c_u16_max_p1 => u16::MAX as u128 + 1,
-        c_u32_max_m1 => u32::MAX as u128 - 1,
-        c_u32_max => u32::MAX as u128,
-        c_u32_max2 => u32::MAX as u128 * 2,
-        c_u32_max_p1 => u32::MAX as u128 + 1,
-        c_u64_max_m1 => u64::MAX as u128 - 1,
-        c_u64_max => u64::MAX as u128,
-    );
-
-    // ---------------------------------------------------------------------
-
-    #[test]
-    fn test_gcd128() {
-        for &(x, y) in &[(0, 0), (0, 1), (1, 0), (1, 1)] {
-            assert_eq!(gcd128(x, y), num_integer::gcd(x, y));
-        }
-    }
-
-    #[quickcheck]
-    fn quickcheck_gcd128(x: u128, y: u128) {
-        assert_eq!(gcd128(x, y), num_integer::gcd(x, y));
-    }
-
-    #[quickcheck]
-    fn quickcheck_gcd128_large(x: u128, y: u128) {
-        let (x, y) = (!x, !y);
-        assert_eq!(gcd128(x, y), num_integer::gcd(x, y));
-    }
 }

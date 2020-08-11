@@ -5,12 +5,10 @@ use constance::{
     },
     utils::Init,
 };
+use constance_portkit::tickful::{TickfulCfg, TickfulOptions, TickfulState, TickfulStateTrait};
 use core::cell::UnsafeCell;
 
-use super::{
-    timing::{TickfulCfg, TickfulState, TickfulStateTrait},
-    SysTickOptions, INTERRUPT_SYSTICK,
-};
+use super::{SysTickOptions, INTERRUPT_SYSTICK};
 
 /// Implemented on a system type by [`use_systick_tickful!`].
 ///
@@ -18,11 +16,18 @@ use super::{
 ///
 /// Only meant to be implemented by [`use_systick_tickful!`].
 pub unsafe trait SysTickTickfulInstance: Kernel + SysTickOptions {
-    const TICKFUL_CFG: TickfulCfg = TickfulCfg::new(
-        Self::FREQUENCY,
-        Self::FREQUENCY_DENOMINATOR,
-        Self::TICK_PERIOD as u64,
-    );
+    const TICKFUL_CFG: TickfulCfg = if Self::TICK_PERIOD > 0x100_0000 {
+        panic!("the tick period measured in cycles must be in range `0..=0x1000000`");
+    } else {
+        match TickfulCfg::new(TickfulOptions {
+            hw_freq_num: Self::FREQUENCY,
+            hw_freq_denom: Self::FREQUENCY_DENOMINATOR,
+            hw_tick_period: Self::TICK_PERIOD,
+        }) {
+            Ok(x) => x,
+            Err(e) => e.panic(),
+        }
+    };
 
     /// Handle a SysTick interrupt.
     ///

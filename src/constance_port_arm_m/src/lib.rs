@@ -13,11 +13,6 @@
 use constance::kernel::{InterruptNum, InterruptPriority};
 use core::ops::Range;
 
-/// Used by `use_port!` and this crate's code
-#[doc(hidden)]
-#[macro_use]
-pub mod utils;
-
 /// Used by `use_port!`
 #[doc(hidden)]
 #[cfg(target_os = "none")]
@@ -39,9 +34,6 @@ pub use cortex_m_rt;
 #[doc(hidden)]
 #[cfg(target_os = "none")]
 pub mod systick_tickful;
-
-#[doc(hidden)]
-pub mod timing;
 
 pub const INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..256;
 
