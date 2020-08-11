@@ -16,13 +16,17 @@ use super::{SysTickOptions, INTERRUPT_SYSTICK};
 ///
 /// Only meant to be implemented by [`use_systick_tickful!`].
 pub unsafe trait SysTickTickfulInstance: Kernel + SysTickOptions {
-    const TICKFUL_CFG: TickfulCfg = match TickfulCfg::new(TickfulOptions {
-        hw_freq_num: Self::FREQUENCY,
-        hw_freq_denom: Self::FREQUENCY_DENOMINATOR,
-        hw_tick_period: Self::TICK_PERIOD as u64,
-    }) {
-        Ok(x) => x,
-        Err(e) => e.panic(),
+    const TICKFUL_CFG: TickfulCfg = if Self::TICK_PERIOD > 0x100_0000 {
+        panic!("the tick period measured in cycles must be in range `0..=0x1000000`");
+    } else {
+        match TickfulCfg::new(TickfulOptions {
+            hw_freq_num: Self::FREQUENCY,
+            hw_freq_denom: Self::FREQUENCY_DENOMINATOR,
+            hw_tick_period: Self::TICK_PERIOD,
+        }) {
+            Ok(x) => x,
+            Err(e) => e.panic(),
+        }
     };
 
     /// Handle a SysTick interrupt.

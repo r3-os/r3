@@ -21,7 +21,7 @@ pub struct TickfulOptions {
     pub hw_freq_denom: u64,
     /// The tick period measured in hardware timer cycles.
     /// [`TickfulStateTrait::tick`] should be called in this period.
-    pub hw_tick_period: u64,
+    pub hw_tick_period: u32,
 }
 
 /// Error type for [`TicklessCfg::new`].
@@ -39,8 +39,6 @@ pub enum CfgError {
     ///
     /// [`TIME_HARD_HEADROOM`]: constance::kernel::TIME_HARD_HEADROOM
     PeriodExceedsKernelHeadroom,
-    /// The tick period does not fit in 24 bits.
-    PeriodOverflowsSysTick, // TODO: remove this restriction
 }
 
 impl CfgError {
@@ -55,9 +53,6 @@ impl CfgError {
             }
             Self::PeriodExceedsKernelHeadroom => {
                 "the tick period must not be longer than `TIME_HARD_HEADROOM`"
-            }
-            Self::PeriodOverflowsSysTick => {
-                "the tick period measured in cycles must be in range `0..=0x1000000`"
             }
         }
     }
@@ -101,22 +96,18 @@ impl TickfulCfg {
             return Err(CfgError::FreqNumZero);
         } else if tick_period_cycles == 0 {
             return Err(CfgError::PeriodZero);
-        } else if tick_period_cycles > 0x1000000 {
-            // `tick_period_cycles` must be <= `0x1000000` because SysTick is
-            // a 24-bit timer
-            return Err(CfgError::PeriodOverflowsSysTick);
         }
 
         // `tick_period = tick_period_cycles / (freq_num / freq_denom)`
-        // `0 < tick_period_secs.numer() <= 0xff_ffff_ffff_ffff_ff00_0000`
-        // `0 < tick_period_secs.denom() <=         0xffff_ffff_ffff_ffff`
+        // `0 < tick_period_secs.numer() <= 0xffff_fffe_ffff_ffff_0000_0001`
+        // `0 < tick_period_secs.denom() <=           0xffff_ffff_ffff_ffff`
         let tick_period_secs = Ratio::new_raw(
             freq_denom as u128 * tick_period_cycles as u128,
             freq_num as u128,
         );
 
-        // `0 < tick_period_micros.numer() <= 0xf42_3fff_ffff_ffff_f0bd_c000_0000`
-        // `0 < tick_period_micros.denom() <=               0xffff_ffff_ffff_ffff`
+        // `0 < tick_period_micros.numer() <= 0xf_423f_fff0_bdbf_fff0_bdc0_000f_4240`
+        // `0 < tick_period_micros.denom() <=                  0xffff_ffff_ffff_ffff`
         let tick_period_micros = Ratio::new_raw(
             *tick_period_secs.numer() * 1_000_000,
             *tick_period_secs.denom(),
@@ -124,9 +115,9 @@ impl TickfulCfg {
         let tick_period_micros = reduce_ratio128(tick_period_micros);
 
         // Divide `tick_period_micros` into integral and fractional parts.
-        // `0 <= tick_period_micros_floor <= 0xf42_3fff_ffff_ffff_f0bd_c000_0000`
-        // `0 < tick_period_micros_ceil <= 0xf42_3fff_ffff_ffff_f0bd_c000_0000`
-        // `0 <= tick_period_submicros <= 0xffff_ffff_ffff_fffe`
+        // `0 <= tick_period_micros_floor <= 0xf_423f_fff0_bdbf_fff0_bdc0_000f_4240`
+        // `0 <  tick_period_micros_ceil  <= 0xf_423f_fff0_bdbf_fff0_bdc0_000f_4240`
+        // `0 <= tick_period_submicros    <=                  0xffff_ffff_ffff_fffe`
         let tick_period_micros_floor = floor_ratio128(tick_period_micros);
         let tick_period_micros_ceil = ceil_ratio128(tick_period_micros);
         let tick_period_submicros = *tick_period_micros.numer() % *tick_period_micros.denom();
@@ -448,5 +439,10 @@ mod tests {
     #[test]
     fn tickful_simulate8() {
         tickful_simulate!(0xffff_ffff_ffff_ffff, 0xffff_ffff_fffe, 0x41c4);
+    }
+
+    #[test]
+    fn tickful_simulate9() {
+        tickful_simulate!(0x501e_e2c2_9a0f_7b77, 0xb79a_14f3, 0x64ad1234);
     }
 }
