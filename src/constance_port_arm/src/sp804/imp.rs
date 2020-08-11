@@ -156,20 +156,15 @@ pub unsafe fn pend_tick_after<System: Sp804Instance>(tick_count_delta: UTicks) {
     let tstate = unsafe { &mut *System::tickless_state() };
 
     let cur_hw_tick_count = hw_tick_count::<System>();
-    let cur_tick_count = tstate.mark_reference(tcfg, cur_hw_tick_count);
-    let next_tick_count = add_mod(cur_tick_count, tick_count_delta, tcfg.max_tick_count());
-    let next_hw_tick_count = tstate.tick_count_to_hw_tick_count(tcfg, next_tick_count);
-    let len_hw_tick_count = sub_mod(
-        next_hw_tick_count,
-        cur_hw_tick_count,
-        tcfg.hw_max_tick_count(),
-    );
+    let hw_ticks = tstate
+        .mark_reference_and_measure(tcfg, cur_hw_tick_count, tick_count_delta)
+        .hw_ticks;
 
     sp804
         .Timer2Control
         .modify(sp804_regs::Control::TimerEn::Disable);
-    sp804.Timer2Load.set(len_hw_tick_count);
-    sp804.Timer2IntClr.set(len_hw_tick_count); // value is irrelevant
+    sp804.Timer2Load.set(hw_ticks);
+    sp804.Timer2IntClr.set(hw_ticks); // value is irrelevant
     sp804
         .Timer2Control
         .modify(sp804_regs::Control::TimerEn::Enable);
@@ -190,28 +185,4 @@ fn handle_tick<System: Sp804Instance>(_: usize) {
 
     // Safety: CPU Lock inactive, an interrupt context
     unsafe { System::timer_tick() };
-}
-
-#[track_caller]
-#[inline]
-fn add_mod(x: u32, y: u32, max: u32) -> u32 {
-    debug_assert!(x <= max);
-    debug_assert!(y <= max);
-    if max == u32::MAX || (max - x) >= y {
-        x.wrapping_add(y)
-    } else {
-        x.wrapping_add(y).wrapping_add(u32::MAX - max)
-    }
-}
-
-#[track_caller]
-#[inline]
-fn sub_mod(x: u32, y: u32, max: u32) -> u32 {
-    debug_assert!(x <= max);
-    debug_assert!(y <= max);
-    if max == u32::MAX || y < x {
-        x.wrapping_sub(y)
-    } else {
-        x.wrapping_sub(y).wrapping_sub(u32::MAX - max)
-    }
 }

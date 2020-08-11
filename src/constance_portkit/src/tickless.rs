@@ -386,6 +386,65 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     fn mark_reference(&mut self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32;
 
+    /// [Mark a reference point] and start measuring the specified time interval
+    /// `ticks` (measured in OS ticks = microseconds).
+    ///
+    /// The caller can use the information contained in the returned
+    /// [`Measurement`] to configure timer hardware and receive an interrupt
+    /// at the end of measurement.
+    ///
+    /// `hw_tick_count` should be in range `0..=cfg.`[`hw_max_tick_count`]`()`
+    /// and satisfy the requirements of [`TicklessStateTrait::tick_count`].
+    ///
+    /// `ticks` should be in range `1..=cfg.`[`max_timeout`]`()`.
+    ///
+    /// [Mark a reference point]: Self::mark_reference
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
+    /// [`max_timeout`]: TicklessCfg::max_timeout
+    #[inline]
+    fn mark_reference_and_measure(
+        &mut self,
+        cfg: &TicklessCfg,
+        hw_tick_count: u32,
+        ticks: u32,
+    ) -> Measurement {
+        debug_assert_ne!(ticks, 0);
+
+        let cur_tick_count = self.mark_reference(cfg, hw_tick_count);
+        let end_tick_count = add_mod_u32(cur_tick_count, ticks, cfg.max_tick_count());
+        let end_hw_tick_count = self.tick_count_to_hw_tick_count(cfg, end_tick_count);
+        let hw_ticks = sub_mod_u32(end_hw_tick_count, hw_tick_count, cfg.hw_max_tick_count());
+
+        #[track_caller]
+        #[inline]
+        fn add_mod_u32(x: u32, y: u32, max: u32) -> u32 {
+            debug_assert!(x <= max);
+            debug_assert!(y <= max);
+            if max == u32::MAX || (max - x) >= y {
+                x.wrapping_add(y)
+            } else {
+                x.wrapping_add(y).wrapping_add(u32::MAX - max)
+            }
+        }
+
+        #[track_caller]
+        #[inline]
+        fn sub_mod_u32(x: u32, y: u32, max: u32) -> u32 {
+            debug_assert!(x <= max);
+            debug_assert!(y <= max);
+            if max == u32::MAX || y < x {
+                x.wrapping_sub(y)
+            } else {
+                x.wrapping_sub(y).wrapping_sub(u32::MAX - max)
+            }
+        }
+
+        Measurement {
+            end_hw_tick_count,
+            hw_ticks,
+        }
+    }
+
     /// Calculate the earliest hardware tick count representing a point of time
     /// that coincides or follows the one represented by the specified OS tick
     /// count.
@@ -453,6 +512,20 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     /// [`mark_reference`]: Self::mark_reference
     fn tick_count(&self, cfg: &TicklessCfg, hw_tick_count: u32) -> u32;
+}
+
+/// Result type of [`TicklessStateTrait::mark_reference_and_measure`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Measurement {
+    /// The hardware tick count at which the measurement ends.
+    ///
+    /// This value is equal to `(hw_tick_count + self.hw_ticks) %
+    /// (cfg.`[`hw_max_tick_count`]`() + 1)`.
+    ///
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
+    pub end_hw_tick_count: u32,
+    /// The number of hardware ticks in the measured interval.
+    pub hw_ticks: u32,
 }
 
 impl Init for TicklessStatelessCore {
@@ -738,6 +811,7 @@ mod tests {
                 for op in ops {
                     log::debug!("  {:?}", op);
 
+                    let mut state2 = state;
                     let start_tick_count = state.mark_reference(&CFG, hw_tick_count);
 
                     log::trace!("    HW = {}, OS = {}", hw_tick_count, start_tick_count);
@@ -754,6 +828,18 @@ mod tests {
                         state.tick_count_to_hw_tick_count(&CFG, end_tick_count)
                     };
                     let len_hw_tick_count = sub_mod(end_hw_tick_count, hw_tick_count, HW_PERIOD);
+
+                    // Do the same calculatioon with `mark_reference_and_measure`.
+                    // The two results must be congruent. Skip this if `op.timeout
+                    // == 0`, in which case `mark_reference_and_measure` should
+                    // not be used.
+                    if op.timeout != 0 {
+                        let measurement =
+                            state2.mark_reference_and_measure(&CFG, hw_tick_count, op.timeout);
+
+                        assert_eq!(measurement.end_hw_tick_count, end_hw_tick_count);
+                        assert_eq!(measurement.hw_ticks, len_hw_tick_count);
+                    }
 
                     log::trace!(
                         "    Should wait for {} HW ticks (end HW = {})",
