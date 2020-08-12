@@ -1,7 +1,5 @@
 The Arm-M port for [Constance](::constance).
 
-TODO
-
 # Interrupts
 
 (Logical) interrupt lines (`InterruptNum`) are mapped to Arm-M exceptions associated with identical exception numbers. The first external interrupt is associated with the interrupt number `16` ([`INTERRUPT_EXTERNAL0`]).
