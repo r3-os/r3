@@ -1,6 +1,12 @@
-The Constance RTOS
+<h1 align="center" style="border: none">
+<img src="https://img.shields.io/badge/-𝖢𝖮𝖭𝖲𝖳𝖠𝖭𝖢𝖤-222?style=for-the-badge&labelColor=111111" width="40%" height="auto" alt="Constance" style="background: #222"><img src="https://img.shields.io/badge/-𝖱𝖤𝖠𝖫--𝖳𝖨𝖬𝖤%20𝖮𝖯𝖤𝖱𝖠𝖳𝖨𝖭𝖦%20𝖲𝖸𝖲𝖳𝖤𝖬-666?style=for-the-badge&labelColor=333333" width="50%" height="auto" alt="Real-Time Operating System" style="background: #666">
+</h1>
 
-<div class="distractor"><a style="background-image: url(https://derpicdn.net/img/2018/5/25/1740985/medium.png); padding-bottom: 56.25%" href="http://derpibooru.org/1740985" title="Constance and Fluttershy"></a></div>
+<style type="text/css">
+body.theme-ayu h1 img {
+    filter: sepia(90%) hue-rotate(180deg);
+}
+</style>
 
 <div class="toc-header"></div>
 
