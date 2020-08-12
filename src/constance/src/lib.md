@@ -8,6 +8,13 @@ body.theme-ayu h1 img {
 }
 </style>
 
+Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
+
+- **All kernel objects are defined statically** for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.
+- The kernel and its configurator **don't require an external build tool or a specialized procedural macro**, maintaining transparency.
+- The kernel is written in a target-independent way. The target-specific portion (called *a port*) is provided as a separate crate, which an application chooses and **combines with the kernel using the trait system**.
+- Leverages Rust's type safety for access control of kernel objects. Safe code can't access an object that it doesn't own.
+
 <div class="toc-header"></div>
 
 - [Note to Application Developers](#note-to-application-developers)
