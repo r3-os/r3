@@ -1,0 +1,50 @@
+name: Docs
+on:
+  push:
+    branches: [🦆]
+
+jobs:
+  check:
+    name: Build and Deploy Docs
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Build Documentation for “constance”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p constance }
+
+      - name: Build Documentation for “constance_port_std”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p constance_port_std }
+
+      - name: Build Documentation for “constance_port_arm”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p constance_port_arm }
+
+      - name: Build Documentation for “constance_port_arm_m”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p constance_port_arm_m }
+
+      - name: Generate Badge
+        run: |
+          rev=`git show-ref --head HEAD | cut -b 1-7`
+          wget -nv -O target/doc/badge.svg "https://img.shields.io/badge/docs-$rev-ok?style=for-the-badge"
+
+      - name: Collect Output
+        run: |
+          mkdir output
+          mv target/doc output
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@3.5.9
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: output
