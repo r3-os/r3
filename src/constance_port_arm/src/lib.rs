@@ -3,7 +3,6 @@
 #![feature(const_generics)]
 #![feature(const_panic)]
 #![feature(const_ptr_offset)]
-#![feature(const_saturating_int_methods)]
 #![feature(decl_macro)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
