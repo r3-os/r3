@@ -11,6 +11,8 @@ pub trait Target: Send + Sync {
     ///  - `thumbv7m-none-eabi`: Armv7-M
     ///  - `thumbv7em-none-eabi`: Armv7-M + DSP
     ///  - `thumbv7em-none-eabihf`: Armv7-M + DSP + FPU
+    ///  - `riscv32imac-unknown-none-elf`: RISC-V RV32I + Multiplication and
+    ///    Division + Atomics + Compressed Instructions
     ///
     fn target_triple(&self) -> &str;
 
@@ -19,7 +21,8 @@ pub trait Target: Send + Sync {
     fn cargo_features(&self) -> &[&str];
 
     /// Generate the `memory.x` file to be included by the linker script of
-    /// `cortex-m-rt` or `constance_port_arm`.
+    /// `cortex-m-rt` or `constance_port_arm`, or to be used as the top-level
+    /// linker script by `constance_port_riscv_test_driver`.
     fn memory_layout_script(&self) -> String;
 
     /// Connect to the target.
@@ -81,6 +84,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
         &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An505),
     ),
     ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
+    ("qemu_spike", &QemuSpike),
 ];
 
 pub struct NucleoF401re;
@@ -159,10 +163,16 @@ impl Target for QemuMps2An385 {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
-            Ok(
-                Box::new(qemu::QemuDebugProbe::new(&["-machine", "mps2-an385"]))
-                    as Box<dyn DebugProbe>,
-            )
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-arm",
+                &[
+                    "-machine",
+                    "mps2-an385",
+                    "-semihosting",
+                    "-semihosting-config",
+                    "target=native",
+                ],
+            )) as Box<dyn DebugProbe>)
         })
     }
 }
@@ -197,10 +207,16 @@ impl Target for QemuMps2An505 {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
-            Ok(
-                Box::new(qemu::QemuDebugProbe::new(&["-machine", "mps2-an505"]))
-                    as Box<dyn DebugProbe>,
-            )
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-arm",
+                &[
+                    "-machine",
+                    "mps2-an505",
+                    "-semihosting",
+                    "-semihosting-config",
+                    "target=native",
+                ],
+            )) as Box<dyn DebugProbe>)
         })
     }
 }
@@ -233,10 +249,57 @@ impl Target for QemuRealviewPbxA9 {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
-            Ok(
-                Box::new(qemu::QemuDebugProbe::new(&["-machine", "realview-pbx-a9"]))
-                    as Box<dyn DebugProbe>,
-            )
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-arm",
+                &[
+                    "-machine",
+                    "realview-pbx-a9",
+                    "-semihosting",
+                    "-semihosting-config",
+                    "target=native",
+                ],
+            )) as Box<dyn DebugProbe>)
+        })
+    }
+}
+
+/// RISC-V Spike Board (based on Spike, the ISA simulator) on QEMU
+pub struct QemuSpike;
+
+impl Target for QemuSpike {
+    fn target_triple(&self) -> &str {
+        "riscv32imac-unknown-none-elf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-htif"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                RAM : ORIGIN = 0x80000000, LENGTH = 1M
+            }
+
+            REGION_ALIAS("REGION_TEXT", RAM);
+            REGION_ALIAS("REGION_RODATA", RAM);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+        "#
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async {
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-riscv32",
+                &["-machine", "spike"],
+            )) as Box<dyn DebugProbe>)
         })
     }
 }
