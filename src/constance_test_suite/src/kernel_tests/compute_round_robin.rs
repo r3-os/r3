@@ -53,12 +53,13 @@ impl<System: Kernel> App<System> {
             i += 1;
         }
 
-        // FIXME: Work-around for `Option::unwrap` being not `const fn`
-        let tasks = if let [Some(t0), Some(t1), Some(t2), Some(t3)] = tasks {
-            [t0, t1, t2, t3]
-        } else {
-            unreachable!()
-        };
+        // FIXME: Rewrite this with `<[_; 4]>::map` when it's compatible with `const fn`
+        let tasks = [
+            tasks[0].unwrap(),
+            tasks[1].unwrap(),
+            tasks[2].unwrap(),
+            tasks[3].unwrap(),
+        ];
 
         let state = Hunk::<_, State>::build().finish(b);
 
