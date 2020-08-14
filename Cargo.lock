@@ -283,6 +283,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "constance_port_riscv"
+version = "0.0.1"
+dependencies = [
+ "constance",
+ "constance_portkit",
+ "r0",
+ "register",
+]
+
+[[package]]
 name = "constance_port_std"
 version = "0.0.1"
 dependencies = [
