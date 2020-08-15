@@ -50,8 +50,9 @@ macro_rules! instantiate_test {
         impl port::ThreadingOptions for System {}
 
         impl port::PlicOptions for System {
-            const MAX_PRIORITY: InterruptPriority = 255;
-            const PLIC_BASE: usize = 0x2000_0000; // TODO
+            // SiFive E
+            const MAX_PRIORITY: InterruptPriority = 7;
+            const PLIC_BASE: usize = 0x0c00_0000;
         }
 
         use constance::kernel::UTicks;
