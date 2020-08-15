@@ -68,24 +68,24 @@ impl State {
 
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
-        // TODO
+        unsafe { riscv::register::mstatus::clear_mie() };
     }
 
     #[inline(always)]
     pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
-        // TODO
+        unsafe { riscv::register::mstatus::set_mie() };
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
         &self,
         _task: &'static TaskCb<System>,
     ) {
-        //todo!()
+        // TODO
     }
 
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
-        true // TODO
+        !riscv::register::mstatus::mie()
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
