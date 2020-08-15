@@ -13,6 +13,13 @@ pub extern crate constance;
 #[doc(hidden)]
 pub extern crate core;
 
+/// The Platform-Level Interrupt Controller driver.
+#[doc(hidden)]
+pub mod plic {
+    pub mod cfg;
+    pub mod imp;
+}
+
 /// The binding for [`::riscv_rt`].
 #[doc(hidden)]
 pub mod rt {
@@ -26,6 +33,7 @@ pub mod threading {
     pub mod imp;
 }
 
+pub use self::plic::cfg::*;
 pub use self::rt::cfg::*;
 pub use self::threading::cfg::*;
 
@@ -40,4 +48,33 @@ pub trait EntryPoint {
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;
+}
+
+/// An abstract interface to an interrupt controller. Implemented by
+/// [`use_plic!`].
+pub trait InterruptController {
+    /// Initialize the driver. This will be called just before entering
+    /// [`PortToKernel::boot`].
+    ///
+    /// [`PortToKernel::boot`]: constance::kernel::PortToKernel::boot
+    ///
+    /// # Safety
+    ///
+    /// This is only intended to be called by the port.
+    unsafe fn init() {}
+
+    /// Get the currently signaled interrupt and acknowledge it.
+    ///
+    /// # Safety
+    ///
+    /// This is only intended to be called by the port in an interrupt handler.
+    unsafe fn acknowledge_interrupt() -> Option<constance::kernel::InterruptNum>;
+
+    /// Notify that the kernel has completed the processing of the specified
+    /// interrupt.
+    ///
+    /// # Safety
+    ///
+    /// This is only intended to be called by the port in an interrupt handler.
+    unsafe fn end_interrupt(num: constance::kernel::InterruptNum);
 }

@@ -41,11 +41,13 @@ macro_rules! instantiate_test {
 
         port::use_port!(unsafe struct System);
         port::use_rt!(unsafe System);
+        port::use_plic!(unsafe impl PortInterrupts for System);
 
         impl port::ThreadingOptions for System {}
 
-        unsafe impl constance::kernel::PortInterrupts for System {
-            // TODO
+        impl port::PlicOptions for System {
+            const MAX_PRIORITY: InterruptPriority = 255;
+            const PLIC_BASE: usize = 0x2000_0000; // TODO
         }
 
         use constance::kernel::UTicks;
