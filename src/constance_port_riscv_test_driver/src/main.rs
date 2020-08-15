@@ -7,11 +7,15 @@
 #![cfg_attr(feature = "test", no_std)]
 #![cfg_attr(feature = "test", no_main)]
 
-#[cfg(feature = "output-htif")]
-mod logger_htif;
+#[cfg(feature = "output-uart")]
+mod logger_uart;
 
-#[cfg(feature = "output-htif")]
-mod panic_htif;
+#[cfg(feature = "output-uart")]
+mod panic_uart;
+
+#[cfg(feature = "output-e310x-uart")]
+#[path = "uart_e310x.rs"]
+mod uart;
 
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
@@ -29,8 +33,8 @@ macro_rules! instantiate_test {
         fn report_success() {
             // The test runner will catch this
             // TODO
-            // #[cfg(feature = "output-htif")]
-            // riscv_htif::hprintln!("!- TEST WAS SUCCESSFUL -!").unwrap();
+            // #[cfg(feature = "output-uart")]
+            // riscv_uart::hprintln!("!- TEST WAS SUCCESSFUL -!").unwrap();
 
             loop {}
         }
@@ -89,9 +93,10 @@ macro_rules! instantiate_test {
 
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
             // Redirect the log output to stderr
-            #[cfg(feature = "output-htif")]
+            #[cfg(feature = "output-uart")]
             StartupHook::build().start(|_| {
-                logger_htif::init();
+                uart::init();
+                logger_uart::init();
             }).finish(b);
 
             test_case::App::new::<Driver>(b)

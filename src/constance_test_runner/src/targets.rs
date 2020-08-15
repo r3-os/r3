@@ -84,7 +84,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
         &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An505),
     ),
     ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
-    ("qemu_spike", &QemuSpike),
+    ("qemu_sifive_e", &QemuSiFiveE),
 ];
 
 pub struct NucleoF401re;
@@ -263,31 +263,35 @@ impl Target for QemuRealviewPbxA9 {
     }
 }
 
-/// RISC-V Spike Board (based on Spike, the ISA simulator) on QEMU
-pub struct QemuSpike;
+/// The RISC-V board compatible with SiFive E SDK on QEMU
+pub struct QemuSiFiveE;
 
-impl Target for QemuSpike {
+impl Target for QemuSiFiveE {
     fn target_triple(&self) -> &str {
         "riscv32imac-unknown-none-elf"
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-htif"]
+        &["output-e310x-uart"]
     }
 
     fn memory_layout_script(&self) -> String {
         r#"
             MEMORY
             {
-                RAM : ORIGIN = 0x80000000, LENGTH = 1M
+                FLASH : ORIGIN = 0x20000000, LENGTH = 16M
+                RAM : ORIGIN = 0x80000000, LENGTH = 16K
             }
 
-            REGION_ALIAS("REGION_TEXT", RAM);
-            REGION_ALIAS("REGION_RODATA", RAM);
+            REGION_ALIAS("REGION_TEXT", FLASH);
+            REGION_ALIAS("REGION_RODATA", FLASH);
             REGION_ALIAS("REGION_DATA", RAM);
             REGION_ALIAS("REGION_BSS", RAM);
             REGION_ALIAS("REGION_HEAP", RAM);
             REGION_ALIAS("REGION_STACK", RAM);
+
+            /* Skip first 4M allocated for bootloader */
+            _stext = 0x20400000;
         "#
         .to_owned()
     }
@@ -296,9 +300,10 @@ impl Target for QemuSpike {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
+            // TODO: Redirect UART1 to stderr
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-riscv32",
-                &["-machine", "spike"],
+                &["-machine", "sifive_e"],
             )) as Box<dyn DebugProbe>)
         })
     }
