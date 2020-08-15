@@ -1,4 +1,4 @@
-use core::{fmt::Write, panic::PanicInfo};
+use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

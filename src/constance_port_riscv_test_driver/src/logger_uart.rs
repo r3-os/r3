@@ -1,5 +1,3 @@
-use core::fmt::Write;
-
 struct Logger;
 
 impl log::Log for Logger {
