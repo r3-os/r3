@@ -292,6 +292,8 @@ impl Target for QemuSiFiveE {
 
             /* Skip first 4M allocated for bootloader */
             _stext = 0x20400000;
+
+            _hart_stack_size = 1K;
         "#
         .to_owned()
     }
