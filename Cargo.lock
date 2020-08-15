@@ -294,8 +294,8 @@ version = "0.0.1"
 dependencies = [
  "constance",
  "constance_portkit",
- "r0 0.2.2",
  "register",
+ "riscv-rt",
 ]
 
 [[package]]

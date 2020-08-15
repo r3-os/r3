@@ -13,12 +13,6 @@ mod logger_htif;
 #[cfg(feature = "output-htif")]
 mod panic_htif;
 
-// TODO: Move this to `use_port!`
-#[riscv_rt::entry]
-fn main() -> ! {
-    todo!();
-}
-
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
     // If a test case is specified, instantiate the test case
@@ -46,6 +40,7 @@ macro_rules! instantiate_test {
         }
 
         port::use_port!(unsafe struct System);
+        port::use_rt!(unsafe System);
 
         impl port::ThreadingOptions for System {}
 

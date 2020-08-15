@@ -13,6 +13,12 @@ pub extern crate constance;
 #[doc(hidden)]
 pub extern crate core;
 
+/// The binding for [`::riscv_rt`].
+#[doc(hidden)]
+pub mod rt {
+    pub mod cfg;
+}
+
 /// The [`constance::kernel::PortThreading`] implementation.
 #[doc(hidden)]
 pub mod threading {
@@ -20,6 +26,7 @@ pub mod threading {
     pub mod imp;
 }
 
+pub use self::rt::cfg::*;
 pub use self::threading::cfg::*;
 
 /// Defines the entry points of a port instantiation. Implemented by
@@ -29,7 +36,7 @@ pub trait EntryPoint {
     ///
     /// # Safety
     ///
-    ///  - The processor should be in M-mode and with M-mode interrupts masked.
+    ///  - The processor should be in M-mode and have M-mode interrupts masked.
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;
