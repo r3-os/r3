@@ -11,7 +11,7 @@ pub struct App<System> {
     done: EventGroup<System>,
 }
 
-const TASKS: &[usize] = &[300, 150, 300, 320, 580, 900, 500, 750, 170];
+const TASKS: &[usize] = &[300, 150, 300, 320, 750, 170];
 
 impl<System: Kernel> App<System> {
     pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
