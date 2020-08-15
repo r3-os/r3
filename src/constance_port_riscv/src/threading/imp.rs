@@ -68,28 +68,28 @@ impl State {
 
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
-        todo!()
+        // TODO
     }
 
     #[inline(always)]
     pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
-        todo!()
+        // TODO
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
         &self,
         _task: &'static TaskCb<System>,
     ) {
-        todo!()
+        //todo!()
     }
 
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
-        todo!()
+        true // TODO
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
-        todo!()
+        false // TODO
     }
 }
 

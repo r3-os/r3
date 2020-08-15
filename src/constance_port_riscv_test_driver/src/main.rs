@@ -95,7 +95,6 @@ macro_rules! instantiate_test {
             // Redirect the log output to stderr
             #[cfg(feature = "output-uart")]
             StartupHook::build().start(|_| {
-                uart::init();
                 logger_uart::init();
             }).finish(b);
 

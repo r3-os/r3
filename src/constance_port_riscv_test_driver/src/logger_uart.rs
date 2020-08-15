@@ -8,14 +8,12 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &log::Record) {
-        writeln!(
-            crate::uart::stderr(),
-            "[{:5} {}] {}",
+        crate::uart::stderr_write_fmt(format_args!(
+            "[{:5} {}] {}\n",
             record.level(),
             record.target(),
             record.args()
-        )
-        .unwrap();
+        ));
     }
 
     fn flush(&self) {}

@@ -9,11 +9,12 @@ use e310x_hal::{
     time::{Bps, Hertz},
 };
 use nb::block;
+use riscv::interrupt;
 
-static mut UART0: Option<Tx<UART0>> = None;
-static mut UART1: Option<Tx<UART1>> = None;
+static mut UART: Option<(Tx<UART0>, Tx<UART1>)> = None;
 
-pub fn init() {
+#[cold]
+fn init() {
     let resources = unsafe { e310x_hal::DeviceResources::steal() };
 
     let coreclk = resources
@@ -40,8 +41,7 @@ pub fn init() {
         Bps(115200),
         clocks,
     );
-    let (tx, _rx) = uart0.split();
-    unsafe { UART0 = Some(tx) };
+    let (tx0, _rx) = uart0.split();
 
     let uart1 = Serial::new(
         resources.peripherals.UART1,
@@ -52,23 +52,41 @@ pub fn init() {
         Bps(115200),
         clocks,
     );
-    let (tx, _rx) = uart1.split();
-    unsafe { UART1 = Some(tx) };
+    let (tx1, _rx) = uart1.split();
+
+    unsafe { UART = Some((tx0, tx1)) };
 }
 
-/// Open the standard output channel (used for reporting results).
-pub fn stdout() -> impl fmt::Write {
-    SerialWrapper(unsafe { UART0.as_mut() }.unwrap())
+#[inline]
+fn with_uart(f: impl FnOnce(&mut (Tx<UART0>, Tx<UART1>))) {
+    interrupt::free(
+        #[inline]
+        |_| unsafe {
+            if UART.is_none() {
+                init();
+            }
+            f(UART
+                .as_mut()
+                .unwrap_or_else(|| core::hint::unreachable_unchecked()));
+        },
+    );
 }
 
-/// Open the standard error channel (used for logging).
-pub fn stderr() -> impl fmt::Write {
-    SerialWrapper(unsafe { UART1.as_mut() }.unwrap())
+pub fn stdout_write_fmt(args: fmt::Arguments<'_>) {
+    with_uart(|(uart0, _uart1)| {
+        let _ = SerialWrapper(uart0).write_fmt(args);
+    });
 }
 
-struct SerialWrapper<UART: UartX + 'static>(&'static mut Tx<UART>);
+pub fn stderr_write_fmt(args: fmt::Arguments<'_>) {
+    with_uart(|(_uart0, uart1)| {
+        let _ = SerialWrapper(uart1).write_fmt(args);
+    });
+}
 
-impl<UART: UartX + 'static> fmt::Write for SerialWrapper<UART> {
+struct SerialWrapper<'a, UART: UartX>(&'a mut Tx<UART>);
+
+impl<UART: UartX> fmt::Write for SerialWrapper<'_, UART> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for byte in s.as_bytes() {
             if *byte == '\n' as u8 {
