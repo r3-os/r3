@@ -5,6 +5,7 @@ pub trait ThreadingOptions {}
 /// **Requires [`ThreadingOptions`].**
 ///
 /// [`PortThreading`]: constance::kernel::PortThreading
+/// [`EntryPoint`]: crate::EntryPoint
 #[macro_export]
 macro_rules! use_port {
     (unsafe $vis:vis struct $sys:ident) => {
