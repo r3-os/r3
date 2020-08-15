@@ -32,9 +32,8 @@ macro_rules! instantiate_test {
 
         fn report_success() {
             // The test runner will catch this
-            // TODO
-            // #[cfg(feature = "output-uart")]
-            // riscv_uart::hprintln!("!- TEST WAS SUCCESSFUL -!").unwrap();
+            #[cfg(feature = "output-uart")]
+            uart::stdout_write_fmt(format_args!("!- TEST WAS SUCCESSFUL -!"));
 
             loop {}
         }
