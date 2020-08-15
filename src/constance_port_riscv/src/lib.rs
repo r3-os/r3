@@ -1,5 +1,8 @@
 #![feature(external_doc)]
 #![feature(const_fn)]
+#![feature(naked_functions)]
+#![feature(slice_ptr_len)]
+#![feature(llvm_asm)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
@@ -30,6 +33,7 @@ pub mod rt {
 #[doc(hidden)]
 pub mod threading {
     pub mod cfg;
+    #[cfg(target_os = "none")]
     pub mod imp;
 }
 

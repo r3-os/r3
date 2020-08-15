@@ -2,10 +2,11 @@
 pub trait ThreadingOptions {}
 
 /// Define a system type implementing [`PortThreading`] and [`EntryPoint`].
-/// **Requires [`ThreadingOptions`].**
+/// **Requires [`ThreadingOptions`] and [`InterruptController`].**
 ///
 /// [`PortThreading`]: constance::kernel::PortThreading
 /// [`EntryPoint`]: crate::EntryPoint
+/// [`InterruptController`]: crate::InterruptController
 #[macro_export]
 macro_rules! use_port {
     (unsafe $vis:vis struct $sys:ident) => {

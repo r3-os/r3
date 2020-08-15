@@ -301,6 +301,7 @@ dependencies = [
  "constance",
  "constance_portkit",
  "register",
+ "riscv 0.6.0",
  "riscv-rt 0.8.0",
 ]
 

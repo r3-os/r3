@@ -8,7 +8,7 @@ use crate::Plic;
 
 /// Implements [`crate::InterruptController::init`].
 pub fn init<System: Plic>() {
-    todo!()
+    // TODO
 }
 
 /// Implements [`crate::InterruptController::acknowledge_interrupt`].

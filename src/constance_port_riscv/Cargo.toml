@@ -15,3 +15,4 @@ constance = { path = "../constance" }
 
 register = { version = "0.5.1" }
 riscv-rt = { version = "0.8.0" }
+riscv = { version = "0.6.0" }
