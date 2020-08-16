@@ -80,19 +80,21 @@ macro_rules! use_plic {
             }
 
             impl InterruptController for $sys {
+                type Token = u32;
+
                 #[inline]
                 unsafe fn init() {
                     imp::init::<Self>()
                 }
 
                 #[inline]
-                unsafe fn acknowledge_interrupt() -> Option<InterruptNum> {
-                    imp::acknowledge_interrupt::<Self>()
+                unsafe fn claim_interrupt() -> Option<(u32, InterruptNum)> {
+                    imp::claim_interrupt::<Self>()
                 }
 
                 #[inline]
-                unsafe fn end_interrupt(num: InterruptNum) {
-                    imp::end_interrupt::<Self>(num);
+                unsafe fn end_interrupt(token: Self::Token) {
+                    imp::end_interrupt::<Self>(token);
                 }
             }
         };

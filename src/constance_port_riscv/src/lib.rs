@@ -57,6 +57,8 @@ pub trait EntryPoint {
 /// An abstract interface to an interrupt controller. Implemented by
 /// [`use_plic!`].
 pub trait InterruptController {
+    type Token;
+
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
@@ -67,18 +69,19 @@ pub trait InterruptController {
     /// This is only intended to be called by the port.
     unsafe fn init() {}
 
-    /// Get the currently signaled interrupt and acknowledge it.
+    /// Get the currently signaled interrupt and claim it. Raise the interrupt
+    /// priority threshold to at least mask the claimed interrupt.
     ///
     /// # Safety
     ///
     /// This is only intended to be called by the port in an interrupt handler.
-    unsafe fn acknowledge_interrupt() -> Option<constance::kernel::InterruptNum>;
+    unsafe fn claim_interrupt() -> Option<(Self::Token, constance::kernel::InterruptNum)>;
 
     /// Notify that the kernel has completed the processing of the specified
-    /// interrupt.
+    /// interrupt claim. Restore the interrupt priority threshold.
     ///
     /// # Safety
     ///
     /// This is only intended to be called by the port in an interrupt handler.
-    unsafe fn end_interrupt(num: constance::kernel::InterruptNum);
+    unsafe fn end_interrupt(token: Self::Token);
 }

@@ -11,16 +11,16 @@ pub fn init<System: Plic>() {
     // TODO
 }
 
-/// Implements [`crate::InterruptController::acknowledge_interrupt`].
+/// Implements [`crate::InterruptController::claim_interrupt`].
 #[inline]
-pub fn acknowledge_interrupt<System: Plic>() -> Option<InterruptNum> {
+pub fn claim_interrupt<System: Plic>() -> Option<(u32, InterruptNum)> {
     todo!()
 }
 
 /// Implements [`crate::InterruptController::end_interrupt`].
 #[inline]
-pub fn end_interrupt<System: Plic>(num: InterruptNum) {
-    let _ = num;
+pub fn end_interrupt<System: Plic>(token: u32) {
+    let _ = token;
     todo!()
 }
 
