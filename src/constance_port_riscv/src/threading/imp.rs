@@ -520,6 +520,13 @@ impl State {
 
         sp > main_stack || sp <= main_stack - 512
     }
+
+    /// Implements [`crate::EntryPoint::external_interrupt_handler`].
+    #[naked]
+    #[inline(always)]
+    pub unsafe fn external_interrupt_handler<System: PortInstance>() -> ! {
+        todo!()
+    }
 }
 
 /// Used by `use_port!`

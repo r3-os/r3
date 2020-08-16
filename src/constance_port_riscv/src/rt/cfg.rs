@@ -14,5 +14,14 @@ macro_rules! use_rt {
                 <$sys as $crate::EntryPoint>::start();
             }
         }
+
+        #[export_name = "MachineExternal"]
+        #[export_name = "MachineTimer"]
+        #[naked]
+        fn MachineExternal() {
+            unsafe {
+                <$sys as $crate::EntryPoint>::external_interrupt_handler();
+            }
+        }
     };
 }

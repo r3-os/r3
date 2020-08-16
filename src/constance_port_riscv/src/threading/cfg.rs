@@ -35,6 +35,12 @@ macro_rules! use_port {
                 unsafe fn start() -> !{
                     unsafe { PORT_STATE.port_boot::<Self>() };
                 }
+
+                #[naked]
+                #[inline(always)]
+                unsafe fn external_interrupt_handler() -> ! {
+                    unsafe { State::external_interrupt_handler::<Self>() };
+                }
             }
 
             // Assume `$sys: Kernel`

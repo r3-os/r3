@@ -52,6 +52,16 @@ pub trait EntryPoint {
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;
+
+    /// The Machine external interrupt and timer handler.
+    ///
+    /// # Safety
+    ///
+    ///  - The processor should be in M-mode and have M-mode interrupts masked.
+    ///  - The register state of the background context should be preserved so
+    ///    that the handler can restore it later.
+    ///
+    unsafe fn external_interrupt_handler() -> !;
 }
 
 /// An abstract interface to an interrupt controller. Implemented by
