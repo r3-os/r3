@@ -21,6 +21,7 @@ pub extern crate core;
 pub mod plic {
     pub mod cfg;
     pub mod imp;
+    pub mod plic_regs;
 }
 
 /// The binding for [`::riscv_rt`].

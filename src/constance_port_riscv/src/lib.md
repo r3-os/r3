@@ -11,6 +11,8 @@ Your system type should be combined with an interrupt controller driver by imple
 [Platform-Level Interrupt Controller (PLIC)]: https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc
 [`PortInterrupts`]: constance::kernel::PortInterrupts
 
+PLIC does not support pending or clearing interrupt lines.
+
 # Implementation
 
 The CPU Lock state is mapped to `mstatus.MIE` (global interrupt-enable). Unmanaged interrupts aren't supported.

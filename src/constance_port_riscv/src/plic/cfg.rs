@@ -1,5 +1,7 @@
 /// The public interface of the Platform-Level Interrupt Controller driver.
-use constance::kernel::InterruptPriority;
+use constance::kernel::{InterruptNum, InterruptPriority};
+
+use super::plic_regs;
 
 /// Implement [`PortInterrupts`], [`InterruptController`], and [`Plic`] on
 /// the given system type using the Platform-Level Interrupt Controller (PLIC)
@@ -26,14 +28,19 @@ macro_rules! use_plic {
                     QueryInterruptLineError, SetInterruptLinePriorityError,
                 },
                 core::ops::Range,
-                plic::imp,
-                InterruptController, Plic,
+                plic::{imp, plic_regs},
+                InterruptController, Plic, PlicOptions,
             };
 
-            unsafe impl Plic for $sys {}
+            unsafe impl Plic for $sys {
+                fn plic_regs() -> &'static plic_regs::Plic {
+                    unsafe { &*(<$sys as PlicOptions>::PLIC_BASE as *const plic_regs::Plic) }
+                }
+            }
 
             unsafe impl PortInterrupts for $sys {
-                const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..255;
+                const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
+                    0..(<$sys as PlicOptions>::MAX_PRIORITY + 1);
 
                 #[inline]
                 unsafe fn set_interrupt_line_priority(
@@ -59,16 +66,16 @@ macro_rules! use_plic {
 
                 #[inline]
                 unsafe fn pend_interrupt_line(
-                    line: InterruptNum,
+                    _line: InterruptNum,
                 ) -> Result<(), PendInterruptLineError> {
-                    imp::pend_interrupt_line::<Self>(line)
+                    Err(PendInterruptLineError::NotSupported)
                 }
 
                 #[inline]
                 unsafe fn clear_interrupt_line(
-                    line: InterruptNum,
+                    _line: InterruptNum,
                 ) -> Result<(), ClearInterruptLineError> {
-                    imp::clear_interrupt_line::<Self>(line)
+                    Err(ClearInterruptLineError::NotSupported)
                 }
 
                 #[inline]
@@ -80,7 +87,7 @@ macro_rules! use_plic {
             }
 
             impl InterruptController for $sys {
-                type Token = u32;
+                type Token = imp::Token;
 
                 #[inline]
                 unsafe fn init() {
@@ -88,7 +95,7 @@ macro_rules! use_plic {
                 }
 
                 #[inline]
-                unsafe fn claim_interrupt() -> Option<(u32, InterruptNum)> {
+                unsafe fn claim_interrupt() -> Option<(Self::Token, InterruptNum)> {
                     imp::claim_interrupt::<Self>()
                 }
 
@@ -109,9 +116,19 @@ pub trait PlicOptions {
     /// The maximum (highest) interrupt priority supported by the PLIC
     /// implementation.
     const MAX_PRIORITY: InterruptPriority;
+
+    /// The last interrupt source supported by the PLIC implementation. Must be
+    /// in range `0..=1023`.
+    const MAX_NUM: InterruptNum;
+
+    /// The PLIC context for the hart on which the kernel runs.
+    const CONTEXT: usize = 0;
 }
 
 /// Provides access to a system-global PLIC instance. Implemented by [`use_plic!`].
-pub unsafe trait Plic {
-    // TODO
+pub unsafe trait Plic: PlicOptions {
+    #[doc(hidden)]
+    /// Get [`plic_regs::Plic`] representing the memory-mapped interface for the
+    /// PLIC instance.
+    fn plic_regs() -> &'static plic_regs::Plic;
 }

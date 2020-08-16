@@ -51,6 +51,7 @@ macro_rules! instantiate_test {
         impl port::PlicOptions for System {
             // SiFive E
             const MAX_PRIORITY: InterruptPriority = 7;
+            const MAX_NUM: InterruptNum = 127;
             const PLIC_BASE: usize = 0x0c00_0000;
         }
 
@@ -81,11 +82,10 @@ macro_rules! instantiate_test {
             fn fail() {
                 report_fail();
             }
-            // Chose PPIs.
-            // SGIs (software-generated interrupts) don't support disabling.
-            const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
-            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0x60;
-            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0x20;
+            // TODO: Find a way to pend interrupts
+            const INTERRUPT_LINES: &'static [InterruptNum] = &[];
+            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 2;
+            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 6;
         }
 
         static COTTAGE: test_case::App<System> =
