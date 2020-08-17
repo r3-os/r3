@@ -406,7 +406,6 @@ impl State {
     ///
     /// # Safety
     ///
-    ///  - The processor should be in System mode (task context).
     ///  - `*System::state().running_task_ptr()` should be `None`.
     ///
     #[naked]
