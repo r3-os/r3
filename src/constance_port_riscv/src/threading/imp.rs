@@ -28,6 +28,11 @@ pub unsafe trait PortInstance:
 pub struct State {
     dispatch_pending: UnsafeCell<bool>,
     main_stack: UnsafeCell<usize>,
+    /// The current nesting level minus one.
+    ///
+    /// The valid range is `-1..=isize::MAX`. The current context is a task
+    /// context iff `interrupt_nesting == -1`.
+    interrupt_nesting: UnsafeCell<isize>,
 }
 
 unsafe impl Sync for State {}
@@ -46,6 +51,12 @@ impl State {
         Self {
             dispatch_pending: UnsafeCell::new(false),
             main_stack: UnsafeCell::new(0),
+            // `is_task_context` is supposed to return `false` in the main
+            // thread (which is a boot context and not a task context). For
+            // this reason, `interrupt_nesting` is initialized as `0`. This
+            // doesn't reflect the actual nesting level, but it doesn't matter
+            // because interrupts are disabled during booting.
+            interrupt_nesting: UnsafeCell::new(0),
         }
     }
 }
@@ -73,6 +84,11 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         debug_assert!(self.is_cpu_lock_active::<System>());
+
+        // We are going to dispatch the first task and enable interrupts, so
+        // set `interrupt_nesting` to `-1`, indicating that there are no active
+        // interrupts and we are in a task context.
+        unsafe { *self.interrupt_nesting.get() = -1 };
 
         unsafe {
             llvm_asm!("
@@ -512,20 +528,219 @@ impl State {
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
-        // TODO: Implement a more reliable method
-        let sp: usize;
-        unsafe { llvm_asm!("mv $0, sp":"=r"(sp)) };
-
-        let main_stack = unsafe { *self.main_stack.get() };
-
-        sp > main_stack || sp <= main_stack - 512
+        let interrupt_nesting = unsafe { *self.interrupt_nesting.get() };
+        interrupt_nesting < 0
     }
 
     /// Implements [`crate::EntryPoint::external_interrupt_handler`].
     #[naked]
     #[inline(always)]
-    pub unsafe fn external_interrupt_handler<System: PortInstance>() -> ! {
-        todo!()
+    pub unsafe fn external_interrupt_handler<System: PortInstance>() -> !
+    where
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
+    {
+        // Compilation assumption: These `let` lines don't generate any code.
+        // `&unsafe_cell` is used in place of `unsafe_cell.get()` because `get`
+        // is not `#[inline(always)]`, which makes the result incompatible with
+        // the `s` inline assembler constraint (relocatable integer constant).
+        // TODO: This is not compatible with the new inline assembly
+        //       (https://github.com/rust-lang/rfcs/pull/2873) and unreliable.
+        let interrupt_nesting = &System::port_state().interrupt_nesting;
+        let main_stack = &System::port_state().main_stack;
+
+        unsafe {
+            llvm_asm!("
+                # Skip the stacking of the first-level state if the background
+                # context is the idle task.
+                #
+                #   [{a0-a7, t0-t6, s0-s11, sp} = background context state,
+                #    background context ∈ {task, idle task, interrupt}]
+                #   if sp == 0 {
+                #       [background context ∈ {idle task}]
+                #       goto SwitchToMainStack;
+                #   }
+                #
+                beqz sp, SwitchToMainStack
+
+                # Push the first-level state to the background context's stack
+                #
+                #   [{a0-a7, t0-t6, s0-s11, sp} = background context state,
+                #    background context ∈ {task, interrupt}, sp != 0]
+                #
+                #   sp -= 17;
+                #   sp[0..10] = {ra, t0-t2, a0-a5};
+                #   sp[10..16] = {a6-a7, t3-t6};
+                #   sp[16] = mepc
+                #
+                #   let background_sp = sp;
+                #   [{s0-s11} = background context state, sp != 0]
+                #
+                addi sp, sp, (-4 * 17)
+                sw ra, (4 * 0)(sp)
+                sw t0, (4 * 1)(sp)
+                sw t1, (4 * 2)(sp)
+                sw t2, (4 * 3)(sp)
+                sw a0, (4 * 4)(sp)
+                sw a1, (4 * 5)(sp)
+                sw a2, (4 * 6)(sp)
+                sw a3, (4 * 7)(sp)
+                sw a4, (4 * 8)(sp)
+                sw a5, (4 * 9)(sp)
+                sw a6, (4 * 10)(sp)
+                sw a7, (4 * 11)(sp)
+                sw t3, (4 * 12)(sp)
+                sw t4, (4 * 13)(sp)
+                sw t5, (4 * 14)(sp)
+                sw t6, (4 * 15)(sp)
+                csrr a0, mepc
+                sw a0, (4 * 16)(sp)
+
+                # Increment the nesting count.
+                #
+                #   [interrupt_nesting ≥ -1]
+                #   interrupt_nesting += 1;
+                #   [interrupt_nesting ≥ 0]
+                #
+                la a1, $2
+                lw a0, (a1)
+                addi a0, a0, 1
+                sw a0, (a1)
+
+                # If the background context is an interrupt context, we don't
+                # have to switch stacks. However, we still need to re-align
+                # `sp`.
+                #
+                # Note: The minimum value of `interrupt_nesting` is `-1`. Thus
+                # at this point, the minimum value we expect to see is `0`.
+                #
+                #   if interrupt_nesting > 0 {
+                #       [background context ∈ {interrupt}]
+                #       goto RealignStack;
+                #   } else {
+                #       [background context ∈ {task}]
+                #       goto SwitchToMainStack;
+                #   }
+                #
+                bnez a0, RealignStack
+
+            SwitchToMainStack:
+                # If the background context is a task context, we should switch
+                # to `main_stack`. Meanwhile, push the original `sp` to
+                # `main_stack`.
+                #
+                #   [background context ∈ {task, idle task}]
+                #   *(main_stack - 4) = sp;
+                #   sp = main_stack - 4;
+                #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
+                #
+                la a1, $3
+                lw a0, (a1)
+                addi a0, a0, -16
+                sw sp, (a0)
+                mv sp, a0
+
+                j RealignStackEnd
+
+            RealignStack:
+                # Align `sp` to 16 bytes and save the original `sp`.  `sp` is
+                # assumed to be already aligned to a word boundary.
+                #
+                # The 128-bit alignemnt is required by most of the ABIs defined
+                # by the following specification:
+                # <https://github.com/riscv/riscv-elf-psabi-doc/blob/master/riscv-elf.md>
+                #
+                # This can be skipped for the ILP32E calling convention
+                # (applicable to RV32E), where `sp` is only required to be
+                # aligned to a word boundary.
+                #
+                #   [background context ∈ {interrupt}]
+                #   *((sp - 4) & !15) = sp
+                #   sp = (sp - 4) & !15
+                #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
+                #
+                mv a0, sp
+                addi sp, sp, -4
+                andi sp, sp, -16
+                sw a0, (sp)
+
+            RealignStackEnd:
+                # Call `handle_irq`
+                jal $0
+
+                # Decrement the nesting count.
+                #
+                #   [interrupt_nesting ≥ 0]
+                #   interrupt_nesting -= 1;
+                #   [interrupt_nesting ≥ -1]
+                #
+                la a1, $2
+                lw a0, (a1)
+                addi a0, a0, 1
+                sw a0, (a1)
+
+                # Restore `background_sp`
+                lw sp, (sp)
+
+                # Are we returning to an interrupt context?
+                #
+                # If we are returning to an outer interrupt handler, finding the
+                # next task to dispatch is unnecessary, so we can jump straight
+                # to `PopFirstLevelState`.
+                #
+                #   [interrupt_nesting ≥ -1]
+                #   if interrupt_nesting >= 0 {
+                #       goto PopFirstLevelState;
+                #   }
+                #
+                bgez a0, PopFirstLevelState
+
+                # Return to the task context by restoring the first-level and
+                # second-level state of the next task.
+                j $1
+                "
+            :
+            :   "X"(Self::handle_interrupt::<System> as unsafe fn())
+            ,   "X"(Self::push_second_level_state_and_dispatch_shortcutting::<System> as unsafe fn() -> !)
+            ,   "s"(interrupt_nesting)
+            ,   "s"(main_stack)
+            :
+            :   "volatile"
+            );
+            core::hint::unreachable_unchecked();
+        }
+    }
+
+    unsafe fn handle_interrupt<System: PortInstance>()
+    where
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
+    {
+        let interrupt_nesting = System::port_state().interrupt_nesting.get();
+
+        // Safety: There are no other mutable references to `*interrupt_nesting`
+        unsafe { *interrupt_nesting += 1 };
+
+        // Safety: We are the port, so it's okay to call this
+        if let Some((token, line)) = unsafe { System::claim_interrupt() } {
+            // Now that we have claimed the current exception, we can start
+            // accepting nested exceptions.
+            unsafe { llvm_asm!("csrsi mstatus, $0"::"i"(mstatus::MIE)::"volatile") };
+
+            if let Some(handler) = System::INTERRUPT_HANDLERS.get(line) {
+                // Safety: The first-level interrupt handler is the only code
+                //         allowed to call this
+                unsafe { handler() };
+            }
+
+            unsafe { llvm_asm!("csrci mstatus, $0"::"i"(mstatus::MIE)::"volatile") };
+
+            // Safety: We are the port, so it's okay to call this
+            unsafe { System::end_interrupt(token) };
+        }
+
+        // Safety: There are no other mutable references to `*interrupt_nesting`
+        unsafe { *interrupt_nesting -= 1 };
     }
 }
 
