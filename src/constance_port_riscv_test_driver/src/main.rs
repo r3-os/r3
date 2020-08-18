@@ -44,7 +44,7 @@ macro_rules! instantiate_test {
 
         port::use_port!(unsafe struct System);
         port::use_rt!(unsafe System);
-        port::use_plic!(unsafe impl PortInterrupts for System);
+        port::use_plic!(unsafe impl InterruptController for System);
 
         impl port::ThreadingOptions for System {}
 
@@ -92,6 +92,8 @@ macro_rules! instantiate_test {
             constance::build!(System, configure_app => test_case::App<System>);
 
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+            System::configure_plic(b);
+
             // Redirect the log output to stderr
             #[cfg(feature = "output-uart")]
             StartupHook::build().start(|_| {

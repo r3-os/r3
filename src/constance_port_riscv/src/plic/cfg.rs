@@ -3,13 +3,31 @@ use constance::kernel::{InterruptNum, InterruptPriority};
 
 use super::plic_regs;
 
-/// Implement [`PortInterrupts`], [`InterruptController`], and [`Plic`] on
-/// the given system type using the Platform-Level Interrupt Controller (PLIC)
-/// on the target.
+/// Implement [`InterruptController`] and [`Plic`] on the given system type
+/// using the Platform-Level Interrupt Controller (PLIC) on the target.
 /// **Requires [`PlicOptions`].**
 ///
-/// [`PortInterrupts`]: constance::kernel::PortInterrupts
 /// [`InterruptController`]: crate::InterruptController
+///
+/// This macro adds `const fn configure_plic(b: &mut CfgBuilder<Self>)` to the
+/// system type. **It should be called by your application's configuration
+/// function.** See the following example:
+///
+/// ```rust,ignore
+/// constance_port_riscv::use_plic!(unsafe impl InterruptController for System);
+///
+/// impl constance_port_riscv::PlicOptions for System {
+///     // SiFive E
+///     const MAX_PRIORITY: InterruptPriority = 7;
+///     const MAX_NUM: InterruptNum = 127;
+///     const PLIC_BASE: usize = 0x0c00_0000;
+/// }
+///
+/// const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+///     System::configure_plic(b);
+///     /* ... */
+/// }
+/// ```
 ///
 /// # Safety
 ///
@@ -19,12 +37,12 @@ use super::plic_regs;
 ///
 #[macro_export]
 macro_rules! use_plic {
-    (unsafe impl PortInterrupts for $sys:ty) => {
+    (unsafe impl InterruptController for $sys:ty) => {
         const _: () = {
             use $crate::{
                 constance::kernel::{
-                    ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
-                    InterruptPriority, PendInterruptLineError, PortInterrupts,
+                    cfg::CfgBuilder, ClearInterruptLineError, EnableInterruptLineError,
+                    InterruptNum, InterruptPriority, PendInterruptLineError, PortInterrupts,
                     QueryInterruptLineError, SetInterruptLinePriorityError,
                 },
                 core::ops::Range,
@@ -38,7 +56,18 @@ macro_rules! use_plic {
                 }
             }
 
-            unsafe impl PortInterrupts for $sys {
+            impl $sys {
+                pub const fn configure_plic(b: &mut CfgBuilder<Self>) {
+                    imp::configure::<Self>(b)
+                }
+            }
+
+            impl InterruptController for $sys {
+                #[inline]
+                unsafe fn init() {
+                    imp::init::<Self>()
+                }
+
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
                     0..(<$sys as PlicOptions>::MAX_PRIORITY + 1);
 
@@ -83,25 +112,6 @@ macro_rules! use_plic {
                     line: InterruptNum,
                 ) -> Result<bool, QueryInterruptLineError> {
                     imp::is_interrupt_line_pending::<Self>(line)
-                }
-            }
-
-            impl InterruptController for $sys {
-                type Token = imp::Token;
-
-                #[inline]
-                unsafe fn init() {
-                    imp::init::<Self>()
-                }
-
-                #[inline]
-                unsafe fn claim_interrupt() -> Option<(Self::Token, InterruptNum)> {
-                    imp::claim_interrupt::<Self>()
-                }
-
-                #[inline]
-                unsafe fn end_interrupt(token: Self::Token) {
-                    imp::end_interrupt::<Self>(token);
                 }
             }
         };

@@ -1,10 +1,22 @@
 /// The implementation of the Platform-Level Interrupt Controller driver.
 use constance::kernel::{
-    EnableInterruptLineError, InterruptNum, InterruptPriority, QueryInterruptLineError,
-    SetInterruptLinePriorityError,
+    cfg::CfgBuilder, EnableInterruptLineError, InterruptHandler, InterruptNum, InterruptPriority,
+    Kernel, QueryInterruptLineError, SetInterruptLinePriorityError,
 };
 
-use crate::Plic;
+use crate::{Plic, INTERRUPT_EXTERNAL, INTERRUPT_PLATFORM_START};
+
+/// The configuration function.
+pub const fn configure<System: Plic + Kernel>(b: &mut CfgBuilder<System>) -> () {
+    // TODO: `INTERRUPT_EXTERNAL` is implicitly "managed"
+    unsafe {
+        InterruptHandler::build()
+            .line(INTERRUPT_EXTERNAL)
+            .start(interrupt_handler::<System>)
+            .unmanaged()
+            .finish(b);
+    }
+}
 
 /// Implements [`crate::InterruptController::init`].
 pub fn init<System: Plic>() {
@@ -18,11 +30,26 @@ pub fn init<System: Plic>() {
     }
 }
 
-pub type Token = u32;
-
-/// Implements [`crate::InterruptController::claim_interrupt`].
 #[inline]
-pub fn claim_interrupt<System: Plic>() -> Option<(Token, InterruptNum)> {
+fn interrupt_handler<System: Plic + Kernel>(_: usize) {
+    if let Some((old_threshold, num)) = claim_interrupt::<System>() {
+        if let Some(handler) = System::INTERRUPT_HANDLERS.get(num) {
+            unsafe { riscv::register::mie::set_mext() };
+
+            // Safety: The interrupt controller driver is responsible for
+            //         dispatching the appropriate interrupt handler for
+            //         a platform interrupt
+            unsafe { handler() };
+
+            unsafe { riscv::register::mie::clear_mext() };
+        }
+
+        end_interrupt::<System>(old_threshold);
+    }
+}
+
+#[inline]
+fn claim_interrupt<System: Plic>() -> Option<(u32, InterruptNum)> {
     let plic_regs = System::plic_regs();
 
     let num = plic_regs.ctxs[System::CONTEXT].claim_complete.get();
@@ -40,26 +67,29 @@ pub fn claim_interrupt<System: Plic>() -> Option<(Token, InterruptNum)> {
         // Allow other interrupts to be taken by completing this one
         plic_regs.ctxs[System::CONTEXT].claim_complete.set(num);
 
-        Some((old_threshold, num as InterruptNum))
+        Some((
+            old_threshold,
+            num as InterruptNum + INTERRUPT_PLATFORM_START,
+        ))
     }
 }
 
-/// Implements [`crate::InterruptController::end_interrupt`].
 #[inline]
-pub fn end_interrupt<System: Plic>(token: Token) {
+fn end_interrupt<System: Plic>(old_threshold: u32) {
     let plic_regs = System::plic_regs();
 
     plic_regs.ctxs[System::CONTEXT]
         .priority_threshold
-        .set(token);
+        .set(old_threshold);
 }
 
-/// Implements [`constance::kernel::PortInterrupts::set_interrupt_line_priority`].
+/// Implements [`crate::InterruptController::set_interrupt_line_priority`].
 pub fn set_interrupt_line_priority<System: Plic>(
     line: InterruptNum,
     priority: InterruptPriority,
 ) -> Result<(), SetInterruptLinePriorityError> {
     let plic_regs = System::plic_regs();
+    let line = line - INTERRUPT_PLATFORM_START;
 
     if line > System::MAX_NUM || priority < 0 || priority > System::MAX_PRIORITY {
         return Err(SetInterruptLinePriorityError::BadParam);
@@ -69,11 +99,12 @@ pub fn set_interrupt_line_priority<System: Plic>(
     Ok(())
 }
 
-/// Implements [`constance::kernel::PortInterrupts::enable_interrupt_line`].
+/// Implements [`crate::InterruptController::enable_interrupt_line`].
 pub fn enable_interrupt_line<System: Plic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
     let plic_regs = System::plic_regs();
+    let line = line - INTERRUPT_PLATFORM_START;
 
     if line > System::MAX_NUM {
         return Err(EnableInterruptLineError::BadParam);
@@ -85,11 +116,12 @@ pub fn enable_interrupt_line<System: Plic>(
     Ok(())
 }
 
-/// Implements [`constance::kernel::PortInterrupts::disable_interrupt_line`].
+/// Implements [`crate::InterruptController::disable_interrupt_line`].
 pub fn disable_interrupt_line<System: Plic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
     let plic_regs = System::plic_regs();
+    let line = line - INTERRUPT_PLATFORM_START;
 
     if line > System::MAX_NUM {
         return Err(EnableInterruptLineError::BadParam);
@@ -101,11 +133,12 @@ pub fn disable_interrupt_line<System: Plic>(
     Ok(())
 }
 
-/// Implements [`constance::kernel::PortInterrupts::is_interrupt_line_pending`].
+/// Implements [`crate::InterruptController::is_interrupt_line_pending`].
 pub fn is_interrupt_line_pending<System: Plic>(
     line: InterruptNum,
 ) -> Result<bool, QueryInterruptLineError> {
     let plic_regs = System::plic_regs();
+    let line = line - INTERRUPT_PLATFORM_START;
 
     if line > System::MAX_NUM {
         return Err(QueryInterruptLineError::BadParam);

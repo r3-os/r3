@@ -3,10 +3,18 @@
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
 #![feature(llvm_asm)]
+#![feature(asm)]
+#![feature(const_option)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
+#![doc(include = "../../constance/src/common.md")]
 #![no_std]
+use constance::kernel::{
+    ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
+    PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
+};
+use core::ops::Range;
 
 /// Used by macros
 #[doc(hidden)]
@@ -67,32 +75,93 @@ pub trait EntryPoint {
 
 /// An abstract interface to an interrupt controller. Implemented by
 /// [`use_plic!`].
+///
+/// # Safety
+///
+/// These methods are only intended to be called by the port.
 pub trait InterruptController {
-    type Token;
-
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
     /// [`PortToKernel::boot`]: constance::kernel::PortToKernel::boot
-    ///
-    /// # Safety
-    ///
-    /// This is only intended to be called by the port.
     unsafe fn init() {}
 
-    /// Get the currently signaled interrupt and claim it. Raise the interrupt
-    /// priority threshold to at least mask the claimed interrupt.
+    /// The range of interrupt priority values considered [managed].
     ///
-    /// # Safety
+    /// Defaults to `0..0` (empty) when unspecified.
     ///
-    /// This is only intended to be called by the port in an interrupt handler.
-    unsafe fn claim_interrupt() -> Option<(Self::Token, constance::kernel::InterruptNum)>;
+    /// [managed]: constance#interrupt-handling-framework
+    #[allow(clippy::reversed_empty_ranges)] // on purpose
+    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
 
-    /// Notify that the kernel has completed the processing of the specified
-    /// interrupt claim. Restore the interrupt priority threshold.
+    /// Handle the call to [`PortInterrupts::set_interrupt_line_priority`] for a
+    /// platform interrupt line.
     ///
-    /// # Safety
+    /// The provided interrupt number must be greater than or equal to
+    /// [`INTERRUPT_PLATFORM_START`].
     ///
-    /// This is only intended to be called by the port in an interrupt handler.
-    unsafe fn end_interrupt(token: Self::Token);
+    /// [`PortInterrupts::set_interrupt_line_priority`]: constance::kernel::PortInterrupts::set_interrupt_line_priority
+    unsafe fn set_interrupt_line_priority(
+        _line: InterruptNum,
+        _priority: InterruptPriority,
+    ) -> Result<(), SetInterruptLinePriorityError> {
+        Err(SetInterruptLinePriorityError::BadParam)
+    }
+
+    /// Handle the call to [`PortInterrupts::enable_interrupt_line`] for a
+    /// platform interrupt line.
+    ///
+    /// The provided interrupt number must be greater than or equal to
+    /// [`INTERRUPT_PLATFORM_START`].
+    ///
+    /// [`PortInterrupts::enable_interrupt_line`]: constance::kernel::PortInterrupts::enable_interrupt_line
+    unsafe fn enable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
+        Err(EnableInterruptLineError::BadParam)
+    }
+
+    /// Handle the call to [`PortInterrupts::disable_interrupt_line`] for a
+    /// platform interrupt line.
+    ///
+    /// The provided interrupt number must be greater than or equal to
+    /// [`INTERRUPT_PLATFORM_START`].
+    ///
+    /// [`PortInterrupts::disable_interrupt_line`]: constance::kernel::PortInterrupts::disable_interrupt_line
+    unsafe fn disable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
+        Err(EnableInterruptLineError::BadParam)
+    }
+
+    /// Handle the call to [`PortInterrupts::pend_interrupt_line`] for a
+    /// platform interrupt line.
+    ///
+    /// The provided interrupt number must be greater than or equal to
+    /// [`INTERRUPT_PLATFORM_START`].
+    ///
+    /// [`PortInterrupts::pend_interrupt_line`]: constance::kernel::PortInterrupts::pend_interrupt_line
+    unsafe fn pend_interrupt_line(_line: InterruptNum) -> Result<(), PendInterruptLineError> {
+        Err(PendInterruptLineError::BadParam)
+    }
+
+    /// Handle the call to [`PortInterrupts::clear_interrupt_line`] for a
+    /// platform interrupt line.
+    ///
+    /// The provided interrupt number must be greater than or equal to
+    /// [`INTERRUPT_PLATFORM_START`].
+    ///
+    /// [`PortInterrupts::clear_interrupt_line`]: constance::kernel::PortInterrupts::clear_interrupt_line
+    unsafe fn clear_interrupt_line(_line: InterruptNum) -> Result<(), ClearInterruptLineError> {
+        Err(ClearInterruptLineError::BadParam)
+    }
+
+    /// Handle the call to [`PortInterrupts::is_interrupt_line_pending`] for a
+    /// platform interrupt line.
+    ///
+    /// The provided interrupt number must be greater than or equal to
+    /// [`INTERRUPT_PLATFORM_START`].
+    ///
+    /// [`PortInterrupts::is_interrupt_line_pending`]: constance::kernel::PortInterrupts::is_interrupt_line_pending
+    unsafe fn is_interrupt_line_pending(
+        _line: InterruptNum,
+    ) -> Result<bool, QueryInterruptLineError> {
+        Err(QueryInterruptLineError::BadParam)
+    }
 }

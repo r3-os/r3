@@ -17,6 +17,7 @@ macro_rules! use_rt {
 
         #[export_name = "MachineExternal"]
         #[export_name = "MachineTimer"]
+        #[export_name = "MachineSoft"]
         #[naked]
         fn MachineExternal() {
             unsafe {

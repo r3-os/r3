@@ -1,17 +1,87 @@
 use constance::{
-    kernel::{Port, PortToKernel, TaskCb},
+    kernel::{
+        cfg::InterruptHandlerFn, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
+        InterruptPriority, PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
+        SetInterruptLinePriorityError, TaskCb,
+    },
     prelude::*,
     utils::{intrusive_list::StaticListHead, Init},
 };
-use core::{borrow::BorrowMut, cell::UnsafeCell, mem::MaybeUninit, slice};
+use core::{
+    borrow::BorrowMut, cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice,
+};
 
-use crate::{InterruptController, ThreadingOptions};
+use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
 
 /// `mstatus` (Machine Status Register)
 mod mstatus {
     pub const MIE: usize = 1 << 3;
     pub const MPIE: usize = 1 << 7;
     pub const MPP_M: usize = 0b11 << 11;
+
+    #[inline(always)]
+    pub fn clear(value: usize) {
+        unsafe { asm!("csrc mstatus, {}", in(reg) value) };
+    }
+
+    #[inline(always)]
+    pub fn set(value: usize) {
+        unsafe { asm!("csrs mstatus, {}", in(reg) value) };
+    }
+}
+
+/// `mip` (Machine Interrupt Pending)
+mod mip {
+    /// Machine Software Interrupt Pending
+    pub const MSIP: usize = 1 << 3;
+    /// Machine Timer Interrupt Pending
+    pub const MTIP: usize = 1 << 7;
+    /// Machine External Interrupt Pending
+    pub const MEIP: usize = 1 << 11;
+
+    #[inline(always)]
+    pub fn read() -> usize {
+        let read: usize;
+        unsafe { asm!("csrr {}, mip", lateout(reg) read) };
+        read
+    }
+
+    #[inline(always)]
+    pub fn clear(value: usize) {
+        unsafe { asm!("csrc mip, {}", in(reg) value) };
+    }
+
+    #[inline(always)]
+    pub fn set(value: usize) {
+        unsafe { asm!("csrs mip, {}", in(reg) value) };
+    }
+}
+
+/// `mip` (Machine Interrupt Enable)
+mod mie {
+    /// Machine Software Interrupt Enable
+    pub const MSIE: usize = 1 << 3;
+    /// Machine Timer Interrupt Enable
+    pub const MTIE: usize = 1 << 7;
+    /// Machine External Interrupt Enable
+    pub const MEIE: usize = 1 << 11;
+
+    #[inline(always)]
+    pub fn fetch_clear(value: usize) -> usize {
+        let read: usize;
+        unsafe { asm!("csrrc {}, mie, {}", lateout(reg) read, in(reg) value) };
+        read
+    }
+
+    #[inline(always)]
+    pub fn clear(value: usize) {
+        unsafe { asm!("csrc mie, {}", in(reg) value) };
+    }
+
+    #[inline(always)]
+    pub fn set(value: usize) {
+        unsafe { asm!("csrs mie, {}", in(reg) value) };
+    }
 }
 
 /// Implemented on a system type by [`use_port!`].
@@ -23,6 +93,14 @@ pub unsafe trait PortInstance:
     Kernel + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController
 {
     fn port_state() -> &'static State;
+
+    const INTERRUPT_SOFTWARE_HANDLER: Option<InterruptHandlerFn>;
+    const INTERRUPT_TIMER_HANDLER: Option<InterruptHandlerFn>;
+    const INTERRUPT_EXTERNAL_HANDLER: Option<InterruptHandlerFn>;
+
+    const USE_INTERRUPT_SOFTWARE: bool = Self::INTERRUPT_SOFTWARE_HANDLER.is_some();
+    const USE_INTERRUPT_TIMER: bool = Self::INTERRUPT_TIMER_HANDLER.is_some();
+    const USE_INTERRUPT_EXTERNAL: bool = Self::INTERRUPT_EXTERNAL_HANDLER.is_some();
 }
 
 pub struct State {
@@ -73,6 +151,20 @@ impl State {
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <System as InterruptController>::init() };
+
+        // Enable local interrupts
+        {
+            let mut clear_set = [0usize; 2];
+            clear_set[System::USE_INTERRUPT_SOFTWARE as usize] |= mie::MSIE;
+            clear_set[System::USE_INTERRUPT_TIMER as usize] |= mie::MTIE;
+            clear_set[System::USE_INTERRUPT_EXTERNAL as usize] |= mie::MEIE;
+            if clear_set[0] != 0 {
+                mie::clear(clear_set[0]);
+            }
+            if clear_set[1] != 0 {
+                mie::set(clear_set[1]);
+            }
+        }
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <System as PortToKernel>::boot() };
@@ -531,6 +623,92 @@ impl State {
         interrupt_nesting < 0
     }
 
+    pub fn set_interrupt_line_priority<System: PortInstance>(
+        &'static self,
+        num: InterruptNum,
+        priority: InterruptPriority,
+    ) -> Result<(), SetInterruptLinePriorityError> {
+        if num < INTERRUPT_PLATFORM_START {
+            Err(SetInterruptLinePriorityError::BadParam)
+        } else {
+            // Safety: We are delegating the call in the intended way
+            unsafe { <System as InterruptController>::set_interrupt_line_priority(num, priority) }
+        }
+    }
+
+    #[inline]
+    pub fn enable_interrupt_line<System: PortInstance>(
+        &'static self,
+        num: InterruptNum,
+    ) -> Result<(), EnableInterruptLineError> {
+        if num < INTERRUPT_PLATFORM_START {
+            // Enabling or disabling local interrupt lines is not supported
+            Err(EnableInterruptLineError::BadParam)
+        } else {
+            // Safety: We are delegating the call in the intended way
+            unsafe { <System as InterruptController>::enable_interrupt_line(num) }
+        }
+    }
+
+    #[inline]
+    pub fn disable_interrupt_line<System: PortInstance>(
+        &self,
+        num: InterruptNum,
+    ) -> Result<(), EnableInterruptLineError> {
+        if num < INTERRUPT_PLATFORM_START {
+            // Enabling or disabling local interrupt lines is not supported
+            Err(EnableInterruptLineError::BadParam)
+        } else {
+            // Safety: We are delegating the call in the intended way
+            unsafe { <System as InterruptController>::disable_interrupt_line(num) }
+        }
+    }
+
+    #[inline]
+    pub fn pend_interrupt_line<System: PortInstance>(
+        &'static self,
+        num: InterruptNum,
+    ) -> Result<(), PendInterruptLineError> {
+        if num == INTERRUPT_SOFTWARE {
+            mip::set(mip::MSIP);
+            Ok(())
+        } else if num < INTERRUPT_PLATFORM_START {
+            Err(PendInterruptLineError::BadParam)
+        } else {
+            // Safety: We are delegating the call in the intended way
+            unsafe { <System as InterruptController>::pend_interrupt_line(num) }
+        }
+    }
+
+    #[inline]
+    pub fn clear_interrupt_line<System: PortInstance>(
+        &self,
+        num: InterruptNum,
+    ) -> Result<(), ClearInterruptLineError> {
+        if num == INTERRUPT_SOFTWARE {
+            mip::clear(mip::MSIP);
+            Ok(())
+        } else if num < INTERRUPT_PLATFORM_START {
+            Err(ClearInterruptLineError::BadParam)
+        } else {
+            // Safety: We are delegating the call in the intended way
+            unsafe { <System as InterruptController>::clear_interrupt_line(num) }
+        }
+    }
+
+    #[inline]
+    pub fn is_interrupt_line_pending<System: PortInstance>(
+        &self,
+        num: InterruptNum,
+    ) -> Result<bool, QueryInterruptLineError> {
+        if num < INTERRUPT_PLATFORM_START {
+            Ok((mip::read() & (mip::MSIP << (num * 4))) != 0)
+        } else {
+            // Safety: We are delegating the call in the intended way
+            unsafe { <System as InterruptController>::is_interrupt_line_pending(num) }
+        }
+    }
+
     /// Implements [`crate::EntryPoint::external_interrupt_handler`].
     #[naked]
     #[inline(always)]
@@ -715,31 +893,136 @@ impl State {
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
-        let interrupt_nesting = System::port_state().interrupt_nesting.get();
+        let all_local_interrupts = [0, mie::MSIE][System::USE_INTERRUPT_SOFTWARE as usize]
+            | [0, mie::MTIE][System::USE_INTERRUPT_TIMER as usize]
+            | [0, mie::MEIE][System::USE_INTERRUPT_EXTERNAL as usize];
 
-        // Safety: There are no other mutable references to `*interrupt_nesting`
-        unsafe { *interrupt_nesting += 1 };
+        // `M[EST]IE` is used to simulate execution priority levels.
+        //
+        //  | MEIE | MSIE | MTIE | Priority |
+        //  | ---- | ---- | ---- | -------- |
+        //  |    0 |    0 |    0 |        3 |
+        //  |    1 |    0 |    0 |        2 |
+        //  |    1 |    1 |    0 |        1 |
+        //  |    1 |    1 |    1 | 0 (Task) |
+        //
+        // First, we raise the execution priority to maximum by clearing all of
+        // `M[EST]IE`. Then we lower the execution priority one by one as we
+        // skim through the pending flags.
+        //
+        // We must not lower the execution priority to a background execution
+        // priority while interrupts are enabled globally for this can lead to
+        // an unbounded stack consumption.
+        //
+        // The simplified pseudocode is shown below:
+        //
+        //  let bg_exc_pri = get_exc_pri();
+        //  set_exc_pri(3);
+        //  enable_interrupts_globally();
+        //  for exc_pri in (bg_exc_pri + 1 ..= 3).rev() {
+        //      set_exc_pri(exc_pri);
+        //      while pending[exc_pri] { handlers[exc_pri](); }
+        //  }
+        //  disable_interrupts_globally();
+        //  set_exc_pri(bg_exc_pri);
+        //
+        // The actual implementaion is closer to the following:
+        //
+        //  let bg_exc_pri = get_exc_pri();  // This value is implicit
+        //  let mut found_bg_exc_pri;        // Represented by `mie_pending`
+        //  set_exc_pri(3);
+        //  enable_interrupts_globally();
+        //  for exc_pri in (1 ..= 3).rev() {
+        //      if exc_pri > bg_exc_pri {
+        //          set_exc_pri(exc_pri);
+        //          while pending[exc_pri] { handlers[exc_pri](); }
+        //          found_bg_exc_pri = exc_pri - 1;
+        //      }
+        //  }
+        //  disable_interrupts_globally();
+        //  set_exc_pri(found_bg_exc_pri);
+        //
+        //
+        let old_mie = mie::fetch_clear(all_local_interrupts);
+        let mut mie_pending = 0;
 
-        // Safety: We are the port, so it's okay to call this
-        if let Some((token, line)) = unsafe { System::claim_interrupt() } {
-            // Now that we have claimed the current exception, we can start
-            // accepting nested exceptions.
-            unsafe { llvm_asm!("csrsi mstatus, $0"::"i"(mstatus::MIE)::"volatile") };
+        // Re-enable interrupts globally.
+        mstatus::set(mstatus::MIE);
 
-            if let Some(handler) = System::INTERRUPT_HANDLERS.get(line) {
-                // Safety: The first-level interrupt handler is the only code
-                //         allowed to call this
+        let mut mip = mip::read();
+
+        // Check the pending flags and call the respective handlers in the
+        // descending order of priority.
+        if System::USE_INTERRUPT_EXTERNAL && (old_mie & mie::MEIE) != 0 {
+            // Safety: `USE_INTERRUPT_EXTERNAL == true`
+            let handler = System::INTERRUPT_EXTERNAL_HANDLER
+                .unwrap_or_else(|| unsafe { unreachable_unchecked() });
+
+            while (mip & mip::MEIP) != 0 {
+                // Safety: The first-level interrupt handler is allowed to call
+                //         a second-level interrupt handler
                 unsafe { handler() };
+
+                mip = mip::read();
             }
 
-            unsafe { llvm_asm!("csrci mstatus, $0"::"i"(mstatus::MIE)::"volatile") };
-
-            // Safety: We are the port, so it's okay to call this
-            unsafe { System::end_interrupt(token) };
+            mie_pending = mie::MEIE;
         }
 
-        // Safety: There are no other mutable references to `*interrupt_nesting`
-        unsafe { *interrupt_nesting -= 1 };
+        if System::USE_INTERRUPT_SOFTWARE && (old_mie & mie::MSIE) != 0 {
+            // Safety: `USE_INTERRUPT_SOFTWARE == true`
+            let handler = System::INTERRUPT_SOFTWARE_HANDLER
+                .unwrap_or_else(|| unsafe { unreachable_unchecked() });
+
+            if System::USE_INTERRUPT_EXTERNAL {
+                debug_assert_eq!(mie_pending, mie::MEIE);
+                mie::set(mie::MEIE);
+            } else {
+                debug_assert_eq!(mie_pending, 0);
+            }
+
+            while (mip & mip::MSIP) != 0 {
+                // Safety: The first-level interrupt handler is allowed to call
+                //         a second-level interrupt handler
+                unsafe { handler() };
+
+                mip = mip::read();
+            }
+
+            mie_pending = mie::MSIE;
+        }
+
+        if System::USE_INTERRUPT_TIMER && (old_mie & mie::MTIE) != 0 {
+            // Safety: `USE_INTERRUPT_TIMER == true`
+            let handler = System::INTERRUPT_TIMER_HANDLER
+                .unwrap_or_else(|| unsafe { unreachable_unchecked() });
+
+            if System::USE_INTERRUPT_SOFTWARE {
+                debug_assert_eq!(mie_pending, mie::MSIE);
+                mie::set(mie::MSIE);
+            } else if System::USE_INTERRUPT_EXTERNAL {
+                debug_assert_eq!(mie_pending, mie::MEIE);
+                mie::set(mie::MEIE);
+            } else {
+                debug_assert_eq!(mie_pending, 0);
+            }
+
+            while (mip & mip::MTIP) != 0 {
+                // Safety: The first-level interrupt handler is allowed to call
+                //         a second-level interrupt handler
+                unsafe { handler() };
+
+                mip = mip::read();
+            }
+
+            mie_pending = mie::MTIE;
+        }
+
+        // Disable interrupts globally before returning.
+        mstatus::set(mstatus::MIE);
+
+        debug_assert_ne!(mie_pending, 0);
+        mie::set(mie_pending);
     }
 }
 
