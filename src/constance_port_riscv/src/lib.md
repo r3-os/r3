@@ -136,6 +136,8 @@ struct ContextState {
 
 The idle task (the implicit task that runs when `*`[`running_task_ptr`]`().is_none()`) always execute with `sp == 0`. For the idle task, saving and restoring the context store is essentially replaced with no-op or loads of hard-coded values. In particular, `pc` is always “restored” with the entry point of the idle task.
 
+[`running_task_ptr`]: constance::kernel::State::running_task_ptr
+
 ## Processor Modes
 
 All code executes in Machine mode. The value of `mstatus.MPP` is always `M` (`0b11`).
