@@ -361,7 +361,7 @@ impl State {
             Dispatch:
                 # Choose the next task to run. `choose_and_get_next_task`
                 # returns the new value of `running_task`.
-                jal $1
+                call $1
 
                 # Restore SP from `TaskState`
                 #
@@ -371,7 +371,7 @@ impl State {
                 #    }
                 #    sp = a0.port_task_state.sp
                 #
-                beqz a0, $2
+                beqz a0, ${:private}IdleTaskTrampoline${:uid}
                 lw sp, (a0)
 
                 # Pop the second-level context state.
@@ -431,6 +431,9 @@ impl State {
                 lw t6, (4 * 15)(sp)
                 addi sp, sp, (4 * 17)
                 mret
+
+            ${:private}IdleTaskTrampoline${:uid}:
+                tail $2
             "
             :
             :   "{a0}"(running_task_ptr)
@@ -469,9 +472,9 @@ impl State {
                 #
                 # If we are returning to the idle task, branch to `idle_task`
                 # directly because `PopFirstLevelState` can't handle this case.
-                beqz sp, $2
+                beqz sp, ${:private}IdleTaskTrampoline${:uid}
 
-                j PopFirstLevelState
+                tail PopFirstLevelState
 
                 # `dispatch_pending` is set, meaning `yield_cpu` was called in
                 # an interrupt handler, meaning we might need to return to a
@@ -479,7 +482,10 @@ impl State {
                 # `push_second_level_state_and_dispatch`.
             NotShortcutting:
                 sb zero, (a0)
-                j $1
+                tail $1
+
+            ${:private}IdleTaskTrampoline${:uid}:
+                tail $2
             "
             :
             :   "{a0}"(dispatch_pending_ptr)
@@ -843,7 +849,7 @@ impl State {
 
             RealignStackEnd:
                 # Call `handle_irq`
-                jal $0
+                call $0
 
                 # Decrement the nesting count.
                 #
@@ -870,11 +876,14 @@ impl State {
                 #       goto PopFirstLevelState;
                 #   }
                 #
-                bgez a0, PopFirstLevelState
+                bgez a0, PopFirstLevelStateTrampoline
 
                 # Return to the task context by restoring the first-level and
                 # second-level state of the next task.
-                j $1
+                tail $1
+
+            PopFirstLevelStateTrampoline:
+                tail PopFirstLevelState
                 "
             :
             :   "X"(Self::handle_interrupt::<System> as unsafe fn())
