@@ -78,6 +78,7 @@ macro_rules! use_sp804 {
                     hw_freq_denom: <$ty as Sp804Options>::FREQUENCY_DENOMINATOR,
                     hw_headroom_ticks: <$ty as Sp804Options>::HEADROOM,
                     force_full_hw_period: false,
+                    resettable: false,
                 }) {
                     Ok(x) => x,
                     Err(e) => e.panic(),
