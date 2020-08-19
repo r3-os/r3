@@ -490,6 +490,16 @@ pub unsafe trait PortInterrupts: KernelCfg1 {
     #[allow(clippy::reversed_empty_ranges)] // on purpose
     const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
 
+    /// The list of interrupt lines which are considered [managed].
+    ///
+    /// Defaults to `&[]` (empty) when unspecified.
+    ///
+    /// This is useful when the driver employs a fixed priority scheme and
+    /// doesn't support changing interrupt line priorities.
+    ///
+    /// [managed]: crate#interrupt-handling-framework
+    const MANAGED_INTERRUPT_LINES: &'static [InterruptNum] = &[];
+
     /// Set the priority of the specified interrupt line.
     ///
     /// Precondition: CPU Lock active. Task context or boot phase.

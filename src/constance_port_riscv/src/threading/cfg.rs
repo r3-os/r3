@@ -117,6 +117,12 @@ macro_rules! use_port {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
                     <$sys as InterruptController>::MANAGED_INTERRUPT_PRIORITY_RANGE;
 
+                const MANAGED_INTERRUPT_LINES: &'static [InterruptNum] = &[
+                    $crate::INTERRUPT_SOFTWARE,
+                    $crate::INTERRUPT_TIMER,
+                    $crate::INTERRUPT_EXTERNAL,
+                ];
+
                 #[inline]
                 unsafe fn set_interrupt_line_priority(
                     line: InterruptNum,

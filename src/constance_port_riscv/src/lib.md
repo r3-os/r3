@@ -37,7 +37,7 @@ The local interrupts are always enabled from an API point of view. **[`Interrupt
 
 > **Rationale:** Because their enable bits are toggled frequently in the top-level interrupt handler, removing the ability to disable these interrupts simplifies the implementation and reduces interupt latency. This should pose no problems for most cases.
 
-The local interrupts are always [*managed*].
+The local interrupts are always [*managed*]. This is because CPU Lock is currently mapped to `mstatus.MIE` (global interrupt-enable).
 
 ## Interrupt Controller
 

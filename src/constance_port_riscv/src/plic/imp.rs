@@ -8,14 +8,10 @@ use crate::{Plic, INTERRUPT_EXTERNAL, INTERRUPT_PLATFORM_START};
 
 /// The configuration function.
 pub const fn configure<System: Plic + Kernel>(b: &mut CfgBuilder<System>) -> () {
-    // TODO: `INTERRUPT_EXTERNAL` is implicitly "managed"
-    unsafe {
-        InterruptHandler::build()
-            .line(INTERRUPT_EXTERNAL)
-            .start(interrupt_handler::<System>)
-            .unmanaged()
-            .finish(b);
-    }
+    InterruptHandler::build()
+        .line(INTERRUPT_EXTERNAL)
+        .start(interrupt_handler::<System>)
+        .finish(b);
 }
 
 /// Implements [`crate::InterruptController::init`].
