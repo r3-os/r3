@@ -21,6 +21,11 @@ pub struct TicklessOptions {
     pub hw_freq_denom: u64,
     /// The headroom for interrupt latency, measured in hardware timer cycles.
     pub hw_headroom_ticks: u32,
+    /// Forces [`hw_max_tick_count`] to be `u32::MAX`. This might require the
+    /// use of a less-efficient algorithm.
+    ///
+    /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
+    pub force_full_hw_period: bool,
 }
 
 /// Error type for [`TicklessCfg::new`].
@@ -106,6 +111,7 @@ impl TicklessCfg {
             hw_freq_num,
             hw_freq_denom,
             hw_headroom_ticks,
+            force_full_hw_period,
         }: TicklessOptions,
     ) -> Result<Self, CfgError> {
         if hw_freq_denom == 0 {
@@ -174,6 +180,9 @@ impl TicklessCfg {
             // Prevent `[hw_]max_tick_count` from being zero
             && (hw_global_period <= 0x8000_0000 || global_period > 1)
             && (global_period <= 0x8000_0000 || hw_global_period > 1)
+            && (!force_full_hw_period ||
+                (0x1_0000_0000 % hw_global_period == 0
+                 && hw_global_period >= global_period))
         {
             // If the period is measurable without wrap-around in both ticks,
             // the stateless algorithm is applicable.
@@ -183,6 +192,10 @@ impl TicklessCfg {
             );
             let hw_max_tick_count = hw_global_period * repeat - 1;
             let max_tick_count = global_period * repeat - 1;
+
+            if force_full_hw_period {
+                assert!(hw_max_tick_count == u32::MAX as u128);
+            }
 
             // Find the maximum value of `max_timeout` such that:
             //
@@ -711,7 +724,8 @@ mod tests {
             TicklessCfg::new(TicklessOptions {
                 hw_freq_num: 1,
                 hw_freq_denom: 1,
-                hw_headroom_ticks: 1
+                hw_headroom_ticks: 1,
+                force_full_hw_period: false,
             })
             .unwrap(),
             TicklessCfg {
@@ -725,6 +739,25 @@ mod tests {
                 max_timeout: 4_292_000_000,
             },
         );
+
+        // 1Hz clock, 1-cycle period = 1s, 1-cycle latency tolerance
+        // `hw_max_tick_count` is fixed at `u32::MAX`
+        assert_eq!(
+            TicklessCfg::new(TicklessOptions {
+                hw_freq_num: 1,
+                hw_freq_denom: 1,
+                hw_headroom_ticks: 1,
+                force_full_hw_period: true,
+            })
+            .unwrap(),
+            TicklessCfg {
+                hw_ticks_per_micro: 0,
+                hw_subticks_per_micro: 1,
+                algorithm: TicklessAlgorithm::Stateful,
+                division: 1_000_000,
+                max_timeout: 4_292_967_296,
+            },
+        );
     }
 
     /// The clock frequency given to `TicklessCfg` must not be zero.
@@ -734,7 +767,8 @@ mod tests {
             TicklessCfg::new(TicklessOptions {
                 hw_freq_num: 0,
                 hw_freq_denom: 1,
-                hw_headroom_ticks: 1
+                hw_headroom_ticks: 1,
+                force_full_hw_period: false,
             }),
             Err(CfgError::FreqNumZero)
         );
@@ -748,7 +782,8 @@ mod tests {
             TicklessCfg::new(TicklessOptions {
                 hw_freq_num: 1,
                 hw_freq_denom: 0,
-                hw_headroom_ticks: 1
+                hw_headroom_ticks: 1,
+                force_full_hw_period: false,
             }),
             Err(CfgError::FreqDenomZero)
         );
@@ -762,7 +797,8 @@ mod tests {
             TicklessCfg::new(TicklessOptions {
                 hw_freq_num: 1_000_000 * 0x1_0000_0000,
                 hw_freq_denom: 1,
-                hw_headroom_ticks: 0
+                hw_headroom_ticks: 0,
+                force_full_hw_period: false,
             }),
             Err(CfgError::FreqTooHigh)
         );
@@ -777,10 +813,27 @@ mod tests {
             TicklessCfg::new(TicklessOptions {
                 hw_freq_num: 0x1fffffffffffffff,
                 hw_freq_denom: 0x1ffffffffffffffe,
-                hw_headroom_ticks: 0
+                hw_headroom_ticks: 0,
+                force_full_hw_period: false,
             }),
             Err(CfgError::InternalOverflow)
         );
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn quickcheck_cfg(
+        hw_freq_num: u64,
+        hw_freq_denom: u64,
+        hw_headroom_ticks: u32,
+        force_full_hw_period: bool,
+    ) {
+        // `TicklessCfg::new` includes various integrity checks
+        let _ = TicklessCfg::new(TicklessOptions {
+            hw_freq_num,
+            hw_freq_denom,
+            hw_headroom_ticks,
+            force_full_hw_period,
+        });
     }
 
     #[derive(Debug, Copy, Clone)]
@@ -827,7 +880,7 @@ mod tests {
     }
 
     macro tickless_simulate(
-        mod $ident:ident {}, $freq_num:expr, $freq_denom:expr, $hw_headroom_ticks:expr
+        mod $ident:ident {}, $freq_num:expr, $freq_denom:expr, $hw_headroom_ticks:expr, $force_full_hw_period:expr
     ) {
         mod $ident {
             use super::*;
@@ -836,6 +889,7 @@ mod tests {
                 hw_freq_num: $freq_num,
                 hw_freq_denom: $freq_denom,
                 hw_headroom_ticks: $hw_headroom_ticks,
+                force_full_hw_period: $force_full_hw_period,
             }) {
                 Ok(x) => x,
                 Err(e) => e.panic(),
@@ -1032,23 +1086,55 @@ mod tests {
         }
     }
 
-    tickless_simulate!(mod sim1 {}, 1, 1, 1);
-    tickless_simulate!(mod sim2 {}, 125_000_000, 1, 125);
-    tickless_simulate!(mod sim3 {}, 375_000_000, 1, 1250);
-    tickless_simulate!(mod sim4 {}, 125_000_000, 3, 0);
-    tickless_simulate!(mod sim5 {}, 125_000_000, 3, 125);
-    tickless_simulate!(mod sim6 {}, 125_000_000, 3, 125_000_000);
-    tickless_simulate!(mod sim7 {}, 125_000_000, 3, 0xffff_ffa7);
-    tickless_simulate!(mod sim8 {}, 10_000_000, 1, 1);
-    tickless_simulate!(mod sim9 {}, 375, 1, 250_000);
-    tickless_simulate!(mod sim10 {}, 1, 260, 0);
-    tickless_simulate!(mod sim11 {}, 1, 260, 1);
-    tickless_simulate!(mod sim12 {}, 1, 260, 10);
-    tickless_simulate!(mod sim13 {}, 0x501e_e2c2_9a0f, 0xb79a, 0);
-    tickless_simulate!(mod sim14 {}, 0x501e_e2c2_9a0f, 0xb79a, 0x64);
-    tickless_simulate!(mod sim15 {}, 0x501e_e2c2_9a0f, 0xb79a, 0x1_0000);
-    tickless_simulate!(mod sim16 {}, 0x501e_e2c2_9a0f, 0xb79a_14f3, 0);
-    tickless_simulate!(mod sim17 {}, 0x501e_e2c2_9a0f, 0xb79a_14f3, 0x64);
-    tickless_simulate!(mod sim18 {}, 0xb79a_14f3, 0x1e_e2c2_9a0f, 1);
-    tickless_simulate!(mod sim19 {}, 0xff_ffff_ffff_ffff, 0xff_ffff_fffe, 0x41);
+    tickless_simulate!(mod sim1 {}, 1, 1, 1, false);
+    tickless_simulate!(mod sim2 {}, 125_000_000, 1, 125, false);
+    tickless_simulate!(mod sim3 {}, 375_000_000, 1, 1250, false);
+    tickless_simulate!(mod sim4 {}, 125_000_000, 3, 0, false);
+    tickless_simulate!(mod sim5 {}, 125_000_000, 3, 125, false);
+    tickless_simulate!(mod sim6 {}, 125_000_000, 3, 125_000_000, false);
+    tickless_simulate!(mod sim7 {}, 125_000_000, 3, 0xffff_ffa7, false);
+    tickless_simulate!(mod sim8 {}, 10_000_000, 1, 1, false);
+    tickless_simulate!(mod sim9 {}, 375, 1, 250_000, false);
+    tickless_simulate!(mod sim10 {}, 1, 260, 0, false);
+    tickless_simulate!(mod sim11 {}, 1, 260, 1, false);
+    tickless_simulate!(mod sim12 {}, 1, 260, 10, false);
+    tickless_simulate!(mod sim13 {}, 0x501e_e2c2_9a0f, 0xb79a, 0, false);
+    tickless_simulate!(mod sim14 {}, 0x501e_e2c2_9a0f, 0xb79a, 0x64, false);
+    tickless_simulate!(mod sim15 {}, 0x501e_e2c2_9a0f, 0xb79a, 0x1_0000, false);
+    tickless_simulate!(mod sim16 {}, 0x501e_e2c2_9a0f, 0xb79a_14f3, 0, false);
+    tickless_simulate!(mod sim17 {}, 0x501e_e2c2_9a0f, 0xb79a_14f3, 0x64, false);
+    tickless_simulate!(mod sim18 {}, 0xb79a_14f3, 0x1e_e2c2_9a0f, 1, false);
+    tickless_simulate!(
+        mod sim19 {},
+        0xff_ffff_ffff_ffff,
+        0xff_ffff_fffe,
+        0x41,
+        false
+    );
+
+    tickless_simulate!(mod sim1_full {}, 1, 1, 1, true);
+    tickless_simulate!(mod sim2_full {}, 125_000_000, 1, 125, true);
+    tickless_simulate!(mod sim3_full {}, 375_000_000, 1, 1250, true);
+    tickless_simulate!(mod sim4_full {}, 125_000_000, 3, 0, true);
+    tickless_simulate!(mod sim5_full {}, 125_000_000, 3, 125, true);
+    tickless_simulate!(mod sim6_full {}, 125_000_000, 3, 125_000_000, true);
+    tickless_simulate!(mod sim7_full {}, 125_000_000, 3, 0xffff_ffa7, true);
+    tickless_simulate!(mod sim8_full {}, 10_000_000, 1, 1, true);
+    tickless_simulate!(mod sim9_full {}, 375, 1, 250_000, true);
+    tickless_simulate!(mod sim10_full {}, 1, 260, 0, true);
+    tickless_simulate!(mod sim11_full {}, 1, 260, 1, true);
+    tickless_simulate!(mod sim12_full {}, 1, 260, 10, true);
+    tickless_simulate!(mod sim13_full {}, 0x501e_e2c2_9a0f, 0xb79a, 0, true);
+    tickless_simulate!(mod sim14_full {}, 0x501e_e2c2_9a0f, 0xb79a, 0x64, true);
+    tickless_simulate!(mod sim15_full {}, 0x501e_e2c2_9a0f, 0xb79a, 0x1_0000, true);
+    tickless_simulate!(mod sim16_full {}, 0x501e_e2c2_9a0f, 0xb79a_14f3, 0, true);
+    tickless_simulate!(mod sim17_full {}, 0x501e_e2c2_9a0f, 0xb79a_14f3, 0x64, true);
+    tickless_simulate!(mod sim18_full {}, 0xb79a_14f3, 0x1e_e2c2_9a0f, 1, true);
+    tickless_simulate!(
+        mod sim19_full {},
+        0xff_ffff_ffff_ffff,
+        0xff_ffff_fffe,
+        0x41,
+        true
+    );
 }
