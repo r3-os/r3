@@ -63,8 +63,8 @@ macro_rules! use_port {
 
                 #[naked]
                 #[inline(always)]
-                unsafe fn external_interrupt_handler() -> ! {
-                    unsafe { State::external_interrupt_handler::<Self>() };
+                unsafe fn exception_handler() -> ! {
+                    unsafe { State::exception_handler::<Self>() };
                 }
             }
 

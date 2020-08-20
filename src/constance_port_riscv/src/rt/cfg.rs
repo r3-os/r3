@@ -8,21 +8,21 @@ pub extern crate riscv_rt;
 #[macro_export]
 macro_rules! use_rt {
     (unsafe $sys:ty) => {
-        #[$crate::riscv_rt::entry]
-        fn start() -> ! {
-            unsafe {
-                <$sys as $crate::EntryPoint>::start();
+        const _: () = {
+            #[$crate::riscv_rt::entry]
+            fn start() -> ! {
+                unsafe {
+                    <$sys as $crate::EntryPoint>::start();
+                }
             }
-        }
 
-        #[export_name = "MachineExternal"]
-        #[export_name = "MachineTimer"]
-        #[export_name = "MachineSoft"]
-        #[naked]
-        fn MachineExternal() {
-            unsafe {
-                <$sys as $crate::EntryPoint>::external_interrupt_handler();
+            // Called by `riscv-rt`'s startup code
+            #[no_mangle]
+            fn _setup_interrupts() {
+                unsafe {
+                    $crate::rt::imp::setup_interrupt_handler::<$sys>();
+                }
             }
-        }
+        };
     };
 }

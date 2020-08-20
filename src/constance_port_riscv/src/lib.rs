@@ -36,6 +36,8 @@ pub mod plic {
 #[doc(hidden)]
 pub mod rt {
     pub mod cfg;
+    #[cfg(target_os = "none")]
+    pub mod imp;
 }
 
 /// The [`constance::kernel::PortThreading`] implementation.

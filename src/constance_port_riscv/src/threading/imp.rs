@@ -29,6 +29,18 @@ mod mstatus {
         unsafe { asm!("csrs mstatus, {}", in(reg) value) };
     }
 }
+/// `mcause` (Machine Cause Register)
+mod mcause {
+    pub const Interrupt: usize = usize::MAX - usize::MAX / 2;
+    pub const ExceptionCode_MASK: usize = usize::MAX / 2;
+
+    #[inline(always)]
+    pub fn read() -> usize {
+        let read: usize;
+        unsafe { asm!("csrr {}, mcause", lateout(reg) read) };
+        read
+    }
+}
 
 /// `mip` (Machine Interrupt Pending)
 mod mip {
@@ -715,10 +727,10 @@ impl State {
         }
     }
 
-    /// Implements [`crate::EntryPoint::external_interrupt_handler`].
+    /// Implements [`crate::EntryPoint::exception_handler`].
     #[naked]
     #[inline(always)]
-    pub unsafe fn external_interrupt_handler<System: PortInstance>() -> !
+    pub unsafe fn exception_handler<System: PortInstance>() -> !
     where
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
@@ -886,7 +898,7 @@ impl State {
                 tail PopFirstLevelState
                 "
             :
-            :   "X"(Self::handle_interrupt::<System> as unsafe fn())
+            :   "X"(Self::handle_exception::<System> as unsafe fn())
             ,   "X"(Self::push_second_level_state_and_dispatch_shortcutting::<System> as unsafe fn() -> !)
             ,   "s"(interrupt_nesting)
             ,   "s"(main_stack)
@@ -897,11 +909,16 @@ impl State {
         }
     }
 
-    unsafe fn handle_interrupt<System: PortInstance>()
+    unsafe fn handle_exception<System: PortInstance>()
     where
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
+        let mcause = mcause::read();
+        if (mcause & mcause::Interrupt) == 0 {
+            panic!("unhandled exception: {}", mcause);
+        }
+
         let all_local_interrupts = [0, mie::MSIE][System::USE_INTERRUPT_SOFTWARE as usize]
             | [0, mie::MTIE][System::USE_INTERRUPT_TIMER as usize]
             | [0, mie::MEIE][System::USE_INTERRUPT_EXTERNAL as usize];
