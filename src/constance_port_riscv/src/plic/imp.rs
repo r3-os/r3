@@ -28,30 +28,37 @@ pub fn init<System: Plic>() {
 
 #[inline]
 fn interrupt_handler<System: Plic + Kernel>(_: usize) {
-    if let Some((old_threshold, num)) = claim_interrupt::<System>() {
+    if let Some((token, num)) = claim_interrupt::<System>() {
         if let Some(handler) = System::INTERRUPT_HANDLERS.get(num) {
-            unsafe { riscv::register::mie::set_mext() };
+            if System::USE_NESTING {
+                unsafe { riscv::register::mie::set_mext() };
+            }
 
             // Safety: The interrupt controller driver is responsible for
             //         dispatching the appropriate interrupt handler for
             //         a platform interrupt
             unsafe { handler() };
 
-            unsafe { riscv::register::mie::clear_mext() };
+            if System::USE_NESTING {
+                unsafe { riscv::register::mie::clear_mext() };
+            }
         }
 
-        end_interrupt::<System>(old_threshold);
+        end_interrupt::<System>(token);
     }
 }
 
+type Token = u32;
+
 #[inline]
-fn claim_interrupt<System: Plic>() -> Option<(u32, InterruptNum)> {
+fn claim_interrupt<System: Plic>() -> Option<(Token, InterruptNum)> {
     let plic_regs = System::plic_regs();
 
     let num = plic_regs.ctxs[System::CONTEXT].claim_complete.get();
     if num == 0 {
-        None
-    } else {
+        return None;
+    }
+    if System::USE_NESTING {
         // Raise the priority threshold to mask the claimed interrupt
         let old_threshold = plic_regs.ctxs[System::CONTEXT].priority_threshold.get();
         let priority = plic_regs.interrupt_priority[num as usize].get();
@@ -67,16 +74,22 @@ fn claim_interrupt<System: Plic>() -> Option<(u32, InterruptNum)> {
             old_threshold,
             num as InterruptNum + INTERRUPT_PLATFORM_START,
         ))
+    } else {
+        Some((num, num as InterruptNum + INTERRUPT_PLATFORM_START))
     }
 }
 
 #[inline]
-fn end_interrupt<System: Plic>(old_threshold: u32) {
+fn end_interrupt<System: Plic>(token: Token) {
     let plic_regs = System::plic_regs();
 
-    plic_regs.ctxs[System::CONTEXT]
-        .priority_threshold
-        .set(old_threshold);
+    if System::USE_NESTING {
+        plic_regs.ctxs[System::CONTEXT]
+            .priority_threshold
+            .set(token);
+    } else {
+        plic_regs.ctxs[System::CONTEXT].claim_complete.set(token);
+    }
 }
 
 /// Implements [`crate::InterruptController::set_interrupt_line_priority`].

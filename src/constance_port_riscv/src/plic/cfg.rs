@@ -133,6 +133,18 @@ pub trait PlicOptions {
 
     /// The PLIC context for the hart on which the kernel runs.
     const CONTEXT: usize = 0;
+
+    /// Enables the trick for nested interrupt processing.
+    ///
+    /// PLIC is not designed to allow nested interrupt processing. When this
+    /// flag is enabled, the driver will signal completion earlier to start
+    /// accepting higher-priority interrupts.
+    ///
+    /// This should be disabled when there is at least one interrupt source
+    /// configured to target multiple contexts.
+    ///
+    /// Defaults to `true` when unspecified.
+    const USE_NESTING: bool = true;
 }
 
 /// Provides access to a system-global PLIC instance. Implemented by [`use_plic!`].
