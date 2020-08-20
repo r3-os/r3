@@ -22,6 +22,10 @@ pub extern crate constance;
 
 /// Used by macros
 #[doc(hidden)]
+pub extern crate constance_portkit;
+
+/// Used by macros
+#[doc(hidden)]
 pub extern crate core;
 
 /// The Platform-Level Interrupt Controller driver.
@@ -48,9 +52,17 @@ pub mod threading {
     pub mod imp;
 }
 
+/// The standard timer driver.
+#[doc(hidden)]
+pub mod timer {
+    pub mod cfg;
+    pub mod imp;
+}
+
 pub use self::plic::cfg::*;
 pub use self::rt::cfg::*;
 pub use self::threading::cfg::*;
+pub use self::timer::cfg::*;
 
 /// Defines the entry points of a port instantiation. Implemented by
 /// [`use_port!`].
@@ -72,7 +84,21 @@ pub trait EntryPoint {
     ///  - The register state of the background context should be preserved so
     ///    that the handler can restore it later.
     ///
-    unsafe fn external_interrupt_handler() -> !;
+    unsafe fn exception_handler() -> !;
+}
+
+/// An abstract inferface to a port timer driver. Implemented by
+/// [`use_timer!`].
+pub trait Timer {
+    /// Initialize the driver. This will be called just before entering
+    /// [`PortToKernel::boot`].
+    ///
+    /// [`PortToKernel::boot`]: constance::kernel::PortToKernel::boot
+    ///
+    /// # Safety
+    ///
+    /// This is only intended to be called by the port.
+    unsafe fn init() {}
 }
 
 /// An abstract interface to an interrupt controller. Implemented by

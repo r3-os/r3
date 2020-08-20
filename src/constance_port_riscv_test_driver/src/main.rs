@@ -45,6 +45,7 @@ macro_rules! instantiate_test {
         port::use_port!(unsafe struct System);
         port::use_rt!(unsafe System);
         port::use_plic!(unsafe impl InterruptController for System);
+        port::use_timer!(unsafe impl PortTimer for System);
 
         impl port::ThreadingOptions for System {}
 
@@ -55,19 +56,13 @@ macro_rules! instantiate_test {
             const PLIC_BASE: usize = 0x0c00_0000;
         }
 
-        use constance::kernel::UTicks;
-        impl constance::kernel::PortTimer for System {
-            // TODO
-            const MAX_TICK_COUNT: UTicks = 0xffffffff;
-            const MAX_TIMEOUT: UTicks = 0x80000000;
-            unsafe fn tick_count() -> UTicks {
-                0
-            }
-            unsafe fn pend_tick_after(tick_count_delta: UTicks) {
-                if tick_count_delta < Self::MAX_TIMEOUT {
-                    todo!("pend_tick_after")
-                }
-            }
+        impl port::TimerOptions for System {
+            const MTIME_PTR: usize = 0x0200_bff8;
+            const MTIMECMP_PTR: usize = 0x0200_4000;
+            const FREQUENCY: u64 = 10_000_000;
+
+            // Updating `mtime` is not supported by QEMU.
+            const RESET_MTIME: bool = false;
         }
 
         struct Driver;
@@ -93,6 +88,7 @@ macro_rules! instantiate_test {
 
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
             System::configure_plic(b);
+            System::configure_timer(b);
 
             // Redirect the log output to stderr
             #[cfg(feature = "output-uart")]
