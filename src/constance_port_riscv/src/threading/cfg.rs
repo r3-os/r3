@@ -57,7 +57,7 @@ macro_rules! use_port {
             }
 
             impl EntryPoint for $sys {
-                unsafe fn start() -> !{
+                unsafe fn start() -> ! {
                     unsafe { PORT_STATE.port_boot::<Self>() };
                 }
 
