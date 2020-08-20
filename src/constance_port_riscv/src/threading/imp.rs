@@ -872,7 +872,7 @@ impl State {
                 #
                 la a1, $2
                 lw a0, (a1)
-                addi a0, a0, 1
+                addi a0, a0, -1
                 sw a0, (a1)
 
                 # Restore `background_sp`
