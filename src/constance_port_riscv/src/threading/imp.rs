@@ -753,10 +753,11 @@ impl State {
                 #    background context ∈ {task, idle task, interrupt}]
                 #   if sp == 0 {
                 #       [background context ∈ {idle task}]
+                #       interrupt_nesting += 1;
                 #       goto SwitchToMainStack;
                 #   }
                 #
-                beqz sp, SwitchToMainStack
+                beqz sp, HandlerEntryForIdleTask
 
                 # Push the first-level state to the background context's stack
                 #
@@ -824,7 +825,7 @@ impl State {
                 # to `main_stack`. Meanwhile, push the original `sp` to
                 # `main_stack`.
                 #
-                #   [background context ∈ {task, idle task}]
+                #   [interrupt_nesting == 0, background context ∈ {task, idle task}]
                 #   *(main_stack - 4) = sp;
                 #   sp = main_stack - 4;
                 #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
@@ -849,7 +850,7 @@ impl State {
                 # (applicable to RV32E), where `sp` is only required to be
                 # aligned to a word boundary.
                 #
-                #   [background context ∈ {interrupt}]
+                #   [interrupt_nesting > 0, background context ∈ {interrupt}]
                 #   *((sp - 4) & !15) = sp
                 #   sp = (sp - 4) & !15
                 #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
@@ -896,6 +897,17 @@ impl State {
 
             PopFirstLevelStateTrampoline:
                 tail PopFirstLevelState
+
+            HandlerEntryForIdleTask:
+                # Increment the nesting count.
+                #
+                #   [interrupt_nesting == -1, background context ∈ {idle task}]
+                #   interrupt_nesting += 1;
+                #   [interrupt_nesting == 0]
+                #
+                la a1, $2
+                sw x0, (a1)
+                j SwitchToMainStack
                 "
             :
             :   "X"(Self::handle_exception::<System> as unsafe fn())
@@ -1045,7 +1057,7 @@ impl State {
         }
 
         // Disable interrupts globally before returning.
-        mstatus::set(mstatus::MIE);
+        mstatus::set(mstatus::MIE); // TODO: use `csrsi`
 
         debug_assert_ne!(mie_pending, 0);
         mie::set(mie_pending);
