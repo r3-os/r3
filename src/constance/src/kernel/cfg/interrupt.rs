@@ -351,6 +351,7 @@ pub type InterruptHandlerFn = unsafe extern "C" fn();
 /// A table of combined second-level interrupt handlers.
 ///
 /// The generic parameter is not a part of the public interface.
+#[derive(Debug)]
 pub struct InterruptHandlerTable<T: ?Sized = [Option<InterruptHandlerFn>]> {
     storage: T,
 }
