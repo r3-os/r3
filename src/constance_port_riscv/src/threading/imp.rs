@@ -20,16 +20,13 @@ mod mstatus {
     pub const MPP_M: usize = 0b11 << 11;
 
     #[inline(always)]
-    pub fn clear(value: usize) {
-        unsafe { asm!("csrc mstatus, {}", in(reg) value) };
-    }
-
-    #[inline(always)]
     pub fn set(value: usize) {
         unsafe { asm!("csrs mstatus, {}", in(reg) value) };
     }
 }
 /// `mcause` (Machine Cause Register)
+#[allow(non_upper_case_globals)]
+#[allow(dead_code)]
 mod mcause {
     pub const Interrupt: usize = usize::MAX - usize::MAX / 2;
     pub const ExceptionCode_MASK: usize = usize::MAX / 2;
