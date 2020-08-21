@@ -302,10 +302,21 @@ impl Target for QemuSiFiveE {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
-            // TODO: Redirect UART1 to stderr
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-riscv32",
-                &["-machine", "sifive_e"],
+                &[
+                    "-machine",
+                    "sifive_e",
+                    // UART0 → stdout
+                    "-serial",
+                    "file:/dev/stdout",
+                    // UART1 → stderr
+                    "-serial",
+                    "file:/dev/stderr",
+                    // Disable monitor
+                    "-monitor",
+                    "none",
+                ],
             )) as Box<dyn DebugProbe>)
         })
     }
