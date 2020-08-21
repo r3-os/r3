@@ -2,6 +2,7 @@
 #![feature(const_mut_refs)]
 #![feature(naked_functions)]
 #![feature(llvm_asm)]
+#![feature(decl_macro)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(feature = "test", no_std)]
@@ -16,6 +17,9 @@ mod panic_uart;
 #[cfg(feature = "output-e310x-uart")]
 #[path = "uart_e310x.rs"]
 mod uart;
+
+#[cfg(feature = "interrupt-e310x")]
+mod interrupt_e310x;
 
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
@@ -44,17 +48,12 @@ macro_rules! instantiate_test {
 
         port::use_port!(unsafe struct System);
         port::use_rt!(unsafe System);
-        port::use_plic!(unsafe impl InterruptController for System);
         port::use_timer!(unsafe impl PortTimer for System);
 
         impl port::ThreadingOptions for System {}
 
-        impl port::PlicOptions for System {
-            // SiFive E
-            const MAX_PRIORITY: InterruptPriority = 7;
-            const MAX_NUM: InterruptNum = 127;
-            const PLIC_BASE: usize = 0x0c00_0000;
-        }
+        #[cfg(feature = "interrupt-e310x")]
+        use_interrupt_e310x!(unsafe impl InterruptController for System);
 
         impl port::TimerOptions for System {
             const MTIME_PTR: usize = 0x0200_bff8;
@@ -77,8 +76,11 @@ macro_rules! instantiate_test {
             fn fail() {
                 report_fail();
             }
-            // TODO: Find a way to pend interrupts
-            const INTERRUPT_LINES: &'static [InterruptNum] = &[];
+            #[cfg(feature = "interrupt-e310x")]
+            const INTERRUPT_LINES: &'static [InterruptNum] = &[
+                crate::interrupt_e310x::INTERRUPT_GPIO0,
+                crate::interrupt_e310x::INTERRUPT_GPIO1,
+            ];
             const INTERRUPT_PRIORITY_LOW: InterruptPriority = 2;
             const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 6;
         }
@@ -87,7 +89,7 @@ macro_rules! instantiate_test {
             constance::build!(System, configure_app => test_case::App<System>);
 
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
-            System::configure_plic(b);
+            System::configure_interrupt(b);
             System::configure_timer(b);
 
             // Redirect the log output to stderr

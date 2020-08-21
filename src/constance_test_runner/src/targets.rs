@@ -272,7 +272,7 @@ impl Target for QemuSiFiveE {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-e310x-uart"]
+        &["output-e310x-uart", "interrupt-e310x"]
     }
 
     fn memory_layout_script(&self) -> String {
