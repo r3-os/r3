@@ -20,8 +20,13 @@ mod mstatus {
     pub const MPP_M: usize = 0b11 << 11;
 
     #[inline(always)]
-    pub fn set(value: usize) {
-        unsafe { asm!("csrs mstatus, {}", in(reg) value) };
+    pub fn clear_i<const VALUE: usize>() {
+        unsafe { asm!("csrci mstatus, {}", const VALUE) };
+    }
+
+    #[inline(always)]
+    pub fn set_i<const VALUE: usize>() {
+        unsafe { asm!("csrsi mstatus, {}", const VALUE) };
     }
 }
 /// `mcause` (Machine Cause Register)
@@ -982,7 +987,7 @@ impl State {
         let mut mie_pending = 0;
 
         // Re-enable interrupts globally.
-        mstatus::set(mstatus::MIE);
+        mstatus::set_i::<{ mstatus::MIE }>();
 
         let mut mip = mip::read();
 
@@ -1054,7 +1059,7 @@ impl State {
         }
 
         // Disable interrupts globally before returning.
-        mstatus::set(mstatus::MIE); // TODO: use `csrsi`
+        mstatus::clear_i::<{ mstatus::MIE }>();
 
         debug_assert_ne!(mie_pending, 0);
         mie::set(mie_pending);

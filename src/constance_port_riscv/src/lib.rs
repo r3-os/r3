@@ -4,6 +4,7 @@
 #![feature(slice_ptr_len)]
 #![feature(llvm_asm)]
 #![feature(asm)]
+#![feature(const_generics)]
 #![feature(const_option)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
