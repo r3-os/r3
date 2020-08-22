@@ -166,7 +166,5 @@ jobs:
           rustup target add riscv32imac-unknown-none-elf
 
       - name: Test (SiFive E, RV32IMAC)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: -p constance_test_runner -- -t qemu_sifive_e -l debug
+        run: |
+          cargo run -p constance_test_runner -- -t qemu_sifive_e -l debug
