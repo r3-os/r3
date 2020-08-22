@@ -132,7 +132,6 @@ unsafe impl Sync for State {}
 #[derive(Debug)]
 #[repr(C)]
 pub struct TaskState {
-    // TODO
     sp: UnsafeCell<u32>,
 }
 
@@ -239,8 +238,9 @@ impl State {
     {
         unsafe {
             llvm_asm!("
-                # Push the first level context state. The return address is
-                # set to `YieldReturn`.
+                # Push the first level context state. The saved `pc` directly
+                # points to the current return address. This means the saved
+                # `ra` (`sp[0]`) is irrelevant.
                 #
                 #   sp -= 17;
                 #   sp[1..10] = {t0-t2, a0-a5}
@@ -291,7 +291,8 @@ impl State {
     ///  - If there's no task to schedule, branch to [`Self::idle_task`].
     ///  - Pop the second-level state of the next scheduled task.
     ///  - `PopFirstLevelState:`
-    ///     - Pop the first-level state of the next scheduled task.
+    ///     - Pop the first-level state of the next thread (task or interrupt
+    ///       handler) to run.
     ///
     /// # Safety
     ///
@@ -413,10 +414,10 @@ impl State {
 
                 # Resume the next task by restoring the first-level state
                 #
-                #   [{a0-a7, t0-t6, sp} = resumed context]
+                #   [{s0-s11, sp} = resumed context]
                 #
                 #   mepc = sp[16];
-                #   {t0-t2, a0-a5} = sp[1..10];
+                #   {ra, t0-t2, a0-a5} = sp[0..10];
                 #   {a6-a7, t3-t6} = sp[10..16];
                 #   sp += 17;
                 #
