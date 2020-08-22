@@ -24,6 +24,10 @@ pub fn init<System: Plic>() {
     for i in 0..(num_ints + 31) / 32 {
         plic_regs.interrupt_enable[ctx][i].set(0);
     }
+
+    // Change the priority thread of the current context
+    // to accept all interrupts
+    plic_regs.ctxs[System::CONTEXT].priority_threshold.set(0);
 }
 
 #[inline]
