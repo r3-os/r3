@@ -100,13 +100,14 @@ macro_rules! use_interrupt_e310x {
     };
 }
 
+#[allow(dead_code)]
 mod gpio0 {
     use core::{mem::transmute, sync::atomic::AtomicU32};
     use e310x::GPIO0;
 
     macro gen($($field:ident,)*) {
         $(
-            pub fn $field() -> &'static core::sync::atomic::AtomicU32 {
+            pub fn $field() -> &'static AtomicU32 {
                 unsafe {
                     let gpio_regs = &*GPIO0::ptr();
                     transmute(&gpio_regs.$field)
