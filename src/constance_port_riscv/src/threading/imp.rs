@@ -406,7 +406,14 @@ impl State {
 
             .global PopFirstLevelState
             PopFirstLevelState:
-                # TODO: clear reservation by issuing a dummy SC
+                # Invalidate any reservation held by this hart (this will cause
+                # a subsequent Store-Conditional to fail).
+                #
+                # > Trap handlers should explicitly clear the reservation if
+                # > required (e.g., by using a dummy SC) before executing the
+                # > xRET.
+                addi a1, sp, -4
+                sc.w x0, x0, (a1)
 
                 # mstatus.MPP := M
                 li a0, $4
