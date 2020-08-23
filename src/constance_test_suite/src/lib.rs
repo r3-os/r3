@@ -307,7 +307,7 @@ pub mod kernel_benchmarks {
                 /// [**Test Case**]
                 #[cfg(any(
                     feature = "tests_all",
-                    all(feature = "tests_selective", kernel_test = $name_str)
+                    all(feature = "tests_selective", kernel_benchmark = $name_str)
                 ))]
                 pub mod $name_ident;
             )*
