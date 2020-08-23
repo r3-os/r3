@@ -224,7 +224,7 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
                 .arg("--release")
                 .arg("--target")
                 .arg(opt.target.target_triple())
-                .arg("--features=test")
+                .arg("--features=kernel_tests")
                 .args(
                     opt.target
                         .cargo_features()

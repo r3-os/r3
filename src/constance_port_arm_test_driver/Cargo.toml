@@ -7,7 +7,8 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [features]
-test = [
+kernel_tests = ["run"]
+run = [
     "constance_test_suite",
     "constance_port_arm",
     "constance",
