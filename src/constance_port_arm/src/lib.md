@@ -93,7 +93,7 @@ struct ContextState {
     //
     // This was designed after Arm-M's exception frame.
     //
-    // The GPR potion is comprised of callee-saved registers. In an exception
+    // The GPR potion is comprised of caller-saved registers. In an exception
     // handler, saving/restoring this set of registers at entry and exit allows
     // it to call Rust functions.
     //
