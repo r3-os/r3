@@ -203,11 +203,9 @@ impl State {
                 li a0, {MPIE}
                 csrs mstatus, a0
 
-                # `Dispatch` is a part of {push_second_level_state_and_dispatch}
-                j Dispatch
+                j {push_second_level_state_and_dispatch}.dispatch
                 ",
                 MAIN_STACK = sym MAIN_STACK,
-                // Ensure `Dispatch` is emitted
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 MPIE = const mstatus::MPIE,
@@ -282,12 +280,12 @@ impl State {
     ///  - If the current task is not an idle task,
     ///     - Push the second-level state.
     ///     - Store SP to the current task's `TaskState`.
-    ///  - `Dispatch:`
+    ///  - `dispatch:`
     ///     - Call [`constance::kernel::PortToKernel::choose_running_task`].
     ///     - Restore SP from the next scheduled task's `TaskState`.
     ///  - If there's no task to schedule, branch to [`Self::idle_task`].
     ///  - Pop the second-level state of the next scheduled task.
-    ///  - `PopFirstLevelState:`
+    ///  - `pop_first_level_state:`
     ///     - Pop the first-level state of the next thread (task or interrupt
     ///       handler) to run.
     ///
@@ -363,13 +361,13 @@ impl State {
                 lw a0, (a0)
                 sw sp, (a0)
 
-                j Dispatch
+                j {push_second_level_state_and_dispatch}.dispatch
 
             0:
                 lw sp, ({MAIN_STACK})
 
-            .global Dispatch
-            Dispatch:
+            .global {push_second_level_state_and_dispatch}.dispatch
+            {push_second_level_state_and_dispatch}.dispatch:
                 # Choose the next task to run. `choose_and_get_next_task`
                 # returns the new value of `running_task`.
                 call {choose_and_get_next_task}
@@ -401,8 +399,8 @@ impl State {
                 lw s11, (4 * 11)(sp)
                 addi sp, sp, (4 * 12)
 
-            .global PopFirstLevelState
-            PopFirstLevelState:
+            .global {push_second_level_state_and_dispatch}.pop_first_level_state
+            {push_second_level_state_and_dispatch}.pop_first_level_state:
                 # Invalidate any reservation held by this hart (this will cause
                 # a subsequent Store-Conditional to fail).
                 #
@@ -454,6 +452,8 @@ impl State {
             2:
                 tail {idle_task}
                 ",
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
                 choose_and_get_next_task = sym choose_and_get_next_task::<System>,
                 idle_task = sym Self::idle_task::<System>,
                 MAIN_STACK = sym MAIN_STACK,
@@ -465,7 +465,7 @@ impl State {
     }
 
     /// Branch to `push_second_level_state_and_dispatch` if `DISPATCH_PENDING`
-    /// is set. Otherwise, branch to `PopFirstLevelState` (thus skipping the
+    /// is set. Otherwise, branch to `pop_first_level_state` (thus skipping the
     /// saving/restoration of second-level states).
     #[naked]
     unsafe fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>() -> !
@@ -483,10 +483,10 @@ impl State {
                 # same task that the current exception has interrupted.
                 #
                 # If we are returning to the idle task, branch to `idle_task`
-                # directly because `PopFirstLevelState` can't handle this case.
+                # directly because `pop_first_level_state` can't handle this case.
                 beqz sp, 0f
 
-                tail PopFirstLevelState
+                tail {push_second_level_state_and_dispatch}.pop_first_level_state
 
                 # `DISPATCH_PENDING` is set, meaning `yield_cpu` was called in
                 # an interrupt handler, meaning we might need to return to a
@@ -538,15 +538,21 @@ impl State {
     pub unsafe fn exit_and_dispatch<System: PortInstance>(
         &'static self,
         _task: &'static TaskCb<System>,
-    ) -> ! {
+    ) -> !
+    where
+        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
+    {
         unsafe {
             asm!("
                 # MIE := 0
                 csrci mstatus, {MIE}
 
-                j Dispatch
+                j {push_second_level_state_and_dispatch}.dispatch
                 ",
                 MIE = const mstatus::MIE,
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
                 options(noreturn, nostack),
             );
         }
@@ -864,11 +870,11 @@ impl State {
                 #
                 # If we are returning to an outer interrupt handler, finding the
                 # next task to dispatch is unnecessary, so we can jump straight
-                # to `PopFirstLevelState`.
+                # to `pop_first_level_state`.
                 #
                 #   <INTERRUPT_NESTING ≥ -1>
                 #   if INTERRUPT_NESTING >= 0:
-                #       goto PopFirstLevelState;
+                #       goto pop_first_level_state;
                 #
                 bgez a0, PopFirstLevelStateTrampoline
 
@@ -877,7 +883,7 @@ impl State {
                 tail {push_second_level_state_and_dispatch_shortcutting}
 
             PopFirstLevelStateTrampoline:
-                tail PopFirstLevelState
+                tail {push_second_level_state_and_dispatch}.pop_first_level_state
 
             HandlerEntryForIdleTask:
                 # Increment the nesting count.
@@ -890,6 +896,8 @@ impl State {
                 j SwitchToMainStack
                 ",
                 handle_exception = sym Self::handle_exception::<System>,
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
                 push_second_level_state_and_dispatch_shortcutting =
                     sym Self::push_second_level_state_and_dispatch_shortcutting::<System>,
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
