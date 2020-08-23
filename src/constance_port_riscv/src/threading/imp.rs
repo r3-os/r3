@@ -813,8 +813,7 @@ impl State {
                 #   sp = MAIN_STACK - 4;
                 #   <sp[0] == background_sp, sp & 15 == 0, sp != 0>
                 #
-                la a1, {MAIN_STACK}
-                lw a0, (a1)
+                lw a0, ({MAIN_STACK})
                 addi a0, a0, -16
                 sw sp, (a0)
                 mv sp, a0
@@ -887,8 +886,7 @@ impl State {
                 #   INTERRUPT_NESTING += 1;
                 #   <INTERRUPT_NESTING == 0>
                 #
-                la a1, {INTERRUPT_NESTING}
-                sw x0, (a1)
+                sw x0, ({INTERRUPT_NESTING}), a1
                 j SwitchToMainStack
                 ",
                 handle_exception = sym Self::handle_exception::<System>,
