@@ -478,11 +478,11 @@ impl State {
                 #   <end of procedure>
                 #
                 lw a7, (4 * 16)(sp)
-                csrw mepc, a7
                 lw ra, (4 * 0)(sp)
                 lw t0, (4 * 1)(sp)
                 lw t1, (4 * 2)(sp)
                 lw t2, (4 * 3)(sp)
+                csrw mepc, a7
                 lw a0, (4 * 4)(sp)
                 lw a1, (4 * 5)(sp)
                 lw a2, (4 * 6)(sp)
@@ -775,7 +775,16 @@ impl State {
                 sw t2, (4 * 3)(sp)
                 sw a0, (4 * 4)(sp)
                 sw a1, (4 * 5)(sp)
+                                                # Increment the nesting count.
+                                                #
+                                                #   <INTERRUPT_NESTING ≥ -1>
+                                                #   INTERRUPT_NESTING += 1;
+                                                #   <INTERRUPT_NESTING ≥ 0>
+                                                #
+                                                la a1, {INTERRUPT_NESTING}
+                                                lw a0, (a1)
                 sw a2, (4 * 6)(sp)
+                csrr a2, mepc
                 sw a3, (4 * 7)(sp)
                 sw a4, (4 * 8)(sp)
                 sw a5, (4 * 9)(sp)
@@ -785,19 +794,10 @@ impl State {
                 sw t4, (4 * 13)(sp)
                 sw t5, (4 * 14)(sp)
                 sw t6, (4 * 15)(sp)
-                csrr a0, mepc
-                sw a0, (4 * 16)(sp)
+                sw a2, (4 * 16)(sp)
+                                                addi a0, a0, 1
+                                                sw a0, (a1)
 
-                # Increment the nesting count.
-                #
-                #   <INTERRUPT_NESTING ≥ -1>
-                #   INTERRUPT_NESTING += 1;
-                #   <INTERRUPT_NESTING ≥ 0>
-                #
-                la a1, {INTERRUPT_NESTING}
-                lw a0, (a1)
-                addi a0, a0, 1
-                sw a0, (a1)
 
                 # If the background context is an interrupt context, we don't
                 # have to switch stacks. However, we still need to re-align
@@ -858,19 +858,20 @@ impl State {
                 # Call `handle_exception`
                 call {handle_exception}
 
-                # Decrement the nesting count.
-                #
-                #   <INTERRUPT_NESTING ≥ 0>
-                #   INTERRUPT_NESTING -= 1;
-                #   <INTERRUPT_NESTING ≥ -1>
-                #
-                la a1, {INTERRUPT_NESTING}
-                lw a0, (a1)
-                addi a0, a0, -1
-                sw a0, (a1)
+                                            # Decrement the nesting count.
+                                            #
+                                            #   <INTERRUPT_NESTING ≥ 0>
+                                            #   INTERRUPT_NESTING -= 1;
+                                            #   <INTERRUPT_NESTING ≥ -1>
+                                            #
+                                            la a1, {INTERRUPT_NESTING}
+                                            lw a0, (a1)
 
                 # Restore `background_sp`
                 lw sp, (sp)
+
+                                            addi a0, a0, -1
+                                            sw a0, (a1)
 
                 # Are we returning to an interrupt context?
                 #
@@ -878,8 +879,8 @@ impl State {
                 # next task to dispatch is unnecessary, so we can jump straight
                 # to `pop_first_level_state`.
                 #
-                #   <INTERRUPT_NESTING ≥ -1>
-                #   if INTERRUPT_NESTING >= 0:
+                #   <INTERRUPT_NESTING ≥ 0>
+                #   if INTERRUPT_NESTING > 0:
                 #       goto pop_first_level_state;
                 #
                 bgez a0, 2f
