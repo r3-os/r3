@@ -28,6 +28,13 @@ mod mstatus {
     pub fn set_i<const VALUE: usize>() {
         unsafe { asm!("csrsi mstatus, {}", const VALUE) };
     }
+
+    #[inline(always)]
+    pub fn read() -> usize {
+        let read: usize;
+        unsafe { asm!("csrr {}, mstatus", lateout(reg) read) };
+        read
+    }
 }
 /// `mcause` (Machine Cause Register)
 #[allow(non_upper_case_globals)]
@@ -562,12 +569,12 @@ impl State {
 
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
-        unsafe { riscv::register::mstatus::clear_mie() };
+        mstatus::clear_i::<{ mstatus::MIE }>();
     }
 
     #[inline(always)]
     pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
-        unsafe { riscv::register::mstatus::set_mie() };
+        mstatus::set_i::<{ mstatus::MIE }>();
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
@@ -636,7 +643,7 @@ impl State {
 
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
-        !riscv::register::mstatus::read().mie()
+        (mstatus::read() & mstatus::MIE) == 0
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
