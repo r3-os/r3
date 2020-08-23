@@ -531,9 +531,9 @@ impl State {
 
                 # MIE := 1
                 csrsi mstatus, {MIE}
-            IdleLoop:
+            0:
                 wfi
-                j IdleLoop
+                j 0b
                 ",
                 MIE = const mstatus::MIE,
                 options(nomem, noreturn, nostack),
@@ -753,7 +753,7 @@ impl State {
                 #       INTERRUPT_NESTING += 1;
                 #       goto SwitchToMainStack;
                 #
-                beqz sp, HandlerEntryForIdleTask
+                beqz sp, 3f
 
                 # Push the first-level state to the background context's stack
                 #
@@ -813,9 +813,9 @@ impl State {
                 #       <background context ∈ [task]>
                 #       goto SwitchToMainStack;
                 #
-                bnez a0, RealignStack
+                bnez a0, 0f     # → RealignStack
 
-            SwitchToMainStack:
+            4:      # SwitchToMainStack
                 # If the background context is a task context, we should switch
                 # to `MAIN_STACK`. Meanwhile, push the original `sp` to
                 # `MAIN_STACK`.
@@ -830,9 +830,9 @@ impl State {
                 sw sp, (a0)
                 mv sp, a0
 
-                j RealignStackEnd
+                j 1f            # → RealignStackEnd
 
-            RealignStack:
+            0:       # RealignStack
                 # Align `sp` to 16 bytes and save the original `sp`.  `sp` is
                 # assumed to be already aligned to a word boundary.
                 #
@@ -854,7 +854,7 @@ impl State {
                 andi sp, sp, -16
                 sw a0, (sp)
 
-            RealignStackEnd:
+            1:      # RealignStackEnd
                 # Call `handle_exception`
                 call {handle_exception}
 
@@ -882,16 +882,16 @@ impl State {
                 #   if INTERRUPT_NESTING >= 0:
                 #       goto pop_first_level_state;
                 #
-                bgez a0, PopFirstLevelStateTrampoline
+                bgez a0, 2f
 
                 # Return to the task context by restoring the first-level and
                 # second-level state of the next task.
                 tail {push_second_level_state_and_dispatch}
 
-            PopFirstLevelStateTrampoline:
+            2:
                 tail {push_second_level_state_and_dispatch}.pop_first_level_state
 
-            HandlerEntryForIdleTask:
+            3:
                 # Increment the nesting count.
                 #
                 #   <INTERRUPT_NESTING == -1, background context ∈ [idle task]>
@@ -899,7 +899,7 @@ impl State {
                 #   <INTERRUPT_NESTING == 0>
                 #
                 sw x0, ({INTERRUPT_NESTING}), a1
-                j SwitchToMainStack
+                j 4b        # → SwitchToMainStack
                 ",
                 handle_exception = sym Self::handle_exception::<System>,
                 push_second_level_state_and_dispatch =
