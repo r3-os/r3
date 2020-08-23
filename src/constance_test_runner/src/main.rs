@@ -69,10 +69,13 @@ struct Opt {
     /// See the documentation of `TestFilter::from_str` for full syntax.
     #[structopt(parse(try_from_str = std::str::FromStr::from_str))]
     tests: Vec<selection::TestFilter>,
+    /// Select benchmark tests
+    #[structopt(short = "b", long = "bench")]
+    bench: bool,
     /// Log level of the test program
     #[structopt(short = "l", long = "log-level",
         possible_values(&LogLevel::variants()), case_insensitive = true,
-        default_value = "warn")]
+        default_value = "info")]
     log_level: LogLevel,
     /// Display build progress and warnings
     #[structopt(short = "v")]
@@ -136,6 +139,10 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         selection::TestFilter::Disjuction(opt.tests.clone())
     };
+    let test_filter = selection::TestFilter::Conjunction(vec![
+        test_filter,
+        selection::TestFilter::IsBenchmark(opt.bench),
+    ]);
     let supports_basepri = {
         // v6-M, v8-M Baseline, and non-M architectures don't support BASEPRI
         let triple = opt.target.target_triple();
@@ -224,7 +231,10 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
                 .arg("--release")
                 .arg("--target")
                 .arg(opt.target.target_triple())
-                .arg("--features=kernel_tests")
+                .arg(match test_run.case {
+                    selection::TestCase::KernelTest(_) => "--features=kernel_tests",
+                    selection::TestCase::KernelBenchmark(_) => "--features=kernel_benchmarks",
+                })
                 .args(
                     opt.target
                         .cargo_features()
