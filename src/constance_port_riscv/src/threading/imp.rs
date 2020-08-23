@@ -292,7 +292,7 @@ impl State {
     ///  - If `DISPATCH_PENDING == 0`,
     ///     - If the current task is not the idle task, go to
     ///       `pop_first_level_state`.
-    ///     - Otherwise, branch to [`Self::idle_task`].
+    ///     - Otherwise, branch to the idle task loop.
     ///  - **`not_shortcutting:`** (alternate entry point)
     ///  - If the current task is not the idle task,
     ///     - Push the second-level state.
@@ -303,7 +303,7 @@ impl State {
     ///  - **`dispatch:`** (alternate entry point)
     ///  - Call [`constance::kernel::PortToKernel::choose_running_task`].
     ///  - Restore SP from the next scheduled task's `TaskState`.
-    ///  - If there's no task to schedule, branch to [`Self::idle_task`].
+    ///  - If there's no task to schedule, branch to the idle task loop.
     ///  - Pop the second-level state of the next scheduled task.
     ///  - **`pop_first_level_state:`** (alternate entry point)
     ///  - Pop the first-level state of the next thread (task or interrupt
@@ -366,7 +366,7 @@ impl State {
                 #
                 # If we are returning to the idle task, branch to `idle_task`
                 # directly because `pop_first_level_state` can't handle this case.
-                beqz sp, 2f
+                beqz sp, {push_second_level_state_and_dispatch}.idle_task
 
                 j {push_second_level_state_and_dispatch}.pop_first_level_state
 
@@ -440,7 +440,7 @@ impl State {
                 #
                 #    sp = a0.port_task_state.sp
                 #
-                beqz a0, 2f
+                beqz a0, {push_second_level_state_and_dispatch}.idle_task
                 lw sp, (a0)
 
                 # Pop the second-level context state.
@@ -508,45 +508,31 @@ impl State {
                 addi sp, sp, (4 * 17)
                 mret
 
-            2:
-                tail {idle_task}
+            .global {push_second_level_state_and_dispatch}.idle_task
+            {push_second_level_state_and_dispatch}.idle_task:
+                # The idle task loop. Give it a globoal symbol name to aid
+                # debugging.
+                #
+                #   sp = 0;
+                #   mstatus.MIE = 1;
+                #   loop:
+                #       wfi();
+                #
+                mv sp, zero
+                csrsi mstatus, {MIE}
+            3:
+                wfi
+                j 3b
                 ",
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 choose_and_get_next_task = sym choose_and_get_next_task::<System>,
                 get_running_task = sym get_running_task::<System>,
-                idle_task = sym Self::idle_task::<System>,
                 MAIN_STACK = sym MAIN_STACK,
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
                 MPP_M = const mstatus::MPP_M,
-                options(noreturn)
-            );
-        }
-    }
-
-    /// Enters an idle loop with IRQs unmasked.
-    ///
-    /// When context switching to the idle task, you don't need to execute
-    /// `clrex`.
-    ///
-    /// # Safety
-    ///
-    ///  - `*System::state().running_task_ptr()` should be `None`.
-    ///
-    #[naked]
-    unsafe fn idle_task<System: PortInstance>() -> ! {
-        unsafe {
-            asm!("
-                mv sp, zero
-
-                # MIE := 1
-                csrsi mstatus, {MIE}
-            0:
-                wfi
-                j 0b
-                ",
                 MIE = const mstatus::MIE,
-                options(nomem, noreturn, nostack),
+                options(noreturn)
             );
         }
     }
