@@ -337,10 +337,13 @@ impl State {
             unsafe { *System::state().running_task_ptr() }
         }
 
-        // Compilation assumption:
-        //  - The compiled code does not trash any registers in the second-level
-        //    state before entering the inline assembly code below.
-        let running_task_ptr = System::state().running_task_ptr();
+        extern "C" fn get_running_task<System: PortInstance>() -> Option<&'static TaskCb<System>>
+        where
+            // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
+            System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
+        {
+            unsafe { *System::state().running_task_ptr() }
+        }
 
         unsafe {
             asm!("
@@ -382,6 +385,9 @@ impl State {
                 #
                 beqz sp, 1f
 
+                # Read `running_task` earlier to hide the load-use latency.
+                call {get_running_task}
+
                 # Push the second-level context state.
                 addi sp, sp, (4 * -12)
                 sw s0, (4 * 0)(sp)
@@ -399,12 +405,10 @@ impl State {
 
                 # Store SP to `TaskState`.
                 #
-                #    <a2 = &running_task>
-                #    a2 = running_task
-                #    r0.port_task_state.sp = sp
+                #    <a0 = running_task>
+                #    a0.port_task_state.sp = sp
                 #
-                lw a2, (a2)
-                sw sp, (a2)
+                sw sp, (a0)
 
                 j {push_second_level_state_and_dispatch}.dispatch
 
@@ -500,11 +504,11 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 choose_and_get_next_task = sym choose_and_get_next_task::<System>,
+                get_running_task = sym get_running_task::<System>,
                 idle_task = sym Self::idle_task::<System>,
                 MAIN_STACK = sym MAIN_STACK,
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
                 MPP_M = const mstatus::MPP_M,
-                in("a2") running_task_ptr,
                 options(noreturn)
             );
         }
