@@ -195,24 +195,24 @@ impl State {
         unsafe { INTERRUPT_NESTING = -1 };
 
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Save the stack pointer for later use
-                sw sp, ($0), a0
+                sw sp, ({MAIN_STACK}), a0
 
                 # `mstatus.MPIE` will be `1` all the time
-                li a0, $2
+                li a0, {MPIE}
                 csrs mstatus, a0
 
+                # `Dispatch` is a part of {push_second_level_state_and_dispatch}
                 j Dispatch
-                "
-            :
-            :   "s"(&raw mut MAIN_STACK)
+                ",
+                MAIN_STACK = sym MAIN_STACK,
                 // Ensure `Dispatch` is emitted
-            ,   "X"(Self::push_second_level_state_and_dispatch::<System> as unsafe fn() -> !)
-            ,   "i"(mstatus::MPIE)
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
+                MPIE = const mstatus::MPIE,
+                options(noreturn),
+            );
         }
     }
 
@@ -228,7 +228,7 @@ impl State {
         }
     }
 
-    #[inline(never)] // avoid symbol collision with `YieldReturn`
+    #[inline(never)]
     #[naked]
     unsafe fn yield_cpu_in_task<System: PortInstance>()
     where
@@ -236,14 +236,14 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Push the first level context state. The saved `pc` directly
                 # points to the current return address. This means the saved
                 # `ra` (`sp[0]`) is irrelevant.
                 #
                 #   sp -= 17;
-                #   sp[1..10] = {t0-t2, a0-a5}
-                #   sp[10..16] = {a6-a7, t3-t6}
+                #   sp[1..10] = [t0-t2, a0-a5]
+                #   sp[10..16] = [a6-a7, t3-t6]
                 #   sp[16] = ra
                 #
                 addi sp, sp, (4 * -17)
@@ -265,15 +265,13 @@ impl State {
                 sw ra, (4 * 16)(sp)
 
                 # MIE := 0
-                csrci mstatus, $1
+                csrci mstatus, {MIE}
 
-                j $0
-                "
-            :
-            :   "X"(Self::push_second_level_state_and_dispatch::<System> as unsafe fn() -> !)
-            ,   "i"(mstatus::MIE)
-            :
-            :   "volatile"
+                tail {push_second_level_state_and_dispatch}
+                ",
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
+                MIE = const mstatus::MIE,
             );
         }
     }
@@ -325,21 +323,21 @@ impl State {
         let running_task_ptr = System::state().running_task_ptr();
 
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
                 # but `choose_and_get_next_task` needs one. Therefore we borrow
                 # the main stack.
                 #
-                #   if sp == 0 {
-                #       [running_task is None]
+                #   if sp == 0:
+                #       <running_task is None>
                 #       sp = *main_stack_ptr;
-                #   } else {
+                #   else:
                 #       /* ... */
-                #   }
+                #
                 #   choose_and_get_next_task();
                 #
-                beqz sp, DispatchSansStack
+                beqz sp, 0f
 
                 # Push the second-level context state.
                 addi sp, sp, (4 * -12)
@@ -358,7 +356,7 @@ impl State {
 
                 # Store SP to `TaskState`.
                 #
-                #    [a0 = &running_task]
+                #    <a0 = &running_task>
                 #    a0 = running_task
                 #    r0.port_task_state.sp = sp
                 #
@@ -367,24 +365,25 @@ impl State {
 
                 j Dispatch
 
-            DispatchSansStack:
-                lw sp, ($3)
+            0:
+                lw sp, ({MAIN_STACK})
 
             .global Dispatch
             Dispatch:
                 # Choose the next task to run. `choose_and_get_next_task`
                 # returns the new value of `running_task`.
-                call $1
+                call {choose_and_get_next_task}
 
                 # Restore SP from `TaskState`
                 #
-                #    [a0 = running_task]
-                #    if a0.is_none() {
+                #    <a0 = running_task>
+                #
+                #    if a0.is_none():
                 #        goto idle_task;
-                #    }
+                #
                 #    sp = a0.port_task_state.sp
                 #
-                beqz a0, ${:private}IdleTaskTrampoline${:uid}
+                beqz a0, 2f
                 lw sp, (a0)
 
                 # Pop the second-level context state.
@@ -414,22 +413,22 @@ impl State {
                 sc.w x0, x0, (a1)
 
                 # mstatus.MPP := M
-                li a0, $4
+                li a0, {MPP_M}
                 csrs mstatus, a0
 
                 # Resume the next task by restoring the first-level state
                 #
-                #   [{s0-s11, sp} = resumed context]
+                #   <[s0-s11, sp] = resumed context>
                 #
                 #   mepc = sp[16];
-                #   {ra, t0-t2, a0-a5} = sp[0..10];
-                #   {a6-a7, t3-t6} = sp[10..16];
+                #   [ra, t0-t2, a0-a5] = sp[0..10];
+                #   [a6-a7, t3-t6] = sp[10..16];
                 #   sp += 17;
                 #
                 #   pc = mepc;
                 #   mode = mstatus.MPP;
                 #
-                #   [end of procedure]
+                #   <end of procedure>
                 #
                 lw a7, (4 * 16)(sp)
                 csrw mepc, a7
@@ -452,18 +451,16 @@ impl State {
                 addi sp, sp, (4 * 17)
                 mret
 
-            ${:private}IdleTaskTrampoline${:uid}:
-                tail $2
-            "
-            :
-            :   "{a0}"(running_task_ptr)
-            ,   "X"(choose_and_get_next_task::<System> as extern fn() -> _)
-            ,   "X"(Self::idle_task::<System> as unsafe fn() -> !)
-            ,   "s"(&raw mut MAIN_STACK)
-            ,   "i"(mstatus::MPP_M)
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+            2:
+                tail {idle_task}
+                ",
+                choose_and_get_next_task = sym choose_and_get_next_task::<System>,
+                idle_task = sym Self::idle_task::<System>,
+                MAIN_STACK = sym MAIN_STACK,
+                MPP_M = const mstatus::MPP_M,
+                in("a0") running_task_ptr,
+                options(noreturn)
+            );
         }
     }
 
@@ -477,9 +474,9 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         unsafe {
-            llvm_asm!("
-                # Read `DISPATCH_PENDING`
-                lb a1, ($0)
+            asm!("
+                # Take a shortcut only if `DISPATCH_PENDING == 0`
+                lb a1, ({DISPATCH_PENDING})
                 bnez a1, NotShortcutting
 
                 # `DISPATCH_PENDING` is clear, meaning we are returning to the
@@ -487,7 +484,7 @@ impl State {
                 #
                 # If we are returning to the idle task, branch to `idle_task`
                 # directly because `PopFirstLevelState` can't handle this case.
-                beqz sp, ${:private}IdleTaskTrampoline${:uid}
+                beqz sp, 0f
 
                 tail PopFirstLevelState
 
@@ -496,19 +493,18 @@ impl State {
                 # different task. Clear `DISPATCH_PENDING` and branch to
                 # `push_second_level_state_and_dispatch`.
             NotShortcutting:
-                sb zero, ($0), a0
-                tail $1
+                sb zero, ({DISPATCH_PENDING}), a0
+                tail {push_second_level_state_and_dispatch}
 
-            ${:private}IdleTaskTrampoline${:uid}:
-                tail $2
-            "
-            :
-            :   "s"(&raw mut DISPATCH_PENDING)
-            ,   "X"(Self::push_second_level_state_and_dispatch::<System> as unsafe fn() -> !)
-            ,   "X"(Self::idle_task::<System> as unsafe fn() -> !)
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+            0:
+                tail {idle_task}
+                ",
+                DISPATCH_PENDING = sym DISPATCH_PENDING,
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
+                idle_task = sym Self::idle_task::<System>,
+                options(noreturn),
+            );
         }
     }
 
@@ -524,20 +520,18 @@ impl State {
     #[naked]
     unsafe fn idle_task<System: PortInstance>() -> ! {
         unsafe {
-            llvm_asm!("
+            asm!("
                 mv sp, zero
 
                 # MIE := 1
-                csrsi mstatus, $0
+                csrsi mstatus, {MIE}
             IdleLoop:
                 wfi
                 j IdleLoop
-            "
-            :
-            :   "i"(mstatus::MIE)
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+                ",
+                MIE = const mstatus::MIE,
+                options(nomem, noreturn, nostack),
+            );
         }
     }
 
@@ -546,17 +540,15 @@ impl State {
         _task: &'static TaskCb<System>,
     ) -> ! {
         unsafe {
-            llvm_asm!("
+            asm!("
                 # MIE := 0
-                csrci mstatus, $0
+                csrci mstatus, {MIE}
 
                 j Dispatch
-                "
-            :
-            :   "i"(mstatus::MIE)
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+                ",
+                MIE = const mstatus::MIE,
+                options(noreturn, nostack),
+            );
         }
     }
 
@@ -738,32 +730,31 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Skip the stacking of the first-level state if the background
                 # context is the idle task.
                 #
-                #   [{a0-a7, t0-t6, s0-s11, sp} = background context state,
-                #    background context ∈ {task, idle task, interrupt}]
-                #   if sp == 0 {
-                #       [background context ∈ {idle task}]
+                #   <[a0-a7, t0-t6, s0-s11, sp] = background context state,
+                #    background context ∈ [task, idle task, interrupt]>
+                #   if sp == 0:
+                #       [background context ∈ [idle task]]
                 #       INTERRUPT_NESTING += 1;
                 #       goto SwitchToMainStack;
-                #   }
                 #
                 beqz sp, HandlerEntryForIdleTask
 
                 # Push the first-level state to the background context's stack
                 #
-                #   [{a0-a7, t0-t6, s0-s11, sp} = background context state,
-                #    background context ∈ {task, interrupt}, sp != 0]
+                #   <[a0-a7, t0-t6, s0-s11, sp] = background context state,
+                #    background context ∈ [task, interrupt], sp != 0>
                 #
                 #   sp -= 17;
-                #   sp[0..10] = {ra, t0-t2, a0-a5};
-                #   sp[10..16] = {a6-a7, t3-t6};
+                #   sp[0..10] = [ra, t0-t2, a0-a5];
+                #   sp[10..16] = [a6-a7, t3-t6];
                 #   sp[16] = mepc
                 #
                 #   let background_sp = sp;
-                #   [{s0-s11} = background context state, sp != 0]
+                #   <[s0-s11] = background context state, sp != 0>
                 #
                 addi sp, sp, (-4 * 17)
                 sw ra, (4 * 0)(sp)
@@ -787,11 +778,11 @@ impl State {
 
                 # Increment the nesting count.
                 #
-                #   [INTERRUPT_NESTING ≥ -1]
+                #   <INTERRUPT_NESTING ≥ -1>
                 #   INTERRUPT_NESTING += 1;
-                #   [INTERRUPT_NESTING ≥ 0]
+                #   <INTERRUPT_NESTING ≥ 0>
                 #
-                la a1, $2
+                la a1, {INTERRUPT_NESTING}
                 lw a0, (a1)
                 addi a0, a0, 1
                 sw a0, (a1)
@@ -803,27 +794,26 @@ impl State {
                 # Note: The minimum value of `INTERRUPT_NESTING` is `-1`. Thus
                 # at this point, the minimum value we expect to see is `0`.
                 #
-                #   if INTERRUPT_NESTING > 0 {
-                #       [background context ∈ {interrupt}]
+                #   if INTERRUPT_NESTING > 0:
+                #       <background context ∈ [interrupt]>
                 #       goto RealignStack;
-                #   } else {
-                #       [background context ∈ {task}]
+                #   else:
+                #       <background context ∈ [task]>
                 #       goto SwitchToMainStack;
-                #   }
                 #
                 bnez a0, RealignStack
 
             SwitchToMainStack:
                 # If the background context is a task context, we should switch
-                # to `main_stack`. Meanwhile, push the original `sp` to
-                # `main_stack`.
+                # to `MAIN_STACK`. Meanwhile, push the original `sp` to
+                # `MAIN_STACK`.
                 #
-                #   [INTERRUPT_NESTING == 0, background context ∈ {task, idle task}]
-                #   *(main_stack - 4) = sp;
-                #   sp = main_stack - 4;
-                #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
+                #   <INTERRUPT_NESTING == 0, background context ∈ [task, idle task]>
+                #   *(MAIN_STACK - 4) = sp;
+                #   sp = MAIN_STACK - 4;
+                #   <sp[0] == background_sp, sp & 15 == 0, sp != 0>
                 #
-                la a1, $3
+                la a1, {MAIN_STACK}
                 lw a0, (a1)
                 addi a0, a0, -16
                 sw sp, (a0)
@@ -843,10 +833,10 @@ impl State {
                 # (applicable to RV32E), where `sp` is only required to be
                 # aligned to a word boundary.
                 #
-                #   [INTERRUPT_NESTING > 0, background context ∈ {interrupt}]
+                #   <INTERRUPT_NESTING > 0, background context ∈ [interrupt]>
                 #   *((sp - 4) & !15) = sp
                 #   sp = (sp - 4) & !15
-                #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
+                #   <sp[0] == background_sp, sp & 15 == 0, sp != 0>
                 #
                 mv a0, sp
                 addi sp, sp, -4
@@ -854,16 +844,16 @@ impl State {
                 sw a0, (sp)
 
             RealignStackEnd:
-                # Call `handle_irq`
-                call $0
+                # Call `handle_exception`
+                call {handle_exception}
 
                 # Decrement the nesting count.
                 #
-                #   [INTERRUPT_NESTING ≥ 0]
+                #   <INTERRUPT_NESTING ≥ 0>
                 #   INTERRUPT_NESTING -= 1;
-                #   [INTERRUPT_NESTING ≥ -1]
+                #   <INTERRUPT_NESTING ≥ -1>
                 #
-                la a1, $2
+                la a1, {INTERRUPT_NESTING}
                 lw a0, (a1)
                 addi a0, a0, -1
                 sw a0, (a1)
@@ -877,16 +867,15 @@ impl State {
                 # next task to dispatch is unnecessary, so we can jump straight
                 # to `PopFirstLevelState`.
                 #
-                #   [INTERRUPT_NESTING ≥ -1]
-                #   if INTERRUPT_NESTING >= 0 {
+                #   <INTERRUPT_NESTING ≥ -1>
+                #   if INTERRUPT_NESTING >= 0:
                 #       goto PopFirstLevelState;
-                #   }
                 #
                 bgez a0, PopFirstLevelStateTrampoline
 
                 # Return to the task context by restoring the first-level and
                 # second-level state of the next task.
-                tail $1
+                tail {push_second_level_state_and_dispatch_shortcutting}
 
             PopFirstLevelStateTrampoline:
                 tail PopFirstLevelState
@@ -894,23 +883,21 @@ impl State {
             HandlerEntryForIdleTask:
                 # Increment the nesting count.
                 #
-                #   [INTERRUPT_NESTING == -1, background context ∈ {idle task}]
+                #   <INTERRUPT_NESTING == -1, background context ∈ [idle task]>
                 #   INTERRUPT_NESTING += 1;
-                #   [INTERRUPT_NESTING == 0]
+                #   <INTERRUPT_NESTING == 0>
                 #
-                la a1, $2
+                la a1, {INTERRUPT_NESTING}
                 sw x0, (a1)
                 j SwitchToMainStack
-                "
-            :
-            :   "X"(Self::handle_exception::<System> as unsafe fn())
-            ,   "X"(Self::push_second_level_state_and_dispatch_shortcutting::<System> as unsafe fn() -> !)
-            ,   "s"(&raw mut INTERRUPT_NESTING)
-            ,   "s"(&raw mut MAIN_STACK)
-            :
-            :   "volatile"
+                ",
+                handle_exception = sym Self::handle_exception::<System>,
+                push_second_level_state_and_dispatch_shortcutting =
+                    sym Self::push_second_level_state_and_dispatch_shortcutting::<System>,
+                INTERRUPT_NESTING = sym INTERRUPT_NESTING,
+                MAIN_STACK = sym MAIN_STACK,
+                options(noreturn)
             );
-            core::hint::unreachable_unchecked();
         }
     }
 

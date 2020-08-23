@@ -2,7 +2,6 @@
 #![feature(const_fn)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
-#![feature(llvm_asm)]
 #![feature(asm)]
 #![feature(raw_ref_op)]
 #![feature(const_generics)]
