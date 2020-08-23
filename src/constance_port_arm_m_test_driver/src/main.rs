@@ -114,10 +114,11 @@ macro_rules! instantiate_test {
             StartupHook::<System>::build().start(|_| {
                 unsafe {
                     let mut peripherals = cortex_m::peripheral::Peripherals::steal();
+                    peripherals.DCB.enable_trace();
                     cortex_m::peripheral::DWT::unlock();
                     peripherals.DWT.enable_cycle_counter();
                 }
-            });
+            }).finish(b);
 
             // Initialize RTT (Real-Time Transfer) with two up channels and set
             // the first one as the print channel for the printing macros, and
