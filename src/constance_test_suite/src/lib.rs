@@ -32,28 +32,6 @@ pub mod kernel_tests {
         /// Signal to the test runner that a test has failed.
         fn fail();
 
-        /// Get the current time for performance measurement.
-        fn performance_time() -> u32 {
-            0
-        }
-
-        /// Get the unit of [`performance_time`] to be displayed following a
-        /// measured value. `None` indicates `performance_time` is not
-        /// supported.
-        ///
-        /// # Examples
-        ///
-        /// ```rust,ignore
-        /// impl<A> constance_test_suite::kernel_tests::Driver<A> for Driver {
-        ///     /* ... */
-        ///     fn performance_time() -> u32 {
-        ///         winapi::um::sysinfoapi::GetTickCount()
-        ///     }
-        ///     const PERFORMANCE_TIME_UNIT: Option<&'static str> = Some("ms");
-        /// }
-        /// ```
-        const PERFORMANCE_TIME_UNIT: Option<&'static str> = None;
-
         /// The list of interrupt lines that can be used by test programs.
         ///
         ///  - The list can have an arbitrary number of elements. Some tests
@@ -240,6 +218,191 @@ pub mod kernel_tests {
         ) => {
             // Forward to `get_selected_kernel_tests_inner!`
             $crate::get_selected_kernel_tests_inner!(
+                ( $path $(::$path_sub)* ), ( $($prefix)* )
+            );
+        };
+    }
+}
+
+/// Kernel benchmarks
+pub mod kernel_benchmarks {
+    use constance::kernel::{InterruptNum, InterruptPriority};
+    /// Instantiation parameters of a test case.
+    ///
+    /// This trait has two purposes: (1) It serves as an interface to a test driver.
+    /// It provides methods to notify the test driver of test success or failure.
+    /// (2) It provides runtime access to the `App` structure.
+    pub trait Driver<App> {
+        /// Get a reference to `App` of the current test case.
+        fn app() -> &'static App;
+
+        /// Signal to the test runner that a test has succeeded.
+        fn success();
+
+        /// Get the current time for performance measurement.
+        fn performance_time() -> u32 {
+            0
+        }
+
+        /// Get the unit of [`performance_time`] to be displayed following a
+        /// measured value.
+        ///
+        /// # Examples
+        ///
+        /// ```rust,ignore
+        /// impl<A> constance_test_suite::kernel_benchmarks::Driver<A> for Driver {
+        ///     /* ... */
+        ///     fn performance_time() -> u32 {
+        ///         winapi::um::sysinfoapi::GetTickCount()
+        ///     }
+        ///     const PERFORMANCE_TIME_UNIT: &'static str = "ms";
+        /// }
+        /// ```
+        const PERFORMANCE_TIME_UNIT: &'static str;
+
+        /// The list of interrupt lines that can be used by test programs.
+        ///
+        ///  - The list can have an arbitrary number of elements. Some tests
+        ///    will be silently skipped if it's not enough. There should be at
+        ///    least two for all test cases to run.
+        ///
+        ///  - There must be no duplicates.
+        ///
+        ///  - The port must support [`enable_interrupt_line`],
+        ///    [`disable_interrupt_line`], [`pend_interrupt_line`] for all of
+        ///    the specified interrupt lines.
+        ///
+        /// [`enable_interrupt_line`]: constance::kernel::PortInterrupts::enable_interrupt_line
+        /// [`disable_interrupt_line`]: constance::kernel::PortInterrupts::disable_interrupt_line
+        /// [`pend_interrupt_line`]: constance::kernel::PortInterrupts::pend_interrupt_line
+        const INTERRUPT_LINES: &'static [InterruptNum] = &[];
+
+        /// A low priority value.
+        ///
+        /// Ignored if `INTERRUPT_LINES` is empty.
+        ///
+        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        ///
+        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0;
+        /// A high priority value.
+        ///
+        /// Ignored if `INTERRUPT_LINES` is empty.
+        ///
+        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        ///
+        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;
+    }
+
+    macro_rules! define_kernel_benchmarks {
+        (
+            [$dollar:tt] // get a `$` token
+            $(
+                // Test case definition
+                (mod $name_ident:ident {}, $name_str:literal)
+            ),*$(,)*
+        ) => {
+            $(
+                /// [**Test Case**]
+                #[cfg(any(
+                    feature = "tests_all",
+                    all(feature = "tests_selective", kernel_test = $name_str)
+                ))]
+                pub mod $name_ident;
+            )*
+
+            /// The names of kernel benchmark tests.
+            pub const TEST_NAMES: &[&str] = &[
+                $( $name_str ),*
+            ];
+
+            /// Invoke the specified macro with a description of all defined
+            /// kernel benchmark test cases.
+            ///
+            /// Note that the tests might not be actually compiled unless the
+            /// feature `tests_all` is enabled.
+            ///
+            /// # Example
+            ///
+            /// ```rust,ignore
+            /// constance_test_suite::get_kernel_benchmarks!(aaa::bbb!(prefix));
+            /// ```
+            ///
+            /// This expands to something like this:
+            ///
+            /// ```rust,ignore
+            /// aaa::bbb!(
+            ///     prefix
+            ///     { path: constance_test_suite::test1, name_ident: test1, name_str: "test1", },
+            ///     { path: constance_test_suite::test2, name_ident: test2, name_str: "test2", },
+            /// );
+            /// ```
+            ///
+            #[macro_export]
+            macro_rules! get_kernel_benchmarks {
+                (
+                    // Callback macro
+                    $path:ident$dollar(::$path_sub:ident)* ! (
+                        // Prefix of the callback parameter
+                        $dollar($prefix:tt)*
+                    )
+                ) => {
+                    $path$dollar($path_sub)* ! (
+                        // Prefix
+                        $dollar($prefix)*
+                        $(
+                            // The test info
+                            {
+                                path: $crate::kernel_benchmarks::$name_ident,
+                                name_ident: $name_ident,
+                                name_str: $name_str,
+                            },
+                        )*
+                    );
+                };
+            }
+        };
+    }
+
+    define_kernel_benchmarks! {
+        [$]
+        (mod basic {}, "basic"),
+    }
+
+    /// Invoke the specified macro with a description of test cases
+    /// selected by `CONSTANCE_TEST`.
+    ///
+    /// Note that the tests might not be actually compiled unless the
+    /// feature `tests_selective` is enabled.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// constance_test_suite::get_selected_kernel_benchmarks!(aaa::bbb!(prefix));
+    /// ```
+    ///
+    /// If there's an environment variable `CONSTANCE_TEST=kernel_benchmark::test1`,
+    /// this expands to:
+    ///
+    /// ```rust,ignore
+    /// aaa::bbb!(
+    ///     prefix
+    ///     { path: constance_test_suite::test1, name_ident: test1, name_str: "test1", },
+    /// );
+    /// ```
+    ///
+    #[macro_export]
+    macro_rules! get_selected_kernel_benchmarks {
+        (
+            // Callback macro
+            $path:ident$(::$path_sub:ident)* ! (
+                // Prefix of the callback parameter
+                $($prefix:tt)*
+            )
+        ) => {
+            // Forward to `get_selected_kernel_benchmarks_inner!`
+            $crate::get_selected_kernel_benchmarks_inner!(
                 ( $path $(::$path_sub)* ), ( $($prefix)* )
             );
         };
