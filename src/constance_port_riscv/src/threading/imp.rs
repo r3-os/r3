@@ -117,15 +117,23 @@ pub unsafe trait PortInstance:
     const USE_INTERRUPT_EXTERNAL: bool = Self::INTERRUPT_EXTERNAL_HANDLER.is_some();
 }
 
-pub struct State {
-    dispatch_pending: UnsafeCell<bool>,
-    main_stack: UnsafeCell<usize>,
-    /// The current nesting level minus one.
-    ///
-    /// The valid range is `-1..=isize::MAX`. The current context is a task
-    /// context iff `interrupt_nesting == -1`.
-    interrupt_nesting: UnsafeCell<isize>,
-}
+static mut DISPATCH_PENDING: bool = false;
+
+static mut MAIN_STACK: usize = 0;
+
+/// The current nesting level minus one.
+///
+/// The valid range is `-1..=isize::MAX`. The current context is a task
+/// context iff `INTERRUPT_NESTING == -1`.
+///
+/// `is_task_context` is supposed to return `false` in the main
+/// thread (which is a boot context and not a task context). For
+/// this reason, `INTERRUPT_NESTING` is initialized as `0`. This
+/// doesn't reflect the actual nesting level, but it doesn't matter
+/// because interrupts are disabled during booting.
+static mut INTERRUPT_NESTING: isize = 0;
+
+pub struct State {}
 
 unsafe impl Sync for State {}
 
@@ -139,16 +147,7 @@ unsafe impl Sync for TaskState {}
 
 impl State {
     pub const fn new() -> Self {
-        Self {
-            dispatch_pending: UnsafeCell::new(false),
-            main_stack: UnsafeCell::new(0),
-            // `is_task_context` is supposed to return `false` in the main
-            // thread (which is a boot context and not a task context). For
-            // this reason, `interrupt_nesting` is initialized as `0`. This
-            // doesn't reflect the actual nesting level, but it doesn't matter
-            // because interrupts are disabled during booting.
-            interrupt_nesting: UnsafeCell::new(0),
-        }
+        Self {}
     }
 }
 
@@ -191,14 +190,14 @@ impl State {
         debug_assert!(self.is_cpu_lock_active::<System>());
 
         // We are going to dispatch the first task and enable interrupts, so
-        // set `interrupt_nesting` to `-1`, indicating that there are no active
+        // set `INTERRUPT_NESTING` to `-1`, indicating that there are no active
         // interrupts and we are in a task context.
-        unsafe { *self.interrupt_nesting.get() = -1 };
+        unsafe { INTERRUPT_NESTING = -1 };
 
         unsafe {
             llvm_asm!("
                 # Save the stack pointer for later use
-                sw sp, ($0)
+                sw sp, ($0), a0
 
                 # `mstatus.MPIE` will be `1` all the time
                 li a0, $2
@@ -207,7 +206,7 @@ impl State {
                 j Dispatch
                 "
             :
-            :   "r"(self.main_stack.get())
+            :   "s"(&raw mut MAIN_STACK)
                 // Ensure `Dispatch` is emitted
             ,   "X"(Self::push_second_level_state_and_dispatch::<System> as unsafe fn() -> !)
             ,   "i"(mstatus::MPIE)
@@ -223,7 +222,7 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         if !self.is_task_context::<System>() {
-            unsafe { self.dispatch_pending.get().write_volatile(true) };
+            unsafe { DISPATCH_PENDING = true };
         } else {
             unsafe { Self::yield_cpu_in_task::<System>() }
         }
@@ -324,7 +323,6 @@ impl State {
         //  - The compiled code does not trash any registers in the second-level
         //    state before entering the inline assembly code below.
         let running_task_ptr = System::state().running_task_ptr();
-        let main_stack_ptr = System::port_state().main_stack.get();
 
         unsafe {
             llvm_asm!("
@@ -370,7 +368,7 @@ impl State {
                 j Dispatch
 
             DispatchSansStack:
-                lw sp, (a1)
+                lw sp, ($3)
 
             .global Dispatch
             Dispatch:
@@ -461,7 +459,7 @@ impl State {
             :   "{a0}"(running_task_ptr)
             ,   "X"(choose_and_get_next_task::<System> as extern fn() -> _)
             ,   "X"(Self::idle_task::<System> as unsafe fn() -> !)
-            ,   "{a1}"(main_stack_ptr)
+            ,   "s"(&raw mut MAIN_STACK)
             ,   "i"(mstatus::MPP_M)
             :
             :   "volatile");
@@ -469,7 +467,7 @@ impl State {
         }
     }
 
-    /// Branch to `push_second_level_state_and_dispatch` if `dispatch_pending`
+    /// Branch to `push_second_level_state_and_dispatch` if `DISPATCH_PENDING`
     /// is set. Otherwise, branch to `PopFirstLevelState` (thus skipping the
     /// saving/restoration of second-level states).
     #[naked]
@@ -478,18 +476,13 @@ impl State {
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
-        // Compilation assumption:
-        //  - The compiled code does not trash any registers in the second-level
-        //    state before entering the inline assembly code below.
-        let dispatch_pending_ptr = System::port_state().dispatch_pending.get();
-
         unsafe {
             llvm_asm!("
-                # Read `dispatch_pending`
-                lb a1, (a0)
+                # Read `DISPATCH_PENDING`
+                lb a1, ($0)
                 bnez a1, NotShortcutting
 
-                # `dispatch_pending` is clear, meaning we are returning to the
+                # `DISPATCH_PENDING` is clear, meaning we are returning to the
                 # same task that the current exception has interrupted.
                 #
                 # If we are returning to the idle task, branch to `idle_task`
@@ -498,19 +491,19 @@ impl State {
 
                 tail PopFirstLevelState
 
-                # `dispatch_pending` is set, meaning `yield_cpu` was called in
+                # `DISPATCH_PENDING` is set, meaning `yield_cpu` was called in
                 # an interrupt handler, meaning we might need to return to a
-                # different task. Clear `dispatch_pending` and branch to
+                # different task. Clear `DISPATCH_PENDING` and branch to
                 # `push_second_level_state_and_dispatch`.
             NotShortcutting:
-                sb zero, (a0)
+                sb zero, ($0), a0
                 tail $1
 
             ${:private}IdleTaskTrampoline${:uid}:
                 tail $2
             "
             :
-            :   "{a0}"(dispatch_pending_ptr)
+            :   "s"(&raw mut DISPATCH_PENDING)
             ,   "X"(Self::push_second_level_state_and_dispatch::<System> as unsafe fn() -> !)
             ,   "X"(Self::idle_task::<System> as unsafe fn() -> !)
             :
@@ -647,8 +640,7 @@ impl State {
     }
 
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
-        let interrupt_nesting = unsafe { *self.interrupt_nesting.get() };
-        interrupt_nesting < 0
+        unsafe { INTERRUPT_NESTING < 0 }
     }
 
     pub fn set_interrupt_line_priority<System: PortInstance>(
@@ -745,15 +737,6 @@ impl State {
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
-        // Compilation assumption: These `let` lines don't generate any code.
-        // `&unsafe_cell` is used in place of `unsafe_cell.get()` because `get`
-        // is not `#[inline(always)]`, which makes the result incompatible with
-        // the `s` inline assembler constraint (relocatable integer constant).
-        // TODO: This is not compatible with the new inline assembly
-        //       (https://github.com/rust-lang/rfcs/pull/2873) and unreliable.
-        let interrupt_nesting = &System::port_state().interrupt_nesting;
-        let main_stack = &System::port_state().main_stack;
-
         unsafe {
             llvm_asm!("
                 # Skip the stacking of the first-level state if the background
@@ -763,7 +746,7 @@ impl State {
                 #    background context ∈ {task, idle task, interrupt}]
                 #   if sp == 0 {
                 #       [background context ∈ {idle task}]
-                #       interrupt_nesting += 1;
+                #       INTERRUPT_NESTING += 1;
                 #       goto SwitchToMainStack;
                 #   }
                 #
@@ -804,9 +787,9 @@ impl State {
 
                 # Increment the nesting count.
                 #
-                #   [interrupt_nesting ≥ -1]
-                #   interrupt_nesting += 1;
-                #   [interrupt_nesting ≥ 0]
+                #   [INTERRUPT_NESTING ≥ -1]
+                #   INTERRUPT_NESTING += 1;
+                #   [INTERRUPT_NESTING ≥ 0]
                 #
                 la a1, $2
                 lw a0, (a1)
@@ -817,10 +800,10 @@ impl State {
                 # have to switch stacks. However, we still need to re-align
                 # `sp`.
                 #
-                # Note: The minimum value of `interrupt_nesting` is `-1`. Thus
+                # Note: The minimum value of `INTERRUPT_NESTING` is `-1`. Thus
                 # at this point, the minimum value we expect to see is `0`.
                 #
-                #   if interrupt_nesting > 0 {
+                #   if INTERRUPT_NESTING > 0 {
                 #       [background context ∈ {interrupt}]
                 #       goto RealignStack;
                 #   } else {
@@ -835,7 +818,7 @@ impl State {
                 # to `main_stack`. Meanwhile, push the original `sp` to
                 # `main_stack`.
                 #
-                #   [interrupt_nesting == 0, background context ∈ {task, idle task}]
+                #   [INTERRUPT_NESTING == 0, background context ∈ {task, idle task}]
                 #   *(main_stack - 4) = sp;
                 #   sp = main_stack - 4;
                 #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
@@ -860,7 +843,7 @@ impl State {
                 # (applicable to RV32E), where `sp` is only required to be
                 # aligned to a word boundary.
                 #
-                #   [interrupt_nesting > 0, background context ∈ {interrupt}]
+                #   [INTERRUPT_NESTING > 0, background context ∈ {interrupt}]
                 #   *((sp - 4) & !15) = sp
                 #   sp = (sp - 4) & !15
                 #   [sp[0] == background_sp, sp & 15 == 0, sp != 0]
@@ -876,9 +859,9 @@ impl State {
 
                 # Decrement the nesting count.
                 #
-                #   [interrupt_nesting ≥ 0]
-                #   interrupt_nesting -= 1;
-                #   [interrupt_nesting ≥ -1]
+                #   [INTERRUPT_NESTING ≥ 0]
+                #   INTERRUPT_NESTING -= 1;
+                #   [INTERRUPT_NESTING ≥ -1]
                 #
                 la a1, $2
                 lw a0, (a1)
@@ -894,8 +877,8 @@ impl State {
                 # next task to dispatch is unnecessary, so we can jump straight
                 # to `PopFirstLevelState`.
                 #
-                #   [interrupt_nesting ≥ -1]
-                #   if interrupt_nesting >= 0 {
+                #   [INTERRUPT_NESTING ≥ -1]
+                #   if INTERRUPT_NESTING >= 0 {
                 #       goto PopFirstLevelState;
                 #   }
                 #
@@ -911,9 +894,9 @@ impl State {
             HandlerEntryForIdleTask:
                 # Increment the nesting count.
                 #
-                #   [interrupt_nesting == -1, background context ∈ {idle task}]
-                #   interrupt_nesting += 1;
-                #   [interrupt_nesting == 0]
+                #   [INTERRUPT_NESTING == -1, background context ∈ {idle task}]
+                #   INTERRUPT_NESTING += 1;
+                #   [INTERRUPT_NESTING == 0]
                 #
                 la a1, $2
                 sw x0, (a1)
@@ -922,8 +905,8 @@ impl State {
             :
             :   "X"(Self::handle_exception::<System> as unsafe fn())
             ,   "X"(Self::push_second_level_state_and_dispatch_shortcutting::<System> as unsafe fn() -> !)
-            ,   "s"(interrupt_nesting)
-            ,   "s"(main_stack)
+            ,   "s"(&raw mut INTERRUPT_NESTING)
+            ,   "s"(&raw mut MAIN_STACK)
             :
             :   "volatile"
             );
