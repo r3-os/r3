@@ -265,7 +265,7 @@ impl State {
                 # MIE := 0
                 csrci mstatus, {MIE}
 
-                tail {push_second_level_state_and_dispatch}
+                tail {push_second_level_state_and_dispatch}.not_shortcutting
                 ",
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
@@ -274,28 +274,50 @@ impl State {
         }
     }
 
-    /// Do the following steps:
+    /// The central procedure for task dispatching.
+    ///
+    /// The procedure does the following:
     ///
     ///  - **Don't** push the first-level state.
-    ///  - If the current task is not an idle task,
+    ///  - If `DISPATCH_PENDING == 0`,
+    ///     - If the current task is not the idle task, go to
+    ///       `pop_first_level_state`.
+    ///     - Otherwise, branch to [`Self::idle_task`].
+    ///  - **`not_shortcutting:`** (alternate entry point)
+    ///  - If the current task is not the idle task,
     ///     - Push the second-level state.
     ///     - Store SP to the current task's `TaskState`.
-    ///  - `dispatch:`
-    ///     - Call [`constance::kernel::PortToKernel::choose_running_task`].
-    ///     - Restore SP from the next scheduled task's `TaskState`.
+    ///  - If the current task is the idle task,
+    ///     - Update SP to point to the main stack. In this case, **this
+    ///       procedure may overwrite any contents in the main stack.**
+    ///  - **`dispatch:`** (alternate entry point)
+    ///  - Call [`constance::kernel::PortToKernel::choose_running_task`].
+    ///  - Restore SP from the next scheduled task's `TaskState`.
     ///  - If there's no task to schedule, branch to [`Self::idle_task`].
     ///  - Pop the second-level state of the next scheduled task.
-    ///  - `pop_first_level_state:`
-    ///     - Pop the first-level state of the next thread (task or interrupt
-    ///       handler) to run.
+    ///  - **`pop_first_level_state:`** (alternate entry point)
+    ///  - Pop the first-level state of the next thread (task or interrupt
+    ///    handler) to run.
     ///
     /// # Safety
     ///
-    ///  - If the current task is an idle task, SP should point to the
+    /// All entry points:
+    ///
+    ///  - `mstatus.MIE` must be equal to `1`.
+    ///
+    /// All entry points but `dispatch`:
+    ///
+    ///  - If the current task is a task, SP should point to the
     ///    first-level state on the current task's stack. Otherwise, SP must be
     ///    zero.
-    ///  - This function may overwrite any contents in the main stack.
-    ///  - `mstatus.MIE` must be equal to `1`.
+    ///
+    /// `dispatch`:
+    ///
+    ///  - SP must point to a valid stack.
+    ///
+    /// `pop_first_level_state`:
+    ///
+    ///  - The current task must not be the idle task.
     ///
     #[naked]
     unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> !
@@ -322,6 +344,29 @@ impl State {
 
         unsafe {
             asm!("
+                # Take a shortcut only if `DISPATCH_PENDING == 0`
+                lb a1, ({DISPATCH_PENDING})
+                bnez a1, 0f
+
+                # `DISPATCH_PENDING` is clear, meaning we are returning to the
+                # same task that the current exception has interrupted.
+                #
+                # If we are returning to the idle task, branch to `idle_task`
+                # directly because `pop_first_level_state` can't handle this case.
+                beqz sp, 2f
+
+                j {push_second_level_state_and_dispatch}.pop_first_level_state
+
+            0:
+                # `DISPATCH_PENDING` is set, meaning `yield_cpu` was called in
+                # an interrupt handler, meaning we might need to return to a
+                # different task. Clear `DISPATCH_PENDING` and proceeed to
+                # `not_shortcutting`.
+                sb zero, ({DISPATCH_PENDING}), a0
+
+            .global {push_second_level_state_and_dispatch}.not_shortcutting
+            {push_second_level_state_and_dispatch}.not_shortcutting:
+
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
                 # but `choose_and_get_next_task` needs one. Therefore we borrow
@@ -335,7 +380,7 @@ impl State {
                 #
                 #   choose_and_get_next_task();
                 #
-                beqz sp, 0f
+                beqz sp, 1f
 
                 # Push the second-level context state.
                 addi sp, sp, (4 * -12)
@@ -354,16 +399,16 @@ impl State {
 
                 # Store SP to `TaskState`.
                 #
-                #    <a0 = &running_task>
-                #    a0 = running_task
+                #    <a2 = &running_task>
+                #    a2 = running_task
                 #    r0.port_task_state.sp = sp
                 #
-                lw a0, (a0)
-                sw sp, (a0)
+                lw a2, (a2)
+                sw sp, (a2)
 
                 j {push_second_level_state_and_dispatch}.dispatch
 
-            0:
+            1:
                 lw sp, ({MAIN_STACK})
 
             .global {push_second_level_state_and_dispatch}.dispatch
@@ -457,53 +502,10 @@ impl State {
                 choose_and_get_next_task = sym choose_and_get_next_task::<System>,
                 idle_task = sym Self::idle_task::<System>,
                 MAIN_STACK = sym MAIN_STACK,
-                MPP_M = const mstatus::MPP_M,
-                in("a0") running_task_ptr,
-                options(noreturn)
-            );
-        }
-    }
-
-    /// Branch to `push_second_level_state_and_dispatch` if `DISPATCH_PENDING`
-    /// is set. Otherwise, branch to `pop_first_level_state` (thus skipping the
-    /// saving/restoration of second-level states).
-    #[naked]
-    unsafe fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>() -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
-        unsafe {
-            asm!("
-                # Take a shortcut only if `DISPATCH_PENDING == 0`
-                lb a1, ({DISPATCH_PENDING})
-                bnez a1, NotShortcutting
-
-                # `DISPATCH_PENDING` is clear, meaning we are returning to the
-                # same task that the current exception has interrupted.
-                #
-                # If we are returning to the idle task, branch to `idle_task`
-                # directly because `pop_first_level_state` can't handle this case.
-                beqz sp, 0f
-
-                tail {push_second_level_state_and_dispatch}.pop_first_level_state
-
-                # `DISPATCH_PENDING` is set, meaning `yield_cpu` was called in
-                # an interrupt handler, meaning we might need to return to a
-                # different task. Clear `DISPATCH_PENDING` and branch to
-                # `push_second_level_state_and_dispatch`.
-            NotShortcutting:
-                sb zero, ({DISPATCH_PENDING}), a0
-                tail {push_second_level_state_and_dispatch}
-
-            0:
-                tail {idle_task}
-                ",
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
-                push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
-                idle_task = sym Self::idle_task::<System>,
-                options(noreturn),
+                MPP_M = const mstatus::MPP_M,
+                in("a2") running_task_ptr,
+                options(noreturn)
             );
         }
     }
@@ -880,7 +882,7 @@ impl State {
 
                 # Return to the task context by restoring the first-level and
                 # second-level state of the next task.
-                tail {push_second_level_state_and_dispatch_shortcutting}
+                tail {push_second_level_state_and_dispatch}
 
             PopFirstLevelStateTrampoline:
                 tail {push_second_level_state_and_dispatch}.pop_first_level_state
@@ -898,8 +900,6 @@ impl State {
                 handle_exception = sym Self::handle_exception::<System>,
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
-                push_second_level_state_and_dispatch_shortcutting =
-                    sym Self::push_second_level_state_and_dispatch_shortcutting::<System>,
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
                 MAIN_STACK = sym MAIN_STACK,
                 options(noreturn)
