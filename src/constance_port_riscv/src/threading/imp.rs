@@ -214,6 +214,7 @@ impl State {
         }
     }
 
+    #[inline]
     pub unsafe fn yield_cpu<System: PortInstance>(&'static self)
     where
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
@@ -226,7 +227,7 @@ impl State {
         }
     }
 
-    #[inline(never)]
+    #[inline]
     #[naked]
     unsafe fn yield_cpu_in_task<System: PortInstance>()
     where
@@ -236,8 +237,7 @@ impl State {
         unsafe {
             asm!("
                 # Push the first level context state. The saved `pc` directly
-                # points to the current return address. This means the saved
-                # `ra` (`sp[0]`) is irrelevant.
+                # points to the end of this function.
                 #
                 #   sp -= 17;
                 #   sp[1..10] = [t0-t2, a0-a5]
@@ -245,6 +245,7 @@ impl State {
                 #   sp[16] = ra
                 #
                 addi sp, sp, (4 * -17)
+                sw ra, (4 * 0)(sp)
                 sw t0, (4 * 1)(sp)
                 sw t1, (4 * 2)(sp)
                 sw t2, (4 * 3)(sp)
@@ -260,12 +261,14 @@ impl State {
                 sw t4, (4 * 13)(sp)
                 sw t5, (4 * 14)(sp)
                 sw t6, (4 * 15)(sp)
+                lla ra, 0f
                 sw ra, (4 * 16)(sp)
 
                 # MIE := 0
                 csrci mstatus, {MIE}
 
                 tail {push_second_level_state_and_dispatch}.not_shortcutting
+            0:
                 ",
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
