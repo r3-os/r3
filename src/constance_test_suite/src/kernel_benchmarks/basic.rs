@@ -26,6 +26,15 @@ impl<System: Kernel> App<System> {
 }
 
 fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    log::trace!("Good morning, Angel!");
+    log::info!(
+        "performance_time = {}{}",
+        D::performance_time(),
+        D::PERFORMANCE_TIME_UNIT
+    );
+    log::info!(
+        "performance_time = {}{}",
+        D::performance_time(),
+        D::PERFORMANCE_TIME_UNIT
+    );
     D::success();
 }
