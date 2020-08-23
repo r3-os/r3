@@ -223,11 +223,19 @@ impl State {
         if !self.is_task_context::<System>() {
             unsafe { DISPATCH_PENDING = true };
         } else {
-            unsafe { Self::yield_cpu_in_task::<System>() }
+            // `yield_cpu_in_task` does not clobber any registers except
+            // for `ra`
+            unsafe {
+                asm!("
+                    call {yield_cpu_in_task}
+                    ",
+                    yield_cpu_in_task = sym Self::yield_cpu_in_task::<System>,
+                    out("ra") _,
+                );
+            }
         }
     }
 
-    #[inline]
     #[naked]
     unsafe fn yield_cpu_in_task<System: PortInstance>()
     where
@@ -237,7 +245,8 @@ impl State {
         unsafe {
             asm!("
                 # Push the first level context state. The saved `pc` directly
-                # points to the end of this function.
+                # points to the current return address. This means the saved
+                # `ra` (`sp[0]`) is irrelevant.
                 #
                 #   sp -= 17;
                 #   sp[1..10] = [t0-t2, a0-a5]
@@ -245,7 +254,6 @@ impl State {
                 #   sp[16] = ra
                 #
                 addi sp, sp, (4 * -17)
-                sw ra, (4 * 0)(sp)
                 sw t0, (4 * 1)(sp)
                 sw t1, (4 * 2)(sp)
                 sw t2, (4 * 3)(sp)
@@ -261,7 +269,6 @@ impl State {
                 sw t4, (4 * 13)(sp)
                 sw t5, (4 * 14)(sp)
                 sw t6, (4 * 15)(sp)
-                lla ra, 0f
                 sw ra, (4 * 16)(sp)
 
                 # MIE := 0
