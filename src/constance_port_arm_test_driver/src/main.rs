@@ -88,6 +88,15 @@ macro_rules! instantiate_test {
             fn fail() {
                 report_fail();
             }
+
+            fn performance_time() -> u32 {
+                // SP804 Timer1
+                unsafe { ((<System as port::Sp804Options>::SP804_BASE + 4)
+                    as *const u32).read_volatile() }
+            }
+
+            const PERFORMANCE_TIME_UNIT: Option<&'static str> = Some("μs");
+
             // Chose PPIs.
             // SGIs (software-generated interrupts) don't support disabling.
             const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];

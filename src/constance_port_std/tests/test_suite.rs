@@ -76,12 +76,21 @@ macro_rules! instantiate_kernel_tests {
                 fn app() -> &'static test_case::App<System> {
                     &COTTAGE
                 }
+
                 fn success() {
                     TEST_UTIL.success::<System>();
                 }
+
                 fn fail() {
                     TEST_UTIL.fail();
                 }
+
+                fn performance_time() -> u32 {
+                    port_std_impl::PORT_STATE.tick_count::<System>()
+                }
+
+                const PERFORMANCE_TIME_UNIT: Option<&'static str> = Some("μs");
+
                 const INTERRUPT_LINES: &'static [InterruptNum] = &[0, 1, 2, 3];
                 const INTERRUPT_PRIORITY_LOW: InterruptPriority = 4;
                 const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;

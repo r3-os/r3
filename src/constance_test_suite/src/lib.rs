@@ -32,6 +32,28 @@ pub mod kernel_tests {
         /// Signal to the test runner that a test has failed.
         fn fail();
 
+        /// Get the current time for performance measurement.
+        fn performance_time() -> u32 {
+            0
+        }
+
+        /// Get the unit of [`performance_time`] to be displayed following a
+        /// measured value. `None` indicates `performance_time` is not
+        /// supported.
+        ///
+        /// # Examples
+        ///
+        /// ```rust,ignore
+        /// impl<A> constance_test_suite::kernel_tests::Driver<A> for Driver {
+        ///     /* ... */
+        ///     fn performance_time() -> u32 {
+        ///         winapi::um::sysinfoapi::GetTickCount()
+        ///     }
+        ///     const PERFORMANCE_TIME_UNIT: Option<&'static str> = Some("ms");
+        /// }
+        /// ```
+        const PERFORMANCE_TIME_UNIT: Option<&'static str> = None;
+
         /// The list of interrupt lines that can be used by test programs.
         ///
         ///  - The list can have an arbitrary number of elements. Some tests
