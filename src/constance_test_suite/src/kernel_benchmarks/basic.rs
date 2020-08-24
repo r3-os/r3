@@ -1,40 +1,39 @@
 //! TODO
-use constance::{
-    kernel::{cfg::CfgBuilder, Task},
-    prelude::*,
-};
+use constance::{kernel::cfg::CfgBuilder, prelude::*};
 use core::marker::PhantomData;
 
 use super::Driver;
+use crate::utils::benchmark::{self, Bencher};
 
 pub struct App<System> {
-    _phantom: PhantomData<System>,
+    benchmark: benchmark::BencherCottage<System>,
 }
+
+struct BenchmarkOptions<System, D>(PhantomData<(System, D)>);
+
+const I_TRACE: benchmark::Interval = "greeting";
 
 impl<System: Kernel> App<System> {
     pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
-        Task::build()
-            .start(task_body::<System, D>)
-            .priority(0)
-            .active(true)
-            .finish(b);
-
         App {
-            _phantom: PhantomData,
+            benchmark: benchmark::configure::<System, BenchmarkOptions<System, D>>(b),
         }
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    log::info!(
-        "performance_time = {}{}",
-        D::performance_time(),
-        D::PERFORMANCE_TIME_UNIT
-    );
-    log::info!(
-        "performance_time = {}{}",
-        D::performance_time(),
-        D::PERFORMANCE_TIME_UNIT
-    );
-    D::success();
+impl<System: Kernel, D: Driver<App<System>>> benchmark::BencherOptions<System>
+    for BenchmarkOptions<System, D>
+{
+    type App = App<System>;
+    type Driver = D;
+
+    fn cottage() -> &'static benchmark::BencherCottage<System> {
+        &D::app().benchmark
+    }
+
+    fn iter() {
+        Self::mark_start();
+        log::trace!("Good morning, Angel!");
+        Self::mark_end(I_TRACE);
+    }
 }

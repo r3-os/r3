@@ -240,9 +240,7 @@ pub mod kernel_benchmarks {
         fn success();
 
         /// Get the current time for performance measurement.
-        fn performance_time() -> u32 {
-            0
-        }
+        fn performance_time() -> u32;
 
         /// Get the unit of [`performance_time`] to be displayed following a
         /// measured value.
