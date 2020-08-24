@@ -455,7 +455,7 @@ pub mod kernel_benchmarks {
 
     define_kernel_benchmarks! {
         [$]
-        (mod basic {}, "basic"),
+        (mod task_lifecycle {}, "task_lifecycle"),
     }
 
     /// Invoke the specified macro with a description of test cases
