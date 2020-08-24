@@ -344,7 +344,6 @@ dependencies = [
  "quickcheck",
  "quickcheck_macros",
  "staticvec",
- "try-lock",
  "wyhash",
 ]
 

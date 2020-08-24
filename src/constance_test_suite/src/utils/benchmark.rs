@@ -3,16 +3,26 @@ use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Kernel, Task},
     utils::Init,
 };
-use core::fmt;
+use core::{cell::UnsafeCell, fmt};
 use staticvec::StaticVec;
-use try_lock::TryLock;
 
 use crate::utils::sort::insertion_sort;
 
 /// Identifies a measured interval.
 pub type Interval = &'static str;
 
-pub trait BencherOptions<System> {
+/// The options for the bencher.
+///
+/// # Safety
+///
+///  - Implementing this trait causes [`Bencher`] to be implemented on the same
+///    type. The application code should not call any of `Bencher`'s methods
+///    outside the duration of a call to [`Self::iter`].
+///
+///  - `Bencher`'s methods access a global object without synchronization. The
+///    application code should ensure no data race occurs.
+///
+pub unsafe trait BencherOptions<System> {
     fn performance_time() -> u32;
 
     const PERFORMANCE_TIME_UNIT: &'static str;
@@ -42,11 +52,13 @@ pub struct BencherCottage<System> {
     state: Hunk<System, BencherState>,
 }
 
-struct BencherState(TryLock<BencherStateInner>);
+struct BencherState(UnsafeCell<BencherStateInner>);
 struct BencherStateInner {
     mark: u32,
     intervals: StaticVec<IntervalRecord, 8>,
 }
+
+unsafe impl Sync for BencherState {}
 
 struct IntervalRecord {
     name: Interval,
@@ -54,7 +66,7 @@ struct IntervalRecord {
 }
 
 impl Init for BencherState {
-    const INIT: Self = Self(TryLock::new(BencherStateInner {
+    const INIT: Self = Self(UnsafeCell::new(BencherStateInner {
         mark: 0,
         intervals: StaticVec::new(),
     }));
@@ -77,14 +89,13 @@ pub const fn configure<System: Kernel, Options: BencherOptions<System>>(
 impl<System: Kernel, Options: BencherOptions<System>> Bencher<System> for Options {
     #[inline(never)]
     fn mark_start() {
-        let mut state = Self::cottage().state.0.try_lock().unwrap();
+        let state = unsafe { &mut *Self::cottage().state.0.get() };
         state.mark = Options::performance_time();
     }
 
     #[inline(never)]
     fn mark_end(name: Interval) {
-        let mut state = Self::cottage().state.0.try_lock().unwrap();
-        let state = &mut *state;
+        let state = unsafe { &mut *Self::cottage().state.0.get() };
         let delta = Options::performance_time() - state.mark;
 
         // Find the `IntervalRecord` for `int`. If there's none, create one
@@ -119,7 +130,7 @@ fn main_task<System: Kernel, Options: BencherOptions<System>>(_: usize) {
 
         Options::iter();
 
-        let state = Options::cottage().state.0.try_lock().unwrap();
+        let state = unsafe { &mut *Options::cottage().state.0.get() };
 
         // If there's no custom intervals defined at this point, it's a usage
         // error.
@@ -133,7 +144,7 @@ fn main_task<System: Kernel, Options: BencherOptions<System>>(_: usize) {
 
     // Report the result
     {
-        let mut state = Options::cottage().state.0.try_lock().unwrap();
+        let state = unsafe { &mut *Options::cottage().state.0.get() };
         for interval in state.intervals.iter_mut() {
             assert!(interval.samples.is_full());
 

@@ -316,9 +316,13 @@ pub mod kernel_benchmarks {
     ///    CfgBuilder<System>) -> Self`
     ///  - `fn iter<B: crate::kernel_benchmarks::Bencher<Self>>()`
     ///
+    /// # Safety
+    ///
+    /// See [`crate::utils::benchmark::BencherOptions`].
+    ///
     macro_rules! use_benchmark_in_kernel_benchmark {
         {
-            pub struct App<System> {
+            pub unsafe struct App<System> {
                 inner: $inner_ty:ident<System>,
             }
         } => {
@@ -344,7 +348,7 @@ pub mod kernel_benchmarks {
             }
 
             /// benchmark framework → app
-            impl<System: constance::kernel::Kernel, D: Driver<App<System>>>
+            unsafe impl<System: constance::kernel::Kernel, D: Driver<App<System>>>
                 benchmark::BencherOptions<System> for MyBencherOptions<System, D>
             {
                 fn cottage() -> &'static benchmark::BencherCottage<System> {

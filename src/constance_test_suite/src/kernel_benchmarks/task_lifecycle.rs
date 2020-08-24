@@ -23,7 +23,7 @@ use super::Bencher;
 use crate::utils::benchmark::Interval;
 
 use_benchmark_in_kernel_benchmark! {
-    pub struct App<System> {
+    pub unsafe struct App<System> {
         inner: AppInner<System>,
     }
 }
