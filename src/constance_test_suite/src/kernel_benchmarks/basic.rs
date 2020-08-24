@@ -1,39 +1,34 @@
 //! TODO
-use constance::{kernel::cfg::CfgBuilder, prelude::*};
+use constance::kernel::{cfg::CfgBuilder, Kernel};
 use core::marker::PhantomData;
 
-use super::Driver;
-use crate::utils::benchmark::{self, Bencher};
+use super::Bencher;
+use crate::utils::benchmark::Interval;
 
-pub struct App<System> {
-    benchmark: benchmark::BencherCottage<System>,
+use_benchmark_in_kernel_benchmark! {
+    pub struct App<System> {
+        inner: AppInner<System>,
+    }
 }
 
-struct BenchmarkOptions<System, D>(PhantomData<(System, D)>);
+struct AppInner<System> {
+    _phantom: PhantomData<System>,
+}
 
-const I_TRACE: benchmark::Interval = "greeting";
+const I_TRACE: Interval = "greeting";
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
-        App {
-            benchmark: benchmark::configure::<System, BenchmarkOptions<System, D>>(b),
+impl<System: Kernel> AppInner<System> {
+    /// Used by `use_benchmark_in_kernel_benchmark!`
+    const fn new<B: Bencher<Self>>(b: &mut CfgBuilder<System>) -> Self {
+        Self {
+            _phantom: PhantomData,
         }
     }
-}
 
-impl<System: Kernel, D: Driver<App<System>>> benchmark::BencherOptions<System>
-    for BenchmarkOptions<System, D>
-{
-    type App = App<System>;
-    type Driver = D;
-
-    fn cottage() -> &'static benchmark::BencherCottage<System> {
-        &D::app().benchmark
-    }
-
-    fn iter() {
-        Self::mark_start();
+    /// Used by `use_benchmark_in_kernel_benchmark!`
+    fn iter<B: Bencher<Self>>() {
+        B::mark_start();
         log::trace!("Good morning, Angel!");
-        Self::mark_end(I_TRACE);
+        B::mark_end(I_TRACE);
     }
 }

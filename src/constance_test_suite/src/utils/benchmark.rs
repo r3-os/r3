@@ -1,4 +1,4 @@
-//! The benchmark framework.
+//! The benchmark framework that runs on Constance.
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Kernel, Task},
     utils::Init,
@@ -7,19 +7,15 @@ use core::fmt;
 use staticvec::StaticVec;
 use try_lock::TryLock;
 
-use crate::{kernel_benchmarks::Driver, utils::sort::insertion_sort};
+use crate::utils::sort::insertion_sort;
 
 /// Identifies a measured interval.
 pub type Interval = &'static str;
 
 pub trait BencherOptions<System> {
-    /// The type parameter for `Self::Driver`. It's not used by the bencher and
-    /// can be anything.
-    type App;
+    fn performance_time() -> u32;
 
-    /// The test driver interface. It's used to access the performance counter
-    /// and to call `Driver::success`.
-    type Driver: Driver<Self::App>;
+    const PERFORMANCE_TIME_UNIT: &'static str;
 
     /// Get a reference to the associated [`BencherCottage`].
     fn cottage() -> &'static BencherCottage<System>;
@@ -28,6 +24,9 @@ pub trait BencherOptions<System> {
     ///
     /// The bencher calls this method for one or more times from its main taks.
     fn iter();
+
+    /// Signal the completion of a benchmark run.
+    fn finish();
 }
 
 /// The API to be used by a measured program. Automatically implemented on every
@@ -79,14 +78,14 @@ impl<System: Kernel, Options: BencherOptions<System>> Bencher<System> for Option
     #[inline(never)]
     fn mark_start() {
         let mut state = Self::cottage().state.0.try_lock().unwrap();
-        state.mark = Options::Driver::performance_time();
+        state.mark = Options::performance_time();
     }
 
     #[inline(never)]
     fn mark_end(name: Interval) {
         let mut state = Self::cottage().state.0.try_lock().unwrap();
         let state = &mut *state;
-        let delta = Options::Driver::performance_time() - state.mark;
+        let delta = Options::performance_time() - state.mark;
 
         // Find the `IntervalRecord` for `int`. If there's none, create one
         let interval = if let Some(x) = state
@@ -163,7 +162,7 @@ fn main_task<System: Kernel, Options: BencherOptions<System>>(_: usize) {
                 interval.name,
                 mean,
                 percentiles[2],
-                Options::Driver::PERFORMANCE_TIME_UNIT,
+                Options::PERFORMANCE_TIME_UNIT,
             );
 
             log::info!(
@@ -177,7 +176,7 @@ fn main_task<System: Kernel, Options: BencherOptions<System>>(_: usize) {
         }
     }
 
-    Options::Driver::success();
+    Options::finish();
 }
 
 /// A fixed-point number with two fractional digits.

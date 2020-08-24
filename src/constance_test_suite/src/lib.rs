@@ -2,6 +2,7 @@
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(const_option)]
+#![feature(decl_macro)]
 #![feature(cfg_target_has_atomic)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -227,6 +228,7 @@ pub mod kernel_tests {
 /// Kernel benchmarks
 pub mod kernel_benchmarks {
     use constance::kernel::{InterruptNum, InterruptPriority};
+
     /// Instantiation parameters of a test case.
     ///
     /// This trait has two purposes: (1) It serves as an interface to a test driver.
@@ -291,6 +293,94 @@ pub mod kernel_benchmarks {
         ///
         /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;
+    }
+
+    /// The interface provided by [`use_benchmark_in_kernel_benchmark!`] and
+    /// consumed by an inner app.
+    trait Bencher<App> {
+        /// Get a reference to `App` of the inner app.
+        fn app() -> &'static App;
+
+        fn mark_start();
+        fn mark_end(int: crate::utils::benchmark::Interval);
+    }
+
+    /// Define an `App` type using [the benchmark
+    /// framework](crate::utils::benchmark).
+    ///
+    /// `struct $inner_ty<System>` should be defined in the same module.
+    /// `$inner_ty<System>` should have the following methods:
+    ///
+    ///  - `const fn new<B: crate::kernel_benchmarks::Bencher<Self>>(b: &mut
+    ///    CfgBuilder<System>) -> Self`
+    ///  - `fn iter<B: crate::kernel_benchmarks::Bencher<Self>>()`
+    ///
+    macro_rules! use_benchmark_in_kernel_benchmark {
+        {
+            pub struct App<System> {
+                inner: $inner_ty:ident<System>,
+            }
+        } => {
+            use crate::kernel_benchmarks::Driver;
+            use crate::utils::benchmark;
+
+            pub struct App<System> {
+                benchmark: benchmark::BencherCottage<System>,
+                inner: $inner_ty<System>,
+            }
+
+            struct MyBencherOptions<System, D>(core::marker::PhantomData<(System, D)>);
+
+            impl<System: constance::kernel::Kernel> App<System> {
+                pub const fn new<D: Driver<Self>>(
+                    b: &mut constance::kernel::cfg::CfgBuilder<System>,
+                ) -> Self {
+                    App {
+                        benchmark: benchmark::configure::<System, MyBencherOptions<System, D>>(b),
+                        inner: $inner_ty::new::<MyBencherOptions<System, D>>(b),
+                    }
+                }
+            }
+
+            /// benchmark framework → app
+            impl<System: constance::kernel::Kernel, D: Driver<App<System>>>
+                benchmark::BencherOptions<System> for MyBencherOptions<System, D>
+            {
+                fn cottage() -> &'static benchmark::BencherCottage<System> {
+                    &D::app().benchmark
+                }
+
+                fn iter() {
+                    $inner_ty::iter::<MyBencherOptions<System, D>>();
+                }
+
+                fn performance_time() -> u32 {
+                    D::performance_time()
+                }
+
+                const PERFORMANCE_TIME_UNIT: &'static str = D::PERFORMANCE_TIME_UNIT;
+
+                fn finish() {
+                    D::success()
+                }
+            }
+
+            /// app → benchmark framework
+            impl<System: constance::kernel::Kernel, D: Driver<App<System>>>
+                crate::kernel_benchmarks::Bencher<$inner_ty<System>> for MyBencherOptions<System, D>
+            {
+                fn app() -> &'static $inner_ty<System> {
+                    &D::app().inner
+                }
+
+                fn mark_start() {
+                    <Self as benchmark::Bencher<System>>::mark_start()
+                }
+                fn mark_end(int: benchmark::Interval) {
+                    <Self as benchmark::Bencher<System>>::mark_end(int)
+                }
+            }
+        };
     }
 
     macro_rules! define_kernel_benchmarks {
