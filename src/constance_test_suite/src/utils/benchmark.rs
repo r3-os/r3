@@ -96,7 +96,7 @@ impl<System: Kernel, Options: BencherOptions<System>> Bencher<System> for Option
     #[inline(never)]
     fn mark_end(name: Interval) {
         let state = unsafe { &mut *Self::cottage().state.0.get() };
-        let delta = Options::performance_time() - state.mark;
+        let delta = Options::performance_time().wrapping_sub(state.mark);
 
         // Find the `IntervalRecord` for `int`. If there's none, create one
         let interval = if let Some(x) = state
