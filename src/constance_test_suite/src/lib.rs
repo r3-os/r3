@@ -3,6 +3,7 @@
 #![feature(const_panic)]
 #![feature(const_option)]
 #![feature(decl_macro)]
+#![feature(is_sorted)]
 #![feature(cfg_target_has_atomic)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]

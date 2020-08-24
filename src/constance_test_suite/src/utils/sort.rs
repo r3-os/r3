@@ -6,42 +6,16 @@ use core::{cmp::Ordering, mem::swap};
 /// # Performance
 ///
 /// It was never faster than `[T]::sort_unstable` for `a.len() > 16`.
-///
-/// # Examples
-///
-/// ```
-/// let mut v = [-5, 4, 1, -3, 2];
-///
-/// minisort::insertion_sort(&mut v);
-/// assert!(v == [-5, -3, 1, 2, 4]);
-/// ```
 pub fn insertion_sort<T: Ord>(a: &mut [T]) {
     insertion_sort_inner(a, |x, y| x < y);
 }
 
 /// Sort the slice with a key extraction function.
-///
-/// # Examples
-///
-/// ```
-/// let mut v = [-5i32, 4, 1, -3, 2];
-///
-/// minisort::insertion_sort_by_key(&mut v, |k| k.abs());
-/// assert!(v == [1, 2, -3, 4, -5]);
-/// ```
 pub fn insertion_sort_by_key<T, K: Ord>(a: &mut [T], mut f: impl FnMut(&T) -> K) {
     insertion_sort_inner(a, |x, y| f(x) < f(y));
 }
 
 /// Sort the slice with a comparator function.
-///
-/// # Examples
-///
-/// ```
-/// let mut v = [5, 4, 1, 3, 2];
-/// minisort::insertion_sort_by(&mut v, |a, b| a.cmp(b));
-/// assert!(v == [1, 2, 3, 4, 5]);
-/// ```
 pub fn insertion_sort_by<T>(a: &mut [T], mut f: impl FnMut(&T, &T) -> Ordering) {
     insertion_sort_inner(a, |x, y| f(x, y) == Ordering::Less);
 }
@@ -62,8 +36,11 @@ fn insertion_sort_inner<T>(a: &mut [T], mut f: impl FnMut(&T, &T) -> bool) {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use super::*;
     use quickcheck_macros::quickcheck;
+    use std::vec::Vec;
 
     #[quickcheck]
     fn result_is_sorted(mut v: Vec<i32>) -> bool {
