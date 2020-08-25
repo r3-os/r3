@@ -1,0 +1,16 @@
+[package]
+name = "constance_support_rza1"
+version = "0.0.1"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Supporting package for running Constance on Renesas RZ/A1"
+categories = ["embedded", "no-std"]
+keywords = ["constance", "arm", "renesas"]
+repository = "https://github.com/yvt/Constance"
+
+[dependencies]
+constance_port_arm = { path = "../constance_port_arm" }
+constance = { path = "../constance" }
+
+register = "0.5.1"

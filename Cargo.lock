@@ -353,6 +353,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "constance_support_rza1"
+version = "0.0.1"
+dependencies = [
+ "constance",
+ "constance_port_arm",
+ "register",
+]
+
+[[package]]
 name = "constance_test_runner"
 version = "0.1.0"
 dependencies = [
