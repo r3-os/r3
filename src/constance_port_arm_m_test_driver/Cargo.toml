@@ -7,7 +7,9 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [features]
-test = [
+kernel_benchmarks = ["run"]
+kernel_tests = ["run"]
+run = [
     "constance",
     "constance_port_arm_m",
     "cortex-m",

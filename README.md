@@ -164,3 +164,10 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
  - The Armv7-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385`
  - The Armv6-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385_v6m`
  - The Armv7-A port and Arm RealView Platform Baseboard Explore for Cortex-A9 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_realview_pbx_a9`
+
+### How to Run Benchmarks
+
+The `-b` option instructs `constance_test_runner` to run benchmark tests. Note that some targets (notably QEMU Arm-M machines, which lack DWT) don't support benchmarking and the test code might crash, stall, or simply fail to compile on such targets.
+
+ - Hosted platform: `cargo bench -p constance_port_std`
+ - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re -b`

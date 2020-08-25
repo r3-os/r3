@@ -66,6 +66,18 @@ Each test case concludes in one of the following ways:
 [`Driver::success`]: crate::kernel_tests::Driver::success
 [`Driver::fail`]: crate::kernel_tests::Driver::fail
 
+## Kernel Benchmark Tests
+
+[`kernel_benchmarks`] is similar to [`kernel_tests`] but included test cases are intended to measure the runtime performance of kernel functionalities. The results are printed using [`::log`].
+
+Each test case concludes in one of the following ways:
+
+ - Calls [`Driver::success`], indicating the test was complete. The test program ensures all tasks are dormant soon after calling this¹. A test runner, however, is allowed to terminate the test program as soon as receiving this indication.
+ - Enters an infinite loop or a deadlock state. This should be detected by a test runner using a timeout duration at least as long as 30 seconds and handled as failure.
+ - Panics. This should be handled as failure.
+
+¹ This is because `constance_port_std` doesn't support task termination.
+
 # Writing a Test Runner
 
 ## Kernel Tests
@@ -79,3 +91,7 @@ However, for most targets, this is not an option. The reasons include (but aren'
  2. The build system should be able to conditionally compile test cases as instructed by the test runner. Cargo features aren't ideal for this because they have to be listed in `Cargo.toml` before downstream crates can use them (Cargo rejects unrecognized features), and we want to minimize data redundancy. The build script of this crate implements a work-around. The test runner, when compiling a test driver, should set the environment variable `CONSTANCE_TEST` to the name of the test to run. The Cargo feature `tests_selective` should also be enabled. The build script of this crate will read the value of `CONSTANCE_TEST` and enable the corresponding test case. In the test driver's code, the enabled test can be discovered by using the macro [`get_selected_kernel_tests!`].
 
 [`TEST_NAMES`]: crate::kernel_tests::TEST_NAMES
+
+## Kernel Benchmark Tests
+
+Writing a test runner for the kernel benchmark tests is very similar to writng one for the kernel tests. [`get_kernel_benchmarks`], [`kernel_benchmarks::TEST_NAMES`], and [`get_selected_kernel_benchmarks!`] should be used instead.
