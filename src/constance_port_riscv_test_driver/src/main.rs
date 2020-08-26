@@ -1,3 +1,4 @@
+#![feature(asm)]
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
 #![feature(naked_functions)]
@@ -8,9 +9,13 @@
 #![cfg_attr(feature = "test", no_std)]
 #![cfg_attr(feature = "test", no_main)]
 
+#[cfg(feature = "output-rtt")]
+mod logger_rtt;
 #[cfg(feature = "output-uart")]
 mod logger_uart;
 
+#[cfg(feature = "output-rtt")]
+mod panic_rtt;
 #[cfg(feature = "output-uart")]
 mod panic_uart;
 
@@ -91,6 +96,35 @@ macro_rules! instantiate_test {
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
             System::configure_interrupt(b);
             System::configure_timer(b);
+
+            // Initialize RTT (Real-Time Transfer) with two up channels and set
+            // the first one as the print channel for the printing macros, and
+            // the second one as log output
+            #[cfg(feature = "output-rtt")]
+            StartupHook::build().start(|_| {
+                let channels = rtt_target::rtt_init! {
+                    up: {
+                        0: {
+                            size: 1024
+                            mode: NoBlockSkip
+                            name: "Terminal"
+                        }
+                        1: {
+                            size: 1024
+                            mode: NoBlockSkip
+                            name: "Log"
+                        }
+                    }
+                };
+
+                unsafe {
+                    rtt_target::set_print_channel_cs(
+                        channels.up.0,
+                        &((|arg, f| f(arg)) as rtt_target::CriticalSectionFunc),
+                    )
+                };
+                logger_rtt::init(channels.up.1);
+            }).finish(b);
 
             // Redirect the log output to stderr
             #[cfg(feature = "output-uart")]

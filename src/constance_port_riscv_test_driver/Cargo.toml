@@ -15,6 +15,9 @@ test = [
     "riscv",
     "log",
 ]
+output-rtt = [
+    "rtt-target",
+]
 output-e310x-uart = [
     "e310x-hal",
     "output-uart",
@@ -29,6 +32,7 @@ interrupt-e310x = [
 constance_port_riscv = { path = "../constance_port_riscv", optional = true }
 constance = { path = "../constance", optional = true }
 
+rtt-target = { version = "0.2.0", optional = true }
 e310x-hal = { version = "0.8.3", optional = true, features = ["g002"] }
 riscv-rt = { version = "0.8.0", optional = true }
 e310x = { version = "0.8.1", optional = true }
