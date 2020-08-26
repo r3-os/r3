@@ -34,10 +34,6 @@ enum ProbeRsDebugProbeGetOutputError {
     Flash(#[source] probe_rs::flashing::FileDownloadError),
     #[error("Error while resetting the device: {0}")]
     Reset(#[source] probe_rs::Error),
-    #[error("Error while attaching to the RTT channel: {0}")]
-    AttachRtt(#[source] probe_rs_rtt::Error),
-    #[error("Timeout while trying to attach to the RTT channel.")]
-    AttachRttTimeout,
 }
 
 impl ProbeRsDebugProbe {
@@ -57,9 +53,6 @@ impl ProbeRsDebugProbe {
         Ok(Self { session })
     }
 }
-
-const POLL_INTERVAL: Duration = Duration::from_millis(30);
-const RTT_ATTACH_TIMEOUT: Duration = Duration::from_millis(500);
 
 impl DebugProbe for ProbeRsDebugProbe {
     fn program_and_get_output(
@@ -93,54 +86,73 @@ impl DebugProbe for ProbeRsDebugProbe {
                 .reset()
                 .map_err(ProbeRsDebugProbeGetOutputError::Reset)?;
 
-            // Read the executable to find the RTT header
-            log::debug!(
-                "Reading the executable '{0}' to find the RTT header",
-                exe.display()
-            );
-            let rtt_scan_region = match tokio::fs::read(&exe).await {
-                Ok(elf_bytes) => {
-                    let addr = spawn_blocking(move || find_rtt_symbol(&elf_bytes))
-                        .await
-                        .unwrap();
-                    if let Some(x) = addr {
-                        log::debug!("Found the RTT header at 0x{:x}", x);
-                        probe_rs_rtt::ScanRegion::Exact(x as u32)
-                    } else {
-                        probe_rs_rtt::ScanRegion::Ram
-                    }
-                }
-                Err(e) => {
-                    log::warn!(
-                        "Couldn't read the executable to find the RTT header: {:?}",
-                        e
-                    );
-                    probe_rs_rtt::ScanRegion::Ram
-                }
-            };
-
             // Attach to RTT
-            let start = Instant::now();
-            let rtt = loop {
-                match probe_rs_rtt::Rtt::attach_region(session.clone(), &rtt_scan_region) {
-                    Ok(rtt) => break rtt,
-                    Err(probe_rs_rtt::Error::ControlBlockNotFound) => {}
-                    Err(e) => {
-                        return Err(ProbeRsDebugProbeGetOutputError::AttachRtt(e).into());
-                    }
-                }
-
-                if start.elapsed() > RTT_ATTACH_TIMEOUT {
-                    return Err(ProbeRsDebugProbeGetOutputError::AttachRttTimeout.into());
-                }
-
-                delay_for(POLL_INTERVAL).await;
-            };
-
-            // Stream the output of all up channels
-            Ok(Box::pin(ReadRtt::new(rtt)) as DynAsyncRead<'_>)
+            Ok(attach_rtt(session, &exe).await?)
         })
     }
+}
+
+const POLL_INTERVAL: Duration = Duration::from_millis(30);
+const RTT_ATTACH_TIMEOUT: Duration = Duration::from_millis(500);
+
+#[derive(thiserror::Error, Debug)]
+pub enum AttachRttError {
+    #[error("Error while attaching to the RTT channel: {0}")]
+    AttachRtt(#[source] probe_rs_rtt::Error),
+    #[error("Timeout while trying to attach to the RTT channel.")]
+    Timeout,
+}
+
+pub async fn attach_rtt(
+    session: Arc<Mutex<probe_rs::Session>>,
+    exe: &Path,
+) -> Result<DynAsyncRead<'static>, AttachRttError> {
+    // Read the executable to find the RTT header
+    log::debug!(
+        "Reading the executable '{0}' to find the RTT header",
+        exe.display()
+    );
+    let rtt_scan_region = match tokio::fs::read(&exe).await {
+        Ok(elf_bytes) => {
+            let addr = spawn_blocking(move || find_rtt_symbol(&elf_bytes))
+                .await
+                .unwrap();
+            if let Some(x) = addr {
+                log::debug!("Found the RTT header at 0x{:x}", x);
+                probe_rs_rtt::ScanRegion::Exact(x as u32)
+            } else {
+                probe_rs_rtt::ScanRegion::Ram
+            }
+        }
+        Err(e) => {
+            log::warn!(
+                "Couldn't read the executable to find the RTT header: {:?}",
+                e
+            );
+            probe_rs_rtt::ScanRegion::Ram
+        }
+    };
+
+    // Attach to RTT
+    let start = Instant::now();
+    let rtt = loop {
+        match probe_rs_rtt::Rtt::attach_region(session.clone(), &rtt_scan_region) {
+            Ok(rtt) => break rtt,
+            Err(probe_rs_rtt::Error::ControlBlockNotFound) => {}
+            Err(e) => {
+                return Err(AttachRttError::AttachRtt(e).into());
+            }
+        }
+
+        if start.elapsed() > RTT_ATTACH_TIMEOUT {
+            return Err(AttachRttError::Timeout.into());
+        }
+
+        delay_for(POLL_INTERVAL).await;
+    };
+
+    // Stream the output of all up channels
+    Ok(Box::pin(ReadRtt::new(rtt)) as DynAsyncRead<'_>)
 }
 
 fn find_rtt_symbol(elf_bytes: &[u8]) -> Option<u64> {
