@@ -434,17 +434,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb582b60359da160a9477ee80f15c8d784c477e69c217ef2cdd4169c24ea380f"
-dependencies = [
- "proc-macro2 1.0.18",
- "quote 1.0.7",
- "syn 1.0.33",
-]
-
-[[package]]
 name = "dtoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -648,9 +637,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.21.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcc8e0c9bce37868955864dbecd2b1ab2bdf967e6f28066d65aaac620444b65c"
+checksum = "aaf91faf136cb47367fa430cd46e37a788775e7fa104f8b4bcb3861dc389b724"
 dependencies = [
  "fallible-iterator",
  "indexmap",
@@ -1084,13 +1073,11 @@ checksum = "237a5ed80e274dbc66f86bd59c1e25edc039660be53194b5fe0a482e0f2612ea"
 [[package]]
 name = "probe-rs"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ede5b4a775f2d77fb049a045683ad23ba2ac8901945825ef004551695322e09a"
+source = "git+https://github.com/probe-rs/probe-rs.git?rev=8bb53577ccee46550c0b688dfc2d13c1cd896083#8bb53577ccee46550c0b688dfc2d13c1cd896083"
 dependencies = [
  "anyhow",
  "base64",
  "bitfield",
- "derivative",
  "enum-primitive-derive",
  "gimli",
  "goblin",
@@ -1126,8 +1113,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e0e2d177a33e8c8a46d98767fb01877f1c466826b9c25f88749f35140d0aae0"
+source = "git+https://github.com/probe-rs/probe-rs.git?rev=8bb53577ccee46550c0b688dfc2d13c1cd896083#8bb53577ccee46550c0b688dfc2d13c1cd896083"
 dependencies = [
  "base64",
  "proc-macro2 1.0.18",

@@ -115,7 +115,19 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             ));
 
             // Open the RTT channels
-            Ok(super::probe_rs::attach_rtt(session, &exe).await?)
+            Ok(super::probe_rs::attach_rtt(
+                session,
+                &exe,
+                super::probe_rs::RttOptions {
+                    // The RISC-V External Debug Support specification 0.13 (to
+                    // which FE310 conforms) doesn't define any abstract command
+                    // for memory access, so the hart should be halted every
+                    // time we access RTT.
+                    halt_on_access: true,
+                    ..Default::default()
+                },
+            )
+            .await?)
         })
     }
 }
