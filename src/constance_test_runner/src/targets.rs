@@ -1,6 +1,7 @@
 use std::{convert::TryInto, error::Error, future::Future, path::Path, pin::Pin};
 use tokio::{io::AsyncRead, task::spawn_blocking};
 
+mod jlink;
 mod probe_rs;
 mod qemu;
 
@@ -85,6 +86,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
     ),
     ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
     ("qemu_sifive_e", &QemuSiFiveE),
+    ("red_v", &RedV),
 ];
 
 pub struct NucleoF401re;
@@ -319,6 +321,50 @@ impl Target for QemuSiFiveE {
                 ],
             )) as Box<dyn DebugProbe>)
         })
+    }
+}
+
+/// SparkFun RED-V RedBoard or Things Plus
+pub struct RedV;
+
+impl Target for RedV {
+    fn target_triple(&self) -> &str {
+        "riscv32imac-unknown-none-elf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-rtt", "interrupt-e310x"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                FLASH : ORIGIN = 0x20000000, LENGTH = 16M
+                RAM : ORIGIN = 0x80000000, LENGTH = 16K
+            }
+
+            REGION_ALIAS("REGION_TEXT", FLASH);
+            REGION_ALIAS("REGION_RODATA", FLASH);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+
+            /* Skip first 64K allocated for bootloader */
+            _stext = 0x20010000;
+
+            _hart_stack_size = 1K;
+        "#
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(std::future::ready(Ok(
+            Box::new(jlink::Fe310JLinkDebugProbe::new()) as _,
+        )))
     }
 }
 
