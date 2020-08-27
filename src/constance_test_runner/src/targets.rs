@@ -274,7 +274,7 @@ impl Target for QemuSiFiveE {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-e310x-uart", "interrupt-e310x"]
+        &["output-e310x-uart", "interrupt-e310x", "board-e310x-qemu"]
     }
 
     fn memory_layout_script(&self) -> String {
@@ -336,6 +336,7 @@ impl Target for RedV {
         &[
             "output-rtt",
             "interrupt-e310x",
+            "board-e310x-red-v",
             "constance_port_riscv/emulate-lr-sc",
         ]
     }

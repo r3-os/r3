@@ -26,6 +26,9 @@ mod uart;
 #[cfg(feature = "interrupt-e310x")]
 mod interrupt_e310x;
 
+#[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
+mod e310x;
+
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
     // If a test case is specified, instantiate the test case
@@ -70,7 +73,7 @@ macro_rules! instantiate_test {
         impl port::TimerOptions for System {
             const MTIME_PTR: usize = 0x0200_bff8;
             const MTIMECMP_PTR: usize = 0x0200_4000;
-            const FREQUENCY: u64 = 10_000_000;
+            const FREQUENCY: u64 = e310x::MTIME_FREQUENCY;
 
             // Updating `mtime` is not supported by QEMU.
             const RESET_MTIME: bool = false;
@@ -101,6 +104,12 @@ macro_rules! instantiate_test {
             constance::build!(System, configure_app => test_case::App<System>);
 
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+            // Initialize the clock
+            #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
+            StartupHook::build().start(|_| {
+                e310x::clocks();
+            }).finish(b);
+
             System::configure_interrupt(b);
             System::configure_timer(b);
 

@@ -15,6 +15,7 @@ test = [
     "riscv",
     "log",
 ]
+
 output-rtt = [
     "rtt-target",
 ]
@@ -24,8 +25,16 @@ output-e310x-uart = [
     "nb",
 ]
 output-uart = []
+
 interrupt-e310x = [
     "e310x",
+]
+
+board-e310x-red-v = [
+    "e310x-hal",
+]
+board-e310x-qemu = [
+    "e310x-hal",
 ]
 
 [dependencies]

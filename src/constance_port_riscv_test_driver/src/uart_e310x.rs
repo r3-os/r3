@@ -6,7 +6,7 @@ use e310x_hal::{
     e310x::{UART0, UART1},
     prelude::*,
     serial::{Serial, Tx, UartX},
-    time::{Bps, Hertz},
+    time::Bps,
 };
 use nb::block;
 use riscv::interrupt;
@@ -17,20 +17,7 @@ static mut UART: Option<(Tx<UART0>, Tx<UART1>)> = None;
 fn init() {
     let resources = unsafe { e310x_hal::DeviceResources::steal() };
 
-    let coreclk = resources
-        .peripherals
-        .PRCI
-        .constrain()
-        .use_external(Hertz(16_000_000))
-        .coreclk(Hertz(16_000_000));
-
-    let aonclk = resources
-        .peripherals
-        .AONCLK
-        .constrain()
-        .use_external(Hertz(32_768));
-
-    let clocks = Clocks::freeze(coreclk, aonclk);
+    let clocks = super::e310x::clocks();
 
     let uart0 = Serial::new(
         resources.peripherals.UART0,
