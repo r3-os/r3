@@ -244,6 +244,99 @@ pub macro pp_llvm_asm {
     },
 }
 
+/// Preprocessed `asm!`.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(asm)]
+/// #![feature(decl_macro)]
+///
+/// // miri doesn't support inline assembly
+/// #[cfg(not(miri))]
+/// unsafe {
+///     let output: usize;
+///     constance_portkit::pptext::pp_asm!(
+///         // The input fragments are simply concatenated. This means `mov`
+///         // would be part of this line comment if it didn't include a line
+///         // break.
+///         "# hoge \n"
+///         if cfg!(target_arch = "x86_64") {
+///             "mov {}, 42"
+///         }
+///         if cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
+///             "mov {}, #42"
+///         }
+///         if cfg!(any(target_arch = "riscv32", target_arch = "riscv64")) {
+///             "li {}, 42"
+///         },
+///         out(reg) output
+///     );
+///     assert_eq!(output, 42);
+/// }
+/// ```
+pub macro pp_asm {
+    // -------------------------------------------------------------------
+    // Munch the input until `,` or EOF is found
+    (
+        @internal,
+        unprocessed: [{ , $($unprocessed:tt)* }],
+        code: [{ $($code:tt)* }],
+    ) => {{
+        $crate::pptext::pp_asm!(
+            @done,
+            unprocessed: [{ , $($unprocessed)* }],
+            code: [{ $($code)* }],
+        );
+    }},
+    (
+        @internal,
+        unprocessed: [{}],
+        code: [{ $($code:tt)* }],
+    ) => {{
+        $crate::pptext::pp_asm!(
+            @done,
+            unprocessed: [{}],
+            code: [{ $($code)* }],
+        );
+    }},
+
+    (
+        @internal,
+        unprocessed: [{ $fragment:tt $($unprocessed:tt)* }],
+        code: [{ $($code:tt)* }],
+    ) => {{
+        $crate::pptext::pp_asm!(
+            @internal,
+            unprocessed: [{ $($unprocessed)* }],
+            code: [{ $($code)* $fragment }],
+        );
+    }},
+    // -------------------------------------------------------------------
+    (
+        @done,
+        unprocessed: [{ $($unprocessed:tt)* }],
+        code: [{ $($code:tt)* }],
+    ) => {{
+        $crate::pptext::pp_text_macro! {
+            macro pp_asm_code { $($code)* }
+        }
+        asm!(pp_asm_code!() $($unprocessed)*);
+    }},
+    // -------------------------------------------------------------------
+    // The entry point
+    (
+        // TODO: remove `$l:lit`
+        $l:literal $($rest:tt)*
+    ) => {
+        $crate::pptext::pp_asm!(
+            @internal,
+            unprocessed: [{ $l $($rest)* }],
+            code: [{}],
+        );
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
