@@ -41,10 +41,17 @@ macro_rules! instantiate_test {
 
         fn report_success() {
             // The test runner will catch this
+            #[cfg(feature = "output-rtt")]
+            rtt_target::rprintln!("!- TEST WAS SUCCESSFUL -!");
+
             #[cfg(feature = "output-uart")]
             uart::stdout_write_fmt(format_args!("!- TEST WAS SUCCESSFUL -!"));
 
-            loop {}
+            loop {
+                // prevent the loop from being optimized out
+                // <https://github.com/rust-lang/rust/issues/28728>
+                unsafe { asm!("") };
+            }
         }
 
         fn report_fail() {
