@@ -121,8 +121,8 @@ macro_rules! instantiate_test {
                 let channels = rtt_target::rtt_init! {
                     up: {
                         0: {
-                            size: 1024
-                            mode: NoBlockSkip
+                            size: 512
+                            mode: BlockIfFull
                             name: "Terminal"
                         }
                         1: {
