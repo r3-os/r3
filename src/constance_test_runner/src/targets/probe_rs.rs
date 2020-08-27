@@ -218,9 +218,9 @@ impl CoreHaltGuard {
 impl Drop for CoreHaltGuard {
     fn drop(&mut self) {
         let mut session = self.0.lock().unwrap();
-        // TODO: Don't `unwrap`
+        // TODO: Don't `unwrap` or ignore an error
         let mut core = session.core(0).unwrap();
-        core.run().unwrap();
+        let _ = core.run();
     }
 }
 

@@ -99,6 +99,16 @@ impl DebugProbe for Fe310JLinkDebugProbe {
                 .await
                 .map_err(Fe310JLinkDebugProbeGetOutputError::Flash)?;
 
+            log::debug!("Waiting for 5 seconds");
+
+            // Red-V's bootloader doesn't start the user program right away
+            // so wait for some time. The stale RTT data from a previous run
+            // might still be there until the new startup code zero-fills the
+            // memory.
+            tokio::time::delay_for(std::time::Duration::from_secs(5)).await;
+
+            log::debug!("Opening the debug probe using `probe-rs`");
+
             // Open the probe using `probe-rs`
             // (Actually, `JLinkExe` comes with their RTT host, but I'm too lazy
             // to check its usage)
