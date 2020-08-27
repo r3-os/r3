@@ -132,7 +132,7 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 .cfi_def_cfa_offset 0
                 ret
         "   } else {                                                            "
-                # unused: {RESERVATION_ADDR}
+                # unused: {RESERVATION_ADDR} {read_x} {write_x}
         "   }                                                                   "
             .cfi_endproc
             ",
