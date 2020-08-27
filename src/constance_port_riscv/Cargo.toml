@@ -9,6 +9,9 @@ categories = ["embedded", "no-std"]
 keywords = ["constance", "riscv"]
 repository = "https://github.com/yvt/Constance"
 
+[features]
+emulate-lr-sc = []
+
 [dependencies]
 constance_portkit = { path = "../constance_portkit" }
 constance = { path = "../constance" }

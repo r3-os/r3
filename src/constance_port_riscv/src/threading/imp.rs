@@ -7,11 +7,14 @@ use constance::{
     prelude::*,
     utils::{intrusive_list::StaticListHead, Init},
 };
+use constance_portkit::pptext::pp_asm;
 use core::{
     borrow::BorrowMut, cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice,
 };
 
 use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
+
+mod instemu;
 
 /// `mstatus` (Machine Status Register)
 mod mstatus {
@@ -206,7 +209,8 @@ impl State {
                 # Save the stack pointer for later use
                 sw sp, ({MAIN_STACK}), a0
 
-                # `mstatus.MPIE` will be `1` all the time
+                # `mstatus.MPIE` will be `1` all the time except in a software
+                # exception handler
                 li a0, {MPIE}
                 csrs mstatus, a0
 
@@ -363,7 +367,7 @@ impl State {
         }
 
         unsafe {
-            asm!("
+            pp_asm!("
                 # Take a shortcut only if `DISPATCH_PENDING == 0`
                 lb a1, ({DISPATCH_PENDING})
                 bnez a1, 0f
@@ -473,8 +477,13 @@ impl State {
                 # > Trap handlers should explicitly clear the reservation if
                 # > required (e.g., by using a dummy SC) before executing the
                 # > xRET.
-                addi a1, sp, -4
-                sc.w x0, x0, (a1)
+            "   if cfg!(feature = "emulate-lr-sc")  {                               "
+                    # TODO: sw x0, ({RESERVATION_ADDR}), a1
+            "   } else {                                                            "
+                    # unused: {RESERVATION_ADDR}
+                    addi a1, sp, -4
+                    sc.w x0, x0, (a1)
+            "   }                                                                   "
 
                 # mstatus.MPP := M
                 li a0, {MPP_M}
@@ -537,6 +546,7 @@ impl State {
                 get_running_task = sym get_running_task::<System>,
                 MAIN_STACK = sym MAIN_STACK,
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
+                RESERVATION_ADDR = sym instemu::RESERVATION_ADDR,
                 MPP_M = const mstatus::MPP_M,
                 MIE = const mstatus::MIE,
                 options(noreturn)
@@ -826,12 +836,13 @@ impl State {
                 #   <INTERRUPT_NESTING == 0, background context ∈ [task, idle task]>
                 #   *(MAIN_STACK - 4) = sp;
                 #   sp = MAIN_STACK - 4;
-                #   <sp[0] == background_sp, sp & 15 == 0, sp != 0>
+                #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
+                #    a0 == background_sp>
                 #
-                lw a0, ({MAIN_STACK})
-                addi a0, a0, -16
-                sw sp, (a0)
-                mv sp, a0
+                mv a0, sp
+                lw sp, ({MAIN_STACK})
+                addi sp, sp, -16
+                sw a0, (sp)
 
                 j 1f            # → RealignStackEnd
 
@@ -850,7 +861,8 @@ impl State {
                 #   <INTERRUPT_NESTING > 0, background context ∈ [interrupt]>
                 #   *((sp - 4) & !15) = sp
                 #   sp = (sp - 4) & !15
-                #   <sp[0] == background_sp, sp & 15 == 0, sp != 0>
+                #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
+                #    a0 == background_sp>
                 #
                 mv a0, sp
                 addi sp, sp, -4
@@ -858,8 +870,25 @@ impl State {
                 sw a0, (sp)
 
             1:      # RealignStackEnd
-                # Call `handle_exception`
+                # Check `mcause.Interrurpt`.
+                csrr a1, mcause
+                srli a2, a1, 31
+                beqz a2, 1f
+
+                # If the cause is an interrupt, call `handle_interrupt`
+                #
+                #   handle_interrupt();
+                #
+                call {handle_interrupt}
+                j 2f
+            1:
+                # If the cause is a software trap, call `handle_exception`
+                #
+                #   <a0 == background_sp, a1 == mcause>
+                #   handle_exception(a0, a1);
+                #
                 call {handle_exception}
+            2:
 
                                             # Decrement the nesting count.
                                             #
@@ -905,7 +934,8 @@ impl State {
                 sw x0, ({INTERRUPT_NESTING}), a1
                 j 4b        # → SwitchToMainStack
                 ",
-                handle_exception = sym Self::handle_exception::<System>,
+                handle_interrupt = sym Self::handle_interrupt::<System>,
+                handle_exception = sym instemu::handle_exception,
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
@@ -915,16 +945,11 @@ impl State {
         }
     }
 
-    unsafe fn handle_exception<System: PortInstance>()
+    unsafe fn handle_interrupt<System: PortInstance>()
     where
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
-        let mcause = mcause::read();
-        if (mcause & mcause::Interrupt) == 0 {
-            panic!("unhandled exception: {}", mcause);
-        }
-
         let all_local_interrupts = [0, mie::MSIE][System::USE_INTERRUPT_SOFTWARE as usize]
             | [0, mie::MTIE][System::USE_INTERRUPT_TIMER as usize]
             | [0, mie::MEIE][System::USE_INTERRUPT_EXTERNAL as usize];

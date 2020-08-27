@@ -333,7 +333,11 @@ impl Target for RedV {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-rtt", "interrupt-e310x"]
+        &[
+            "output-rtt",
+            "interrupt-e310x",
+            "constance_port_riscv/emulate-lr-sc",
+        ]
     }
 
     fn memory_layout_script(&self) -> String {

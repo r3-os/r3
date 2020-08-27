@@ -1,5 +1,6 @@
 #![feature(external_doc)]
 #![feature(const_fn)]
+#![feature(decl_macro)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
 #![feature(asm)]

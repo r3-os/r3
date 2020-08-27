@@ -55,6 +55,17 @@ Your system type should be combined with an interrupt controller driver by imple
 [`PortInterrupts`]: constance::kernel::PortInterrupts
 [`INTERRUPT_HANDLERS`]: constance::kernel::KernelCfg2::INTERRUPT_HANDLERS
 
+# `LR`/`SC` Emulation
+
+The **`emulate-lr-sc`** Cargo feature enables the software emulation of the `lr` (load-reserved) and `sc` (store-conditional) instructions. This is useful for a target that supports atomic memory operations but doesn't support these particular instructions, such as FE310. The following limitations should be kept in mind when using this feature:
+
+ - The software emulation is slow and non-preemptive (increases the worst-case interrupt latency).
+ - The addition of the software emulation code introduces a non-negligible code size overhead.
+ - It doesn't do actual bus snooping and therefore it will behave incorrectly if there's another bus master<!-- TODO: find a better, non-offensive word --> controlling the same memory address.
+ - Instructions with `rd = sp` are not supported and will behave incorrectly. This shouldn't be a problem in practice.
+
+`lr` and `sc` instructions are generated when the program uses atomic operations that aren't covered by AMO instructions (e.g., `Atomic*::compare_and_swap`).
+
 # Implementation
 
 The CPU Lock state is mapped to `mstatus.MIE` (global interrupt-enable). Unmanaged interrupts aren't supported.
