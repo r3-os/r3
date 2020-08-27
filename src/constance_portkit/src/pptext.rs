@@ -133,35 +133,24 @@ pub macro pp_text_macro {
             }
             $($rest_text:tt)*
         }],
-        free_idents: [{ $free_ident:ident $($rest_free_idents:tt)* }],
-        private_mod: [{ $($private_mod:tt)* }],
-        macro_inner: [{ $($macro_inner:tt)* }],
-        define_macro: [{ $vis:vis $name:ident }],
+        free_idents: [$free_idents:tt],
+        private_mod: [$private_mod:tt],
+        macro_inner: [$macro_inner:tt],
+        define_macro: [$define_macro:tt],
     ) => {
         $crate::pptext::pp_text_macro! {
             @internal,
-            text: [{ $($rest_text)* }],
-            free_idents: [{ $($rest_free_idents)* }],
-            private_mod: [{
-                $($private_mod)*
-
-                #[cfg($($cfg)*)]
-                $crate::pptext::pp_text_macro! {
-                    pub macro $free_ident { $($true_text)* }
-                }
-
-                // FIXME: Using `pub` in place of `pub(super)` work arounds
-                //        “visibilities can only be restricted to ancestor modules”
-                #[cfg(not($($cfg)*))]
-                pub macro $free_ident () { "" }
+            text: [{
+                // Expand to if-else
+                if cfg!( $($cfg)* ) {
+                    $($true_text)*
+                } else {}
+                $($rest_text)*
             }],
-            macro_inner: [{
-                $($macro_inner)*
-
-                // Refers to the macro in the generated private module
-                $name::$free_ident!(),
-            }],
-            define_macro: [{ $vis $name }],
+            free_idents: [$free_idents],
+            private_mod: [$private_mod],
+            macro_inner: [$macro_inner],
+            define_macro: [$define_macro],
         }
     },
 
