@@ -28,7 +28,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | Ports (Simulator)      | ![POSIX: Supported] ![Windows: Under Consideration] |
 | Ports (Arm M-Profile)  | ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] |
 | Ports (Arm A-Profile)  | ![Armv7-A (no FPU): Supported] |
-| Ports (RISC-V)         | ![RV32IMAC: In Development] ![RV64IMAC: Under Consideration] |
+| Ports (RISC-V)         | ![RV32IMAC: Supported] ![RV64IMAC: Under Consideration] |
 
 [Uniprocessor: Supported]: https://img.shields.io/badge/Uniprocessor-Supported-success?style=flat-square
 [Homogeneous Multiprocessor: Under Consideration]: https://img.shields.io/badge/Homogeneous%20Multiprocessor-Under%20Consideration-cc7070?style=flat-square
@@ -59,7 +59,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 [Armv7-M: Supported]: https://img.shields.io/badge/Armv7--M-Supported-success?style=flat-square
 [Armv6-M: Supported]: https://img.shields.io/badge/Armv6--M-Supported-success?style=flat-square
 [Armv7-A (no FPU): Supported]: https://img.shields.io/badge/Armv7--A%20(no%20FPU)-Supported-success?style=flat-square
-[RV32IMAC: In Development]: https://img.shields.io/badge/RV32IMAC-In%20Development-eea050?style=flat-square
+[RV32IMAC: Supported]: https://img.shields.io/badge/RV32IMAC-Supported-success?style=flat-square
 [RV64IMAC: Under Consideration]: https://img.shields.io/badge/RV64IMAC-Under%20Consideration-cc7070?style=flat-square
 
 ## Example
