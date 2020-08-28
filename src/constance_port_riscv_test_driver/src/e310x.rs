@@ -1,9 +1,5 @@
 //! Clock initialization for HiFive1, Red-V
-use e310x_hal::{
-    clock::Clocks,
-    prelude::*,
-    time::{Bps, Hertz},
-};
+use e310x_hal::{clock::Clocks, prelude::*, time::Hertz};
 use riscv::interrupt;
 
 static mut CLOCKS: Option<Clocks> = None;
