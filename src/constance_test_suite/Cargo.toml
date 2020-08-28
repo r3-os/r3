@@ -16,8 +16,12 @@ tests_selective = []
 
 [dependencies]
 constance = { path = "../constance" }
-wyhash = "0.3.0"
-log = "0.4.8"
+
+staticvec = { version = "0.10.2", default-features = false }
+wyhash = { version = "0.3.0" }
+log = { version = "0.4.8" }
 
 [dev-dependencies]
+quickcheck_macros = "0.9.1"
 env_logger = "0.7.1"
+quickcheck = "0.9.2"

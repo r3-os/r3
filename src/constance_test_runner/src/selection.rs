@@ -17,6 +17,7 @@ const FEAT_CPU_LOCK_BY_BASEPRI: &str = "basepri";
 #[derive(Debug, Clone)]
 pub enum TestCase {
     KernelTest(&'static str),
+    KernelBenchmark(&'static str),
 }
 
 impl fmt::Display for TestRun {
@@ -38,6 +39,7 @@ impl fmt::Display for TestCase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::KernelTest(name) => write!(f, "kernel_tests::{}", name),
+            Self::KernelBenchmark(name) => write!(f, "kernel_benchmarks::{}", name),
         }
     }
 }
@@ -47,6 +49,13 @@ fn all_test_runs() -> impl Iterator<Item = TestRun> {
         .iter()
         .cloned()
         .map(TestCase::KernelTest);
+
+    let cases = cases.chain(
+        constance_test_suite::kernel_benchmarks::TEST_NAMES
+            .iter()
+            .cloned()
+            .map(TestCase::KernelBenchmark),
+    );
 
     iproduct!(cases, &[false, true]).map(|(case, &cpu_lock_by_basepri)| TestRun {
         case,
@@ -59,6 +68,7 @@ pub enum TestFilter {
     Pass,
     CaseNameContains(String),
     CpuLockByBasepri(bool),
+    IsBenchmark(bool),
     Conjunction(Vec<TestFilter>),
     Disjuction(Vec<TestFilter>),
 }
@@ -69,6 +79,7 @@ impl TestFilter {
             Self::Pass => true,
             Self::CaseNameContains(needle) => run.case.to_string().contains(needle),
             Self::CpuLockByBasepri(value) => run.cpu_lock_by_basepri == *value,
+            Self::IsBenchmark(value) => *value == matches!(run.case, TestCase::KernelBenchmark(_)),
             Self::Conjunction(subfilters) => {
                 subfilters.iter().all(|subfilter| subfilter.matches(run))
             }

@@ -6,8 +6,8 @@
 #![feature(decl_macro)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
-#![cfg_attr(feature = "test", no_std)]
-#![cfg_attr(feature = "test", no_main)]
+#![cfg_attr(feature = "run", no_std)]
+#![cfg_attr(feature = "run", no_main)]
 
 #[cfg(feature = "output-rtt")]
 mod logger_rtt;
@@ -168,10 +168,10 @@ macro_rules! reject_excess {
 }
 
 // Get the selected test case and instantiate
-#[cfg(feature = "test")]
+#[cfg(feature = "run")]
 constance_test_suite::get_selected_kernel_tests!(instantiate_test!());
 
-#[cfg(not(feature = "test"))]
+#[cfg(not(feature = "run"))]
 fn main() {
     panic!("This executable should be invoked directly");
 }

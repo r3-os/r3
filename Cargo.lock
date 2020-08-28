@@ -380,6 +380,9 @@ dependencies = [
  "constance",
  "env_logger",
  "log",
+ "quickcheck",
+ "quickcheck_macros",
+ "staticvec",
  "wyhash",
 ]
 

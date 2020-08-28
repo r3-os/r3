@@ -22,6 +22,7 @@ fn main() {
         .filter(|s| !s.is_empty());
 
     let mut kernel_test_list = Vec::new();
+    let mut kernel_benchmark_list = Vec::new();
 
     for selected_test in selected_tests {
         if let Some(name) = selected_test.strip_prefix("kernel_tests::") {
@@ -31,7 +32,15 @@ fn main() {
             println!("cargo:rustc-cfg=kernel_test=\"{}\"", name);
 
             // Include it in `get_selected_kernel_tests_inner`
-            kernel_test_list.push(TestMeta(name));
+            kernel_test_list.push(TestMeta("kernel_tests", name));
+        } else if let Some(name) = selected_test.strip_prefix("kernel_benchmarks::") {
+            expect_valid_test_name(name);
+
+            // Enable `cfg(kernel_benchmark = "...")`
+            println!("cargo:rustc-cfg=kernel_benchmark=\"{}\"", name);
+
+            // Include it in `get_selected_kernel_benchmarks_inner`
+            kernel_benchmark_list.push(TestMeta("kernel_benchmarks", name));
         } else {
             panic!(
                 "Unrecognized test type: `{}`
@@ -53,8 +62,20 @@ fn main() {
                         {}
                     }}
                 }};
-            }}",
-            CommaSeparatedWithTrailingComma(&kernel_test_list)
+            }}
+
+            #[macro_export]
+            #[doc(hidden)]
+            macro_rules! get_selected_kernel_benchmarks_inner {{
+                (($($cb:tt)*), ($($pfx:tt)*)) => {{
+                    $($cb)* ! {{ $($pfx)*
+                        {}
+                    }}
+                }};
+            }}
+            ",
+            CommaSeparatedWithTrailingComma(&kernel_test_list),
+            CommaSeparatedWithTrailingComma(&kernel_benchmark_list),
         ),
     )
     .unwrap();
@@ -70,14 +91,14 @@ fn expect_valid_test_name(name: &str) {
     }
 }
 
-struct TestMeta<'a>(&'a str);
+struct TestMeta<'a>(&'a str, &'a str);
 
 impl fmt::Display for TestMeta<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{{ path: $crate::kernel_tests::{0}, name_ident: {0}, name_str: \"{0}\", }}",
-            self.0
+            "{{ path: $crate::{0}::{1}, name_ident: {1}, name_str: \"{1}\", }}",
+            self.0, self.1
         )
     }
 }

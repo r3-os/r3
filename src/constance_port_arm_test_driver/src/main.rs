@@ -10,8 +10,8 @@
 #![feature(llvm_asm)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
-#![cfg_attr(feature = "test", no_std)]
-#![cfg_attr(feature = "test", no_main)]
+#![cfg_attr(feature = "run", no_std)]
+#![cfg_attr(feature = "run", no_main)]
 
 #[cfg(feature = "output-semihosting")]
 mod logger_semihosting;
@@ -28,6 +28,9 @@ macro_rules! instantiate_test {
 
         use constance::kernel::{StartupHook, InterruptPriority, InterruptNum,
             cfg::CfgBuilder};
+        #[cfg(feature = "kernel_benchmarks")]
+        use constance_test_suite::kernel_benchmarks;
+        #[cfg(feature = "kernel_tests")]
         use constance_test_suite::kernel_tests;
         use constance_port_arm as port;
         use $path as test_case;
@@ -78,6 +81,31 @@ macro_rules! instantiate_test {
 
         struct Driver;
 
+        #[cfg(feature = "kernel_benchmarks")]
+        impl kernel_benchmarks::Driver<test_case::App<System>> for Driver {
+            fn app() -> &'static test_case::App<System> {
+                &COTTAGE
+            }
+            fn success() {
+                report_success();
+            }
+
+            fn performance_time() -> u32 {
+                // SP804 Timer1
+                !unsafe { ((<System as port::Sp804Options>::SP804_BASE + 4)
+                    as *const u32).read_volatile() }
+            }
+
+            const PERFORMANCE_TIME_UNIT: &'static str = "μs";
+
+            // Chose PPIs.
+            // SGIs (software-generated interrupts) don't support disabling.
+            const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
+            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0x60;
+            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0x20;
+        }
+
+        #[cfg(feature = "kernel_tests")]
         impl kernel_tests::Driver<test_case::App<System>> for Driver {
             fn app() -> &'static test_case::App<System> {
                 &COTTAGE
@@ -88,6 +116,7 @@ macro_rules! instantiate_test {
             fn fail() {
                 report_fail();
             }
+
             // Chose PPIs.
             // SGIs (software-generated interrupts) don't support disabling.
             const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
@@ -125,10 +154,12 @@ macro_rules! reject_excess {
 }
 
 // Get the selected test case and instantiate
-#[cfg(feature = "test")]
+#[cfg(feature = "kernel_benchmarks")]
+constance_test_suite::get_selected_kernel_benchmarks!(instantiate_test!());
+#[cfg(feature = "kernel_tests")]
 constance_test_suite::get_selected_kernel_tests!(instantiate_test!());
 
-#[cfg(not(feature = "test"))]
+#[cfg(not(feature = "run"))]
 fn main() {
     panic!("This executable should be invoked directly");
 }

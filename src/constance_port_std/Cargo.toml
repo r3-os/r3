@@ -40,3 +40,7 @@ errno = "0.2.5"
 [target."cfg(windows)".dependencies]
 winapi = { version = "0.3.8", features = ["processthreadsapi"] }
 
+[[bench]]
+name = "test_suite"
+harness = false
+
