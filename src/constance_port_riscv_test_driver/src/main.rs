@@ -38,7 +38,10 @@ macro_rules! instantiate_test {
 
         use constance::kernel::{StartupHook, InterruptPriority, InterruptNum,
             cfg::CfgBuilder};
+        #[cfg(feature = "kernel_tests")]
         use constance_test_suite::kernel_tests;
+        #[cfg(feature = "kernel_benchmarks")]
+        use constance_test_suite::kernel_benchmarks;
         use constance_port_riscv as port;
         use $path as test_case;
 
@@ -81,6 +84,36 @@ macro_rules! instantiate_test {
 
         struct Driver;
 
+        #[cfg(feature = "kernel_benchmarks")]
+        impl kernel_benchmarks::Driver<test_case::App<System>> for Driver {
+            fn app() -> &'static test_case::App<System> {
+                &COTTAGE
+            }
+            fn success() {
+                report_success();
+            }
+            fn performance_time() -> u32 {
+                unsafe {
+                    let mcycle;
+                    asm!("csrr {}, mcycle", out(reg)mcycle);
+                    mcycle
+                }
+            }
+
+            const PERFORMANCE_TIME_UNIT: &'static str = "cycle(s)";
+
+            #[cfg(feature = "interrupt-e310x")]
+            const INTERRUPT_LINES: &'static [InterruptNum] = &[
+                crate::interrupt_e310x::INTERRUPT_GPIO0,
+                // `USE_NESTING` is only enabled on QEMU
+                #[cfg(feature = "board-e310x-qemu")]
+                crate::interrupt_e310x::INTERRUPT_GPIO1,
+            ];
+            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 2;
+            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 6;
+        }
+
+        #[cfg(feature = "kernel_tests")]
         impl kernel_tests::Driver<test_case::App<System>> for Driver {
             fn app() -> &'static test_case::App<System> {
                 &COTTAGE
@@ -168,7 +201,9 @@ macro_rules! reject_excess {
 }
 
 // Get the selected test case and instantiate
-#[cfg(feature = "run")]
+#[cfg(feature = "kernel_benchmarks")]
+constance_test_suite::get_selected_kernel_benchmarks!(instantiate_test!());
+#[cfg(feature = "kernel_tests")]
 constance_test_suite::get_selected_kernel_tests!(instantiate_test!());
 
 #[cfg(not(feature = "run"))]
