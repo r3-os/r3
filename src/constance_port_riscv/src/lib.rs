@@ -78,7 +78,7 @@ pub trait EntryPoint {
     ///
     unsafe fn start() -> !;
 
-    /// The Machine external interrupt and timer handler.
+    /// The trap handler.
     ///
     /// # Safety
     ///

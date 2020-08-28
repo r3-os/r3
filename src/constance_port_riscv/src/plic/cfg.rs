@@ -140,8 +140,8 @@ pub trait PlicOptions {
     /// flag is enabled, the driver will signal completion earlier to start
     /// accepting higher-priority interrupts.
     ///
-    /// The following advices should be taken into consideration when using
-    /// this trick:
+    /// The following advices should be taken into consideration when enabling
+    /// this option:
     ///
     ///  - This should be disabled when there is at least one interrupt source
     ///    configured to target multiple contexts.

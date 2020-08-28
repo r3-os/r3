@@ -2,7 +2,7 @@ The RISC-V port for [Constance](::constance).
 
 # Startup code
 
-[`use_rt!`] hooks up the entry points ([`EntryPoint`]) using `#[`[`::riscv_rt::entry`]`]`. If this is not desirable for some reason, you can omit `use_rt!` and implement the code that calls the entry points in other ways.
+[`use_rt!`] hooks up the entry points ([`EntryPoint`]) using `#[`[`::riscv_rt::entry`]`]`. If this is not desirable for some reason, you can opt not to use it and call the entry points in other ways.
 
 # Interrupts
 
@@ -14,7 +14,7 @@ Other interrupt handling models such as [RISC-V Core-Local Interrupt Controller]
 
 ## Local Interrupts
 
-The first few interrupt numbers are allocated for interrupts defined by the RISC-V privileged architecture (Machine software interrupts, timer interrupts, and external interrupts), which we collectively call **local interrupts**. The second-level interrupt handlers for these interrupt numbers are called with their respective interrupts disabled (`mie.M[STE]IE = 0`) and global interrupts enabled (`mstatus.MIE = 1`).
+The first few interrupt numbers are allocated for interrupts defined by the RISC-V privileged architecture (Machine software interrupts, timer interrupts, and external interrupts), which we collectively call **local interrupts**. The [second-level interrupt handlers] for these interrupt numbers are called with their respective interrupts disabled (`mie.M[STE]IE = 0`) and global interrupts enabled (`mstatus.MIE = 1`).
 
 | Interrupt Type | Interrupt Number       | Can [Pend]? |
 | -------------- | ---------------------- | ----------- |
@@ -28,6 +28,7 @@ The interrupt handler of a particular interrupt number can re-enable the interru
 
 The local interrupts are always enabled from an API point of view. **[`InterruptLine::disable`] will always return [`NotSupported`]**.
 
+[second-level interrupt handlers]: constance::kernel::InterruptHandler
 [`InterruptLine::disable`]: constance::kernel::InterruptLine::disable
 [Pend]: constance::kernel::InterruptLine::pend
 [`NotSupported`]: constance::kernel::EnableInterruptLineError::NotSupported
