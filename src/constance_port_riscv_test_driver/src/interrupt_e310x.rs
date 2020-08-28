@@ -41,6 +41,11 @@ macro_rules! use_interrupt_e310x {
                 const MAX_PRIORITY: InterruptPriority = 7;
                 const MAX_NUM: InterruptNum = 127;
                 const PLIC_BASE: usize = 0x0c00_0000;
+                // The nesting trick can't be used on a real FE310 because
+                // its PLIC doesn't clear the pending flag when an incoming
+                // interrupt request signal is deasserted.
+                #[cfg(feature = "board-e310x-qemu")]
+                const USE_NESTING: bool = true;
             }
 
             impl InterruptController for $sys {
@@ -86,7 +91,11 @@ macro_rules! use_interrupt_e310x {
                 unsafe fn clear_interrupt_line(
                     line: InterruptNum,
                 ) -> Result<(), ClearInterruptLineError> {
-                    crate::interrupt_e310x::clear_interrupt_line(line)
+                    if cfg!(feature = "board-e310x-qemu") {
+                        crate::interrupt_e310x::clear_interrupt_line(line)
+                    } else {
+                        Err(ClearInterruptLineError::NotSupported)
+                    }
                 }
 
                 #[inline]

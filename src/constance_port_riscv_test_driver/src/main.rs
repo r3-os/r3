@@ -94,6 +94,8 @@ macro_rules! instantiate_test {
             #[cfg(feature = "interrupt-e310x")]
             const INTERRUPT_LINES: &'static [InterruptNum] = &[
                 crate::interrupt_e310x::INTERRUPT_GPIO0,
+                // `USE_NESTING` is only enabled on QEMU
+                #[cfg(feature = "board-e310x-qemu")]
                 crate::interrupt_e310x::INTERRUPT_GPIO1,
             ];
             const INTERRUPT_PRIORITY_LOW: InterruptPriority = 2;

@@ -140,11 +140,20 @@ pub trait PlicOptions {
     /// flag is enabled, the driver will signal completion earlier to start
     /// accepting higher-priority interrupts.
     ///
-    /// This should be disabled when there is at least one interrupt source
-    /// configured to target multiple contexts.
+    /// The following advices should be taken into consideration when using
+    /// this trick:
     ///
-    /// Defaults to `true` when unspecified.
-    const USE_NESTING: bool = true;
+    ///  - This should be disabled when there is at least one interrupt source
+    ///    configured to target multiple contexts.
+    ///
+    ///  - Some PLIC gateway implementations don't clear the pending flag when
+    ///    an incoming interrupt request signal is deasserted. The pending flag
+    ///    gets set again as soon as completion is signaled, meaning the
+    ///    interrupt will be claimed twice every time it's taken.
+    ///    The PLIC in FE310 has this issue.
+    ///
+    /// Defaults to `false` when unspecified.
+    const USE_NESTING: bool = false;
 }
 
 /// Provides access to a system-global PLIC instance. Implemented by [`use_plic!`].
