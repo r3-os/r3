@@ -875,9 +875,9 @@ impl State {
                 # > required (e.g., by using a dummy SC) before executing the
                 # > xRET.
             "   if cfg!(feature = "emulate-lr-sc")  {                               "
-                    sw x0, ({RESERVATION_ADDR}), a1
+                    sw x0, ({RESERVATION_ADDR_VALUE}), a1
             "   } else {                                                            "
-                    # unused: {RESERVATION_ADDR}
+                    # unused: {RESERVATION_ADDR_VALUE}
                     addi a1, sp, -4
                     sc.w x0, x0, (a1)
             "   }                                                                   "
@@ -941,7 +941,7 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
-                RESERVATION_ADDR = sym instemu::RESERVATION_ADDR,
+                RESERVATION_ADDR_VALUE = sym instemu::RESERVATION_ADDR_VALUE,
                 MAIN_STACK = sym MAIN_STACK,
                 options(noreturn)
             );

@@ -4,7 +4,7 @@ use constance_portkit::pptext::pp_asm;
 // TODO: add tests for `emulate-lr-sc`
 
 /// The reserved address, used for emulating SC/LR.
-pub(super) static mut RESERVATION_ADDR: usize = 0;
+pub(super) static mut RESERVATION_ADDR_VALUE: [usize; 2] = [0; 2];
 
 /// Handle a software exception by emulating the faulting instruction.
 ///
@@ -80,10 +80,13 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 #
                 #   <a2 = instruction, a4 = target, instruction is LR>
                 #   a3 = *target;
-                #   RESERVATION_ADDR = target;
+                #   RESERVATION_ADDR_VALUE[0] = target;
+                #   RESERVATION_ADDR_VALUE[1] = a3;
                 #
                 lw a3, (a4)
-                sw a4, ({RESERVATION_ADDR}), t0
+                la t0, {RESERVATION_ADDR_VALUE}
+                sw a4, (t0)
+                sw a3, 4(t0)
 
                 j 0f
             1:
@@ -96,17 +99,22 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 # Emulate the SC instruction.
                 #
                 #   <a2 = instruction, a4 = value, a5 = target, instruction is SC>
-                #   t2 = replace(&mut RESERVATION_ADDR, 0);
-                #   if t2 == target:
+                #   [t2, t1] = replace(&mut RESERVATION_ADDR_VALUE, [0, 0]);
+                #   if t2 == target && t1 == *target:
                 #       *target = value;
                 #       a3 = 0;
                 #   else:
                 #       a3 = 1;
                 #
-                lw t2, ({RESERVATION_ADDR})
-                sw x0, ({RESERVATION_ADDR}), t0
+                la t0, {RESERVATION_ADDR_VALUE}
+                lw t2, (t0)
+                lw t1, 4(t0)
+                sw x0, (t0)
+                sw x0, 4(t0)
                 li a3, 1
                 bne t2, a5, 0f
+                lw t2, (a5)
+                bne t2, t1, 0f
 
                 li a3, 0
                 sw a4, (a5)
@@ -132,14 +140,14 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 .cfi_def_cfa_offset 0
                 ret
         "   } else {                                                            "
-                # unused: {RESERVATION_ADDR} {read_x} {write_x}
+                # unused: {RESERVATION_ADDR_VALUE} {read_x} {write_x}
         "   }                                                                   "
             .cfi_endproc
             ",
             panic_on_unhandled_exception = sym panic_on_unhandled_exception,
             read_x = sym read_x,
             write_x = sym write_x,
-            RESERVATION_ADDR = sym RESERVATION_ADDR,
+            RESERVATION_ADDR_VALUE = sym RESERVATION_ADDR_VALUE,
         );
     }
 }

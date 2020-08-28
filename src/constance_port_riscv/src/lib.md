@@ -64,6 +64,7 @@ The **`emulate-lr-sc`** Cargo feature enables the software emulation of the `lr`
  - The addition of the software emulation code introduces a non-negligible code size overhead.
  - It doesn't do actual bus snooping and therefore it will behave incorrectly if there's another bus master<!-- TODO: find a better, non-offensive word --> controlling the same memory address.
  - Instructions with `rd = sp` are not supported and will behave incorrectly. This shouldn't be a problem in practice.
+ - It doesn't do actual bus snooping and can't detect a conflicting memory write that doesn't modify the memory contents. This shouldn't be a problem for the atomic operations currently provided by the standard library.
 
 `lr` and `sc` instructions are generated when the program uses atomic operations that aren't covered by AMO instructions (e.g., `Atomic*::compare_and_swap`).
 
