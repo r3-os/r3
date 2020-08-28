@@ -35,7 +35,7 @@ fn init() {
         .PRCI
         .constrain()
         .use_external(Hertz(16_000_000))
-        .coreclk(Hertz(150_000_000));
+        .coreclk(Hertz(100_000_000));
 
     let aonclk = resources
         .peripherals
@@ -45,4 +45,7 @@ fn init() {
 
     let clocks = Clocks::freeze(coreclk, aonclk);
     unsafe { CLOCKS = Some(clocks) };
+
+    // Clock QSPI0 at f_in / (2 * (1 + 0)) = 50MHz
+    unsafe { (0x10014000 as *mut u32).write_volatile(0) };
 }
