@@ -367,7 +367,7 @@ impl State {
         }
 
         unsafe {
-            pp_asm!("
+            asm!("
                 # Take a shortcut only if `DISPATCH_PENDING == 0`
                 lb a1, ({DISPATCH_PENDING})
                 bnez a1, 0f
@@ -471,20 +471,6 @@ impl State {
 
             .global {push_second_level_state_and_dispatch}.pop_first_level_state
             {push_second_level_state_and_dispatch}.pop_first_level_state:
-                # Invalidate any reservation held by this hart (this will cause
-                # a subsequent Store-Conditional to fail).
-                #
-                # > Trap handlers should explicitly clear the reservation if
-                # > required (e.g., by using a dummy SC) before executing the
-                # > xRET.
-            "   if cfg!(feature = "emulate-lr-sc")  {                               "
-                    # TODO: sw x0, ({RESERVATION_ADDR}), a1
-            "   } else {                                                            "
-                    # unused: {RESERVATION_ADDR}
-                    addi a1, sp, -4
-                    sc.w x0, x0, (a1)
-            "   }                                                                   "
-
                 # mstatus.MPP := M
                 li a0, {MPP_M}
                 csrs mstatus, a0
@@ -546,7 +532,6 @@ impl State {
                 get_running_task = sym get_running_task::<System>,
                 MAIN_STACK = sym MAIN_STACK,
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
-                RESERVATION_ADDR = sym instemu::RESERVATION_ADDR,
                 MPP_M = const mstatus::MPP_M,
                 MIE = const mstatus::MIE,
                 options(noreturn)
@@ -755,7 +740,7 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         unsafe {
-            asm!("
+            pp_asm!("
                 # Skip the stacking of the first-level state if the background
                 # context is the idle task.
                 #
@@ -880,6 +865,23 @@ impl State {
                 #   handle_interrupt();
                 #
                 call {handle_interrupt}
+
+                # Invalidate any reservation held by this hart (this will cause
+                # a subsequent Store-Conditional to fail). Don't do this for a
+                # software trap because a software trap can be used to emulate
+                # an SC/LR instruction.
+                #
+                # > Trap handlers should explicitly clear the reservation if
+                # > required (e.g., by using a dummy SC) before executing the
+                # > xRET.
+            "   if cfg!(feature = "emulate-lr-sc")  {                               "
+                    sw x0, ({RESERVATION_ADDR}), a1
+            "   } else {                                                            "
+                    # unused: {RESERVATION_ADDR}
+                    addi a1, sp, -4
+                    sc.w x0, x0, (a1)
+            "   }                                                                   "
+
                 j 2f
             1:
                 # If the cause is a software trap, call `handle_exception`
@@ -939,6 +941,7 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
+                RESERVATION_ADDR = sym instemu::RESERVATION_ADDR,
                 MAIN_STACK = sym MAIN_STACK,
                 options(noreturn)
             );
