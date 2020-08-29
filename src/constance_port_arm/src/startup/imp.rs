@@ -170,7 +170,11 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
         // Enable alignment fault checking
         arm::SCTLR::A::Enable +
         // Enable branch prediction
-        arm::SCTLR::Z::Enable,
+        arm::SCTLR::Z::Enable +
+        // Disable access flags in a page table
+        arm::SCTLR::AFE::Disable +
+        // Exceptions are taken in Arm state
+        arm::SCTLR::TE::Arm,
     );
 
     // Ensure the changes made to `SCTLR` here take effect immediately
@@ -365,8 +369,8 @@ impl FirstLevelPageEntry {
     /// Construct a page table entry.
     const fn page_table(table: *const SecondLevelPageTable) -> Self {
         let domain = 0u32;
-        let ns = true; // Non-Secure access
-        let pxn = false; // not using Large Physical Address Extension
+        let ns = false; // Secure access
+        let pxn = false; // not enabling Privilege Execute Never
 
         Self {
             // Assuming physical address == virtual address for `table`
@@ -387,7 +391,7 @@ impl FirstLevelPageEntry {
             xn,
         } = attr;
         let domain = 0u32;
-        let ns = true; // Non-Secure access
+        let ns = false; // Secure access
         let ng = false; // global (not Not-Global)
         let pxn = false; // not using Large Physical Address Extension
 

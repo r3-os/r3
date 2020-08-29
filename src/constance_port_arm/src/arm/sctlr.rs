@@ -34,6 +34,18 @@ register::register_bitfields! {u32,
         V OFFSET(13) NUMBITS(1) [
             Low = 0,
             High = 1
+        ],
+
+        /// Access flag enable
+        AFE OFFSET(29) NUMBITS(1) [
+            Disable = 0,
+            Enable = 1
+        ],
+
+        /// Thumb Exception Enable
+        TE OFFSET(30) NUMBITS(1) [
+            Arm = 0,
+            Thumb = 1
         ]
     ]
 }
