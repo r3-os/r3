@@ -47,20 +47,20 @@ impl DebugProbe for Fe310JLinkDebugProbe {
         let exe = exe.to_owned();
         Box::pin(async move {
             // Extract loadable sections
-            let sections = read_loaded_region_from_elf(&exe)
+            let LoadableCode { regions, entry } = read_elf(&exe)
                 .await
                 .map_err(Fe310JLinkDebugProbeGetOutputError::ProcessElf)?;
 
-            // Extract loadable sections to separate binary files
+            // Extract loadable regions to separate binary files
             let tempdir = TempDir::new("constance_test_runner")
                 .map_err(Fe310JLinkDebugProbeGetOutputError::CreateTempDir)?;
-            let section_files: Vec<_> = (0..sections.len())
+            let section_files: Vec<_> = (0..regions.len())
                 .map(|i| {
                     let name = format!("{}.bin", i);
                     tempdir.path().join(&name)
                 })
                 .collect();
-            for (path, (data, _)) in section_files.iter().zip(sections.iter()) {
+            for (path, (data, _)) in section_files.iter().zip(regions.iter()) {
                 log::debug!("Writing {} byte(s) to '{}'", data.len(), path.display());
                 tokio::fs::write(&path, data)
                     .await
@@ -69,10 +69,12 @@ impl DebugProbe for Fe310JLinkDebugProbe {
 
             // Generate commands for `JLinkExe`
             let mut cmd = String::new();
-            for (path, (_, offset)) in section_files.iter().zip(sections.iter()) {
+            writeln!(cmd, "r").unwrap();
+            for (path, (_, offset)) in section_files.iter().zip(regions.iter()) {
                 writeln!(cmd, "loadbin \"{}\" 0x{:08x}", path.display(), offset).unwrap();
             }
-            writeln!(cmd, "rnh").unwrap();
+            writeln!(cmd, "setpc 0x{:x}", entry).unwrap();
+            writeln!(cmd, "g").unwrap();
             writeln!(cmd, "q").unwrap();
 
             // Flash the program and reset the chip
@@ -99,14 +101,11 @@ impl DebugProbe for Fe310JLinkDebugProbe {
                 .await
                 .map_err(Fe310JLinkDebugProbeGetOutputError::Flash)?;
 
-            log::debug!("Waiting for 2 seconds");
+            log::debug!("Waiting for 1 seconds");
 
-            // Red-V's bootloader doesn't start the user program right away
-            // so wait for some time. The stale RTT data from a previous run
-            // might still be there until the new startup code zero-fills the
-            // memory.
-            tokio::time::delay_for(std::time::Duration::from_secs(2)).await;
-
+            // The stale RTT data from a previous run might still be there until
+            // the new startup code zero-fills the memory.
+            tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
             log::debug!("Opening the debug probe using `probe-rs`");
 
             // Open the probe using `probe-rs`
@@ -150,8 +149,15 @@ enum ProcessElfError {
     Parse(#[source] goblin::error::Error),
 }
 
+struct LoadableCode {
+    /// The regions to be loaded onto the target.
+    regions: Vec<(Vec<u8>, u64)>,
+    /// The entry point.
+    entry: u64,
+}
+
 /// Read the specified ELF file and return regions to be loaded onto the target.
-async fn read_loaded_region_from_elf(exe: &Path) -> Result<Vec<(Vec<u8>, u64)>, ProcessElfError> {
+async fn read_elf(exe: &Path) -> Result<LoadableCode, ProcessElfError> {
     let elf_bytes = tokio::fs::read(&exe).await.map_err(ProcessElfError::Read)?;
     let elf = goblin::elf::Elf::parse(&elf_bytes).map_err(ProcessElfError::Parse)?;
 
@@ -170,7 +176,10 @@ async fn read_loaded_region_from_elf(exe: &Path) -> Result<Vec<(Vec<u8>, u64)>, 
         })
         .collect();
 
-    Ok(regions)
+    Ok(LoadableCode {
+        regions,
+        entry: elf.entry,
+    })
 }
 
 struct OutputReader {
