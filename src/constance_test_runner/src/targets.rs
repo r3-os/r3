@@ -21,6 +21,12 @@ pub trait Target: Send + Sync {
     /// `constance_port_arm_m_test_driver`.
     fn cargo_features(&self) -> &[&str];
 
+    /// Get a flag indicating whether `libcore` should be built with the
+    /// smallest configuration.
+    fn small_rt(&self) -> bool {
+        false
+    }
+
     /// Generate the `memory.x` file to be included by the linker script of
     /// `cortex-m-rt` or `constance_port_arm`, or to be used as the top-level
     /// linker script by `constance_port_riscv_test_driver`.

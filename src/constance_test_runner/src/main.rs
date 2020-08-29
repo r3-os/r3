@@ -232,6 +232,14 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
             let cmd = subprocess::CmdBuilder::new(cargo_cmd)
                 .arg("build")
                 .arg("--release")
+                .args(if opt.target.small_rt() {
+                    vec![
+                        "-Zbuild-std=core",
+                        "-Zbuild-std-features=panic_immediate_abort",
+                    ]
+                } else {
+                    vec![]
+                })
                 .arg("--target")
                 .arg(opt.target.target_triple())
                 .arg(match test_run.case {
