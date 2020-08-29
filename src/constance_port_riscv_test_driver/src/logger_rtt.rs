@@ -34,6 +34,7 @@ pub fn init(channel: rtt_target::UpChannel) {
     interrupt::free(move |cs| {
         *LOG_CHANNEL.borrow(cs).borrow_mut() = Some(channel);
     });
-    log::set_logger(&Logger).unwrap();
+    // Don't call `unwrap` to reduce the code size
+    let _ = log::set_logger(&Logger);
     log::set_max_level(log::LevelFilter::Trace);
 }
