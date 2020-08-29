@@ -93,6 +93,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
     ("qemu_sifive_e", &QemuSiFiveE),
     ("red_v", &RedV),
+    ("red_v_itim", &RedVItim),
 ];
 
 pub struct NucleoF401re;
@@ -366,6 +367,97 @@ impl Target for RedV {
             _stext = 0x20010000;
 
             _hart_stack_size = 1K;
+        "#
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(std::future::ready(Ok(
+            Box::new(jlink::Fe310JLinkDebugProbe::new()) as _,
+        )))
+    }
+}
+
+/// SparkFun RED-V RedBoard or Things Plus, code execution on ITIM
+/// (Instruction Tightly Integrated Memory). Some code still executes on flash
+/// because of the size restriction of ITIM.
+pub struct RedVItim;
+
+impl Target for RedVItim {
+    fn target_triple(&self) -> &str {
+        RedV.target_triple()
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        RedV.cargo_features()
+    }
+
+    fn small_rt(&self) -> bool {
+        true
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                FLASH_TEXT : ORIGIN = 0x20100000, LENGTH = 1M
+                FLASH_RODATA : ORIGIN = 0x20200000, LENGTH = 1M
+                ITIM : ORIGIN = 0x08000000, LENGTH = 16K
+                DTIM : ORIGIN = 0x80000000, LENGTH = 16K
+            }
+
+            REGION_ALIAS("REGION_TEXT", ITIM);
+            REGION_ALIAS("REGION_RODATA", FLASH_RODATA);
+            REGION_ALIAS("REGION_DATA", DTIM);
+            REGION_ALIAS("REGION_BSS", DTIM);
+            REGION_ALIAS("REGION_HEAP", DTIM);
+            REGION_ALIAS("REGION_STACK", DTIM);
+
+            _hart_stack_size = 1K;
+
+            /* it's impossible to put the whole application in ITIM, so place
+             * only the code relevant to benchmarking in ITIM and the rest in
+             * flash */
+            SECTIONS
+            {
+                .text.cold :
+                {
+                    /* formatting and loogging*/
+                    *(.text.*fmt..Debug*);
+                    *(.text.*fmt..Display*);
+                    *(.text.*core3fmt*);
+                    *(.text.*rtt_target*);
+
+                    /* startup */
+                    *(.text.*port_boot*);
+                    *(.text.*setup_interrupts*);
+                    *(.text.*timer_tick*);
+                    *(.text.*e310x_hal*);
+                    *(.text.*e310x4init*);
+                    *(.text.*Kernel$GT$4boot*);
+
+                    /* instruction emulation */
+                    *(.text.*instemu6read_x*);
+                    *(.text.*instemu6write_x*);
+
+                    /* timer */
+                    *(.text.*combined_handler*);
+
+                    /* reporting and error handling */
+                    *(.text.*report_success*);
+                    *(.text.*panic*);
+
+                    /* miscellaneous */
+                    *(.text.*bcmp*);
+                    *(.text.*memset*);
+                    *(.text.*memcpy*);
+                    *(.text.*__multi3*);
+                    *(.text.*__udivdi3*);
+                    *(.text.*__udivmoddi*);
+                } > FLASH_TEXT
+            }
         "#
         .to_owned()
     }

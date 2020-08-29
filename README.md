@@ -174,3 +174,4 @@ The `-b` option instructs `constance_test_runner` to run benchmark tests. Note t
  - Hosted platform: `cargo bench -p constance_port_std`
  - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re -b`
  - The RISC-V port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v -b`
+ - The RISC-V port and RED-V (ITIM): `cargo run -p constance_test_runner -- -t red_v_itim -b`
