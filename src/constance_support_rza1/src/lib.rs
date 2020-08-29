@@ -4,5 +4,29 @@
 //! [Constance]: ::constance
 //! [RZ/A1H]: https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz/rza/rza1h.html
 //! [GR-PEACH]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html
-// TODO: PAL
-// TODO: `PortTimer` backed by RZ/A1 OS timers
+#![feature(const_fn)]
+#![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
+#![deny(unsafe_op_in_unsafe_fn)]
+#![no_std]
+
+/// Used by `use_os_timer!`
+#[doc(hidden)]
+pub extern crate constance;
+
+/// Used by `use_os_timer!`
+#[doc(hidden)]
+pub extern crate constance_portkit;
+
+/// Used by `use_os_timer!`
+#[doc(hidden)]
+pub extern crate constance_port_arm;
+
+/// The RZ/A1 OS Timer driver.
+#[doc(hidden)]
+pub mod os_timer {
+    pub mod cfg;
+    pub mod imp;
+    mod os_timer_regs;
+}
+
+pub use self::os_timer::cfg::*;

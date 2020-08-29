@@ -358,6 +358,7 @@ version = "0.0.1"
 dependencies = [
  "constance",
  "constance_port_arm",
+ "constance_portkit",
  "register",
 ]
 
