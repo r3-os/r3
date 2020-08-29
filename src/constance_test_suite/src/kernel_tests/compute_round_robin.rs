@@ -18,7 +18,7 @@ use core::{
 use super::Driver;
 use crate::utils::compute;
 
-const NUM_TASKS: usize = 4;
+const NUM_TASKS: usize = 3;
 
 pub struct App<System> {
     timer: Timer<System>,
@@ -54,12 +54,7 @@ impl<System: Kernel> App<System> {
         }
 
         // FIXME: Rewrite this with `<[_; 4]>::map` when it's compatible with `const fn`
-        let tasks = [
-            tasks[0].unwrap(),
-            tasks[1].unwrap(),
-            tasks[2].unwrap(),
-            tasks[3].unwrap(),
-        ];
+        let tasks = [tasks[0].unwrap(), tasks[1].unwrap(), tasks[2].unwrap()];
 
         let state = Hunk::<_, State>::build().finish(b);
 

@@ -295,9 +295,24 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: Port>(
             continue;
         }
 
+        let is_line_assumed_managed = {
+            let lines = System::MANAGED_INTERRUPT_LINES;
+            let mut i = 0;
+            loop {
+                if i < lines.len() {
+                    if lines[i] == handler.line {
+                        break true;
+                    }
+                    i += 1;
+                } else {
+                    break false;
+                }
+            }
+        };
+
         let managed_line_i = vec_position!(interrupt_lines, |line| line.num == handler.line
             && line.is_initially_managed::<System>());
-        let is_line_managed = managed_line_i.is_some();
+        let is_line_managed = managed_line_i.is_some() || is_line_assumed_managed;
 
         assert!(
             is_line_managed,
@@ -336,6 +351,7 @@ pub type InterruptHandlerFn = unsafe extern "C" fn();
 /// A table of combined second-level interrupt handlers.
 ///
 /// The generic parameter is not a part of the public interface.
+#[derive(Debug)]
 pub struct InterruptHandlerTable<T: ?Sized = [Option<InterruptHandlerFn>]> {
     storage: T,
 }

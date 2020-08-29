@@ -75,9 +75,9 @@ jobs:
         env:
           RUST_LOG: debug
 
-  # Run tests on a freestanding target
-  test-freestanding:
-    name: Test (Freestanding)
+  # Run tests on a freestanding Arm target
+  test-freestanding-arm:
+    name: Test (Freestanding Arm)
     needs: check
     runs-on: ubuntu-20.04
     steps:
@@ -141,3 +141,30 @@ jobs:
         with:
           command: run
           args: -p constance_test_runner -- -t qemu_mps2_an385_v6m -l debug
+
+  # Run tests on a freestanding RISC-V target
+  test-freestanding-riscv:
+    name: Test (Freestanding RISC-V)
+    needs: check
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Install Dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev qemu-system-riscv32
+
+      - name: Install Additional Target of the Rust Toolchain
+        run: |
+          rustup target add riscv32imac-unknown-none-elf
+
+      - name: Test (SiFive E, RV32IMAC)
+        run: |
+          cargo run -p constance_test_runner -- -t qemu_sifive_e -l debug

@@ -1,6 +1,7 @@
 use std::{convert::TryInto, error::Error, future::Future, path::Path, pin::Pin};
 use tokio::{io::AsyncRead, task::spawn_blocking};
 
+mod jlink;
 mod probe_rs;
 mod qemu;
 
@@ -11,6 +12,8 @@ pub trait Target: Send + Sync {
     ///  - `thumbv7m-none-eabi`: Armv7-M
     ///  - `thumbv7em-none-eabi`: Armv7-M + DSP
     ///  - `thumbv7em-none-eabihf`: Armv7-M + DSP + FPU
+    ///  - `riscv32imac-unknown-none-elf`: RISC-V RV32I + Multiplication and
+    ///    Division + Atomics + Compressed Instructions
     ///
     fn target_triple(&self) -> &str;
 
@@ -19,7 +22,8 @@ pub trait Target: Send + Sync {
     fn cargo_features(&self) -> &[&str];
 
     /// Generate the `memory.x` file to be included by the linker script of
-    /// `cortex-m-rt` or `constance_port_arm`.
+    /// `cortex-m-rt` or `constance_port_arm`, or to be used as the top-level
+    /// linker script by `constance_port_riscv_test_driver`.
     fn memory_layout_script(&self) -> String;
 
     /// Connect to the target.
@@ -81,6 +85,8 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
         &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An505),
     ),
     ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
+    ("qemu_sifive_e", &QemuSiFiveE),
+    ("red_v", &RedV),
 ];
 
 pub struct NucleoF401re;
@@ -159,10 +165,16 @@ impl Target for QemuMps2An385 {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
-            Ok(
-                Box::new(qemu::QemuDebugProbe::new(&["-machine", "mps2-an385"]))
-                    as Box<dyn DebugProbe>,
-            )
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-arm",
+                &[
+                    "-machine",
+                    "mps2-an385",
+                    "-semihosting",
+                    "-semihosting-config",
+                    "target=native",
+                ],
+            )) as Box<dyn DebugProbe>)
         })
     }
 }
@@ -197,10 +209,16 @@ impl Target for QemuMps2An505 {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
-            Ok(
-                Box::new(qemu::QemuDebugProbe::new(&["-machine", "mps2-an505"]))
-                    as Box<dyn DebugProbe>,
-            )
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-arm",
+                &[
+                    "-machine",
+                    "mps2-an505",
+                    "-semihosting",
+                    "-semihosting-config",
+                    "target=native",
+                ],
+            )) as Box<dyn DebugProbe>)
         })
     }
 }
@@ -233,11 +251,125 @@ impl Target for QemuRealviewPbxA9 {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
         Box::pin(async {
-            Ok(
-                Box::new(qemu::QemuDebugProbe::new(&["-machine", "realview-pbx-a9"]))
-                    as Box<dyn DebugProbe>,
-            )
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-arm",
+                &[
+                    "-machine",
+                    "realview-pbx-a9",
+                    "-semihosting",
+                    "-semihosting-config",
+                    "target=native",
+                ],
+            )) as Box<dyn DebugProbe>)
         })
+    }
+}
+
+/// The RISC-V board compatible with SiFive E SDK on QEMU
+pub struct QemuSiFiveE;
+
+impl Target for QemuSiFiveE {
+    fn target_triple(&self) -> &str {
+        "riscv32imac-unknown-none-elf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-e310x-uart", "interrupt-e310x", "board-e310x-qemu"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                FLASH : ORIGIN = 0x20000000, LENGTH = 16M
+                RAM : ORIGIN = 0x80000000, LENGTH = 16K
+            }
+
+            REGION_ALIAS("REGION_TEXT", FLASH);
+            REGION_ALIAS("REGION_RODATA", FLASH);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+
+            /* Skip first 4M allocated for bootloader */
+            _stext = 0x20400000;
+
+            _hart_stack_size = 1K;
+        "#
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async {
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-riscv32",
+                &[
+                    "-machine",
+                    "sifive_e",
+                    // UART0 → stdout
+                    "-serial",
+                    "file:/dev/stdout",
+                    // UART1 → stderr
+                    "-serial",
+                    "file:/dev/stderr",
+                    // Disable monitor
+                    "-monitor",
+                    "none",
+                ],
+            )) as Box<dyn DebugProbe>)
+        })
+    }
+}
+
+/// SparkFun RED-V RedBoard or Things Plus
+pub struct RedV;
+
+impl Target for RedV {
+    fn target_triple(&self) -> &str {
+        "riscv32imac-unknown-none-elf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &[
+            "output-rtt",
+            "interrupt-e310x",
+            "board-e310x-red-v",
+            "constance_port_riscv/emulate-lr-sc",
+        ]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                FLASH : ORIGIN = 0x20000000, LENGTH = 16M
+                RAM : ORIGIN = 0x80000000, LENGTH = 16K
+            }
+
+            REGION_ALIAS("REGION_TEXT", FLASH);
+            REGION_ALIAS("REGION_RODATA", FLASH);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+
+            /* Skip first 64K allocated for bootloader */
+            _stext = 0x20010000;
+
+            _hart_stack_size = 1K;
+        "#
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(std::future::ready(Ok(
+            Box::new(jlink::Fe310JLinkDebugProbe::new()) as _,
+        )))
     }
 }
 

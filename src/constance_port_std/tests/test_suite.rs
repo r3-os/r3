@@ -44,6 +44,7 @@ impl KernelTestUtil {
 
 mod kernel_tests {
     pub mod external_interrupt;
+    pub mod interrupt_table_sparsity;
     pub mod stack_align;
 }
 
@@ -56,6 +57,7 @@ macro_rules! instantiate_kernel_tests {
 
             // Port-specific tests
             { path: crate::kernel_tests::external_interrupt, name_ident: external_interrupt, },
+            { path: crate::kernel_tests::interrupt_table_sparsity, name_ident: interrupt_table_sparsity, },
             { path: crate::kernel_tests::stack_align, name_ident: stack_align, },
         );
     };

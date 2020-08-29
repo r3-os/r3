@@ -12,12 +12,16 @@ use super::{DebugProbe, DynAsyncRead};
 use crate::subprocess;
 
 pub(super) struct QemuDebugProbe {
+    qemu_cmd: &'static str,
     qemu_args: &'static [&'static str],
 }
 
 impl QemuDebugProbe {
-    pub(super) fn new(qemu_args: &'static [&'static str]) -> Self {
-        Self { qemu_args }
+    pub(super) fn new(qemu_cmd: &'static str, qemu_args: &'static [&'static str]) -> Self {
+        Self {
+            qemu_cmd,
+            qemu_args,
+        }
     }
 }
 
@@ -26,7 +30,7 @@ impl DebugProbe for QemuDebugProbe {
         &mut self,
         exe: &Path,
     ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>, Box<dyn Error>>> + '_>> {
-        let result = subprocess::CmdBuilder::new("qemu-system-arm")
+        let result = subprocess::CmdBuilder::new(self.qemu_cmd)
             .arg("-kernel")
             .arg(exe)
             .args(self.qemu_args)
@@ -34,9 +38,6 @@ impl DebugProbe for QemuDebugProbe {
                 "-nographic",
                 "-d",
                 "guest_errors",
-                "-semihosting",
-                "-semihosting-config",
-                "target=native",
                 "-audiodev",
                 "id=none,driver=none",
             ])

@@ -9,8 +9,18 @@ members = [
     "src/constance_port_arm_m",
     "src/constance_port_arm_m_test_driver",
     "src/constance_port_arm_test_driver",
+    "src/constance_port_riscv",
+    "src/constance_port_riscv_test_driver",
     "src/constance_port_std",
     "src/constance_portkit",
     "src/constance_test_runner",
     "src/constance_test_suite",
 ]
+
+[patch.crates-io.probe-rs]
+# Chose a commit from the narrow window in which `probe-rs` isn't affected by
+# <https://github.com/probe-rs/probe-rs/issues/352> and at the same time
+# includes <https://github.com/probe-rs/probe-rs/pull/311> (the fix for another
+# issue that affects us).
+git = "https://github.com/probe-rs/probe-rs.git"
+rev = "8bb53577ccee46550c0b688dfc2d13c1cd896083"

@@ -34,10 +34,6 @@ enum ProbeRsDebugProbeGetOutputError {
     Flash(#[source] probe_rs::flashing::FileDownloadError),
     #[error("Error while resetting the device: {0}")]
     Reset(#[source] probe_rs::Error),
-    #[error("Error while attaching to the RTT channel: {0}")]
-    AttachRtt(#[source] probe_rs_rtt::Error),
-    #[error("Timeout while trying to attach to the RTT channel.")]
-    AttachRttTimeout,
 }
 
 impl ProbeRsDebugProbe {
@@ -57,9 +53,6 @@ impl ProbeRsDebugProbe {
         Ok(Self { session })
     }
 }
-
-const POLL_INTERVAL: Duration = Duration::from_millis(30);
-const RTT_ATTACH_TIMEOUT: Duration = Duration::from_millis(500);
 
 impl DebugProbe for ProbeRsDebugProbe {
     fn program_and_get_output(
@@ -93,54 +86,95 @@ impl DebugProbe for ProbeRsDebugProbe {
                 .reset()
                 .map_err(ProbeRsDebugProbeGetOutputError::Reset)?;
 
-            // Read the executable to find the RTT header
-            log::debug!(
-                "Reading the executable '{0}' to find the RTT header",
-                exe.display()
-            );
-            let rtt_scan_region = match tokio::fs::read(&exe).await {
-                Ok(elf_bytes) => {
-                    let addr = spawn_blocking(move || find_rtt_symbol(&elf_bytes))
-                        .await
-                        .unwrap();
-                    if let Some(x) = addr {
-                        log::debug!("Found the RTT header at 0x{:x}", x);
-                        probe_rs_rtt::ScanRegion::Exact(x as u32)
-                    } else {
-                        probe_rs_rtt::ScanRegion::Ram
-                    }
-                }
-                Err(e) => {
-                    log::warn!(
-                        "Couldn't read the executable to find the RTT header: {:?}",
-                        e
-                    );
-                    probe_rs_rtt::ScanRegion::Ram
-                }
-            };
-
             // Attach to RTT
-            let start = Instant::now();
-            let rtt = loop {
-                match probe_rs_rtt::Rtt::attach_region(session.clone(), &rtt_scan_region) {
-                    Ok(rtt) => break rtt,
-                    Err(probe_rs_rtt::Error::ControlBlockNotFound) => {}
-                    Err(e) => {
-                        return Err(ProbeRsDebugProbeGetOutputError::AttachRtt(e).into());
-                    }
-                }
-
-                if start.elapsed() > RTT_ATTACH_TIMEOUT {
-                    return Err(ProbeRsDebugProbeGetOutputError::AttachRttTimeout.into());
-                }
-
-                delay_for(POLL_INTERVAL).await;
-            };
-
-            // Stream the output of all up channels
-            Ok(Box::pin(ReadRtt::new(rtt)) as DynAsyncRead<'_>)
+            Ok(attach_rtt(session, &exe, Default::default()).await?)
         })
     }
+}
+
+const POLL_INTERVAL: Duration = Duration::from_millis(30);
+const RTT_ATTACH_TIMEOUT: Duration = Duration::from_millis(500);
+
+#[derive(thiserror::Error, Debug)]
+pub enum AttachRttError {
+    #[error("Error while attaching to the RTT channel: {0}")]
+    AttachRtt(#[source] probe_rs_rtt::Error),
+    #[error("Error while halting or resuming the core to access the RTT channel: {0}")]
+    HaltCore(#[source] probe_rs::Error),
+    #[error("Timeout while trying to attach to the RTT channel.")]
+    Timeout,
+}
+
+#[derive(Default)]
+pub struct RttOptions {
+    /// When set to `true`, the core is halted whenever accessing RTT.
+    pub halt_on_access: bool,
+}
+
+pub async fn attach_rtt(
+    session: Arc<Mutex<probe_rs::Session>>,
+    exe: &Path,
+    options: RttOptions,
+) -> Result<DynAsyncRead<'static>, AttachRttError> {
+    // Read the executable to find the RTT header
+    log::debug!(
+        "Reading the executable '{0}' to find the RTT header",
+        exe.display()
+    );
+    let rtt_scan_region = match tokio::fs::read(&exe).await {
+        Ok(elf_bytes) => {
+            let addr = spawn_blocking(move || find_rtt_symbol(&elf_bytes))
+                .await
+                .unwrap();
+            if let Some(x) = addr {
+                log::debug!("Found the RTT header at 0x{:x}", x);
+                probe_rs_rtt::ScanRegion::Exact(x as u32)
+            } else {
+                probe_rs_rtt::ScanRegion::Ram
+            }
+        }
+        Err(e) => {
+            log::warn!(
+                "Couldn't read the executable to find the RTT header: {:?}",
+                e
+            );
+            probe_rs_rtt::ScanRegion::Ram
+        }
+    };
+
+    // Attach to RTT
+    let start = Instant::now();
+    let rtt = loop {
+        match {
+            let _halt_guard = if options.halt_on_access {
+                let session = session.clone();
+                Some(
+                    spawn_blocking(move || CoreHaltGuard::new(session))
+                        .await
+                        .unwrap()
+                        .map_err(AttachRttError::HaltCore)?,
+                )
+            } else {
+                None
+            };
+            probe_rs_rtt::Rtt::attach_region(session.clone(), &rtt_scan_region)
+        } {
+            Ok(rtt) => break rtt,
+            Err(probe_rs_rtt::Error::ControlBlockNotFound) => {}
+            Err(e) => {
+                return Err(AttachRttError::AttachRtt(e).into());
+            }
+        }
+
+        if start.elapsed() > RTT_ATTACH_TIMEOUT {
+            return Err(AttachRttError::Timeout.into());
+        }
+
+        delay_for(POLL_INTERVAL).await;
+    };
+
+    // Stream the output of all up channels
+    Ok(Box::pin(ReadRtt::new(session, rtt, options)) as DynAsyncRead<'_>)
 }
 
 fn find_rtt_symbol(elf_bytes: &[u8]) -> Option<u64> {
@@ -166,16 +200,48 @@ fn find_rtt_symbol(elf_bytes: &[u8]) -> Option<u64> {
     None
 }
 
+/// Halts the first core while this RAII guard is held.
+struct CoreHaltGuard(Arc<Mutex<probe_rs::Session>>);
+
+impl CoreHaltGuard {
+    fn new(session: Arc<Mutex<probe_rs::Session>>) -> Result<Self, probe_rs::Error> {
+        {
+            let mut session = session.lock().unwrap();
+            let mut core = session.core(0)?;
+            core.halt(std::time::Duration::from_millis(100))?;
+        }
+
+        Ok(Self(session))
+    }
+}
+
+impl Drop for CoreHaltGuard {
+    fn drop(&mut self) {
+        let mut session = self.0.lock().unwrap();
+        // TODO: Don't `unwrap` or ignore an error
+        let mut core = session.core(0).unwrap();
+        let _ = core.run();
+    }
+}
+
 struct ReadRtt {
+    session: Arc<Mutex<probe_rs::Session>>,
     rtt: probe_rs_rtt::Rtt,
     poll_delay: Delay,
+    options: RttOptions,
 }
 
 impl ReadRtt {
-    fn new(rtt: probe_rs_rtt::Rtt) -> Self {
+    fn new(
+        session: Arc<Mutex<probe_rs::Session>>,
+        rtt: probe_rs_rtt::Rtt,
+        options: RttOptions,
+    ) -> Self {
         Self {
+            session,
             rtt,
             poll_delay: delay_for(POLL_INTERVAL),
+            options,
         }
     }
 }
@@ -186,13 +252,31 @@ impl AsyncRead for ReadRtt {
         cx: &mut Context,
         buf: &mut [u8],
     ) -> Poll<tokio::io::Result<usize>> {
+        let this = &mut *self;
+
         // Read up to `buf.len()` bytes
         let mut pos = 0;
-        for (i, channel) in self.rtt.up_channels().iter().enumerate() {
+        for (i, channel) in this.rtt.up_channels().iter().enumerate() {
             if pos >= buf.len() {
                 break;
             }
-            match channel.read(&mut buf[pos..]) {
+            match {
+                let _halt_guard = if this.options.halt_on_access {
+                    // TODO: Don't block
+                    Some(match CoreHaltGuard::new(this.session.clone()) {
+                        Ok(x) => x,
+                        Err(e) => {
+                            return Poll::Ready(Err(tokio::io::Error::new(
+                                tokio::io::ErrorKind::Other,
+                                e,
+                            )))
+                        }
+                    })
+                } else {
+                    None
+                };
+                channel.read(&mut buf[pos..])
+            } {
                 Ok(num_read_bytes) => {
                     if i == 0 {
                         // Terminal channel
@@ -219,8 +303,8 @@ impl AsyncRead for ReadRtt {
 
         if pos == 0 {
             // Retry later
-            while let Poll::Ready(()) = Pin::new(&mut self.poll_delay).poll(cx) {
-                self.poll_delay = delay_for(POLL_INTERVAL);
+            while let Poll::Ready(()) = Pin::new(&mut this.poll_delay).poll(cx) {
+                this.poll_delay = delay_for(POLL_INTERVAL);
             }
             Poll::Pending
         } else {

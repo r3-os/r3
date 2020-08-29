@@ -120,7 +120,10 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
             .expect("Couldn't get the parent of `CARGO_MANIFEST_DIR`")
     };
 
-    let driver_name = if opt.target.target_triple().starts_with("thumb") {
+    let driver_name = if opt.target.target_triple().starts_with("riscv") {
+        // RISC-V
+        "constance_port_riscv_test_driver"
+    } else if opt.target.target_triple().starts_with("thumb") {
         // Arm-M
         "constance_port_arm_m_test_driver"
     } else {
@@ -256,6 +259,7 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .args(if opt.verbose { None } else { Some("-q") })
                 .env(
+                    // TODO: Rename this to `CONSTANCE_PORT_TEST_DRIVER_LINK_SEARCH`
                     "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",
                     link_dir.path(),
                 )
