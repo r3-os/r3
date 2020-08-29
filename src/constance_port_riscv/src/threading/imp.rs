@@ -214,7 +214,7 @@ impl State {
                 li a0, {MPIE}
                 csrs mstatus, a0
 
-                j {push_second_level_state_and_dispatch}.dispatch
+                tail {push_second_level_state_and_dispatch}.dispatch
                 ",
                 MAIN_STACK = sym MAIN_STACK,
                 push_second_level_state_and_dispatch =
