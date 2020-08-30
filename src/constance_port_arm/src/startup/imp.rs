@@ -102,7 +102,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
             unsafe { llvm_asm!("isb") };
 
             let cssidr = arm::CCSIDR.extract();
-            let log2_line_size = cssidr.read(arm::CCSIDR::LineSize) + 2;
+            let log2_line_size = cssidr.read(arm::CCSIDR::LineSize) + 4;
             let max_way_index = cssidr.read(arm::CCSIDR::Associativity);
             let max_set_index = cssidr.read(arm::CCSIDR::NumSets);
 
