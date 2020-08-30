@@ -291,8 +291,10 @@ dependencies = [
  "arm_semihosting",
  "constance",
  "constance_port_arm",
+ "constance_support_rza1",
  "constance_test_suite",
  "log",
+ "register",
 ]
 
 [[package]]

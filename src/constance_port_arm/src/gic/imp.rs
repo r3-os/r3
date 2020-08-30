@@ -72,6 +72,11 @@ pub fn init<System: Gic>() {
     // Unmask all priorities in range `0..255`
     cpu_interface.PMR.set(0xff);
 
+    // Deactivate any active interrupts
+    while let Some(x) = acknowledge_interrupt::<System>() {
+        end_interrupt::<System>(x);
+    }
+
     // Allocate all priority bits for group priority
     cpu_interface.BPR.set(0);
 

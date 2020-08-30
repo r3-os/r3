@@ -85,6 +85,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
         &OverrideTargetTriple("thumbv6m-none-eabi", QemuMps2An505),
     ),
     ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
+    ("gr_peach", &GrPeach),
     ("qemu_sifive_e", &QemuSiFiveE),
     ("red_v", &RedV),
 ];
@@ -250,6 +251,48 @@ impl Target for QemuRealviewPbxA9 {
     fn connect(
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async {
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-arm",
+                &[
+                    "-machine",
+                    "realview-pbx-a9",
+                    "-semihosting",
+                    "-semihosting-config",
+                    "target=native",
+                ],
+            )) as Box<dyn DebugProbe>)
+        })
+    }
+}
+
+/// GR-PEACH
+pub struct GrPeach;
+
+impl Target for GrPeach {
+    fn target_triple(&self) -> &str {
+        "armv7a-none-eabi"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["board-rza1"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        "
+            MEMORY
+            {
+                RAM_CODE : ORIGIN = 0x20000000, LENGTH = 5120K
+                RAM_DATA : ORIGIN = 0x20500000, LENGTH = 5120K
+            }
+        "
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        // TODO: use OpenOCD
         Box::pin(async {
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-arm",

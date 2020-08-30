@@ -13,11 +13,16 @@ run = [
     "constance_test_suite",
     "constance_port_arm",
     "constance",
+    "register",
     "log",
 ]
 
 board-realview_pbx_a9 = [
     "output-semihosting",
+]
+board-rza1 = [
+    "output-semihosting",
+    "constance_support_rza1",
 ]
 
 output-semihosting = [
@@ -25,10 +30,12 @@ output-semihosting = [
 ]
 
 [dependencies]
+constance_support_rza1 = { path = "../constance_support_rza1", optional = true }
 constance_port_arm = { path = "../constance_port_arm", optional = true }
 arm_semihosting = { path = "../arm_semihosting", optional = true }
 constance = { path = "../constance", optional = true }
 
+register = { version = "0.5.1", optional = true }
 log = { version = "0.4.8", optional = true }
 
 [dependencies.constance_test_suite]

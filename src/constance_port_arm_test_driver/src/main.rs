@@ -8,10 +8,15 @@
 #![feature(const_mut_refs)]
 #![feature(naked_functions)]
 #![feature(llvm_asm)]
+#![feature(asm)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(feature = "run", no_std)]
 #![cfg_attr(feature = "run", no_main)]
+#![recursion_limit = "1000"]
+
+#[cfg(feature = "board-rza1")]
+mod logger_rza1_uart;
 
 #[cfg(feature = "output-semihosting")]
 mod logger_semihosting;
@@ -49,16 +54,17 @@ macro_rules! instantiate_test {
 
         port::use_port!(unsafe struct System);
         port::use_startup!(unsafe System);
-        #[cfg(feature = "board-realview_pbx_a9")]
+        #[cfg(any(feature = "board-realview_pbx_a9", feature = "board-rza1"))]
         port::use_gic!(unsafe impl PortInterrupts for System);
         #[cfg(feature = "board-realview_pbx_a9")]
         port::use_sp804!(unsafe impl PortTimer for System);
+        #[cfg(feature = "board-rza1")]
+        constance_support_rza1::use_os_timer!(unsafe impl PortTimer for System);
 
         impl port::ThreadingOptions for System {}
 
         impl port::StartupOptions for System {
             #[cfg(feature = "board-realview_pbx_a9")]
-            // ARM RealView Platform Baseboard Explore for Cortex-A9
             const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
                 port::MemoryMapSection::new(0x0100_0000..0x0140_0000, 0x0100_0000)
                     .with_executable(true)
@@ -69,6 +75,19 @@ macro_rules! instantiate_test {
                 port::MemoryMapSection::new(0x1f00_0000..0x1f10_0000, 0x1f00_0000)
                     .as_device_memory(),
             ];
+
+            #[cfg(feature = "board-rza1")]
+            const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
+                // On-chip RAM (10MB)
+                port::MemoryMapSection::new(0x2000_0000..0x2050_0000, 0x2000_0000).with_executable(true),
+                port::MemoryMapSection::new(0x2050_0000..0x20a0_0000, 0x2050_0000)
+                    .with_writable(false),
+                // I/O areas
+                port::MemoryMapSection::new(0x3fe0_0000..0x4000_0000, 0x3fe0_0000).as_device_memory(),
+                port::MemoryMapSection::new(0xe800_0000..0xe830_0000, 0xe800_0000).as_device_memory(),
+                port::MemoryMapSection::new(0xfc00_0000..0xfc10_0000, 0xfc00_0000).as_device_memory(),
+                port::MemoryMapSection::new(0xfcf0_0000..0xfd00_0000, 0xfcf0_0000).as_device_memory(),
+            ];
         }
 
         #[cfg(feature = "board-realview_pbx_a9")]
@@ -77,11 +96,22 @@ macro_rules! instantiate_test {
             const GIC_CPU_BASE: usize = 0x1f000100;
         }
 
+        #[cfg(feature = "board-rza1")]
+        impl port::GicOptions for System {
+            const GIC_DISTRIBUTOR_BASE: usize = 0xe8201000;
+            const GIC_CPU_BASE: usize = 0xe8202000;
+        }
+
         #[cfg(feature = "board-realview_pbx_a9")]
         impl port::Sp804Options for System {
             const SP804_BASE: usize = 0x10011000;
             const FREQUENCY: u64 = 1_000_000;
             const INTERRUPT_NUM: InterruptNum = 36;
+        }
+
+        #[cfg(feature = "board-rza1")]
+        impl constance_support_rza1::OsTimerOptions for System {
+            const FREQUENCY: u64 = 33_333_000;
         }
 
         struct Driver;
@@ -135,11 +165,20 @@ macro_rules! instantiate_test {
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
             #[cfg(feature = "board-realview_pbx_a9")]
             System::configure_sp804(b);
+            #[cfg(feature = "board-rza1")]
+            System::configure_os_timer(b);
 
             // Redirect the log output to stderr
-            #[cfg(feature = "output-semihosting")]
+            #[cfg(all(feature = "output-semihosting", not(feature = "board-rza1")))]
             StartupHook::build().start(|_| {
                 logger_semihosting::init();
+            }).finish(b);
+
+            // Redirect the log output to UART because semihosting is really
+            // slow on real hardware, which may prevent proper test execution
+            #[cfg(feature = "board-rza1")]
+            StartupHook::build().start(|_| {
+                logger_rza1_uart::init();
             }).finish(b);
 
             test_case::App::new::<Driver>(b)
