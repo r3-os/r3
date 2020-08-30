@@ -27,6 +27,7 @@ board-rza1 = [
 
 output-semihosting = [
     "arm_semihosting",
+    "staticvec",
 ]
 
 [dependencies]
@@ -35,6 +36,7 @@ constance_port_arm = { path = "../constance_port_arm", optional = true }
 arm_semihosting = { path = "../arm_semihosting", optional = true }
 constance = { path = "../constance", optional = true }
 
+staticvec = { version = "0.10.2", optional = true, default-features = false }
 register = { version = "0.5.1", optional = true }
 log = { version = "0.4.8", optional = true }
 

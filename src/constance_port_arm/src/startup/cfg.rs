@@ -73,7 +73,7 @@ impl MemoryMapSection {
     ///  - `physical_start` is of type `u64`, but using a large physical address
     ///    (> 4GiB) isn't supported yet.
     ///
-    /// The memory section is configured as a read/writable (bot not
+    /// The memory section is configured as a read/writable (but not
     /// executable) Normal memory with a Outer and Inner Write-Back,
     /// Write-Allocate attribute.
     ///
