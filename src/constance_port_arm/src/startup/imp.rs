@@ -101,10 +101,10 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
             arm::CSSELR.set(level_and_d);
             unsafe { llvm_asm!("isb") };
 
-            let cssidr = arm::CSSIDR.extract();
-            let log2_line_size = cssidr.read(arm::CSSIDR::LineSize) + 2;
-            let max_way_index = cssidr.read(arm::CSSIDR::Associativity);
-            let max_set_index = cssidr.read(arm::CSSIDR::NumSets);
+            let cssidr = arm::CCSIDR.extract();
+            let log2_line_size = cssidr.read(arm::CCSIDR::LineSize) + 2;
+            let max_way_index = cssidr.read(arm::CCSIDR::Associativity);
+            let max_set_index = cssidr.read(arm::CCSIDR::NumSets);
 
             let way_offset = max_way_index.leading_zeros();
 

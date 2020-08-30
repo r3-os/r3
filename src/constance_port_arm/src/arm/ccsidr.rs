@@ -1,5 +1,5 @@
 register::register_bitfields! {u32,
-    pub CSSIDR [
+    pub CCSIDR [
         /// (Log2(Number of words in cache line)) -2.
         LineSize OFFSET(0) NUMBITS(3) [],
         /// (Associativity of cache) - 1
@@ -10,9 +10,9 @@ register::register_bitfields! {u32,
 }
 
 /// Cache Level ID Register
-pub const CSSIDR: CSSIDRAccessor = CSSIDRAccessor;
-pub struct CSSIDRAccessor;
+pub const CCSIDR: CCSIDRAccessor = CCSIDRAccessor;
+pub struct CCSIDRAccessor;
 
-impl register::cpu::RegisterReadOnly<u32, CSSIDR::Register> for CSSIDRAccessor {
+impl register::cpu::RegisterReadOnly<u32, CCSIDR::Register> for CCSIDRAccessor {
     sys_coproc_read_raw!(u32, [p15, c0, 1, c0, 0]);
 }
