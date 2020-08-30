@@ -76,7 +76,7 @@ macro_rules! use_os_timer {
                     hw_freq_num: <$ty as OsTimerOptions>::FREQUENCY,
                     hw_freq_denom: <$ty as OsTimerOptions>::FREQUENCY_DENOMINATOR,
                     hw_headroom_ticks: <$ty as OsTimerOptions>::HEADROOM,
-                    force_full_hw_period: false,
+                    force_full_hw_period: true,
                     resettable: false,
                 }) {
                     Ok(x) => x,
@@ -111,9 +111,6 @@ pub trait OsTimerOptions {
     /// The base address of OSTM0's memory-mapped registers.
     const OSTM0_BASE: usize = 0xfcfec000;
 
-    /// The base address of OSTM1's memory-mapped registers.
-    const OSTM1_BASE: usize = 0xfcfec400;
-
     /// The numerator of the timer clock rate of the timer.
     const FREQUENCY: u64;
 
@@ -132,10 +129,10 @@ pub trait OsTimerOptions {
 
     /// The interrupt priority of the timer interrupt line.
     /// Defaults to `0xc0`.
-    const INTERRUPT_OSTM1_PRIORITY: InterruptPriority = 0xc0;
+    const INTERRUPT_OSTM0_PRIORITY: InterruptPriority = 0xc0;
 
-    /// OSTM1's interrupt number.
-    const INTERRUPT_OSTM1: InterruptNum = 135;
+    /// OSTM0's interrupt number.
+    const INTERRUPT_OSTM0: InterruptNum = 134;
 }
 
 const fn min128(x: u128, y: u128) -> u128 {
