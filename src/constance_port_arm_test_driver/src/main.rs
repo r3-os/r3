@@ -80,9 +80,11 @@ macro_rules! instantiate_test {
             const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
                 // On-chip RAM (10MB)
                 port::MemoryMapSection::new(0x2000_0000..0x2050_0000, 0x2000_0000)
+                    .with_sharable(false)
                     .with_executable(true)
                     .with_writable(false),
-                port::MemoryMapSection::new(0x2050_0000..0x20a0_0000, 0x2050_0000),
+                port::MemoryMapSection::new(0x2050_0000..0x20a0_0000, 0x2050_0000)
+                    .with_sharable(false),
                 // I/O areas
                 port::MemoryMapSection::new(0x3fe0_0000..0x4000_0000, 0x3fe0_0000).as_device_memory(),
                 port::MemoryMapSection::new(0xe800_0000..0xe830_0000, 0xe800_0000).as_device_memory(),
