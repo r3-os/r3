@@ -52,6 +52,15 @@ pub fn init<System: OsTimerInstance>() {
     let ostm = System::ostm_regs();
     let tcfg = System::TICKLESS_CFG;
 
+    // Enable clock supply
+    if let Some((addr, bit)) = System::STBCR_OSTM {
+        // Safety: Verified by the user of `use_os_timer!`
+        unsafe {
+            let ptr = addr as *mut u8;
+            ptr.write_volatile(ptr.read_volatile() & !(1u8 << bit));
+        }
+    }
+
     // RZ/A1x includes two instances of OS Timer. We use one of them.
     //
     // OS Timer will operate in Free-Running Comparison Mode, where the timer

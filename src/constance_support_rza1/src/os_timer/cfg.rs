@@ -111,6 +111,12 @@ pub trait OsTimerOptions {
     /// The base address of OS Timer's memory-mapped registers.
     const OSTM_BASE: usize = 0xfcfec000;
 
+    /// The standby control register's memory address and bit position used to
+    /// enable the clock supply to OS Timer.
+    ///
+    /// Defaults to `Some((0xfcfe0428, 1))` (STBCR5.MSTP51).
+    const STBCR_OSTM: Option<(usize, u8)> = Some((0xfcfe0428, 1));
+
     /// The numerator of the timer clock rate of the timer.
     const FREQUENCY: u64;
 
