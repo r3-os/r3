@@ -69,7 +69,7 @@ macro_rules! instantiate_test {
                 port::MemoryMapSection::new(0x0100_0000..0x0140_0000, 0x0100_0000)
                     .with_executable(true)
                     .with_writable(false),
-                port::MemoryMapSection::new(0x0140_0000..0x0180_0000, 0x0100_0000),
+                port::MemoryMapSection::new(0x0140_0000..0x0180_0000, 0x0140_0000),
                 port::MemoryMapSection::new(0x1000_0000..0x1010_0000, 0x1000_0000)
                     .as_device_memory(),
                 port::MemoryMapSection::new(0x1f00_0000..0x1f10_0000, 0x1f00_0000)
