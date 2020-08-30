@@ -2,7 +2,7 @@ use arm_semihosting::{debug, debug::EXIT_FAILURE, hio};
 use core::{fmt::Write, panic::PanicInfo};
 use staticvec::StaticString;
 
-static mut BUFFER: StaticString<{ 512 }> = StaticString::new();
+static mut BUFFER: StaticString<512> = StaticString::new();
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
