@@ -75,7 +75,7 @@ pub unsafe fn syscall1(_nr: usize, _arg: usize) -> usize {
         #[cfg(all(thumb, arm, not(feature = "no-semihosting")))]
         () => {
             let mut nr = _nr;
-            llvm_asm!("svc 0xAB" : "+{r0}"(nr) : "{r1}"(_arg) :: "volatile");
+            llvm_asm!("svc 0xAB" : "+{r0}"(nr) : "{r1}"(_arg) : "lr" : "volatile");
             nr
         }
 
@@ -85,7 +85,7 @@ pub unsafe fn syscall1(_nr: usize, _arg: usize) -> usize {
         #[cfg(all(not(thumb), arm, not(feature = "no-semihosting")))]
         () => {
             let mut nr = _nr;
-            llvm_asm!("svc 0x123456" : "+{r0}"(nr) : "{r1}"(_arg) :: "volatile");
+            llvm_asm!("svc 0x123456" : "+{r0}"(nr) : "{r1}"(_arg) : "lr" : "volatile");
             nr
         }
 
