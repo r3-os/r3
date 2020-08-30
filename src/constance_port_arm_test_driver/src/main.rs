@@ -24,6 +24,9 @@ mod logger_semihosting;
 #[cfg(feature = "output-semihosting")]
 mod panic_semihosting;
 
+#[cfg(feature = "kernel_benchmarks")]
+mod pmu;
+
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
     // If a test case is specified, instantiate the test case
@@ -129,12 +132,11 @@ macro_rules! instantiate_test {
             }
 
             fn performance_time() -> u32 {
-                // SP804 Timer1
-                !unsafe { ((<System as port::Sp804Options>::SP804_BASE + 4)
-                    as *const u32).read_volatile() }
+                use register::cpu::RegisterReadWrite;
+                pmu::PMCCNTR.get()
             }
 
-            const PERFORMANCE_TIME_UNIT: &'static str = "μs";
+            const PERFORMANCE_TIME_UNIT: &'static str = "CPU cycles";
 
             // Chose PPIs.
             // SGIs (software-generated interrupts) don't support disabling.
@@ -170,6 +172,14 @@ macro_rules! instantiate_test {
             System::configure_sp804(b);
             #[cfg(feature = "board-rza1")]
             System::configure_os_timer(b);
+
+            // Start PMU cycle counter
+            #[cfg(feature = "kernel_benchmarks")]
+            StartupHook::build().start(|_| {
+                use register::cpu::RegisterReadWrite;
+                pmu::PMCR.modify(pmu::PMCR::E::SET + pmu::PMCR::D::DivideBy1);
+                pmu::PMCNTENSET.modify(pmu::PMCNTENSET::C::SET);
+            }).finish(b);
 
             // Redirect the log output to stderr
             #[cfg(all(feature = "output-semihosting", not(feature = "board-rza1")))]
