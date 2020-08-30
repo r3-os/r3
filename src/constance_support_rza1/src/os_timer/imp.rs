@@ -26,9 +26,9 @@ pub unsafe trait OsTimerInstance: Kernel + OsTimerOptions + Gic {
 }
 
 trait OsTimerInstanceExt: OsTimerInstance {
-    fn ostm0_regs() -> &'static os_timer_regs::OsTimer {
+    fn ostm_regs() -> &'static os_timer_regs::OsTimer {
         // Safety: Verified by the user of `use_os_timer!`
-        unsafe { &*(Self::OSTM0_BASE as *const os_timer_regs::OsTimer) }
+        unsafe { &*(Self::OSTM_BASE as *const os_timer_regs::OsTimer) }
     }
 }
 impl<T: OsTimerInstance> OsTimerInstanceExt for T {}
@@ -36,12 +36,12 @@ impl<T: OsTimerInstance> OsTimerInstanceExt for T {}
 /// The configuration function.
 pub const fn configure<System: OsTimerInstance>(b: &mut CfgBuilder<System>) {
     InterruptLine::build()
-        .line(System::INTERRUPT_OSTM0)
-        .priority(System::INTERRUPT_OSTM0_PRIORITY)
+        .line(System::INTERRUPT_OSTM)
+        .priority(System::INTERRUPT_OSTM_PRIORITY)
         .enabled(true)
         .finish(b);
     InterruptHandler::build()
-        .line(System::INTERRUPT_OSTM0)
+        .line(System::INTERRUPT_OSTM)
         .start(handle_tick::<System>)
         .finish(b);
 }
@@ -49,33 +49,32 @@ pub const fn configure<System: OsTimerInstance>(b: &mut CfgBuilder<System>) {
 /// Implements [`crate::Timer::init`]
 #[inline]
 pub fn init<System: OsTimerInstance>() {
-    let ostm0 = System::ostm0_regs();
+    let ostm = System::ostm_regs();
     let tcfg = System::TICKLESS_CFG;
 
-    // RZ/A1x includes two instances of OS Timer. We use OSTM0 of them.
+    // RZ/A1x includes two instances of OS Timer. We use one of them.
     //
-    // OSTM0 will operate in Free-Running Comparison Mode, where the timer
+    // OS Timer will operate in Free-Running Comparison Mode, where the timer
     // counts up from `0` and generates an interrupt when the counter value
-    // matches `OSTM0CMP`.
-    ostm0.TT.set(1); // stop
-    ostm0
-        .CTL
+    // matches `OSTMCMP`.
+    ostm.TT.set(1); // stop
+    ostm.CTL
         .write(os_timer_regs::CTL::MD0::Disable + os_timer_regs::CTL::MD1::FreeRunningComparison);
-    ostm0.CMP.set(u32::MAX); // dummy - a real value will be set soon while booting
-    ostm0.TS.set(1); // start
+    ostm.CMP.set(u32::MAX); // dummy - a real value will be set soon while booting
+    ostm.TS.set(1); // start
 
     debug_assert_eq!(tcfg.hw_max_tick_count(), u32::MAX);
 
     // Configure the interrupt line as edge-triggered
     System::set_interrupt_line_trigger_mode(
-        System::INTERRUPT_OSTM0,
+        System::INTERRUPT_OSTM,
         constance_port_arm::InterruptLineTriggerMode::RisingEdge,
     )
     .unwrap();
 }
 
 fn hw_tick_count<System: OsTimerInstance>() -> u32 {
-    System::ostm0_regs().CNT.get()
+    System::ostm_regs().CNT.get()
 }
 
 /// Implements [`constance::kernel::PortTimer::tick_count`]
@@ -100,7 +99,7 @@ pub unsafe fn tick_count<System: OsTimerInstance>() -> UTicks {
 /// Only meant to be referenced by `use_os_timer!`.
 #[inline]
 pub unsafe fn pend_tick<System: OsTimerInstance>() {
-    let _ = InterruptLine::<System>::from_num(System::INTERRUPT_OSTM0).pend();
+    let _ = InterruptLine::<System>::from_num(System::INTERRUPT_OSTM).pend();
 }
 
 /// Implements [`constance::kernel::PortTimer::pend_tick_after`]
@@ -109,7 +108,7 @@ pub unsafe fn pend_tick<System: OsTimerInstance>() {
 ///
 /// Only meant to be referenced by `use_os_timer!`.
 pub unsafe fn pend_tick_after<System: OsTimerInstance>(tick_count_delta: UTicks) {
-    let ostm0 = System::ostm0_regs();
+    let ostm = System::ostm_regs();
     let tcfg = &System::TICKLESS_CFG;
     // Safety: CPU Lock protects it from concurrent access
     let tstate = unsafe { &mut *System::tickless_state() };
@@ -117,13 +116,13 @@ pub unsafe fn pend_tick_after<System: OsTimerInstance>(tick_count_delta: UTicks)
     let cur_hw_tick_count = hw_tick_count::<System>();
     let measurement = tstate.mark_reference_and_measure(tcfg, cur_hw_tick_count, tick_count_delta);
 
-    ostm0.CMP.set(measurement.end_hw_tick_count);
+    ostm.CMP.set(measurement.end_hw_tick_count);
 
     // Did we go past `hw_tick_count` already? In that case, pend an interrupt
     // manually because the timer might not have generated an interrupt.
     let cur_hw_tick_count2 = hw_tick_count::<System>();
     if cur_hw_tick_count2.wrapping_sub(cur_hw_tick_count) >= measurement.hw_ticks {
-        let _ = InterruptLine::<System>::from_num(System::INTERRUPT_OSTM0).pend();
+        let _ = InterruptLine::<System>::from_num(System::INTERRUPT_OSTM).pend();
     }
 }
 

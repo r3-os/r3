@@ -108,8 +108,8 @@ macro_rules! use_os_timer {
 
 /// The options for [`use_os_timer!`].
 pub trait OsTimerOptions {
-    /// The base address of OSTM0's memory-mapped registers.
-    const OSTM0_BASE: usize = 0xfcfec000;
+    /// The base address of OS Timer's memory-mapped registers.
+    const OSTM_BASE: usize = 0xfcfec000;
 
     /// The numerator of the timer clock rate of the timer.
     const FREQUENCY: u64;
@@ -129,10 +129,10 @@ pub trait OsTimerOptions {
 
     /// The interrupt priority of the timer interrupt line.
     /// Defaults to `0xc0`.
-    const INTERRUPT_OSTM0_PRIORITY: InterruptPriority = 0xc0;
+    const INTERRUPT_OSTM_PRIORITY: InterruptPriority = 0xc0;
 
-    /// OSTM0's interrupt number.
-    const INTERRUPT_OSTM0: InterruptNum = 134;
+    /// OS Timer's interrupt number.
+    const INTERRUPT_OSTM: InterruptNum = 134;
 }
 
 const fn min128(x: u128, y: u128) -> u128 {
