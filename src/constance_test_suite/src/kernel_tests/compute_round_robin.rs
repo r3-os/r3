@@ -187,7 +187,7 @@ fn timer_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         *y = x.load(Ordering::Relaxed);
     }
 
-    if sched_state.time % 32 == 0 {
+    if sched_state.time % 20 == 0 {
         log::debug!("run_count = {:?}", run_count);
     }
 
