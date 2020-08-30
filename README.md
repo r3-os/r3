@@ -150,10 +150,13 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
  - [rustup], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
  - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M/-A port.
  - libusb 1.x to test the Arm-M/-A port.
+ - [OpenOCD](http://openocd.org) to test the Arm-A port on GR-PEACH.
+ - `JLinkExe`<sup>†</sup> from [J-Link Software] to test the RISC-V port on RED-V.
 
 [rustup]: https://rustup.rs/
+[J-Link Software]: https://www.segger.com/downloads/jlink#J-LinkSoftwareAndDocumentationPack
 
-[Nix] users can use the provided `shell.nix` file to install all required software.
+[Nix] users can use the provided `shell.nix` file to install all required software except for those marked with <sup>†</sup>.
 
 [Nix]: https://nixos.org/nix/
 
