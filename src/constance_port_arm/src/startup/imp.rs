@@ -400,7 +400,6 @@ impl FirstLevelPageEntry {
         Self {
             int: pa
                 | ((ns as u32) << 19)
-                | (1 << 18)
                 | ((ng as u32) << 17)
                 | ((s as u32) << 16)
                 | ((ap as u32 >> 2) << 15)
