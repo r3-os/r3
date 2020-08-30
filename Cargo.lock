@@ -120,6 +120,7 @@ version = "0.1.0"
 dependencies = [
  "constance",
  "constance_port_arm",
+ "constance_support_rza1",
  "rtt-target 0.2.0",
 ]
 

@@ -7,14 +7,17 @@
 #![no_std]
 #![no_main]
 #![cfg(target_os = "none")]
+#![recursion_limit = "1000"] // probably because of large interrupt numbers
 
 // -----------------------------------------------------------------------
 
 use constance_port_arm as port;
+use constance_support_rza1 as support_rza1;
 
 port::use_port!(unsafe struct System);
 port::use_startup!(unsafe System);
 port::use_gic!(unsafe impl PortInterrupts for System);
+support_rza1::use_os_timer!(unsafe impl PortTimer for System);
 
 impl port::ThreadingOptions for System {}
 
@@ -35,16 +38,9 @@ impl port::GicOptions for System {
     const GIC_CPU_BASE: usize = 0xe8202000;
 }
 
-impl constance::kernel::PortTimer for System {
-    // TODO
-    const MAX_TICK_COUNT: constance::kernel::UTicks = 0xffffffff;
-    const MAX_TIMEOUT: constance::kernel::UTicks = 0x80000000;
-    unsafe fn tick_count() -> constance::kernel::UTicks {
-        0
-    }
+impl support_rza1::OsTimerOptions for System {
+    const FREQUENCY: u64 = 33_333_000;
 }
-
-impl port::Timer for System {}
 
 // -----------------------------------------------------------------------
 
@@ -66,6 +62,8 @@ const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     b.num_task_priority_levels(4);
+
+    System::configure_os_timer(b);
 
     // Initialize RTT (Real-Time Transfer) with a single up channel and set
     // it as the print channel for the printing macros

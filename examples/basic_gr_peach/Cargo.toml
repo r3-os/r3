@@ -5,6 +5,7 @@ authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 
 [dependencies]
+constance_support_rza1 = { path = "../../src/constance_support_rza1" }
 constance_port_arm = { path = "../../src/constance_port_arm" }
 constance = { path = "../../src/constance" }
 
