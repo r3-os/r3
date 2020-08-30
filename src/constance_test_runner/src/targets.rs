@@ -2,6 +2,7 @@ use std::{convert::TryInto, error::Error, future::Future, path::Path, pin::Pin};
 use tokio::{io::AsyncRead, task::spawn_blocking};
 
 mod jlink;
+mod openocd;
 mod probe_rs;
 mod qemu;
 
@@ -292,18 +293,8 @@ impl Target for GrPeach {
     fn connect(
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
-        // TODO: use OpenOCD
         Box::pin(async {
-            Ok(Box::new(qemu::QemuDebugProbe::new(
-                "qemu-system-arm",
-                &[
-                    "-machine",
-                    "realview-pbx-a9",
-                    "-semihosting",
-                    "-semihosting-config",
-                    "target=native",
-                ],
-            )) as Box<dyn DebugProbe>)
+            Ok(Box::new(openocd::GrPeachOpenOcdDebugProbe::new()) as Box<dyn DebugProbe>)
         })
     }
 }
