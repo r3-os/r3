@@ -232,7 +232,7 @@ impl Target for QemuRealviewPbxA9 {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-semihosting"]
+        &["board-realview_pbx_a9"]
     }
 
     fn memory_layout_script(&self) -> String {

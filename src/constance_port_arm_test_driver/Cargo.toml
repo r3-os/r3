@@ -15,8 +15,13 @@ run = [
     "constance",
     "log",
 ]
+
+board-realview_pbx_a9 = [
+    "output-semihosting",
+]
+
 output-semihosting = [
-    "arm_semihosting"
+    "arm_semihosting",
 ]
 
 [dependencies]

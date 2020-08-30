@@ -49,12 +49,15 @@ macro_rules! instantiate_test {
 
         port::use_port!(unsafe struct System);
         port::use_startup!(unsafe System);
+        #[cfg(feature = "board-realview_pbx_a9")]
         port::use_gic!(unsafe impl PortInterrupts for System);
+        #[cfg(feature = "board-realview_pbx_a9")]
         port::use_sp804!(unsafe impl PortTimer for System);
 
         impl port::ThreadingOptions for System {}
 
         impl port::StartupOptions for System {
+            #[cfg(feature = "board-realview_pbx_a9")]
             // ARM RealView Platform Baseboard Explore for Cortex-A9
             const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
                 port::MemoryMapSection::new(0x0100_0000..0x0140_0000, 0x0100_0000)
@@ -68,11 +71,13 @@ macro_rules! instantiate_test {
             ];
         }
 
+        #[cfg(feature = "board-realview_pbx_a9")]
         impl port::GicOptions for System {
             const GIC_DISTRIBUTOR_BASE: usize = 0x1f001000;
             const GIC_CPU_BASE: usize = 0x1f000100;
         }
 
+        #[cfg(feature = "board-realview_pbx_a9")]
         impl port::Sp804Options for System {
             const SP804_BASE: usize = 0x10011000;
             const FREQUENCY: u64 = 1_000_000;
@@ -128,6 +133,7 @@ macro_rules! instantiate_test {
             constance::build!(System, configure_app => test_case::App<System>);
 
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+            #[cfg(feature = "board-realview_pbx_a9")]
             System::configure_sp804(b);
 
             // Redirect the log output to stderr
