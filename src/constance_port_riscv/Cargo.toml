@@ -11,6 +11,7 @@ repository = "https://github.com/yvt/Constance"
 
 [features]
 emulate-lr-sc = []
+preload-registers = []
 
 [dependencies]
 constance_portkit = { path = "../constance_portkit" }

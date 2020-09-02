@@ -151,6 +151,8 @@ The idle task (the implicit task that runs when `*`[`running_task_ptr`]`().is_no
 
 [`running_task_ptr`]: constance::kernel::State::running_task_ptr
 
+When a task is activated, a new context state is created inside the task's stack. By default, only essential registers are preloaded with known values. The **`preload-registers`** Cargo feature enables preloading for all `x` registers, which might help in debugging at the cost of performance and code size.
+
 ## Processor Modes
 
 All code executes in Machine mode. The value of `mstatus.MPP` is always `M` (`0b11`).

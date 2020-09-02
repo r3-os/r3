@@ -592,6 +592,8 @@ impl State {
         let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<u32>;
         // TODO: Enforce minimum stack size
 
+        let preload_all = cfg!(feature = "preload-registers");
+
         // First-level state (always saved and restored as part of our exception
         // entry/return sequence)
         let first_level = unsafe {
@@ -602,24 +604,30 @@ impl State {
         // ra: The return address
         first_level[0] = MaybeUninit::new(System::exit_task as usize as u32);
         // t0-t2: Uninitialized
-        first_level[1] = MaybeUninit::new(0x05050505);
-        first_level[2] = MaybeUninit::new(0x06060606);
-        first_level[3] = MaybeUninit::new(0x07070707);
+        if preload_all {
+            first_level[1] = MaybeUninit::new(0x05050505);
+            first_level[2] = MaybeUninit::new(0x06060606);
+            first_level[3] = MaybeUninit::new(0x07070707);
+        }
         // a0: Parameter to the entry point
         first_level[4] = MaybeUninit::new(task.attr.entry_param as u32);
         // a1-a7: Uninitialized
-        first_level[5] = MaybeUninit::new(0x11111111);
-        first_level[6] = MaybeUninit::new(0x12121212);
-        first_level[7] = MaybeUninit::new(0x13131313);
-        first_level[8] = MaybeUninit::new(0x14141414);
-        first_level[9] = MaybeUninit::new(0x15151515);
-        first_level[10] = MaybeUninit::new(0x16161616);
-        first_level[11] = MaybeUninit::new(0x17171717);
+        if preload_all {
+            first_level[5] = MaybeUninit::new(0x11111111);
+            first_level[6] = MaybeUninit::new(0x12121212);
+            first_level[7] = MaybeUninit::new(0x13131313);
+            first_level[8] = MaybeUninit::new(0x14141414);
+            first_level[9] = MaybeUninit::new(0x15151515);
+            first_level[10] = MaybeUninit::new(0x16161616);
+            first_level[11] = MaybeUninit::new(0x17171717);
+        }
         // t3-t6: Uninitialized
-        first_level[12] = MaybeUninit::new(0x28282828);
-        first_level[13] = MaybeUninit::new(0x29292929);
-        first_level[14] = MaybeUninit::new(0x30303030);
-        first_level[15] = MaybeUninit::new(0x31313131);
+        if preload_all {
+            first_level[12] = MaybeUninit::new(0x28282828);
+            first_level[13] = MaybeUninit::new(0x29292929);
+            first_level[14] = MaybeUninit::new(0x30303030);
+            first_level[15] = MaybeUninit::new(0x31313131);
+        }
         // pc: The entry point
         first_level[16] = MaybeUninit::new(task.attr.entry_point as usize as u32);
 
@@ -631,18 +639,20 @@ impl State {
         };
 
         // s0-s12: Uninitialized
-        extra_ctx[0] = MaybeUninit::new(0x08080808);
-        extra_ctx[1] = MaybeUninit::new(0x09090909);
-        extra_ctx[2] = MaybeUninit::new(0x18181818);
-        extra_ctx[3] = MaybeUninit::new(0x19191919);
-        extra_ctx[4] = MaybeUninit::new(0x20202020);
-        extra_ctx[5] = MaybeUninit::new(0x21212121);
-        extra_ctx[6] = MaybeUninit::new(0x22222222);
-        extra_ctx[7] = MaybeUninit::new(0x23232323);
-        extra_ctx[8] = MaybeUninit::new(0x24242424);
-        extra_ctx[9] = MaybeUninit::new(0x25252525);
-        extra_ctx[10] = MaybeUninit::new(0x26262626);
-        extra_ctx[11] = MaybeUninit::new(0x27272727);
+        if preload_all {
+            extra_ctx[0] = MaybeUninit::new(0x08080808);
+            extra_ctx[1] = MaybeUninit::new(0x09090909);
+            extra_ctx[2] = MaybeUninit::new(0x18181818);
+            extra_ctx[3] = MaybeUninit::new(0x19191919);
+            extra_ctx[4] = MaybeUninit::new(0x20202020);
+            extra_ctx[5] = MaybeUninit::new(0x21212121);
+            extra_ctx[6] = MaybeUninit::new(0x22222222);
+            extra_ctx[7] = MaybeUninit::new(0x23232323);
+            extra_ctx[8] = MaybeUninit::new(0x24242424);
+            extra_ctx[9] = MaybeUninit::new(0x25252525);
+            extra_ctx[10] = MaybeUninit::new(0x26262626);
+            extra_ctx[11] = MaybeUninit::new(0x27272727);
+        }
 
         let task_state = &task.port_task_state;
         unsafe { *task_state.sp.get() = sp as _ };
