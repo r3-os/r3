@@ -268,12 +268,12 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
 
 impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     fn acquire_cpu_lock() -> Result<(), CpuLockError> {
-        if Self::is_cpu_lock_active() {
-            Err(CpuLockError::BadContext)
-        } else {
-            // Safety: CPU Lock inactive
-            unsafe { Self::enter_cpu_lock() };
+        // Safety: `try_enter_cpu_lock` is only meant to be called by
+        //         the kernel
+        if unsafe { Self::try_enter_cpu_lock() } {
             Ok(())
+        } else {
+            Err(CpuLockError::BadContext)
         }
     }
 
@@ -440,6 +440,18 @@ pub unsafe trait PortThreading: KernelCfg1 {
     ///
     /// Precondition: CPU Lock active
     unsafe fn leave_cpu_lock();
+
+    /// Activate CPU Lock. Return `true` iff CPU Lock was inactive before the
+    /// call.
+    unsafe fn try_enter_cpu_lock() -> bool {
+        if Self::is_cpu_lock_active() {
+            false
+        } else {
+            // Safety: CPU Lock inactive
+            unsafe { Self::enter_cpu_lock() };
+            true
+        }
+    }
 
     /// Prepare the task for activation. More specifically, set the current
     /// program counter to [`TaskAttr::entry_point`] and the current stack

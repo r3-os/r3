@@ -33,6 +33,13 @@ mod mstatus {
     }
 
     #[inline(always)]
+    pub fn fetch_clear_i<const VALUE: usize>() -> usize {
+        let read: usize;
+        unsafe { asm!("csrrci {}, mstatus, {}", lateout(reg) read, const VALUE) };
+        read
+    }
+
+    #[inline(always)]
     pub fn read() -> usize {
         let read: usize;
         unsafe { asm!("csrr {}, mstatus", lateout(reg) read) };
@@ -565,6 +572,11 @@ impl State {
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
         mstatus::clear_i::<{ mstatus::MIE }>();
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_enter_cpu_lock<System: PortInstance>(&self) -> bool {
+        (mstatus::fetch_clear_i::<{ mstatus::MIE }>() & mstatus::MIE) != 0
     }
 
     #[inline(always)]

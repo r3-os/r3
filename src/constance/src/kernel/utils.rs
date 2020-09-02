@@ -111,16 +111,13 @@ impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockGuardBorrowMut<'a, Syst
 /// Attempt to enter a CPU Lock state and get an RAII guard.
 /// Return `BadContext` if the kernel is already in a CPU Lock state.
 pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadContextError> {
-    expect_cpu_lock_inactive::<System>()?;
-
-    // Safety: CPU Lock is currently inactive, and it's us (the kernel) who
-    // are currently controlling the CPU Lock state
-    unsafe {
-        System::enter_cpu_lock();
+    // Safety: `try_enter_cpu_lock` is only meant to be called by the kernel
+    if unsafe { System::try_enter_cpu_lock() } {
+        // Safety: We just entered a CPU Lock state
+        Ok(unsafe { assume_cpu_lock() })
+    } else {
+        Err(BadContextError::BadContext)
     }
-
-    // Safety: We just entered a CPU Lock state
-    Ok(unsafe { assume_cpu_lock() })
 }
 
 /// Assume a CPU Lock state and get `CpuLockGuard`.

@@ -96,6 +96,11 @@ macro_rules! use_port {
                 }
 
                 #[inline(always)]
+                unsafe fn try_enter_cpu_lock() -> bool {
+                    PORT_STATE.try_enter_cpu_lock::<Self>()
+                }
+
+                #[inline(always)]
                 unsafe fn leave_cpu_lock() {
                     PORT_STATE.leave_cpu_lock::<Self>()
                 }
