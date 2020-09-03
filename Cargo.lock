@@ -363,7 +363,7 @@ dependencies = [
  "constance",
  "constance_port_arm",
  "constance_portkit",
- "register",
+ "rza1",
 ]
 
 [[package]]
@@ -1488,6 +1488,15 @@ name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+
+[[package]]
+name = "rza1"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b349141e493525ba4bba694ca33b804bbb682ce759c142e7ab1217157177ebc0"
+dependencies = [
+ "vcell",
+]
 
 [[package]]
 name = "scoped-tls"

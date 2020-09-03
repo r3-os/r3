@@ -4,8 +4,9 @@ use constance::kernel::{
 };
 use constance_port_arm::Gic;
 use constance_portkit::tickless::{TicklessCfg, TicklessStateTrait};
+use rza1::ostm0 as ostm;
 
-use crate::os_timer::{cfg::OsTimerOptions, os_timer_regs};
+use crate::os_timer::cfg::OsTimerOptions;
 
 /// Implemented on a system type by [`use_os_timer!`].
 ///
@@ -26,9 +27,9 @@ pub unsafe trait OsTimerInstance: Kernel + OsTimerOptions + Gic {
 }
 
 trait OsTimerInstanceExt: OsTimerInstance {
-    fn ostm_regs() -> &'static os_timer_regs::OsTimer {
+    fn ostm_regs() -> &'static ostm::RegisterBlock {
         // Safety: Verified by the user of `use_os_timer!`
-        unsafe { &*(Self::OSTM_BASE as *const os_timer_regs::OsTimer) }
+        unsafe { &*(Self::OSTM_BASE as *const ostm::RegisterBlock) }
     }
 }
 impl<T: OsTimerInstance> OsTimerInstanceExt for T {}
@@ -66,11 +67,18 @@ pub fn init<System: OsTimerInstance>() {
     // OS Timer will operate in Free-Running Comparison Mode, where the timer
     // counts up from `0` and generates an interrupt when the counter value
     // matches `OSTMCMP`.
-    ostm.TT.set(1); // stop
-    ostm.CTL
-        .write(os_timer_regs::CTL::MD0::Disable + os_timer_regs::CTL::MD1::FreeRunningComparison);
-    ostm.CMP.set(u32::MAX); // dummy - a real value will be set soon while booting
-    ostm.TS.set(1); // start
+    ostm.tt.write(|w| w.tt().stop()); // stop
+    ostm.ctl.write(|w| {
+        w
+            // Don't generate an interrupt on start
+            .md0()
+            .clear_bit()
+            // Free-Running Comparison Mode
+            .md1()
+            .free_running_comparison()
+    });
+    ostm.cmp.write(|w| w.cmp().bits(u32::MAX)); // dummy - a real value will be set soon while booting
+    ostm.ts.write(|w| w.ts().start()); // start
 
     debug_assert_eq!(tcfg.hw_max_tick_count(), u32::MAX);
 
@@ -83,7 +91,7 @@ pub fn init<System: OsTimerInstance>() {
 }
 
 fn hw_tick_count<System: OsTimerInstance>() -> u32 {
-    System::ostm_regs().CNT.get()
+    System::ostm_regs().cnt.read().bits()
 }
 
 /// Implements [`constance::kernel::PortTimer::tick_count`]
@@ -125,7 +133,8 @@ pub unsafe fn pend_tick_after<System: OsTimerInstance>(tick_count_delta: UTicks)
     let cur_hw_tick_count = hw_tick_count::<System>();
     let measurement = tstate.mark_reference_and_measure(tcfg, cur_hw_tick_count, tick_count_delta);
 
-    ostm.CMP.set(measurement.end_hw_tick_count);
+    ostm.cmp
+        .write(|w| w.cmp().bits(measurement.end_hw_tick_count));
 
     // Did we go past `hw_tick_count` already? In that case, pend an interrupt
     // manually because the timer might not have generated an interrupt.

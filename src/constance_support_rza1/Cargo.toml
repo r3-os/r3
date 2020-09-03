@@ -14,4 +14,4 @@ constance_port_arm = { path = "../constance_port_arm" }
 constance_portkit = { path = "../constance_portkit" }
 constance = { path = "../constance" }
 
-register = "0.5.1"
+rza1 = { version = "0.2.0", features = ["ostm"] }

@@ -26,7 +26,6 @@ pub extern crate constance_port_arm;
 pub mod os_timer {
     pub mod cfg;
     pub mod imp;
-    mod os_timer_regs;
 }
 
 pub use self::os_timer::cfg::*;
