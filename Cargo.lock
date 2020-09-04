@@ -122,6 +122,7 @@ dependencies = [
  "constance_port_arm",
  "constance_support_rza1",
  "rtt-target 0.2.0",
+ "rza1",
 ]
 
 [[package]]

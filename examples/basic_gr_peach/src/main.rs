@@ -49,8 +49,8 @@ use constance::{
     prelude::*,
 };
 
-// Install a global panic handler that uses RTT
-mod panic_rtt_target;
+// Install a global panic handler that uses the serial port
+mod panic_serial;
 
 #[derive(Debug)]
 struct Objects {
@@ -65,28 +65,23 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
 
     System::configure_os_timer(b);
 
-    // Initialize RTT (Real-Time Transfer) with a single up channel and set
-    // it as the print channel for the printing macros
+    // Initialize the serial port
     StartupHook::build()
         .start(|_| {
-            let channels = rtt_target::rtt_init! {
-                up: {
-                    0: {
-                        size: 1024
-                        mode: NoBlockSkip
-                        name: "Terminal"
-                    }
-                }
-            };
+            use support_rza1::serial::ScifExt;
 
-            unsafe {
-                rtt_target::set_print_channel_cs(
-                    channels.up.0,
-                    &((|arg, f| f(arg)) as rtt_target::CriticalSectionFunc),
-                )
-            };
+            #[allow(non_snake_case)]
+            let rza1::Peripherals {
+                CPG, GPIO, SCIF2, ..
+            } = unsafe { rza1::Peripherals::steal() };
 
-            rtt_target::rprintln!("RTT is ready");
+            SCIF2.enable_clock(&CPG);
+            SCIF2.configure_pins(&GPIO);
+            SCIF2.configure_uart(115200);
+
+            support_rza1::stdout::set_stdout(SCIF2.into_nb_writer());
+
+            support_rza1::sprintln!("UART is ready");
         })
         .finish(b);
 
@@ -101,14 +96,14 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
 }
 
 fn task1_body(_: usize) {
-    rtt_target::rprintln!("COTTAGE = {:?}", COTTAGE);
+    support_rza1::sprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();
 }
 
 fn task2_body(_: usize) {
     loop {
-        rtt_target::rprintln!("time = {:?}", System::time().unwrap());
+        support_rza1::sprintln!("time = {:?}", System::time().unwrap());
         System::sleep(constance::time::Duration::from_secs(1)).unwrap();
     }
 }
