@@ -2,7 +2,7 @@ This directory contains an example Constance application for [GR-PEACH].
 
 [GR-PEACH]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html#overview
 
-You need the following software to run this application:
+You need the following software to perform the steps described in this document:
 
  - [OpenOCD]
  - `arm-none-eabi-gdb`
@@ -13,7 +13,7 @@ You need the following software to run this application:
 [rustup]: https://rustup.rs
 [installed]: https://rust-lang.github.io/rustup/cross-compilation.html
 
-This application can be loaded onto the target using OpenOCD and GDB. In one terminal window, start an instance of OpenOCD using the supplied configuration file:
+We are going to load this application onto the target using OpenOCD and GDB. In one terminal window, start an instance of OpenOCD using the supplied configuration file:
 
 ```shell
 openocd -f opencd.cfg
