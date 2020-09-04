@@ -56,6 +56,7 @@ where
 }
 
 #[inline]
+#[cfg(target_arch = "arm")]
 fn interrupt_free<T>(x: impl FnOnce() -> T) -> T {
     let cpsr: u32;
     unsafe { asm!("mrs {}, cpsr", out(reg)cpsr) };
@@ -70,6 +71,11 @@ fn interrupt_free<T>(x: impl FnOnce() -> T) -> T {
     }
 
     ret
+}
+
+#[cfg(not(target_arch = "arm"))]
+fn interrupt_free<T>(_: impl FnOnce() -> T) -> T {
+    panic!("this crate is not supported on this platform")
 }
 
 #[doc(hidden)]
