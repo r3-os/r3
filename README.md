@@ -129,6 +129,10 @@ cd examples/basic_nucleo_f401re
 cargo embed --release
 ```
 
+See [this document](examples/basic_gr_peach/README.md) for how to run the example application on [the GR-PEACH development board].
+
+[the GR-PEACH development board]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html#overview
+
 ## Prerequisites
 
 You need a Nightly Rust compiler. This project is heavily reliant on unstable features, so it might or might not work with a newer compiler version. See the file `rust-toolchain` to find out which compiler version this project is currently tested with.
