@@ -5,6 +5,7 @@
 //! [RZ/A1H]: https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz/rza/rza1h.html
 //! [GR-PEACH]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html
 #![feature(const_fn)]
+#![feature(asm)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![no_std]
@@ -29,3 +30,7 @@ pub mod os_timer {
 }
 
 pub use self::os_timer::cfg::*;
+
+pub mod gpio;
+pub mod serial;
+pub mod stdout;

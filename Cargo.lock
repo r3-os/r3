@@ -364,6 +364,8 @@ dependencies = [
  "constance",
  "constance_port_arm",
  "constance_portkit",
+ "embedded-hal",
+ "nb 0.1.3",
  "rza1",
 ]
 

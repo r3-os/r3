@@ -32,7 +32,7 @@ output-semihosting = [
 ]
 
 [dependencies]
-constance_support_rza1 = { path = "../constance_support_rza1", optional = true }
+constance_support_rza1 = { path = "../constance_support_rza1", optional = true, features = ["semver-exempt"] }
 constance_port_arm = { path = "../constance_port_arm", optional = true }
 arm_semihosting = { path = "../arm_semihosting", optional = true }
 constance = { path = "../constance", optional = true }

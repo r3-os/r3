@@ -9,9 +9,20 @@ categories = ["embedded", "no-std"]
 keywords = ["constance", "arm", "renesas"]
 repository = "https://github.com/yvt/Constance"
 
+[features]
+semver-exempt = [
+    "embedded-hal",
+    "rza1/cpg",
+    "rza1/gpio",
+    "rza1/scif",
+    "nb",
+]
+
 [dependencies]
 constance_port_arm = { path = "../constance_port_arm" }
 constance_portkit = { path = "../constance_portkit" }
 constance = { path = "../constance" }
 
+embedded-hal = { version = "0.2.4", optional = true }
 rza1 = { version = "0.2.0", features = ["ostm"] }
+nb = { version = "0.1.2", optional = true }
