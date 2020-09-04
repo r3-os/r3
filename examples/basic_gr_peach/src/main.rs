@@ -7,14 +7,17 @@
 #![no_std]
 #![no_main]
 #![cfg(target_os = "none")]
+#![recursion_limit = "1000"] // probably because of large interrupt numbers
 
 // -----------------------------------------------------------------------
 
 use constance_port_arm as port;
+use constance_support_rza1 as support_rza1;
 
 port::use_port!(unsafe struct System);
 port::use_startup!(unsafe System);
 port::use_gic!(unsafe impl PortInterrupts for System);
+support_rza1::use_os_timer!(unsafe impl PortTimer for System);
 
 impl port::ThreadingOptions for System {}
 
@@ -35,16 +38,9 @@ impl port::GicOptions for System {
     const GIC_CPU_BASE: usize = 0xe8202000;
 }
 
-impl constance::kernel::PortTimer for System {
-    // TODO
-    const MAX_TICK_COUNT: constance::kernel::UTicks = 0xffffffff;
-    const MAX_TIMEOUT: constance::kernel::UTicks = 0x80000000;
-    unsafe fn tick_count() -> constance::kernel::UTicks {
-        0
-    }
+impl support_rza1::OsTimerOptions for System {
+    const FREQUENCY: u64 = 33_333_000;
 }
-
-impl port::Timer for System {}
 
 // -----------------------------------------------------------------------
 
@@ -53,8 +49,8 @@ use constance::{
     prelude::*,
 };
 
-// Install a global panic handler that uses RTT
-mod panic_rtt_target;
+// Install a global panic handler that uses the serial port
+mod panic_serial;
 
 #[derive(Debug)]
 struct Objects {
@@ -67,28 +63,25 @@ const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     b.num_task_priority_levels(4);
 
-    // Initialize RTT (Real-Time Transfer) with a single up channel and set
-    // it as the print channel for the printing macros
+    System::configure_os_timer(b);
+
+    // Initialize the serial port
     StartupHook::build()
         .start(|_| {
-            let channels = rtt_target::rtt_init! {
-                up: {
-                    0: {
-                        size: 1024
-                        mode: NoBlockSkip
-                        name: "Terminal"
-                    }
-                }
-            };
+            use support_rza1::serial::ScifExt;
 
-            unsafe {
-                rtt_target::set_print_channel_cs(
-                    channels.up.0,
-                    &((|arg, f| f(arg)) as rtt_target::CriticalSectionFunc),
-                )
-            };
+            #[allow(non_snake_case)]
+            let rza1::Peripherals {
+                CPG, GPIO, SCIF2, ..
+            } = unsafe { rza1::Peripherals::steal() };
 
-            rtt_target::rprintln!("RTT is ready");
+            SCIF2.enable_clock(&CPG);
+            SCIF2.configure_pins(&GPIO);
+            SCIF2.configure_uart(115200);
+
+            support_rza1::stdout::set_stdout(SCIF2.into_nb_writer());
+
+            support_rza1::sprintln!("UART is ready");
         })
         .finish(b);
 
@@ -103,14 +96,14 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
 }
 
 fn task1_body(_: usize) {
-    rtt_target::rprintln!("COTTAGE = {:?}", COTTAGE);
+    support_rza1::sprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();
 }
 
 fn task2_body(_: usize) {
     loop {
-        rtt_target::rprintln!("time = {:?}", System::time().unwrap());
+        support_rza1::sprintln!("time = {:?}", System::time().unwrap());
         System::sleep(constance::time::Duration::from_secs(1)).unwrap();
     }
 }

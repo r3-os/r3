@@ -91,14 +91,14 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
     // coherency.”
     let clidr = arm::CLIDR.extract();
     let level_of_coherency = clidr.read(arm::CLIDR::LoC);
-    for level_and_d in 0..level_of_coherency * 2 {
-        let cache_type = (clidr.get() >> ((level_and_d >> 1) * 3)) & 0b111;
+    for level in 0..level_of_coherency {
+        let cache_type = (clidr.get() >> (level * 3)) & 0b111;
 
         // Does this cache level include a data or unified cache?
         if cache_type >= 2 {
-            // Level = level_and_d / 2, InD = level_and_d % 2
+            // Level = level, InD = 0
             // Use `isb` to make sure the change to CSSELR takes effect.
-            arm::CSSELR.set(level_and_d);
+            arm::CSSELR.set(level * 2);
             unsafe { llvm_asm!("isb") };
 
             let cssidr = arm::CCSIDR.extract();
@@ -110,7 +110,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
 
             for way in (0..=max_way_index).rev() {
                 for set in (0..=max_set_index).rev() {
-                    let set_way = level_and_d | (way << way_offset) | (set << log2_line_size);
+                    let set_way = (level << 1) | (way << way_offset) | (set << log2_line_size);
 
                     // Invalidate by set/way
                     arm::DCISW.set(set_way);
@@ -400,7 +400,6 @@ impl FirstLevelPageEntry {
         Self {
             int: pa
                 | ((ns as u32) << 19)
-                | (1 << 18)
                 | ((ng as u32) << 17)
                 | ((s as u32) << 16)
                 | ((ap as u32 >> 2) << 15)

@@ -129,6 +129,10 @@ cd examples/basic_nucleo_f401re
 cargo embed --release
 ```
 
+See [this document](examples/basic_gr_peach/README.md) for how to run the example application on [the GR-PEACH development board].
+
+[the GR-PEACH development board]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html#overview
+
 ## Prerequisites
 
 You need a Nightly Rust compiler. This project is heavily reliant on unstable features, so it might or might not work with a newer compiler version. See the file `rust-toolchain` to find out which compiler version this project is currently tested with.
@@ -150,10 +154,13 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
  - [rustup], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
  - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M/-A port.
  - libusb 1.x to test the Arm-M/-A port.
+ - [OpenOCD](http://openocd.org) to test the Arm-A port on GR-PEACH.
+ - `JLinkExe`<sup>†</sup> from [J-Link Software] to test the RISC-V port on RED-V.
 
 [rustup]: https://rustup.rs/
+[J-Link Software]: https://www.segger.com/downloads/jlink#J-LinkSoftwareAndDocumentationPack
 
-[Nix] users can use the provided `shell.nix` file to install all required software.
+[Nix] users can use the provided `shell.nix` file to install all required software except for those marked with <sup>†</sup>.
 
 [Nix]: https://nixos.org/nix/
 
@@ -163,6 +170,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
  - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re`
  - The Armv7-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385`
  - The Armv6-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385_v6m`
+ - The Armv7-A port and GR-PEACH: `cargo run -p constance_test_runner -- -t gr_peach`
  - The Armv7-A port and Arm RealView Platform Baseboard Explore for Cortex-A9 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_realview_pbx_a9`
  - The RISC-V port and SiFive E (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_e`
  - The RISC-V port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v`
@@ -173,4 +181,5 @@ The `-b` option instructs `constance_test_runner` to run benchmark tests. Note t
 
  - Hosted platform: `cargo bench -p constance_port_std`
  - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re -b`
+ - The Armv7-A port and GR-PEACH: `cargo run -p constance_test_runner -- -t gr_peach -b`
  - The RISC-V port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v -b`
