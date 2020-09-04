@@ -295,6 +295,7 @@ dependencies = [
  "constance_test_suite",
  "log",
  "register",
+ "rza1",
  "staticvec",
 ]
 
