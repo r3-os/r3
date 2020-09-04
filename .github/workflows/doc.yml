@@ -36,6 +36,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p constance_port_riscv }
 
+      - name: Build Documentation for “constance_support_rza1”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p constance_support_rza1 }
+
       - name: Generate Badge
         run: |
           rev=`git show-ref --head HEAD | cut -b 1-7`
