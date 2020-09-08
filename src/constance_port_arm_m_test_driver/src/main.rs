@@ -177,5 +177,5 @@ constance_test_suite::get_selected_kernel_tests!(instantiate_test!());
 
 #[cfg(not(feature = "run"))]
 fn main() {
-    panic!("This executable should be invoked directly");
+    panic!("This executable should not be invoked directly");
 }
