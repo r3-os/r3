@@ -2,9 +2,10 @@
 //! operation ([`Thread::park`]).
 use crate::utils::Atomic;
 use std::{
+    cell::Cell,
     mem::MaybeUninit,
     os::raw::c_int,
-    ptr::null_mut,
+    ptr::{null_mut, NonNull},
     sync::{
         atomic::{AtomicPtr, AtomicUsize, Ordering},
         Arc, Once,
@@ -14,10 +15,15 @@ use std::{
 
 pub use self::thread::ThreadId;
 
+thread_local! {
+    static EXIT_JMP_BUF: Cell<Option<JmpBuf>> = Cell::new(None);
+}
+
 pub unsafe fn exit_thread() -> ! {
-    unsafe {
-        libc::pthread_exit(std::ptr::null_mut());
-    }
+    let jmp_buf = EXIT_JMP_BUF
+        .with(|c| c.get())
+        .expect("this thread wasn't started by `threading::spawn`");
+    unsafe { longjmp(jmp_buf) };
 }
 
 /// [`std::thread::JoinHandle`] with extra functionalities.
@@ -28,7 +34,7 @@ pub struct JoinHandle<T> {
 }
 
 /// Spawn a new thread.
-pub fn spawn<T: 'static + Send>(f: impl FnOnce() -> T + Send + 'static) -> JoinHandle<T> {
+pub fn spawn(f: impl FnOnce() + Send + 'static) -> JoinHandle<()> {
     let parent_thread = thread::current();
 
     let data = Arc::new(ThreadData::new());
@@ -43,10 +49,14 @@ pub fn spawn<T: 'static + Send>(f: impl FnOnce() -> T + Send + 'static) -> JoinH
         // Move `data2` into `THREAD_DATA`
         THREAD_DATA.store(Arc::into_raw(data2) as _, Ordering::Relaxed);
 
-        parent_thread.unpark();
-        drop(parent_thread);
+        catch_longjmp(move |jmp_buf| {
+            EXIT_JMP_BUF.with(|c| c.set(Some(jmp_buf)));
 
-        f()
+            parent_thread.unpark();
+            drop(parent_thread);
+
+            f()
+        });
     });
 
     let thread = Thread {
@@ -311,6 +321,106 @@ fn ok_or_errno(x: c_int) -> Result<c_int, errno::Errno> {
     }
 }
 
+#[derive(Copy, Clone)]
+#[repr(transparent)]
+struct JmpBuf {
+    sp: NonNull<()>,
+}
+
+/// Call `cb`, preserving the current context state in `JmpBuf`, which
+/// can be later used by [`longjmp`] to immediately return from this function,
+/// bypassing destructors and unwinding mechanisms such as
+/// <https://github.com/rust-lang/rust/pull/70212>.
+///
+/// [The native `setjmp`] isn't supported by Rust at the point of writing.
+///
+/// [The native `setjmp`]: https://github.com/rust-lang/rfcs/issues/2625
+#[inline]
+fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
+    #[inline(never)] // ensure all caller-saved regs are trash-able
+    fn catch_longjmp_inner(f: fn(*mut (), JmpBuf), ctx: *mut ()) {
+        unsafe {
+            match () {
+                #[cfg(target_arch = "x86_64")]
+                () => {
+                    asm!(
+                        "
+                            # push context
+                            push rbp
+                            lea rbx, [rip + 0f]
+                            push rbx
+
+                            # do f(ctx, jmp_buf)
+                            # [rdi = ctx, rsp = jmp_buf]
+                            mov rsi, rsp
+                            call {f}
+
+                            jmp 1f
+                        0:
+                            # longjmp called. restore context
+                            mov rbp, [rsp + 8]
+
+                        1:
+                            # discard context
+                            add rsp, 16
+                        ",
+                        f = inlateout(reg) f => _,
+                        inlateout("rdi") ctx => _,
+                        lateout("rsi") _,
+                        // System V ABI callee-saved registers
+                        // (note: Windows uses a different ABI)
+                        out("rbx") _,
+                        lateout("r12") _,
+                        lateout("r13") _,
+                        lateout("r14") _,
+                        lateout("r15") _,
+                    );
+                }
+            }
+        }
+    }
+
+    let mut cb = core::mem::ManuallyDrop::new(cb);
+
+    catch_longjmp_inner(
+        |ctx, jmp_buf| unsafe {
+            let ctx = (ctx as *mut F).read();
+            ctx(jmp_buf);
+        },
+        (&mut cb) as *mut _ as *mut (),
+    );
+}
+
+/// Return from a call to [`catch_longjmp`] using the preserved context state in
+/// `jmp_buf`.
+///
+/// # Safety
+///
+///  - This function bypasses all destructor calls that stand between the call
+///    site of this function and the call to `catch_longjmp` corresponding to
+///    the given `JmpBuf`.
+///
+///  - The call to `catch_longjmp` corresponding to the given `JmpBuf` should be
+///    still active (it must be in the call stack when this function is called).
+///
+unsafe fn longjmp(jmp_buf: JmpBuf) -> ! {
+    unsafe {
+        match () {
+            #[cfg(target_arch = "x86_64")]
+            () => {
+                asm!(
+                    "
+                        mov rsp, {}
+                        jmp [rsp]
+                    ",
+                    in(reg) jmp_buf.sp.as_ptr(),
+                    options(noreturn),
+                );
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -351,5 +461,29 @@ mod tests {
 
         // `jh` should be the sole owner of `ThreadData` now
         assert_eq!(Arc::strong_count(&jh.thread.data), 1);
+    }
+
+    struct PanicOnDrop;
+
+    impl Drop for PanicOnDrop {
+        fn drop(&mut self) {
+            unreachable!();
+        }
+    }
+
+    #[test]
+    fn test_longjmp() {
+        let mut buf = 42;
+        catch_longjmp(|jmp_buf| {
+            let _hoge = PanicOnDrop;
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| loop {
+                buf += 1;
+                if buf == 50 {
+                    unsafe { longjmp(jmp_buf) };
+                }
+            }))
+            .unwrap();
+        });
+        assert_eq!(buf, 50);
     }
 }
