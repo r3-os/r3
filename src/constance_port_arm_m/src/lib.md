@@ -35,6 +35,10 @@ The use of the `wfi` instruction can interfere with debugger connection. For exa
 
 [`ThreadingOptions::USE_WFI`]: crate::ThreadingOptions::USE_WFI
 
+# Register Preloading
+
+When a task is activated, a new context state is created inside the task's stack. By default, only essential registers are preloaded with known values. The **`preload-registers`** Cargo feature enables preloading for all integer registers, which might help in debugging at the cost of performance and code size.
+
 # Safety
 
 Being a low-level piece of software, this port directly interfaces with hardware. This is not a problem as long as the port is the only piece of code doing that, but it might interfere with other low-level libraries and break their assumptions, potentially leading to an undefined behavior. This section lists potential harmful interactions that an application developer should keep in mind.

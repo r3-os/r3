@@ -9,6 +9,9 @@ categories = ["embedded", "no-std"]
 keywords = ["constance", "arm"]
 repository = "https://github.com/yvt/Constance"
 
+[features]
+preload-registers = []
+
 [dependencies]
 constance_portkit = { path = "../constance_portkit" }
 constance = { path = "../constance" }

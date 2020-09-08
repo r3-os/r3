@@ -417,6 +417,8 @@ impl State {
         let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<u32>;
         // TODO: Enforce minimum stack size
 
+        let preload_all = cfg!(feature = "preload-registers");
+
         // Exception frame (automatically saved and restored as part of
         // the architectually-defined exception entry/return sequence)
         let exc_frame = unsafe {
@@ -427,10 +429,12 @@ impl State {
         // R0: Parameter to the entry point
         exc_frame[0] = MaybeUninit::new(task.attr.entry_param as u32);
         // R1-R3, R12: Uninitialized
-        exc_frame[1] = MaybeUninit::new(0x01010101);
-        exc_frame[2] = MaybeUninit::new(0x02020202);
-        exc_frame[3] = MaybeUninit::new(0x03030303);
-        exc_frame[4] = MaybeUninit::new(0x12121212);
+        if preload_all {
+            exc_frame[1] = MaybeUninit::new(0x01010101);
+            exc_frame[2] = MaybeUninit::new(0x02020202);
+            exc_frame[3] = MaybeUninit::new(0x03030303);
+            exc_frame[4] = MaybeUninit::new(0x12121212);
+        }
         // LR: The return address
         exc_frame[5] = MaybeUninit::new(System::exit_task as usize as u32);
         // PC: The entry point - The given function pointer has its LSB set to
@@ -463,14 +467,16 @@ impl State {
         // TODO: PSPLIM
 
         // R4-R11: Uninitialized
-        extra_ctx[2] = MaybeUninit::new(0x04040404);
-        extra_ctx[3] = MaybeUninit::new(0x05050505);
-        extra_ctx[4] = MaybeUninit::new(0x06060606);
-        extra_ctx[5] = MaybeUninit::new(0x07070707);
-        extra_ctx[6] = MaybeUninit::new(0x08080808);
-        extra_ctx[7] = MaybeUninit::new(0x09090909);
-        extra_ctx[8] = MaybeUninit::new(0x10101010);
-        extra_ctx[9] = MaybeUninit::new(0x11111111);
+        if preload_all {
+            extra_ctx[2] = MaybeUninit::new(0x04040404);
+            extra_ctx[3] = MaybeUninit::new(0x05050505);
+            extra_ctx[4] = MaybeUninit::new(0x06060606);
+            extra_ctx[5] = MaybeUninit::new(0x07070707);
+            extra_ctx[6] = MaybeUninit::new(0x08080808);
+            extra_ctx[7] = MaybeUninit::new(0x09090909);
+            extra_ctx[8] = MaybeUninit::new(0x10101010);
+            extra_ctx[9] = MaybeUninit::new(0x11111111);
+        }
 
         let task_state = &task.port_task_state;
         unsafe { *task_state.sp.get() = sp as _ };
