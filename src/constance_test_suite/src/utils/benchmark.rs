@@ -78,7 +78,7 @@ pub const fn configure<System: Kernel, Options: BencherOptions<System>>(
     let task = Task::build()
         .start(main_task::<System, Options>)
         .active(true)
-        .priority(7)
+        .priority(3)
         .finish(b);
 
     let state = Hunk::<System, BencherState>::build().finish(b);

@@ -273,7 +273,7 @@ impl<System> CfgBuilder<System> {
                 hunk_pool_len: 0,
                 hunk_pool_align: 1,
                 tasks: ComptimeVec::new(),
-                num_task_priority_levels: 16,
+                num_task_priority_levels: 4,
                 interrupt_lines: ComptimeVec::new(),
                 interrupt_handlers: ComptimeVec::new(),
                 startup_hooks: ComptimeVec::new(),
@@ -289,7 +289,7 @@ impl<System> CfgBuilder<System> {
         self.inner
     }
 
-    /// Specify the number of task priority levels. The default value is `16`.
+    /// Specify the number of task priority levels. The default value is `4`.
     pub const fn num_task_priority_levels(&mut self, new_value: usize) {
         if new_value == 0 {
             panic!("`num_task_priority_levels` must be greater than zero");
