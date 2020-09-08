@@ -114,6 +114,8 @@ struct ContextState {
 
 [`TaskCb::port_task_state`]: constance::kernel::TaskCb::port_task_state
 
+When a task is activated, a new context state is created inside the task's stack. By default, only essential registers are preloaded with known values. The **`preload-registers`** Cargo feature enables preloading for all GPRs, which might help in debugging at the cost of performance and code size.
+
 For the idle task, saving and restoring the context store is essentially replaced with no-op or loads of hard-coded values. In particular, `pc` is always “restored” with the entry point of the idle task.
 
 ## Processor Modes
