@@ -62,20 +62,19 @@ pub fn trailing_zeros<const BITS: usize>(x: usize) -> u32 {
         ctz4_lut(x)
     } else if BITS <= 8 && HAS_MUL && HAS_SHIFTER {
         ctz8_debruijn(x)
-    } else if (cfg!(target_arch = "riscv32") || cfg!(target_arch = "riscv64")) && !HAS_MUL {
-        ctz_bsearch11::<BITS>(x)
-    } else if BITS <= 8 || !(HAS_MUL && HAS_SHIFTER) {
-        ctz_linear::<BITS>(x)
-    } else {
-        // Fall back to LLVM expansion if we don't have an applicable
-        // specialized routine. At the point of writing, this uses either
-        // library code or a generic algorithm based on the following one:
+    } else if BITS > 16 && HAS_MUL && HAS_SHIFTER {
+        // Use LLVM's emulation code. At the point of writing, it uses a generic
+        // algorithm based on the following one:
         // <http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel>
         //
         // This algorithm requires loading multiple 32-bit-wide constants and
         // shifts by more than one bit and may be very inefficient on some
-        // targets.
+        // targets. On the other hand, it does not require branching.
         x.trailing_zeros()
+    } else if HAS_SHIFTER {
+        ctz_bsearch32::<BITS>(x)
+    } else {
+        ctz_linear::<BITS>(x)
     }
 }
 
@@ -107,9 +106,17 @@ fn ctz4_lut(x: usize) -> u32 {
     if x == 0 {
         USIZE_BITS
     } else {
-        //  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-        (0b01_00_10_00_01_00_11_00_01_00_10_00_01_00 << (x as u32 * 2)) >> 30
+        ctz4_lut_nonzero(x)
     }
+}
+
+/// Implements [`trailing_zeros`] using a look-up table.
+/// `x` must be in range `1..16`.
+#[inline]
+fn ctz4_lut_nonzero(x: usize) -> u32 {
+    debug_assert!(x < 16 && x != 0);
+    //  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+    (0b01_00_10_00_01_00_11_00_01_00_10_00_01_00 << (x as u32 * 2)) >> 30
 }
 
 /// Implements [`trailing_zeros`] using a look-up table.
@@ -165,18 +172,14 @@ fn ctz_linear<const BITS: usize>(mut x: usize) -> u32 {
     USIZE_BITS
 }
 
-/// Implements [`trailing_zeros`] using hierarchical (binary, etc.) search, only
-/// using 11-bit-wide constants (this is beneficial to RISC-V). The last level
-/// is handled by [`ctz3_lut_nonzero`].
+/// Implements [`trailing_zeros`] using binary search. The last level
+/// is handled by [`ctz4_lut_nonzero`].
 ///
-///`BITS` must be less than or equal to 33.
+///`BITS` must be less than or equal to 32.
 #[inline]
-fn ctz_bsearch11<const BITS: usize>(mut x: usize) -> u32 {
-    const I11: usize = 0b11111111111;
-    const I6: usize = 0b111111;
-    const I3: usize = 0b111;
-
-    debug_assert!(BITS <= 33);
+fn ctz_bsearch32<const BITS: usize>(x: usize) -> u32 {
+    debug_assert!(BITS <= 32);
+    let mut x = x as u32;
 
     if x == 0 {
         return USIZE_BITS;
@@ -184,31 +187,27 @@ fn ctz_bsearch11<const BITS: usize>(mut x: usize) -> u32 {
 
     let mut i = 0;
 
-    if BITS > 22 && (x & I11) == 0 {
-        x >>= 11;
-        i += 11;
-    }
-    if BITS > 11 && (x & I11) == 0 {
-        x >>= 11;
-        i += 11;
+    if BITS > 16 && (x & 0xffff) == 0 {
+        x >>= 16;
+        i += 16;
     }
 
-    if BITS > 6 && (x & I6) == 0 {
-        x >>= 6;
-        i += 6;
+    if BITS > 8 && (x & 0xff) == 0 {
+        x >>= 8;
+        i += 8;
     }
 
-    if BITS > 3 && (x & I3) == 0 {
-        x >>= 3;
-        i += 3;
-        if BITS > 6 {
-            x &= I3;
+    if BITS > 4 && (x & 0xf) == 0 {
+        x >>= 4;
+        i += 4;
+        if BITS > 8 {
+            x &= 0xf;
         }
-    } else if BITS > 3 {
-        x &= I3;
+    } else if BITS > 4 {
+        x &= 0xf;
     }
 
-    i += ctz3_lut_nonzero(x);
+    i += ctz4_lut_nonzero(x as usize);
 
     i
 }
@@ -288,13 +287,13 @@ mod tests {
         super::ctz_linear::<{ super::USIZE_BITS as usize }>,
         super::USIZE_BITS
     );
-    gen_test!(ctz_bsearch11_0, super::ctz_bsearch11::<0>, 0);
-    gen_test!(ctz_bsearch11_1, super::ctz_bsearch11::<1>, 1);
-    gen_test!(ctz_bsearch11_2, super::ctz_bsearch11::<2>, 2);
-    gen_test!(ctz_bsearch11_3, super::ctz_bsearch11::<3>, 3);
-    gen_test!(ctz_bsearch11_5, super::ctz_bsearch11::<5>, 5);
-    gen_test!(ctz_bsearch11_10, super::ctz_bsearch11::<10>, 10);
-    gen_test!(ctz_bsearch11_14, super::ctz_bsearch11::<14>, 14);
-    gen_test!(ctz_bsearch11_21, super::ctz_bsearch11::<21>, 21);
-    gen_test!(ctz_bsearch11_32, super::ctz_bsearch11::<32>, 32);
+    gen_test!(ctz_bsearch32_0, super::ctz_bsearch32::<0>, 0);
+    gen_test!(ctz_bsearch32_1, super::ctz_bsearch32::<1>, 1);
+    gen_test!(ctz_bsearch32_2, super::ctz_bsearch32::<2>, 2);
+    gen_test!(ctz_bsearch32_3, super::ctz_bsearch32::<3>, 3);
+    gen_test!(ctz_bsearch32_5, super::ctz_bsearch32::<5>, 5);
+    gen_test!(ctz_bsearch32_10, super::ctz_bsearch32::<10>, 10);
+    gen_test!(ctz_bsearch32_14, super::ctz_bsearch32::<14>, 14);
+    gen_test!(ctz_bsearch32_21, super::ctz_bsearch32::<21>, 21);
+    gen_test!(ctz_bsearch32_32, super::ctz_bsearch32::<32>, 32);
 }
