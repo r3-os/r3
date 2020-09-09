@@ -273,7 +273,7 @@ impl<System> CfgBuilder<System> {
                 hunk_pool_len: 0,
                 hunk_pool_align: 1,
                 tasks: ComptimeVec::new(),
-                num_task_priority_levels: 16,
+                num_task_priority_levels: 4,
                 interrupt_lines: ComptimeVec::new(),
                 interrupt_handlers: ComptimeVec::new(),
                 startup_hooks: ComptimeVec::new(),
@@ -289,7 +289,17 @@ impl<System> CfgBuilder<System> {
         self.inner
     }
 
-    /// Specify the number of task priority levels. The default value is `16`.
+    /// Specify the number of task priority levels. The default value is `4`.
+    ///
+    /// Must be in range `1..4096`. The actual upper bound might be larger
+    /// depending on the internal implementation.
+    ///
+    /// The RAM consumption by task ready queues is proportional to the number
+    /// of task priority levels. In addition, the scheduler is heavily optimized
+    /// for the cases where the number is very small (e.g., < `16`). The
+    /// performance improvement can be notable especially if the target
+    /// processor does not have a CTZ (count trailing zero) instruction,
+    /// barrel shifter, or hardware multiplier.
     pub const fn num_task_priority_levels(&mut self, new_value: usize) {
         if new_value == 0 {
             panic!("`num_task_priority_levels` must be greater than zero");
