@@ -2,7 +2,7 @@
 //! logarithmic-time bit scan operations.
 use core::{convert::TryFrom, fmt};
 
-use super::{BinInteger, Init};
+use super::{ctz::trailing_zeros, BinInteger, Init};
 
 /// The maximum bit count supported by [`FixedPrioBitmap`].
 pub const FIXED_PRIO_BITMAP_MAX_LEN: usize = WORD_LEN * WORD_LEN * WORD_LEN;
@@ -38,15 +38,15 @@ pub type OneLevelPrioBitmap<const LEN: usize> = If! {
     if (LEN == 0) {
         ()
     } else if (LEN <= 8 && LEN <= WORD_LEN) {
-        OneLevelPrioBitmapImpl<u8>
+        OneLevelPrioBitmapImpl<u8, LEN>
     } else if (LEN <= 16 && LEN <= WORD_LEN) {
-        OneLevelPrioBitmapImpl<u16>
+        OneLevelPrioBitmapImpl<u16, LEN>
     } else if (LEN <= 32 && LEN <= WORD_LEN) {
-        OneLevelPrioBitmapImpl<u32>
+        OneLevelPrioBitmapImpl<u32, LEN>
     } else if (LEN <= 64 && LEN <= WORD_LEN) {
-        OneLevelPrioBitmapImpl<u64>
+        OneLevelPrioBitmapImpl<u64, LEN>
     } else if (LEN <= 128 && LEN <= WORD_LEN) {
-        OneLevelPrioBitmapImpl<u128>
+        OneLevelPrioBitmapImpl<u128, LEN>
     } else {
         TooManyLevels
     }
@@ -87,45 +87,56 @@ impl PrioBitmap for () {
     }
 }
 
-/// Stores `T::BITS` entries.
+/// Stores `LEN` (≤ `T::BITS`) entries.
 #[doc(hidden)]
 #[derive(Clone, Copy)]
-pub struct OneLevelPrioBitmapImpl<T> {
+pub struct OneLevelPrioBitmapImpl<T, const LEN: usize> {
     bits: T,
 }
 
-impl<T: BinInteger> Init for OneLevelPrioBitmapImpl<T> {
+impl<T: BinInteger, const LEN: usize> Init for OneLevelPrioBitmapImpl<T, LEN> {
     const INIT: Self = Self { bits: T::INIT };
 }
 
-impl<T: BinInteger> fmt::Debug for OneLevelPrioBitmapImpl<T> {
+impl<T: BinInteger, const LEN: usize> fmt::Debug for OneLevelPrioBitmapImpl<T, LEN> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.bits.one_digits()).finish()
     }
 }
 
-impl<T: BinInteger> PrioBitmap for OneLevelPrioBitmapImpl<T> {
+impl<T: BinInteger, const LEN: usize> PrioBitmap for OneLevelPrioBitmapImpl<T, LEN> {
     fn get(&self, i: usize) -> bool {
-        assert!(i < usize::try_from(T::BITS).unwrap());
+        assert!(i < LEN && i < usize::try_from(T::BITS).unwrap());
         self.bits.get_bit(i as u32)
     }
 
     fn clear(&mut self, i: usize) {
-        assert!(i < usize::try_from(T::BITS).unwrap());
+        assert!(i < LEN && i < usize::try_from(T::BITS).unwrap());
         self.bits.clear_bit(i as u32);
     }
 
     fn set(&mut self, i: usize) {
-        assert!(i < usize::try_from(T::BITS).unwrap());
+        assert!(i < LEN && i < usize::try_from(T::BITS).unwrap());
         self.bits.set_bit(i as u32);
     }
 
     fn find_set(&self) -> Option<usize> {
-        let i = self.bits.trailing_zeros();
-        if i == T::BITS {
-            None
+        if LEN <= usize::BITS as usize {
+            // Use an optimized version of `trailing_zeros`
+            let bits = self.bits.to_usize().unwrap();
+            let i = trailing_zeros::<LEN>(bits);
+            if i == usize::BITS {
+                None
+            } else {
+                Some(i as usize)
+            }
         } else {
-            Some(i as usize)
+            let i = self.bits.trailing_zeros();
+            if i == T::BITS {
+                None
+            } else {
+                Some(i as usize)
+            }
         }
     }
 }
