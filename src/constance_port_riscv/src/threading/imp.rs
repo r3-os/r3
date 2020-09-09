@@ -115,6 +115,9 @@ mod mie {
     }
 }
 
+/// `XLEN / 8`
+const X_SIZE: usize = core::mem::size_of::<usize>();
+
 /// Implemented on a system type by [`use_port!`].
 ///
 /// # Safety
@@ -271,23 +274,23 @@ impl State {
                 #   sp[10..16] = [a6-a7, t3-t6]
                 #   sp[16] = ra
                 #
-                addi sp, sp, (4 * -17)
-                sw t0, (4 * 1)(sp)
-                sw t1, (4 * 2)(sp)
-                sw t2, (4 * 3)(sp)
-                sw a0, (4 * 4)(sp)
-                sw a1, (4 * 5)(sp)
-                sw a2, (4 * 6)(sp)
-                sw a3, (4 * 7)(sp)
-                sw a4, (4 * 8)(sp)
-                sw a5, (4 * 9)(sp)
-                sw a6, (4 * 10)(sp)
-                sw a7, (4 * 11)(sp)
-                sw t3, (4 * 12)(sp)
-                sw t4, (4 * 13)(sp)
-                sw t5, (4 * 14)(sp)
-                sw t6, (4 * 15)(sp)
-                sw ra, (4 * 16)(sp)
+                addi sp, sp, ({X_SIZE} * -17)
+                sw t0, ({X_SIZE} * 1)(sp)
+                sw t1, ({X_SIZE} * 2)(sp)
+                sw t2, ({X_SIZE} * 3)(sp)
+                sw a0, ({X_SIZE} * 4)(sp)
+                sw a1, ({X_SIZE} * 5)(sp)
+                sw a2, ({X_SIZE} * 6)(sp)
+                sw a3, ({X_SIZE} * 7)(sp)
+                sw a4, ({X_SIZE} * 8)(sp)
+                sw a5, ({X_SIZE} * 9)(sp)
+                sw a6, ({X_SIZE} * 10)(sp)
+                sw a7, ({X_SIZE} * 11)(sp)
+                sw t3, ({X_SIZE} * 12)(sp)
+                sw t4, ({X_SIZE} * 13)(sp)
+                sw t5, ({X_SIZE} * 14)(sp)
+                sw t6, ({X_SIZE} * 15)(sp)
+                sw ra, ({X_SIZE} * 16)(sp)
 
                 # MIE := 0
                 csrci mstatus, {MIE}
@@ -298,6 +301,7 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 MIE = const mstatus::MIE,
+                X_SIZE = const X_SIZE,
             );
         }
     }
@@ -417,19 +421,19 @@ impl State {
                 call {get_running_task}
 
                 # Push the second-level context state.
-                addi sp, sp, (4 * -12)
-                sw s0, (4 * 0)(sp)
-                sw s1, (4 * 1)(sp)
-                sw s2, (4 * 2)(sp)
-                sw s3, (4 * 3)(sp)
-                sw s4, (4 * 4)(sp)
-                sw s5, (4 * 5)(sp)
-                sw s6, (4 * 6)(sp)
-                sw s7, (4 * 7)(sp)
-                sw s8, (4 * 8)(sp)
-                sw s9, (4 * 9)(sp)
-                sw s10, (4 * 10)(sp)
-                sw s11, (4 * 11)(sp)
+                addi sp, sp, ({X_SIZE} * -12)
+                sw s0, ({X_SIZE} * 0)(sp)
+                sw s1, ({X_SIZE} * 1)(sp)
+                sw s2, ({X_SIZE} * 2)(sp)
+                sw s3, ({X_SIZE} * 3)(sp)
+                sw s4, ({X_SIZE} * 4)(sp)
+                sw s5, ({X_SIZE} * 5)(sp)
+                sw s6, ({X_SIZE} * 6)(sp)
+                sw s7, ({X_SIZE} * 7)(sp)
+                sw s8, ({X_SIZE} * 8)(sp)
+                sw s9, ({X_SIZE} * 9)(sp)
+                sw s10, ({X_SIZE} * 10)(sp)
+                sw s11, ({X_SIZE} * 11)(sp)
 
                 # Store SP to `TaskState`.
                 #
@@ -462,19 +466,19 @@ impl State {
                 lw sp, (a0)
 
                 # Pop the second-level context state.
-                lw s0, (4 * 0)(sp)
-                lw s1, (4 * 1)(sp)
-                lw s2, (4 * 2)(sp)
-                lw s3, (4 * 3)(sp)
-                lw s4, (4 * 4)(sp)
-                lw s5, (4 * 5)(sp)
-                lw s6, (4 * 6)(sp)
-                lw s7, (4 * 7)(sp)
-                lw s8, (4 * 8)(sp)
-                lw s9, (4 * 9)(sp)
-                lw s10, (4 * 10)(sp)
-                lw s11, (4 * 11)(sp)
-                addi sp, sp, (4 * 12)
+                lw s0, ({X_SIZE} * 0)(sp)
+                lw s1, ({X_SIZE} * 1)(sp)
+                lw s2, ({X_SIZE} * 2)(sp)
+                lw s3, ({X_SIZE} * 3)(sp)
+                lw s4, ({X_SIZE} * 4)(sp)
+                lw s5, ({X_SIZE} * 5)(sp)
+                lw s6, ({X_SIZE} * 6)(sp)
+                lw s7, ({X_SIZE} * 7)(sp)
+                lw s8, ({X_SIZE} * 8)(sp)
+                lw s9, ({X_SIZE} * 9)(sp)
+                lw s10, ({X_SIZE} * 10)(sp)
+                lw s11, ({X_SIZE} * 11)(sp)
+                addi sp, sp, ({X_SIZE} * 12)
 
             .global {push_second_level_state_and_dispatch}.pop_first_level_state
             {push_second_level_state_and_dispatch}.pop_first_level_state:
@@ -496,25 +500,25 @@ impl State {
                 #
                 #   <end of procedure>
                 #
-                lw a7, (4 * 16)(sp)
-                lw ra, (4 * 0)(sp)
-                lw t0, (4 * 1)(sp)
-                lw t1, (4 * 2)(sp)
-                lw t2, (4 * 3)(sp)
+                lw a7, ({X_SIZE} * 16)(sp)
+                lw ra, ({X_SIZE} * 0)(sp)
+                lw t0, ({X_SIZE} * 1)(sp)
+                lw t1, ({X_SIZE} * 2)(sp)
+                lw t2, ({X_SIZE} * 3)(sp)
                 csrw mepc, a7
-                lw a0, (4 * 4)(sp)
-                lw a1, (4 * 5)(sp)
-                lw a2, (4 * 6)(sp)
-                lw a3, (4 * 7)(sp)
-                lw a4, (4 * 8)(sp)
-                lw a5, (4 * 9)(sp)
-                lw a6, (4 * 10)(sp)
-                lw a7, (4 * 11)(sp)
-                lw t3, (4 * 12)(sp)
-                lw t4, (4 * 13)(sp)
-                lw t5, (4 * 14)(sp)
-                lw t6, (4 * 15)(sp)
-                addi sp, sp, (4 * 17)
+                lw a0, ({X_SIZE} * 4)(sp)
+                lw a1, ({X_SIZE} * 5)(sp)
+                lw a2, ({X_SIZE} * 6)(sp)
+                lw a3, ({X_SIZE} * 7)(sp)
+                lw a4, ({X_SIZE} * 8)(sp)
+                lw a5, ({X_SIZE} * 9)(sp)
+                lw a6, ({X_SIZE} * 10)(sp)
+                lw a7, ({X_SIZE} * 11)(sp)
+                lw t3, ({X_SIZE} * 12)(sp)
+                lw t4, ({X_SIZE} * 13)(sp)
+                lw t5, ({X_SIZE} * 14)(sp)
+                lw t6, ({X_SIZE} * 15)(sp)
+                addi sp, sp, ({X_SIZE} * 17)
                 mret
 
             .global {push_second_level_state_and_dispatch}.idle_task
@@ -541,6 +545,7 @@ impl State {
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
                 MPP_M = const mstatus::MPP_M,
                 MIE = const mstatus::MIE,
+                X_SIZE = const X_SIZE,
                 options(noreturn)
             );
         }
@@ -788,13 +793,13 @@ impl State {
                 #   let background_sp = sp;
                 #   <[s0-s11] = background context state, sp != 0>
                 #
-                addi sp, sp, (-4 * 17)
-                sw ra, (4 * 0)(sp)
-                sw t0, (4 * 1)(sp)
-                sw t1, (4 * 2)(sp)
-                sw t2, (4 * 3)(sp)
-                sw a0, (4 * 4)(sp)
-                sw a1, (4 * 5)(sp)
+                addi sp, sp, (-{X_SIZE} * 17)
+                sw ra, ({X_SIZE} * 0)(sp)
+                sw t0, ({X_SIZE} * 1)(sp)
+                sw t1, ({X_SIZE} * 2)(sp)
+                sw t2, ({X_SIZE} * 3)(sp)
+                sw a0, ({X_SIZE} * 4)(sp)
+                sw a1, ({X_SIZE} * 5)(sp)
                                                 # Increment the nesting count.
                                                 #
                                                 #   <INTERRUPT_NESTING ≥ -1>
@@ -803,18 +808,18 @@ impl State {
                                                 #
                                                 la a1, {INTERRUPT_NESTING}
                                                 lw a0, (a1)
-                sw a2, (4 * 6)(sp)
+                sw a2, ({X_SIZE} * 6)(sp)
                 csrr a2, mepc
-                sw a3, (4 * 7)(sp)
-                sw a4, (4 * 8)(sp)
-                sw a5, (4 * 9)(sp)
-                sw a6, (4 * 10)(sp)
-                sw a7, (4 * 11)(sp)
-                sw t3, (4 * 12)(sp)
-                sw t4, (4 * 13)(sp)
-                sw t5, (4 * 14)(sp)
-                sw t6, (4 * 15)(sp)
-                sw a2, (4 * 16)(sp)
+                sw a3, ({X_SIZE} * 7)(sp)
+                sw a4, ({X_SIZE} * 8)(sp)
+                sw a5, ({X_SIZE} * 9)(sp)
+                sw a6, ({X_SIZE} * 10)(sp)
+                sw a7, ({X_SIZE} * 11)(sp)
+                sw t3, ({X_SIZE} * 12)(sp)
+                sw t4, ({X_SIZE} * 13)(sp)
+                sw t5, ({X_SIZE} * 14)(sp)
+                sw t6, ({X_SIZE} * 15)(sp)
+                sw a2, ({X_SIZE} * 16)(sp)
                                                 addi a0, a0, 1
                                                 sw a0, (a1)
 
@@ -841,8 +846,8 @@ impl State {
                 # `MAIN_STACK`.
                 #
                 #   <INTERRUPT_NESTING == 0, background context ∈ [task, idle task]>
-                #   *(MAIN_STACK - 4) = sp;
-                #   sp = MAIN_STACK - 4;
+                #   *(MAIN_STACK - X_SIZE) = sp;
+                #   sp = MAIN_STACK - X_SIZE;
                 #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
                 #    a0 == background_sp>
                 #
@@ -866,13 +871,13 @@ impl State {
                 # aligned to a word boundary.
                 #
                 #   <INTERRUPT_NESTING > 0, background context ∈ [interrupt]>
-                #   *((sp - 4) & !15) = sp
-                #   sp = (sp - 4) & !15
+                #   *((sp - X_SIZE) & !15) = sp
+                #   sp = (sp - X_SIZE) & !15
                 #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
                 #    a0 == background_sp>
                 #
                 mv a0, sp
-                addi sp, sp, -4
+                addi sp, sp, -{X_SIZE}
                 andi sp, sp, -16
                 sw a0, (sp)
 
@@ -900,7 +905,7 @@ impl State {
                     sw x0, ({RESERVATION_ADDR_VALUE}), a1
             "   } else {                                                            "
                     # unused: {RESERVATION_ADDR_VALUE}
-                    addi a1, sp, -4
+                    addi a1, sp, -{X_SIZE}
                     sc.w x0, x0, (a1)
             "   }                                                                   "
 
@@ -965,6 +970,7 @@ impl State {
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
                 RESERVATION_ADDR_VALUE = sym instemu::RESERVATION_ADDR_VALUE,
                 MAIN_STACK = sym MAIN_STACK,
+                X_SIZE = const X_SIZE,
                 options(noreturn)
             );
         }
