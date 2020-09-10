@@ -90,7 +90,12 @@ macro_rules! instantiate_test {
 
         impl port::TimerOptions for System {
             const MTIME_PTR: usize = 0x0200_bff8;
-            const MTIMECMP_PTR: usize = 0x0200_4008;
+
+            #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
+            const MTIMECMP_PTR: usize = 0x0200_4000;
+            #[cfg(feature = "board-u540-qemu")]
+            const MTIMECMP_PTR: usize = 0x0200_4008 /* kernel runs on hart 1 */;
+
             #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
             const FREQUENCY: u64 = e310x::MTIME_FREQUENCY;
             #[cfg(feature = "board-u540-qemu")]
