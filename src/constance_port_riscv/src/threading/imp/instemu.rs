@@ -15,8 +15,7 @@ pub(super) static mut RESERVATION_ADDR_VALUE: [usize; 2] = [0; 2];
 ///
 /// # Inputs
 ///
-///  - `a0`: pointer to the first-level state (a portion of the background
-///    context state)
+///  - `a0`: pointer to FLS.X (a portion of the background context state)
 ///  - `a1`: `mcause`
 ///  - `s0-s11`: `s0-s11` from the background context state
 ///

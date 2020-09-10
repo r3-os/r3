@@ -79,37 +79,57 @@ The state of an interrupted thread is stored to the interrupted thread's stack i
 ```rust,ignore
 #[repr(C)]
 struct ContextState {
-    // Second-level state
+    // Second-level state (SLS)
+    // ------------------------
     //
     // Includes everything that is not included in the first-level state. These
     // are moved between memory and registers only when switching tasks.
-    // TODO: Floating-point registers
+
+    // SLS.HDR: Second-level state, header
+    //
+    // The `mstatus` field preserves the state of `mstatus.FS[1]`.
+    // `mstatus.FS[0]` is assumed to `1`. This means `mstatus.FS` can only take
+    // one of the following states: Initial and Dirty.
+    // Irrelevant bits are don't-care (hence `_part`).
+    #[cfg(target_feature = "f")]
+    mstatus_part: usize,
+
+    // SLS.F: Second-level state, FP registers
+    //
+    // This portion exists only if `mstatus.FS[1] != 0`.
+    #[cfg(target_feature = "f")]
+    f8: [FReg; 2],  // fs0-fs1
+    #[cfg(target_feature = "f")]
+    f18: [FReg; 10], // fs2-fs11
+
+    // SLS.X: Second-level state, X registers
     x8: usize,  // s0/fp
     x9: usize,  // s1
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x18: usize, // s2
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x19: usize, // s3
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x20: usize, // s4
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x21: usize, // s5
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x22: usize, // s6
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x23: usize, // s7
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x24: usize, // s8
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x25: usize, // s9
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x26: usize, // s10
-    #[cfg(not(e))]
+    #[cfg(not(target_feature = "e"))]
     x27: usize, // s11
 
-    // First-level state
+    // First-level state (FLS)
+    // -----------------------
     //
-    // The GPR potion is comprised of caller-saved registers. In an exception
+    // This section is comprised of caller-saved registers. In an exception
     // handler, saving/restoring this set of registers at entry and exit allows
     // it to call Rust functions.
     //
@@ -117,6 +137,19 @@ struct ContextState {
     // them by their purposes, as done by Linux and FreeBSD) to improve the
     // compression ratio very slightly when transmitting the code over a
     // network.
+
+    // FLS.F: First-level state, FP registers
+    //
+    // This portion exists only if `mstatus.FS[1] != 0`.
+    #[cfg(target_feature = "f")]
+    f0: [FReg; 8],  // ft0-ft7
+    #[cfg(target_feature = "f")]
+    f10: [FReg; 8], // fa0-fa7
+    #[cfg(target_feature = "f")]
+    f28: [FReg; 4], // ft8-ft11
+    // TODO: fcsr
+
+    // FLS.X: First-level state, X registers
     x1: usize,  // ra
     x5: usize,  // t0
     x6: usize,  // t1
