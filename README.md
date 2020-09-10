@@ -173,6 +173,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
  - The Armv7-A port and GR-PEACH: `cargo run -p constance_test_runner -- -t gr_peach`
  - The Armv7-A port and Arm RealView Platform Baseboard Explore for Cortex-A9 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_realview_pbx_a9`
  - The RISC-V port and SiFive E (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_e`
+ - The RISC-V port and SiFive U (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_u`
  - The RISC-V port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v`
 
 ### How to Run Benchmarks

@@ -26,11 +26,15 @@ output-e310x-uart = [
     "output-uart",
     "nb",
 ]
+output-u540-uart = [
+    "output-uart"
+]
 output-uart = []
 
 interrupt-e310x = [
     "e310x",
 ]
+interrupt-u540-qemu = []
 
 board-e310x-red-v = [
     "e310x-hal",
@@ -38,6 +42,7 @@ board-e310x-red-v = [
 board-e310x-qemu = [
     "e310x-hal",
 ]
+board-u540-qemu = []
 
 [dependencies]
 constance_port_riscv = { path = "../constance_port_riscv", optional = true }

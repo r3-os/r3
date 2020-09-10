@@ -22,12 +22,17 @@ mod panic_uart;
 #[cfg(feature = "output-e310x-uart")]
 #[path = "uart_e310x.rs"]
 mod uart;
+#[cfg(feature = "output-u540-uart")]
+#[path = "uart_u540.rs"]
+mod uart;
 
 #[cfg(feature = "interrupt-e310x")]
 mod interrupt_e310x;
 
 #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
 mod e310x;
+#[cfg(feature = "board-u540-qemu")]
+mod u540;
 
 #[allow(unused_macros)]
 macro_rules! instantiate_test {
@@ -73,10 +78,22 @@ macro_rules! instantiate_test {
         #[cfg(feature = "interrupt-e310x")]
         use_interrupt_e310x!(unsafe impl InterruptController for System);
 
+        #[cfg(feature = "interrupt-u540-qemu")]
+        port::use_plic!(unsafe impl InterruptController for System);
+        #[cfg(feature = "interrupt-u540-qemu")]
+        impl port::PlicOptions for System {
+            const MAX_PRIORITY: InterruptPriority = 7;
+            const MAX_NUM: InterruptNum = 53;
+            const PLIC_BASE: usize = 0x0c00_0000;
+        }
+
         impl port::TimerOptions for System {
             const MTIME_PTR: usize = 0x0200_bff8;
             const MTIMECMP_PTR: usize = 0x0200_4000;
+            #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
             const FREQUENCY: u64 = e310x::MTIME_FREQUENCY;
+            #[cfg(feature = "board-u540-qemu")]
+            const FREQUENCY: u64 = u540::MTIME_FREQUENCY;
 
             // Updating `mtime` is not supported by QEMU.
             const RESET_MTIME: bool = false;
@@ -145,7 +162,12 @@ macro_rules! instantiate_test {
                 e310x::clocks();
             }).finish(b);
 
+            #[cfg(feature = "interrupt-e310x")]
             System::configure_interrupt(b);
+
+            #[cfg(feature = "interrupt-u540-qemu")]
+            System::configure_plic(b);
+
             System::configure_timer(b);
 
             // Initialize RTT (Real-Time Transfer) with two up channels and set
