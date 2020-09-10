@@ -1,1 +1,0 @@
-pub const MTIME_FREQUENCY: u64 = 10_000_000;
