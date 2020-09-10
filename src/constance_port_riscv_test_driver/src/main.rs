@@ -85,11 +85,12 @@ macro_rules! instantiate_test {
             const MAX_PRIORITY: InterruptPriority = 7;
             const MAX_NUM: InterruptNum = 53;
             const PLIC_BASE: usize = 0x0c00_0000;
+            const CONTEXT: usize = 1;
         }
 
         impl port::TimerOptions for System {
             const MTIME_PTR: usize = 0x0200_bff8;
-            const MTIMECMP_PTR: usize = 0x0200_4000;
+            const MTIMECMP_PTR: usize = 0x0200_4008;
             #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
             const FREQUENCY: u64 = e310x::MTIME_FREQUENCY;
             #[cfg(feature = "board-u540-qemu")]
