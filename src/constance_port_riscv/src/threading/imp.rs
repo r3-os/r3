@@ -134,6 +134,54 @@ const F_SIZE: usize = if cfg!(target_feature = "q") {
     4
 };
 
+/// The assembler fragments used by `pp_asm!`. Because of a mysterious macro
+/// hygienics behavior, they have to referred to by absolute paths.
+#[rustfmt::skip]
+#[allow(unused_macros)]
+#[allow(dead_code)]
+mod asm_inc {
+    // define_fload_fstore - defines the macros for FLEN-bit load/store
+    // -----------------------------------------------------------------
+    #[cfg(target_feature = "q")]
+    pub macro define_fload_fstore() {r"
+        .ifndef fload_store_defined
+            .set fload_store_defined, 1
+            .macro FLOAD rd mem
+                flq \rd, \mem
+            .endm
+            .macro FSTORE rs mem
+                fsq \rs, \mem
+            .endm
+        .endif
+    "}
+
+    #[cfg(all(target_feature = "d", not(target_feature = "q")))]
+    pub macro define_fload_fstore() {r"
+        .ifndef fload_store_defined
+            .set fload_store_defined, 1
+            .macro FLOAD rd mem
+                fld \rd, \mem
+            .endm
+            .macro FSTORE rs mem
+                fsd \rs, \mem
+            .endm
+        .endif
+    "}
+
+    #[cfg(all(not(target_feature = "d"), not(target_feature = "q")))]
+    pub macro define_fload_fstore() {r"
+        .ifndef fload_store_defined
+            .set fload_store_defined, 1
+            .macro FLOAD rd mem
+                flw \rd, \mem
+            .endm
+            .macro FSTORE rs mem
+                fsw \rs, \mem
+            .endm
+        .endif
+    "}
+}
+
 /// The part of `mstatus` which is specific to each thread.
 ///
 /// `mstatus_part` is only used if `cfg!(target_feature = "f")`. `mstatus_part`
@@ -294,6 +342,8 @@ impl State {
     {
         unsafe {
             pp_asm!("
+            "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
+
                 # Push the first level context state. The saved `pc` directly
                 # points to the current return address. This means the saved
                 # `ra` (`sp[0]`) is irrelevant.
@@ -327,8 +377,6 @@ impl State {
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push FLS.F
                     #
-                    # TODO: Support FLEN != 32
-                    #
                     #   <a2 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
                     #       sp: *mut FReg;
@@ -343,26 +391,26 @@ impl State {
                     beqz a1, 0f      # → PushFLSFEnd
 
                     addi sp, sp, (-{F_SIZE} * 20)
-                    fsw ft0, ({F_SIZE} * 0)(sp)
-                    fsw ft1, ({F_SIZE} * 1)(sp)
-                    fsw ft2, ({F_SIZE} * 2)(sp)
-                    fsw ft3, ({F_SIZE} * 3)(sp)
-                    fsw ft4, ({F_SIZE} * 4)(sp)
-                    fsw ft5, ({F_SIZE} * 5)(sp)
-                    fsw ft6, ({F_SIZE} * 6)(sp)
-                    fsw ft7, ({F_SIZE} * 7)(sp)
-                    fsw fa0, ({F_SIZE} * 8)(sp)
-                    fsw fa1, ({F_SIZE} * 9)(sp)
-                    fsw fa2, ({F_SIZE} * 10)(sp)
-                    fsw fa3, ({F_SIZE} * 11)(sp)
-                    fsw fa4, ({F_SIZE} * 12)(sp)
-                    fsw fa5, ({F_SIZE} * 13)(sp)
-                    fsw fa6, ({F_SIZE} * 14)(sp)
-                    fsw fa7, ({F_SIZE} * 15)(sp)
-                    fsw ft8, ({F_SIZE} * 16)(sp)
-                    fsw ft9, ({F_SIZE} * 17)(sp)
-                    fsw ft10, ({F_SIZE} * 18)(sp)
-                    fsw ft11, ({F_SIZE} * 19)(sp)
+                    FSTORE ft0, ({F_SIZE} * 0)(sp)
+                    FSTORE ft1, ({F_SIZE} * 1)(sp)
+                    FSTORE ft2, ({F_SIZE} * 2)(sp)
+                    FSTORE ft3, ({F_SIZE} * 3)(sp)
+                    FSTORE ft4, ({F_SIZE} * 4)(sp)
+                    FSTORE ft5, ({F_SIZE} * 5)(sp)
+                    FSTORE ft6, ({F_SIZE} * 6)(sp)
+                    FSTORE ft7, ({F_SIZE} * 7)(sp)
+                    FSTORE fa0, ({F_SIZE} * 8)(sp)
+                    FSTORE fa1, ({F_SIZE} * 9)(sp)
+                    FSTORE fa2, ({F_SIZE} * 10)(sp)
+                    FSTORE fa3, ({F_SIZE} * 11)(sp)
+                    FSTORE fa4, ({F_SIZE} * 12)(sp)
+                    FSTORE fa5, ({F_SIZE} * 13)(sp)
+                    FSTORE fa6, ({F_SIZE} * 14)(sp)
+                    FSTORE fa7, ({F_SIZE} * 15)(sp)
+                    FSTORE ft8, ({F_SIZE} * 16)(sp)
+                    FSTORE ft9, ({F_SIZE} * 17)(sp)
+                    FSTORE ft10, ({F_SIZE} * 18)(sp)
+                    FSTORE ft11, ({F_SIZE} * 19)(sp)
                 0:      # PushFLSFEnd
             "   } else {                                                            "
                     # unused: {F_SIZE} {FS_1}
@@ -466,6 +514,8 @@ impl State {
 
         unsafe {
             pp_asm!("
+            "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
+
                 # <a0 = mstatus_part>
                 # Take a shortcut only if `DISPATCH_PENDING == 0`
                 lb a1, ({DISPATCH_PENDING})
@@ -533,8 +583,6 @@ impl State {
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push SLS.F.
                     #
-                    # TODO: Support FLEN != 32
-                    #
                     #   <a0 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
                     #       sp: *mut FReg;
@@ -547,18 +595,18 @@ impl State {
                     beqz a2, 0f      # → PushSLSFEnd
 
                     addi sp, sp, (-{F_SIZE} * 12)
-                    fsw fs0, ({F_SIZE} * 0)(sp)
-                    fsw fs1, ({F_SIZE} * 1)(sp)
-                    fsw fs2, ({F_SIZE} * 2)(sp)
-                    fsw fs3, ({F_SIZE} * 3)(sp)
-                    fsw fs4, ({F_SIZE} * 4)(sp)
-                    fsw fs5, ({F_SIZE} * 5)(sp)
-                    fsw fs6, ({F_SIZE} * 6)(sp)
-                    fsw fs7, ({F_SIZE} * 7)(sp)
-                    fsw fs8, ({F_SIZE} * 8)(sp)
-                    fsw fs9, ({F_SIZE} * 9)(sp)
-                    fsw fs10, ({F_SIZE} * 10)(sp)
-                    fsw fs11, ({F_SIZE} * 11)(sp)
+                    FSTORE fs0, ({F_SIZE} * 0)(sp)
+                    FSTORE fs1, ({F_SIZE} * 1)(sp)
+                    FSTORE fs2, ({F_SIZE} * 2)(sp)
+                    FSTORE fs3, ({F_SIZE} * 3)(sp)
+                    FSTORE fs4, ({F_SIZE} * 4)(sp)
+                    FSTORE fs5, ({F_SIZE} * 5)(sp)
+                    FSTORE fs6, ({F_SIZE} * 6)(sp)
+                    FSTORE fs7, ({F_SIZE} * 7)(sp)
+                    FSTORE fs8, ({F_SIZE} * 8)(sp)
+                    FSTORE fs9, ({F_SIZE} * 9)(sp)
+                    FSTORE fs10, ({F_SIZE} * 10)(sp)
+                    FSTORE fs11, ({F_SIZE} * 11)(sp)
                 0:      # PushSLSFEnd
 
                     # Push `mstatus_part`
@@ -611,8 +659,6 @@ impl State {
 
                     # If FP registers are in use, pop SLS.F.
                     #
-                    # TODO: Support FLEN != 32
-                    #
                     #   <a0 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
                     #       sp: *mut FReg;
@@ -624,18 +670,18 @@ impl State {
                     and a2, a2, a0
                     beqz a2, 0f      # → PopSLSFEnd
 
-                    flw fs0, ({F_SIZE} * 0)(sp)
-                    flw fs1, ({F_SIZE} * 1)(sp)
-                    flw fs2, ({F_SIZE} * 2)(sp)
-                    flw fs3, ({F_SIZE} * 3)(sp)
-                    flw fs4, ({F_SIZE} * 4)(sp)
-                    flw fs5, ({F_SIZE} * 5)(sp)
-                    flw fs6, ({F_SIZE} * 6)(sp)
-                    flw fs7, ({F_SIZE} * 7)(sp)
-                    flw fs8, ({F_SIZE} * 8)(sp)
-                    flw fs9, ({F_SIZE} * 9)(sp)
-                    flw fs10, ({F_SIZE} * 10)(sp)
-                    flw fs11, ({F_SIZE} * 11)(sp)
+                    FLOAD fs0, ({F_SIZE} * 0)(sp)
+                    FLOAD fs1, ({F_SIZE} * 1)(sp)
+                    FLOAD fs2, ({F_SIZE} * 2)(sp)
+                    FLOAD fs3, ({F_SIZE} * 3)(sp)
+                    FLOAD fs4, ({F_SIZE} * 4)(sp)
+                    FLOAD fs5, ({F_SIZE} * 5)(sp)
+                    FLOAD fs6, ({F_SIZE} * 6)(sp)
+                    FLOAD fs7, ({F_SIZE} * 7)(sp)
+                    FLOAD fs8, ({F_SIZE} * 8)(sp)
+                    FLOAD fs9, ({F_SIZE} * 9)(sp)
+                    FLOAD fs10, ({F_SIZE} * 10)(sp)
+                    FLOAD fs11, ({F_SIZE} * 11)(sp)
                     addi sp, sp, {F_SIZE} * 12
                 0:      # PopSLSFEnd
             "   }                                                                   "
@@ -663,8 +709,6 @@ impl State {
                     # If FP registers were in use, pop FLS.F. Loading FP regs
                     # will implicitly set `mstatus.FS[1]`.
                     #
-                    # TODO: Support FLEN != 32
-                    #
                     #   <a0 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
                     #       sp: *mut FReg;
@@ -679,26 +723,26 @@ impl State {
                     and a0, a0, a1
                     beqz a0, 1f      # → NoPopFLSF
 
-                    flw ft0, ({F_SIZE} * 0)(sp)
-                    flw ft1, ({F_SIZE} * 1)(sp)
-                    flw ft2, ({F_SIZE} * 2)(sp)
-                    flw ft3, ({F_SIZE} * 3)(sp)
-                    flw ft4, ({F_SIZE} * 4)(sp)
-                    flw ft5, ({F_SIZE} * 5)(sp)
-                    flw ft6, ({F_SIZE} * 6)(sp)
-                    flw ft7, ({F_SIZE} * 7)(sp)
-                    flw fa0, ({F_SIZE} * 8)(sp)
-                    flw fa1, ({F_SIZE} * 9)(sp)
-                    flw fa2, ({F_SIZE} * 10)(sp)
-                    flw fa3, ({F_SIZE} * 11)(sp)
-                    flw fa4, ({F_SIZE} * 12)(sp)
-                    flw fa5, ({F_SIZE} * 13)(sp)
-                    flw fa6, ({F_SIZE} * 14)(sp)
-                    flw fa7, ({F_SIZE} * 15)(sp)
-                    flw ft8, ({F_SIZE} * 16)(sp)
-                    flw ft9, ({F_SIZE} * 17)(sp)
-                    flw ft10, ({F_SIZE} * 18)(sp)
-                    flw ft11, ({F_SIZE} * 19)(sp)
+                    FLOAD ft0, ({F_SIZE} * 0)(sp)
+                    FLOAD ft1, ({F_SIZE} * 1)(sp)
+                    FLOAD ft2, ({F_SIZE} * 2)(sp)
+                    FLOAD ft3, ({F_SIZE} * 3)(sp)
+                    FLOAD ft4, ({F_SIZE} * 4)(sp)
+                    FLOAD ft5, ({F_SIZE} * 5)(sp)
+                    FLOAD ft6, ({F_SIZE} * 6)(sp)
+                    FLOAD ft7, ({F_SIZE} * 7)(sp)
+                    FLOAD fa0, ({F_SIZE} * 8)(sp)
+                    FLOAD fa1, ({F_SIZE} * 9)(sp)
+                    FLOAD fa2, ({F_SIZE} * 10)(sp)
+                    FLOAD fa3, ({F_SIZE} * 11)(sp)
+                    FLOAD fa4, ({F_SIZE} * 12)(sp)
+                    FLOAD fa5, ({F_SIZE} * 13)(sp)
+                    FLOAD fa6, ({F_SIZE} * 14)(sp)
+                    FLOAD fa7, ({F_SIZE} * 15)(sp)
+                    FLOAD ft8, ({F_SIZE} * 16)(sp)
+                    FLOAD ft9, ({F_SIZE} * 17)(sp)
+                    FLOAD ft10, ({F_SIZE} * 18)(sp)
+                    FLOAD ft11, ({F_SIZE} * 19)(sp)
                     addi sp, sp, {F_SIZE} * 20
 
                     j 0f    # → PopFLSFEnd
@@ -1016,6 +1060,8 @@ impl State {
 
         unsafe {
             pp_asm!("
+            "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
+
                 # Skip the stacking of FLS if the background context is the idle
                 # task.
                 #
@@ -1080,8 +1126,6 @@ impl State {
                     # If FP registers are in use, push FLS.F to the background
                     # context's stack
                     #
-                    # TODO: Support FLEN != 32
-                    #
                     #   <a2 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
                     #       sp: *mut FReg;
@@ -1098,26 +1142,26 @@ impl State {
                     beqz a0, 0f      # → PushFLSFEnd
 
                     addi sp, sp, (-{F_SIZE} * 20)
-                    fsw ft0, ({F_SIZE} * 0)(sp)
-                    fsw ft1, ({F_SIZE} * 1)(sp)
-                    fsw ft2, ({F_SIZE} * 2)(sp)
-                    fsw ft3, ({F_SIZE} * 3)(sp)
-                    fsw ft4, ({F_SIZE} * 4)(sp)
-                    fsw ft5, ({F_SIZE} * 5)(sp)
-                    fsw ft6, ({F_SIZE} * 6)(sp)
-                    fsw ft7, ({F_SIZE} * 7)(sp)
-                    fsw fa0, ({F_SIZE} * 8)(sp)
-                    fsw fa1, ({F_SIZE} * 9)(sp)
-                    fsw fa2, ({F_SIZE} * 10)(sp)
-                    fsw fa3, ({F_SIZE} * 11)(sp)
-                    fsw fa4, ({F_SIZE} * 12)(sp)
-                    fsw fa5, ({F_SIZE} * 13)(sp)
-                    fsw fa6, ({F_SIZE} * 14)(sp)
-                    fsw fa7, ({F_SIZE} * 15)(sp)
-                    fsw ft8, ({F_SIZE} * 16)(sp)
-                    fsw ft9, ({F_SIZE} * 17)(sp)
-                    fsw ft10, ({F_SIZE} * 18)(sp)
-                    fsw ft11, ({F_SIZE} * 19)(sp)
+                    FSTORE ft0, ({F_SIZE} * 0)(sp)
+                    FSTORE ft1, ({F_SIZE} * 1)(sp)
+                    FSTORE ft2, ({F_SIZE} * 2)(sp)
+                    FSTORE ft3, ({F_SIZE} * 3)(sp)
+                    FSTORE ft4, ({F_SIZE} * 4)(sp)
+                    FSTORE ft5, ({F_SIZE} * 5)(sp)
+                    FSTORE ft6, ({F_SIZE} * 6)(sp)
+                    FSTORE ft7, ({F_SIZE} * 7)(sp)
+                    FSTORE fa0, ({F_SIZE} * 8)(sp)
+                    FSTORE fa1, ({F_SIZE} * 9)(sp)
+                    FSTORE fa2, ({F_SIZE} * 10)(sp)
+                    FSTORE fa3, ({F_SIZE} * 11)(sp)
+                    FSTORE fa4, ({F_SIZE} * 12)(sp)
+                    FSTORE fa5, ({F_SIZE} * 13)(sp)
+                    FSTORE fa6, ({F_SIZE} * 14)(sp)
+                    FSTORE fa7, ({F_SIZE} * 15)(sp)
+                    FSTORE ft8, ({F_SIZE} * 16)(sp)
+                    FSTORE ft9, ({F_SIZE} * 17)(sp)
+                    FSTORE ft10, ({F_SIZE} * 18)(sp)
+                    FSTORE ft11, ({F_SIZE} * 19)(sp)
                 0:      # PushFLSFEnd
             "   } else {                                                            "
                     # unused: {F_SIZE} {FS_1}

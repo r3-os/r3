@@ -186,6 +186,8 @@ The idle task (the implicit task that runs when `*`[`running_task_ptr`]`().is_no
 
 When a task is activated, a new context state is created inside the task's stack. By default, only essential registers are preloaded with known values. The **`preload-registers`** Cargo feature enables preloading for all `x` registers, which might help in debugging at the cost of performance and code size.
 
+The trap handler stores a first-level state directly below the current stack pointer. This means **the stack pointer must be aligned to a `max(XLEN, FLEN)`-bit boundary all the time**. This requirement is weaker than the standard ABI's requirement, so it shouldn't pose a problem for most cases.
+
 ## Processor Modes
 
 All code executes in Machine mode. The value of `mstatus.MPP` is always `M` (`0b11`).
