@@ -86,6 +86,31 @@ pub macro pp_text_macro {
     (
         @internal,
         text: [{
+            $($macro:ident)::+!($($params:tt)*)
+            $($rest_text:tt)*
+        }],
+        free_idents: [{ $($free_idents:tt)* }],
+        private_mod: [{ $($private_mod:tt)* }],
+        macro_inner: [{ $($macro_inner:tt)* }],
+        define_macro: [$define_macro:tt],
+    ) => {
+        $crate::pptext::pp_text_macro! {
+            @internal,
+            text: [{ $($rest_text)* }],
+            free_idents: [{ $($free_idents)* }],
+            private_mod: [{ $($private_mod)* }],
+            macro_inner: [{
+                $($macro_inner)*
+
+                $($macro)::+!($($params)*),
+            }],
+            define_macro: [$define_macro],
+        }
+    },
+
+    (
+        @internal,
+        text: [{
             if cfg!( $($cfg:tt)* ) {
                 $($true_text:tt)*
             } else {
@@ -241,6 +266,9 @@ pub macro pp_llvm_asm {
 /// #![feature(asm)]
 /// #![feature(decl_macro)]
 ///
+/// #[macro_export]  // work-around for mysterious macro hygienics behavior
+/// macro_rules! the_ultimate_answer { () => { "42" }; }
+///
 /// // miri doesn't support inline assembly
 /// #[cfg(not(miri))]
 /// unsafe {
@@ -251,17 +279,17 @@ pub macro pp_llvm_asm {
 ///         // break.
 ///         "# hoge \n"
 ///         if cfg!(target_arch = "x86_64") {
-///             "mov {}, 42"
+///             "mov {}, " crate::the_ultimate_answer!()
 ///         }
 ///         if cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
-///             "mov {}, #42"
+///             "mov {}, #" crate::the_ultimate_answer!()
 ///         }
 ///         if cfg!(any(target_arch = "riscv32", target_arch = "riscv64")) {
-///             "li {}, 42"
+///             "li {}, " crate::the_ultimate_answer!()
 ///         },
 ///         out(reg) output
 ///     );
-///     assert_eq!(output, 42);
+///     assert_eq!(output.to_string(), crate::the_ultimate_answer!());
 /// }
 /// ```
 pub macro pp_asm {
@@ -330,11 +358,16 @@ pub macro pp_asm {
 mod tests {
     use super::*;
 
+    macro hoge_gen() {
+        "hoge"
+    }
+
     #[test]
     fn test_pp_text() {
         pp_text_macro!(
             macro got {
                 "hello"
+                hoge_gen!()
                 "foo1"
                 if cfg!(any()) { "foo2" } else { "bar2" }
                 if cfg!(any()) { "foo3" }
@@ -371,7 +404,7 @@ mod tests {
         let expected = {
             extern crate std;
             use std::borrow::ToOwned;
-            let mut x = "hellofoo1".to_owned();
+            let mut x = "hellohogefoo1".to_owned();
             x += if cfg!(any()) { "foo2" } else { "bar2" };
             x += if cfg!(any()) { "foo3" } else { "" };
             x += if cfg!(all()) { "foo4" } else { "bar4" };
