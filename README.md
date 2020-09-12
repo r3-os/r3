@@ -176,7 +176,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
  - The RV32GC port and SiFive U (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv32`
  - The RV64IMAC port and SiFive E (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv64`
  - The RV64GC port and SiFive U (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv64`
- - The RISC-V port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v`
+ - The RV32IMAC port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v`
 
 ### How to Run Benchmarks
 
@@ -185,4 +185,4 @@ The `-b` option instructs `constance_test_runner` to run benchmark tests. Note t
  - Hosted platform: `cargo bench -p constance_port_std`
  - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re -b`
  - The Armv7-A port and GR-PEACH: `cargo run -p constance_test_runner -- -t gr_peach -b`
- - The RISC-V port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v -b`
+ - The RV32IMAC port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v -b`
