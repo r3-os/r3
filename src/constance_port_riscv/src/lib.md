@@ -147,7 +147,8 @@ struct ContextState {
     f10: [FReg; 8], // fa0-fa7
     #[cfg(target_feature = "f")]
     f28: [FReg; 4], // ft8-ft11
-    // TODO: fcsr
+    fcsr: usize,
+    _pad: [u8; (max(FLEN, XLEN) - XLEN) / 8],
 
     // FLS.X: First-level state, X registers
     x1: usize,  // ra

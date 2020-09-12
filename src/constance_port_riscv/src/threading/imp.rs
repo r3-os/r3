@@ -134,6 +134,12 @@ const F_SIZE: usize = if cfg!(target_feature = "q") {
     4
 };
 
+/// The natural alignment of stored register values in FLS and SLS.
+const REG_ALIGN: usize = if F_SIZE > X_SIZE { F_SIZE } else { X_SIZE };
+
+/// The size of FLS.F
+const FLSF_SIZE: usize = 20 * F_SIZE + REG_ALIGN;
+
 /// The assembler fragments used by `pp_asm!`. Because of a mysterious macro
 /// hygienics behavior, they have to referred to by absolute paths.
 #[rustfmt::skip]
@@ -379,18 +385,21 @@ impl State {
                     #
                     #   <a2 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
-                    #       sp: *mut FReg;
-                    #       sp -= 20;
-                    #       sp[0..8] = [ft0-ft7];
-                    #       sp[8..16] = [fa0-fa7];
-                    #       sp[16..20] = [ft8-ft11];
+                    #       sp: *mut FlsF;
+                    #       sp -= 1;
+                    #       sp['ft0'-'ft7'] = [ft0-ft7];
+                    #       sp['fa0'-'fa7'] = [fa0-fa7];
+                    #       sp['ft8'-'ft11'] = [ft8-ft11];
+                    #       sp.fcsr = fcsr;
                     #   <a0 = mstatus_part>
                     #
                     li a1, {FS_1}
                     and a1, a1, a0
                     beqz a1, 0f      # → PushFLSFEnd
 
-                    addi sp, sp, (-{F_SIZE} * 20)
+                    csrr a1, fcsr
+
+                    addi sp, sp, -{FLSF_SIZE}
                     FSTORE ft0, ({F_SIZE} * 0)(sp)
                     FSTORE ft1, ({F_SIZE} * 1)(sp)
                     FSTORE ft2, ({F_SIZE} * 2)(sp)
@@ -411,9 +420,10 @@ impl State {
                     FSTORE ft9, ({F_SIZE} * 17)(sp)
                     FSTORE ft10, ({F_SIZE} * 18)(sp)
                     FSTORE ft11, ({F_SIZE} * 19)(sp)
+                    sw a1, ({F_SIZE} * 20)(sp)
                 0:      # PushFLSFEnd
             "   } else {                                                            "
-                    # unused: {F_SIZE} {FS_1}
+                    # unused: {F_SIZE} {FS_1} {FLSF_SIZE}
             "   }                                                                   "
 
                 tail {push_second_level_state_and_dispatch}.not_shortcutting
@@ -425,6 +435,7 @@ impl State {
                 FS_1 = const mstatus::FS_1,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
+                FLSF_SIZE = const FLSF_SIZE,
             );
         }
     }
@@ -711,11 +722,12 @@ impl State {
                     #
                     #   <a0 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
-                    #       sp: *mut FReg;
-                    #       [ft0-ft7] = sp[0..8];
-                    #       [fa0-fa7] = sp[8..16];
-                    #       [ft8-ft11] = sp[16..20];
-                    #       sp += 20;
+                    #       sp: *mut FlsF;
+                    #       [ft0-ft7] = sp['ft0'-'ft7'];
+                    #       [fa0-fa7] = sp['fa0'-'fa7'];
+                    #       [ft8-ft11] = sp['ft8'-'ft11'];
+                    #       fcsr = sp.fcsr;
+                    #       sp += 1;
                     #   else:
                     #       mstatus.FS[1] = 0
                     #
@@ -743,14 +755,17 @@ impl State {
                     FLOAD ft9, ({F_SIZE} * 17)(sp)
                     FLOAD ft10, ({F_SIZE} * 18)(sp)
                     FLOAD ft11, ({F_SIZE} * 19)(sp)
-                    addi sp, sp, {F_SIZE} * 20
+                    lw a0, ({F_SIZE} * 20)(sp)
+                    addi sp, sp, {FLSF_SIZE}
+
+                    csrw fcsr, a0
 
                     j 0f    # → PopFLSFEnd
                 1:      # NoPopFLSF
                     csrc mstatus, a1
                 0:      # PopFLSFEnd
             "   } else {                                                            "
-                    # unused: {F_SIZE}
+                    # unused: {F_SIZE} {FLSF_SIZE}
             "   }                                                                   "
 
                 # mstatus.MPP := M
@@ -819,6 +834,7 @@ impl State {
                 FS_1 = const mstatus::FS_1,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
+                FLSF_SIZE = const FLSF_SIZE,
                 options(noreturn)
             );
         }
@@ -1128,11 +1144,12 @@ impl State {
                     #
                     #   <a2 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
-                    #       sp: *mut FReg;
-                    #       sp -= 20;
-                    #       sp[0..8] = [ft0-ft7];
-                    #       sp[8..16] = [fa0-fa7];
-                    #       sp[16..20] = [ft8-ft11];
+                    #       sp: *mut FlsF;
+                    #       sp -= 1;
+                    #       sp['ft0'-'ft7'] = [ft0-ft7];
+                    #       sp['fa0'-'fa7'] = [fa0-fa7];
+                    #       sp['ft8'-'ft11'] = [ft8-ft11];
+                    #       sp.fcsr = fcsr;
                     #
                     #   let background_sp = sp;
                     #   <a2 = mstatus_part>
@@ -1141,7 +1158,9 @@ impl State {
                     and a0, a0, a2
                     beqz a0, 0f      # → PushFLSFEnd
 
-                    addi sp, sp, (-{F_SIZE} * 20)
+                    csrr a0, fcsr
+
+                    addi sp, sp, -{FLSF_SIZE}
                     FSTORE ft0, ({F_SIZE} * 0)(sp)
                     FSTORE ft1, ({F_SIZE} * 1)(sp)
                     FSTORE ft2, ({F_SIZE} * 2)(sp)
@@ -1162,9 +1181,10 @@ impl State {
                     FSTORE ft9, ({F_SIZE} * 17)(sp)
                     FSTORE ft10, ({F_SIZE} * 18)(sp)
                     FSTORE ft11, ({F_SIZE} * 19)(sp)
+                    sw a0, ({F_SIZE} * 20)(sp)
                 0:      # PushFLSFEnd
             "   } else {                                                            "
-                    # unused: {F_SIZE} {FS_1}
+                    # unused: {F_SIZE} {FS_1} {FLSF_SIZE}
             "   }                                                                   "
 
                 # If the background context is an interrupt context, we don't
@@ -1341,6 +1361,7 @@ impl State {
                 MAIN_STACK = sym MAIN_STACK,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
+                FLSF_SIZE = const FLSF_SIZE,
                 FRAME_SIZE = const FRAME_SIZE,
                 FS_1 = const mstatus::FS_1,
                 FS_1_SHIFT = const mstatus::FS_1.trailing_zeros(),
