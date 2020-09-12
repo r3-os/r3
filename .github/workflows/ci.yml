@@ -164,6 +164,15 @@ jobs:
       - name: Install Additional Target of the Rust Toolchain
         run: |
           rustup target add riscv32imac-unknown-none-elf
+          rustup target add riscv64imac-unknown-none-elf riscv64gc-unknown-none-elf
+
+      - name: Test (SiFive U, RV64GC)
+        run: |
+          cargo run -p constance_test_runner -- -t qemu_sifive_u_rv64 -l debug
+
+      - name: Test (SiFive E, RV64IMAC)
+        run: |
+          cargo run -p constance_test_runner -- -t qemu_sifive_e_rv64 -l debug
 
       - name: Test (SiFive U, RV32GC)
         run: |
