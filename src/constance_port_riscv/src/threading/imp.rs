@@ -298,7 +298,7 @@ unsafe impl Sync for State {}
 #[derive(Debug)]
 #[repr(C)]
 pub struct TaskState {
-    sp: UnsafeCell<u32>,
+    sp: UnsafeCell<usize>,
 }
 
 unsafe impl Sync for TaskState {}
