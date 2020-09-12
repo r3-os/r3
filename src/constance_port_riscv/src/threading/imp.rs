@@ -1231,11 +1231,11 @@ impl State {
                     #   let background_sp = sp;
                     #   <a2 = mstatus_part>
                     #
-                    li a0, {FS_1}
-                    and a0, a0, a2
-                    beqz a0, 0f      # → PushFLSFEnd
+                    li a1, {FS_1}
+                    and a1, a1, a2
+                    beqz a1, 0f      # → PushFLSFEnd
 
-                    csrr a0, fcsr
+                    csrr a1, fcsr
 
                     addi sp, sp, -{FLSF_SIZE}
                     FSTORE ft0, ({F_SIZE} * 0)(sp)
@@ -1258,7 +1258,7 @@ impl State {
                     FSTORE ft9, ({F_SIZE} * 17)(sp)
                     FSTORE ft10, ({F_SIZE} * 18)(sp)
                     FSTORE ft11, ({F_SIZE} * 19)(sp)
-                    STORE a0, ({F_SIZE} * 20)(sp)
+                    STORE a1, ({F_SIZE} * 20)(sp)
                 0:      # PushFLSFEnd
             "   } else {                                                            "
                     # unused: {F_SIZE} {FS_1} {FLSF_SIZE}
