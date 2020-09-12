@@ -1,6 +1,8 @@
 //! Instruction emulation
 use constance_portkit::pptext::pp_asm;
 
+use super::X_SIZE;
+
 // TODO: add tests for `emulate-lr-sc`
 
 /// The reserved address, used for emulating SC/LR.
@@ -24,11 +26,12 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
     // TODO: catch double fault
     unsafe {
         pp_asm!("
+        "   crate::threading::imp::asm_inc::define_load_store!()                "
             # <a0 == fl_state, a1 == mcause>
             .cfi_startproc
             addi sp, sp, -16
             .cfi_def_cfa_offset 16
-            sw ra, (sp)
+            STORE ra, (sp)
             .cfi_offset ra, -12
 
         "   if cfg!(feature = "emulate-lr-sc")  {                               "
@@ -51,13 +54,14 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 # The PC is only aligned by `IALIGN` bits, so split the load
                 # to avoid an unaligned access exception on a target with C
                 # extension.
-                lw a2, (4 * 16)(a0)
+                LOAD a2, ({X_SIZE} * 16)(a0)
                 lh a3, 2(a2)
                 lhu a2, (a2)
                 slli a3, a3, 16
                 or a2, a2, a3
 
                 # Is it LR.W or SC.W?
+                # TODO: support LR.Q/SC.Q
                 li a3, 0b11110000000000000111000001111111
                 li a4, 0b00010000000000000010000000101111
                 and a3, a3, a2
@@ -78,14 +82,15 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 # Emulate the LR instruction.
                 #
                 #   <a2 = instruction, a4 = target, instruction is LR>
-                #   a3 = *target;
+                #   target: *mut u32;
+                #   a3 = SIGN_EXTEND(*target);
                 #   RESERVATION_ADDR_VALUE[0] = target;
                 #   RESERVATION_ADDR_VALUE[1] = a3;
                 #
                 lw a3, (a4)
                 la t0, {RESERVATION_ADDR_VALUE}
-                sw a4, (t0)
-                sw a3, 4(t0)
+                STORE a4, (t0)
+                STORE a3, {X_SIZE}(t0)
 
                 j 0f
             1:
@@ -98,18 +103,19 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 # Emulate the SC instruction.
                 #
                 #   <a2 = instruction, a4 = value, a5 = target, instruction is SC>
+                #   target: *mut u32;
                 #   [t2, t1] = replace(&mut RESERVATION_ADDR_VALUE, [0, 0]);
-                #   if t2 == target && t1 == *target:
+                #   if t2 == target && t1 == SIGN_EXTEND(*target):
                 #       *target = value;
                 #       a3 = 0;
                 #   else:
                 #       a3 = 1;
                 #
                 la t0, {RESERVATION_ADDR_VALUE}
-                lw t2, (t0)
-                lw t1, 4(t0)
-                sw x0, (t0)
-                sw x0, 4(t0)
+                LOAD t2, (t0)
+                LOAD t1, {X_SIZE}(t0)
+                STORE x0, (t0)
+                STORE x0, {X_SIZE}(t0)
                 li a3, 1
                 bne t2, a5, 0f
                 lw t2, (a5)
@@ -130,16 +136,16 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 call {write_x}
 
                 # Skip the current instruction.
-                lw a3, (4 * 16)(a0)
+                LOAD a3, ({X_SIZE} * 16)(a0)
                 addi a3, a3, 4
-                sw a3, (4 * 16)(a0)
+                STORE a3, ({X_SIZE} * 16)(a0)
 
-                lw ra, (sp)
+                LOAD ra, (sp)
                 addi sp, sp, 16
                 .cfi_def_cfa_offset 0
                 ret
         "   } else {                                                            "
-                # unused: {RESERVATION_ADDR_VALUE} {read_x} {write_x}
+                # unused: {RESERVATION_ADDR_VALUE} {read_x} {write_x} {X_SIZE}
         "   }                                                                   "
             .cfi_endproc
             ",
@@ -147,6 +153,7 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
             read_x = sym read_x,
             write_x = sym write_x,
             RESERVATION_ADDR_VALUE = sym RESERVATION_ADDR_VALUE,
+            X_SIZE = const X_SIZE,
         );
     }
 }
@@ -171,8 +178,8 @@ unsafe fn panic_on_unhandled_exception(fl_state: *mut usize, mcause: usize) -> !
 #[naked]
 unsafe fn read_x(_fl_state: *mut usize) {
     unsafe {
-        asm!(
-            "
+        pp_asm!("
+        "   crate::threading::imp::asm_inc::define_load_store!()                "
             # <a0 == fl_state, a4 == index>
             .cfi_startproc
 
@@ -194,7 +201,7 @@ unsafe fn read_x(_fl_state: *mut usize) {
             c.j 1f
 
             # x1/ra - first-level state
-            c.lw a4, (4 * 0)(a0)
+            C.LOAD a4, ({X_SIZE} * 0)(a0)
             c.j 1f
 
             # x2/sp - implied from the a0
@@ -208,11 +215,11 @@ unsafe fn read_x(_fl_state: *mut usize) {
             c.j 1f
 
             # x5-x7/t0-t2 - first-level state
-            c.lw a4, (4 * 1)(a0)
+            C.LOAD a4, ({X_SIZE} * 1)(a0)
             c.j 1f
-            c.lw a4, (4 * 2)(a0)
+            C.LOAD a4, ({X_SIZE} * 2)(a0)
             c.j 1f
-            c.lw a4, (4 * 3)(a0)
+            C.LOAD a4, ({X_SIZE} * 3)(a0)
             c.j 1f
 
             # x8-x9/s0-s1 - preserved
@@ -222,23 +229,23 @@ unsafe fn read_x(_fl_state: *mut usize) {
             c.j 1f
 
             # x10-x15/a0-a5 - first-level state
-            c.lw a4, (4 * 4)(a0)
+            C.LOAD a4, ({X_SIZE} * 4)(a0)
             c.j 1f
-            c.lw a4, (4 * 5)(a0)
+            C.LOAD a4, ({X_SIZE} * 5)(a0)
             c.j 1f
-            c.lw a4, (4 * 6)(a0)
+            C.LOAD a4, ({X_SIZE} * 6)(a0)
             c.j 1f
-            c.lw a4, (4 * 7)(a0)
+            C.LOAD a4, ({X_SIZE} * 7)(a0)
             c.j 1f
-            c.lw a4, (4 * 8)(a0)
+            C.LOAD a4, ({X_SIZE} * 8)(a0)
             c.j 1f
-            c.lw a4, (4 * 9)(a0)
+            C.LOAD a4, ({X_SIZE} * 9)(a0)
             c.j 1f
 
             # x16-x17/a6-a7 - first-level state
-            c.lw a4, (4 * 10)(a0)
+            C.LOAD a4, ({X_SIZE} * 10)(a0)
             c.j 1f
-            c.lw a4, (4 * 11)(a0)
+            C.LOAD a4, ({X_SIZE} * 11)(a0)
             c.j 1f
 
             # x18-x27/s2-s11 - preserved
@@ -264,19 +271,20 @@ unsafe fn read_x(_fl_state: *mut usize) {
             c.j 1f
 
             # x28-x31/t3-t6 - first-level state
-            c.lw a4, (4 * 12)(a0)
+            C.LOAD a4, ({X_SIZE} * 12)(a0)
             c.j 1f
-            c.lw a4, (4 * 13)(a0)
+            C.LOAD a4, ({X_SIZE} * 13)(a0)
             c.j 1f
-            c.lw a4, (4 * 14)(a0)
+            C.LOAD a4, ({X_SIZE} * 14)(a0)
             c.j 1f
-            c.lw a4, (4 * 15)(a0)
+            C.LOAD a4, ({X_SIZE} * 15)(a0)
             c.j 1f
 
         2:
-            addi a4, a0, 4 * 17
+            addi a4, a0, {X_SIZE} * 17
 
-        1:  .cfi_endproc"
+        1:  .cfi_endproc",
+            X_SIZE = const X_SIZE,
         );
     }
 }
@@ -318,7 +326,7 @@ unsafe fn write_x(_fl_state: *mut usize) {
             c.nop
 
             # x1/ra - first-level state
-            c.sw a3, (4 * 0)(a0)
+            c.sw a3, ({X_SIZE} * 0)(a0)
             c.j 1f
 
             # x2/sp - TODO
@@ -331,11 +339,11 @@ unsafe fn write_x(_fl_state: *mut usize) {
             c.j 1f
 
             # x5-x7/t0-t2 - first-level state
-            c.sw a3, (4 * 1)(a0)
+            C.STORE a3, ({X_SIZE} * 1)(a0)
             c.j 1f
-            c.sw a3, (4 * 2)(a0)
+            C.STORE a3, ({X_SIZE} * 2)(a0)
             c.j 1f
-            c.sw a3, (4 * 3)(a0)
+            C.STORE a3, ({X_SIZE} * 3)(a0)
             c.j 1f
 
             # x8-x9/s0-s1 - preserved
@@ -345,23 +353,23 @@ unsafe fn write_x(_fl_state: *mut usize) {
             c.j 1f
 
             # x10-x15/a0-a5 - first-level state
-            c.sw a3, (4 * 4)(a0)
+            C.STORE a3, ({X_SIZE} * 4)(a0)
             c.j 1f
-            c.sw a3, (4 * 5)(a0)
+            C.STORE a3, ({X_SIZE} * 5)(a0)
             c.j 1f
-            c.sw a3, (4 * 6)(a0)
+            C.STORE a3, ({X_SIZE} * 6)(a0)
             c.j 1f
-            c.sw a3, (4 * 7)(a0)
+            C.STORE a3, ({X_SIZE} * 7)(a0)
             c.j 1f
-            c.sw a3, (4 * 8)(a0)
+            C.STORE a3, ({X_SIZE} * 8)(a0)
             c.j 1f
-            c.sw a3, (4 * 9)(a0)
+            C.STORE a3, ({X_SIZE} * 9)(a0)
             c.j 1f
 
             # x16-x17/a6-a7 - first-level state
-            c.sw a3, (4 * 10)(a0)
+            C.STORE a3, ({X_SIZE} * 10)(a0)
             c.j 1f
-            c.sw a3, (4 * 11)(a0)
+            C.STORE a3, ({X_SIZE} * 11)(a0)
             c.j 1f
 
             # x18-x27/s2-s11 - preserved
@@ -387,15 +395,16 @@ unsafe fn write_x(_fl_state: *mut usize) {
             c.j 1f
 
             # x28-x31/t3-t6 - first-level state
-            c.sw a3, (4 * 12)(a0)
+            C.STORE a3, ({X_SIZE} * 12)(a0)
             c.j 1f
-            c.sw a3, (4 * 13)(a0)
+            C.STORE a3, ({X_SIZE} * 13)(a0)
             c.j 1f
-            c.sw a3, (4 * 14)(a0)
+            C.STORE a3, ({X_SIZE} * 14)(a0)
             c.j 1f
-            c.sw a3, (4 * 15)(a0)
+            C.STORE a3, ({X_SIZE} * 15)(a0)
 
-        1:  .cfi_endproc"
+        1:  .cfi_endproc",
+            X_SIZE = const X_SIZE,
         );
     }
 }
