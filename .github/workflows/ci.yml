@@ -159,7 +159,16 @@ jobs:
       - name: Install Dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install libusb-1.0-0-dev qemu-system-riscv32
+          sudo apt-get install libusb-1.0-0-dev
+
+      - name: Install QEMU 5.1.0 from Source
+        run: |
+          wget --no-verbose https://download.qemu.org/qemu-5.1.0.tar.xz
+          tar -xf qemu-5.1.0.tar.xz
+          cd qemu-5.1.0
+          ./configure --target-list=riscv32-softmmu,riscv64-softmmu
+          make -j $(nproc)
+          sudo make install
 
       - name: Install Additional Target of the Rust Toolchain
         run: |
