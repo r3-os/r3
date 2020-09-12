@@ -1363,11 +1363,11 @@ impl State {
                     #
                     #   <a0 == background_sp, a1 == mcause, a2 = mstatus_part>
                     #   if mstatus_part.FS[1]:
-                    #       a0 += 20 * F_SIZE;
+                    #       a0 += FLSF_SIZE;
                     #
-                    srli a2, a2, {X_SIZE} * 8 - 1 - {FS_1_SHIFT}
+                    slli a2, a2, {X_SIZE} * 8 - 1 - {FS_1_SHIFT}
                     bgez a2, 1f     # → NoFLSF
-                    addi a0, a0, 20 * {F_SIZE}
+                    addi a0, a0, {FLSF_SIZE}
                 1:      # NoFLSF
             "   } else {                                                            "
                     # unused: {FS_1_SHIFT}
