@@ -21,6 +21,8 @@ mod mstatus {
     pub const MIE: usize = 1 << 3;
     pub const MPIE: usize = 1 << 7;
     pub const MPP_M: usize = 0b11 << 11;
+    pub const FS_0: usize = 1 << 13;
+    pub const FS_1: usize = 1 << 14;
 
     #[inline(always)]
     pub fn clear_i<const VALUE: usize>() {
@@ -30,6 +32,11 @@ mod mstatus {
     #[inline(always)]
     pub fn set_i<const VALUE: usize>() {
         unsafe { asm!("csrsi mstatus, {}", const VALUE) };
+    }
+
+    #[inline(always)]
+    pub fn set(value: usize) {
+        unsafe { asm!("csrs mstatus, {}", in(reg) value) };
     }
 
     #[inline(always)]
@@ -115,6 +122,79 @@ mod mie {
     }
 }
 
+/// `XLEN / 8`
+const X_SIZE: usize = core::mem::size_of::<usize>();
+
+/// `FLEN / 8`
+const F_SIZE: usize = if cfg!(target_feature = "q") {
+    16
+} else if cfg!(target_feature = "d") {
+    8
+} else {
+    4
+};
+
+/// The natural alignment of stored register values in FLS and SLS.
+const REG_ALIGN: usize = if F_SIZE > X_SIZE { F_SIZE } else { X_SIZE };
+
+/// The size of FLS.F
+const FLSF_SIZE: usize = 20 * F_SIZE + REG_ALIGN;
+
+/// The assembler fragments used by `pp_asm!`. Because of a mysterious macro
+/// hygienics behavior, they have to referred to by absolute paths.
+#[rustfmt::skip]
+#[allow(unused_macros)]
+#[allow(dead_code)]
+mod asm_inc {
+    // define_fload_fstore - defines the macros for FLEN-bit load/store
+    // -----------------------------------------------------------------
+    #[cfg(target_feature = "q")]
+    pub macro define_fload_fstore() {r"
+        .ifndef fload_store_defined
+            .set fload_store_defined, 1
+            .macro FLOAD rd mem
+                flq \rd, \mem
+            .endm
+            .macro FSTORE rs mem
+                fsq \rs, \mem
+            .endm
+        .endif
+    "}
+
+    #[cfg(all(target_feature = "d", not(target_feature = "q")))]
+    pub macro define_fload_fstore() {r"
+        .ifndef fload_store_defined
+            .set fload_store_defined, 1
+            .macro FLOAD rd mem
+                fld \rd, \mem
+            .endm
+            .macro FSTORE rs mem
+                fsd \rs, \mem
+            .endm
+        .endif
+    "}
+
+    #[cfg(all(not(target_feature = "d"), not(target_feature = "q")))]
+    pub macro define_fload_fstore() {r"
+        .ifndef fload_store_defined
+            .set fload_store_defined, 1
+            .macro FLOAD rd mem
+                flw \rd, \mem
+            .endm
+            .macro FSTORE rs mem
+                fsw \rs, \mem
+            .endm
+        .endif
+    "}
+}
+
+/// The part of `mstatus` which is specific to each thread.
+///
+/// `mstatus_part` is only used if `cfg!(target_feature = "f")`. `mstatus_part`
+/// is undefined otherwise.
+#[allow(dead_code)]
+const MSTATUS_PART_MASK: usize = mstatus::FS_1;
+
 /// Implemented on a system type by [`use_port!`].
 ///
 /// # Safety
@@ -177,6 +257,12 @@ impl Init for TaskState {
 impl State {
     pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<System>() };
+
+        // Enable FPU
+        if cfg!(target_feature = "f") {
+            // FS = 0b?1 (Initial or Dirty)
+            mstatus::set(mstatus::FS_0);
+        }
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <System as InterruptController>::init() };
@@ -261,7 +347,9 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         unsafe {
-            asm!("
+            pp_asm!("
+            "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
+
                 # Push the first level context state. The saved `pc` directly
                 # points to the current return address. This means the saved
                 # `ra` (`sp[0]`) is irrelevant.
@@ -271,26 +359,72 @@ impl State {
                 #   sp[10..16] = [a6-a7, t3-t6]
                 #   sp[16] = ra
                 #
-                addi sp, sp, (4 * -17)
-                sw t0, (4 * 1)(sp)
-                sw t1, (4 * 2)(sp)
-                sw t2, (4 * 3)(sp)
-                sw a0, (4 * 4)(sp)
-                sw a1, (4 * 5)(sp)
-                sw a2, (4 * 6)(sp)
-                sw a3, (4 * 7)(sp)
-                sw a4, (4 * 8)(sp)
-                sw a5, (4 * 9)(sp)
-                sw a6, (4 * 10)(sp)
-                sw a7, (4 * 11)(sp)
-                sw t3, (4 * 12)(sp)
-                sw t4, (4 * 13)(sp)
-                sw t5, (4 * 14)(sp)
-                sw t6, (4 * 15)(sp)
-                sw ra, (4 * 16)(sp)
+                addi sp, sp, ({X_SIZE} * -17)
+                sw t0, ({X_SIZE} * 1)(sp)
+                sw t1, ({X_SIZE} * 2)(sp)
+                sw t2, ({X_SIZE} * 3)(sp)
+                sw a0, ({X_SIZE} * 4)(sp)
+                sw a1, ({X_SIZE} * 5)(sp)
+                sw a2, ({X_SIZE} * 6)(sp)
+                sw a3, ({X_SIZE} * 7)(sp)
+                sw a4, ({X_SIZE} * 8)(sp)
+                sw a5, ({X_SIZE} * 9)(sp)
+                sw a6, ({X_SIZE} * 10)(sp)
+                sw a7, ({X_SIZE} * 11)(sp)
+                sw t3, ({X_SIZE} * 12)(sp)
+                sw t4, ({X_SIZE} * 13)(sp)
+                sw t5, ({X_SIZE} * 14)(sp)
+                sw t6, ({X_SIZE} * 15)(sp)
+                sw ra, ({X_SIZE} * 16)(sp)
 
                 # MIE := 0
-                csrci mstatus, {MIE}
+                csrrci a0, mstatus, {MIE}
+
+            "   if cfg!(target_feature = "f") {                                     "
+                    # If FP registers are in use, push FLS.F
+                    #
+                    #   <a2 = mstatus_part>
+                    #   if mstatus_part.FS[1] != 0:
+                    #       sp: *mut FlsF;
+                    #       sp -= 1;
+                    #       sp['ft0'-'ft7'] = [ft0-ft7];
+                    #       sp['fa0'-'fa7'] = [fa0-fa7];
+                    #       sp['ft8'-'ft11'] = [ft8-ft11];
+                    #       sp.fcsr = fcsr;
+                    #   <a0 = mstatus_part>
+                    #
+                    li a1, {FS_1}
+                    and a1, a1, a0
+                    beqz a1, 0f      # → PushFLSFEnd
+
+                    csrr a1, fcsr
+
+                    addi sp, sp, -{FLSF_SIZE}
+                    FSTORE ft0, ({F_SIZE} * 0)(sp)
+                    FSTORE ft1, ({F_SIZE} * 1)(sp)
+                    FSTORE ft2, ({F_SIZE} * 2)(sp)
+                    FSTORE ft3, ({F_SIZE} * 3)(sp)
+                    FSTORE ft4, ({F_SIZE} * 4)(sp)
+                    FSTORE ft5, ({F_SIZE} * 5)(sp)
+                    FSTORE ft6, ({F_SIZE} * 6)(sp)
+                    FSTORE ft7, ({F_SIZE} * 7)(sp)
+                    FSTORE fa0, ({F_SIZE} * 8)(sp)
+                    FSTORE fa1, ({F_SIZE} * 9)(sp)
+                    FSTORE fa2, ({F_SIZE} * 10)(sp)
+                    FSTORE fa3, ({F_SIZE} * 11)(sp)
+                    FSTORE fa4, ({F_SIZE} * 12)(sp)
+                    FSTORE fa5, ({F_SIZE} * 13)(sp)
+                    FSTORE fa6, ({F_SIZE} * 14)(sp)
+                    FSTORE fa7, ({F_SIZE} * 15)(sp)
+                    FSTORE ft8, ({F_SIZE} * 16)(sp)
+                    FSTORE ft9, ({F_SIZE} * 17)(sp)
+                    FSTORE ft10, ({F_SIZE} * 18)(sp)
+                    FSTORE ft11, ({F_SIZE} * 19)(sp)
+                    sw a1, ({F_SIZE} * 20)(sp)
+                0:      # PushFLSFEnd
+            "   } else {                                                            "
+                    # unused: {F_SIZE} {FS_1} {FLSF_SIZE}
+            "   }                                                                   "
 
                 tail {push_second_level_state_and_dispatch}.not_shortcutting
             0:
@@ -298,6 +432,10 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 MIE = const mstatus::MIE,
+                FS_1 = const mstatus::FS_1,
+                X_SIZE = const X_SIZE,
+                F_SIZE = const F_SIZE,
+                FLSF_SIZE = const FLSF_SIZE,
             );
         }
     }
@@ -338,6 +476,8 @@ impl State {
     ///  - If the current task is a task, SP should point to the
     ///    first-level state on the current task's stack. Otherwise, SP must be
     ///    zero.
+    ///  - In a configuration that uses `mstatus_part`, `a0` must include the
+    ///    `mstatus_part` of the current task.
     ///
     /// `dispatch`:
     ///
@@ -353,8 +493,11 @@ impl State {
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
+        #[repr(C)]
+        struct A0A1<S, T>(S, T);
+
         extern "C" fn choose_and_get_next_task<System: PortInstance>(
-        ) -> Option<&'static TaskCb<System>>
+        ) -> A0A1<MaybeUninit<usize>, Option<&'static TaskCb<System>>>
         where
             // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
             System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
@@ -362,19 +505,29 @@ impl State {
             // Safety: CPU Lock active
             unsafe { System::choose_running_task() };
 
-            unsafe { *System::state().running_task_ptr() }
+            A0A1(MaybeUninit::uninit(), unsafe {
+                *System::state().running_task_ptr()
+            })
         }
 
-        extern "C" fn get_running_task<System: PortInstance>() -> Option<&'static TaskCb<System>>
+        extern "C" fn get_running_task<System: PortInstance>(
+            a0: usize,
+        ) -> A0A1<usize, Option<&'static TaskCb<System>>>
         where
             // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
             System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
         {
-            unsafe { *System::state().running_task_ptr() }
+            A0A1(
+                a0, // preserve `a0`
+                unsafe { *System::state().running_task_ptr() },
+            )
         }
 
         unsafe {
-            asm!("
+            pp_asm!("
+            "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
+
+                # <a0 = mstatus_part>
                 # Take a shortcut only if `DISPATCH_PENDING == 0`
                 lb a1, ({DISPATCH_PENDING})
                 bnez a1, 0f
@@ -393,10 +546,11 @@ impl State {
                 # an interrupt handler, meaning we might need to return to a
                 # different task. Clear `DISPATCH_PENDING` and proceeed to
                 # `not_shortcutting`.
-                sb zero, ({DISPATCH_PENDING}), a0
+                sb zero, ({DISPATCH_PENDING}), a2
 
             .global {push_second_level_state_and_dispatch}.not_shortcutting
             {push_second_level_state_and_dispatch}.not_shortcutting:
+                # <a0 = mstatus_part>
 
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
@@ -416,27 +570,69 @@ impl State {
                 # Read `running_task` earlier to hide the load-use latency.
                 call {get_running_task}
 
-                # Push the second-level context state.
-                addi sp, sp, (4 * -12)
-                sw s0, (4 * 0)(sp)
-                sw s1, (4 * 1)(sp)
-                sw s2, (4 * 2)(sp)
-                sw s3, (4 * 3)(sp)
-                sw s4, (4 * 4)(sp)
-                sw s5, (4 * 5)(sp)
-                sw s6, (4 * 6)(sp)
-                sw s7, (4 * 7)(sp)
-                sw s8, (4 * 8)(sp)
-                sw s9, (4 * 9)(sp)
-                sw s10, (4 * 10)(sp)
-                sw s11, (4 * 11)(sp)
+                # Push the SLS.X.
+                addi sp, sp, ({X_SIZE} * -12)
+                sw s0, ({X_SIZE} * 0)(sp)
+                sw s1, ({X_SIZE} * 1)(sp)
+                sw s2, ({X_SIZE} * 2)(sp)
+                sw s3, ({X_SIZE} * 3)(sp)
+                sw s4, ({X_SIZE} * 4)(sp)
+                sw s5, ({X_SIZE} * 5)(sp)
+                sw s6, ({X_SIZE} * 6)(sp)
+                sw s7, ({X_SIZE} * 7)(sp)
+                sw s8, ({X_SIZE} * 8)(sp)
+                sw s9, ({X_SIZE} * 9)(sp)
+                sw s10, ({X_SIZE} * 10)(sp)
+                sw s11, ({X_SIZE} * 11)(sp)
+
+                # The following branch checks the following conditions, which
+                # are coincidentally identical, at the same time
+                #
+                #  - Is it possible for FP registers to be in use?
+                #  - Do we use `mstatus_part`?
+                #
+            "   if cfg!(target_feature = "f") {                                     "
+                    # If FP registers are in use, push SLS.F.
+                    #
+                    #   <a0 = mstatus_part>
+                    #   if mstatus_part.FS[1] != 0:
+                    #       sp: *mut FReg;
+                    #       sp -= 12;
+                    #       sp[0..12] = [fs0-fs11];
+                    #   <a0 = mstatus_part>
+                    #
+                    li a2, {FS_1}
+                    and a2, a2, a0
+                    beqz a2, 0f      # → PushSLSFEnd
+
+                    addi sp, sp, (-{F_SIZE} * 12)
+                    FSTORE fs0, ({F_SIZE} * 0)(sp)
+                    FSTORE fs1, ({F_SIZE} * 1)(sp)
+                    FSTORE fs2, ({F_SIZE} * 2)(sp)
+                    FSTORE fs3, ({F_SIZE} * 3)(sp)
+                    FSTORE fs4, ({F_SIZE} * 4)(sp)
+                    FSTORE fs5, ({F_SIZE} * 5)(sp)
+                    FSTORE fs6, ({F_SIZE} * 6)(sp)
+                    FSTORE fs7, ({F_SIZE} * 7)(sp)
+                    FSTORE fs8, ({F_SIZE} * 8)(sp)
+                    FSTORE fs9, ({F_SIZE} * 9)(sp)
+                    FSTORE fs10, ({F_SIZE} * 10)(sp)
+                    FSTORE fs11, ({F_SIZE} * 11)(sp)
+                0:      # PushSLSFEnd
+
+                    # Push `mstatus_part`
+                    addi sp, sp, -{X_SIZE}
+                    sw a0, (sp)
+            "   } else {                                                            "
+                    # unused: {F_SIZE} {FS_1}
+            "   }                                                                   "
 
                 # Store SP to `TaskState`.
                 #
-                #    <a0 = running_task>
-                #    a0.port_task_state.sp = sp
+                #    <a1 = running_task>
+                #    a1.port_task_state.sp = sp
                 #
-                sw sp, (a0)
+                sw sp, (a1)
 
                 j {push_second_level_state_and_dispatch}.dispatch
 
@@ -451,38 +647,132 @@ impl State {
 
                 # Restore SP from `TaskState`
                 #
-                #    <a0 = running_task>
+                #    <a1 = running_task>
                 #
-                #    if a0.is_none():
+                #    if a1.is_none():
                 #        goto idle_task;
                 #
-                #    sp = a0.port_task_state.sp
+                #    sp = a1.port_task_state.sp
                 #
-                beqz a0, {push_second_level_state_and_dispatch}.idle_task
-                lw sp, (a0)
+                beqz a1, {push_second_level_state_and_dispatch}.idle_task
+                lw sp, (a1)
+
+                # The following branch checks the following conditions, which
+                # are coincidentally identical, at the same time
+                #
+                #  - Is it possible for FP registers to be in use?
+                #  - Do we use `mstatus_part`?
+                #
+            "   if cfg!(target_feature = "f") {                                     "
+                    # Pop `mstatus_part`
+                    lw a0, (sp)
+                    addi sp, sp, {X_SIZE}
+
+                    # If FP registers are in use, pop SLS.F.
+                    #
+                    #   <a0 = mstatus_part>
+                    #   if mstatus_part.FS[1] != 0:
+                    #       sp: *mut FReg;
+                    #       [fs0-fs11] = sp[0..12];
+                    #       sp += 12;
+                    #   <a0 = mstatus_part>
+                    #
+                    li a2, {FS_1}
+                    and a2, a2, a0
+                    beqz a2, 0f      # → PopSLSFEnd
+
+                    FLOAD fs0, ({F_SIZE} * 0)(sp)
+                    FLOAD fs1, ({F_SIZE} * 1)(sp)
+                    FLOAD fs2, ({F_SIZE} * 2)(sp)
+                    FLOAD fs3, ({F_SIZE} * 3)(sp)
+                    FLOAD fs4, ({F_SIZE} * 4)(sp)
+                    FLOAD fs5, ({F_SIZE} * 5)(sp)
+                    FLOAD fs6, ({F_SIZE} * 6)(sp)
+                    FLOAD fs7, ({F_SIZE} * 7)(sp)
+                    FLOAD fs8, ({F_SIZE} * 8)(sp)
+                    FLOAD fs9, ({F_SIZE} * 9)(sp)
+                    FLOAD fs10, ({F_SIZE} * 10)(sp)
+                    FLOAD fs11, ({F_SIZE} * 11)(sp)
+                    addi sp, sp, {F_SIZE} * 12
+                0:      # PopSLSFEnd
+            "   }                                                                   "
 
                 # Pop the second-level context state.
-                lw s0, (4 * 0)(sp)
-                lw s1, (4 * 1)(sp)
-                lw s2, (4 * 2)(sp)
-                lw s3, (4 * 3)(sp)
-                lw s4, (4 * 4)(sp)
-                lw s5, (4 * 5)(sp)
-                lw s6, (4 * 6)(sp)
-                lw s7, (4 * 7)(sp)
-                lw s8, (4 * 8)(sp)
-                lw s9, (4 * 9)(sp)
-                lw s10, (4 * 10)(sp)
-                lw s11, (4 * 11)(sp)
-                addi sp, sp, (4 * 12)
+                lw s0, ({X_SIZE} * 0)(sp)
+                lw s1, ({X_SIZE} * 1)(sp)
+                lw s2, ({X_SIZE} * 2)(sp)
+                lw s3, ({X_SIZE} * 3)(sp)
+                lw s4, ({X_SIZE} * 4)(sp)
+                lw s5, ({X_SIZE} * 5)(sp)
+                lw s6, ({X_SIZE} * 6)(sp)
+                lw s7, ({X_SIZE} * 7)(sp)
+                lw s8, ({X_SIZE} * 8)(sp)
+                lw s9, ({X_SIZE} * 9)(sp)
+                lw s10, ({X_SIZE} * 10)(sp)
+                lw s11, ({X_SIZE} * 11)(sp)
+                addi sp, sp, ({X_SIZE} * 12)
 
             .global {push_second_level_state_and_dispatch}.pop_first_level_state
             {push_second_level_state_and_dispatch}.pop_first_level_state:
+                # <a0 = mstatus_part>
+
+            "   if cfg!(target_feature = "f") {                                     "
+                    # If FP registers were in use, pop FLS.F. Loading FP regs
+                    # will implicitly set `mstatus.FS[1]`.
+                    #
+                    #   <a0 = mstatus_part>
+                    #   if mstatus_part.FS[1] != 0:
+                    #       sp: *mut FlsF;
+                    #       [ft0-ft7] = sp['ft0'-'ft7'];
+                    #       [fa0-fa7] = sp['fa0'-'fa7'];
+                    #       [ft8-ft11] = sp['ft8'-'ft11'];
+                    #       fcsr = sp.fcsr;
+                    #       sp += 1;
+                    #   else:
+                    #       mstatus.FS[1] = 0
+                    #
+                    li a1, {FS_1}
+                    and a0, a0, a1
+                    beqz a0, 1f      # → NoPopFLSF
+
+                    FLOAD ft0, ({F_SIZE} * 0)(sp)
+                    FLOAD ft1, ({F_SIZE} * 1)(sp)
+                    FLOAD ft2, ({F_SIZE} * 2)(sp)
+                    FLOAD ft3, ({F_SIZE} * 3)(sp)
+                    FLOAD ft4, ({F_SIZE} * 4)(sp)
+                    FLOAD ft5, ({F_SIZE} * 5)(sp)
+                    FLOAD ft6, ({F_SIZE} * 6)(sp)
+                    FLOAD ft7, ({F_SIZE} * 7)(sp)
+                    FLOAD fa0, ({F_SIZE} * 8)(sp)
+                    FLOAD fa1, ({F_SIZE} * 9)(sp)
+                    FLOAD fa2, ({F_SIZE} * 10)(sp)
+                    FLOAD fa3, ({F_SIZE} * 11)(sp)
+                    FLOAD fa4, ({F_SIZE} * 12)(sp)
+                    FLOAD fa5, ({F_SIZE} * 13)(sp)
+                    FLOAD fa6, ({F_SIZE} * 14)(sp)
+                    FLOAD fa7, ({F_SIZE} * 15)(sp)
+                    FLOAD ft8, ({F_SIZE} * 16)(sp)
+                    FLOAD ft9, ({F_SIZE} * 17)(sp)
+                    FLOAD ft10, ({F_SIZE} * 18)(sp)
+                    FLOAD ft11, ({F_SIZE} * 19)(sp)
+                    lw a0, ({F_SIZE} * 20)(sp)
+                    addi sp, sp, {FLSF_SIZE}
+
+                    csrw fcsr, a0
+
+                    j 0f    # → PopFLSFEnd
+                1:      # NoPopFLSF
+                    csrc mstatus, a1
+                0:      # PopFLSFEnd
+            "   } else {                                                            "
+                    # unused: {F_SIZE} {FLSF_SIZE}
+            "   }                                                                   "
+
                 # mstatus.MPP := M
                 li a0, {MPP_M}
                 csrs mstatus, a0
 
-                # Resume the next task by restoring the first-level state
+                # Resume the next task by restoring FLS.X
                 #
                 #   <[s0-s11, sp] = resumed context>
                 #
@@ -496,25 +786,25 @@ impl State {
                 #
                 #   <end of procedure>
                 #
-                lw a7, (4 * 16)(sp)
-                lw ra, (4 * 0)(sp)
-                lw t0, (4 * 1)(sp)
-                lw t1, (4 * 2)(sp)
-                lw t2, (4 * 3)(sp)
+                lw a7, ({X_SIZE} * 16)(sp)
+                lw ra, ({X_SIZE} * 0)(sp)
+                lw t0, ({X_SIZE} * 1)(sp)
+                lw t1, ({X_SIZE} * 2)(sp)
+                lw t2, ({X_SIZE} * 3)(sp)
                 csrw mepc, a7
-                lw a0, (4 * 4)(sp)
-                lw a1, (4 * 5)(sp)
-                lw a2, (4 * 6)(sp)
-                lw a3, (4 * 7)(sp)
-                lw a4, (4 * 8)(sp)
-                lw a5, (4 * 9)(sp)
-                lw a6, (4 * 10)(sp)
-                lw a7, (4 * 11)(sp)
-                lw t3, (4 * 12)(sp)
-                lw t4, (4 * 13)(sp)
-                lw t5, (4 * 14)(sp)
-                lw t6, (4 * 15)(sp)
-                addi sp, sp, (4 * 17)
+                lw a0, ({X_SIZE} * 4)(sp)
+                lw a1, ({X_SIZE} * 5)(sp)
+                lw a2, ({X_SIZE} * 6)(sp)
+                lw a3, ({X_SIZE} * 7)(sp)
+                lw a4, ({X_SIZE} * 8)(sp)
+                lw a5, ({X_SIZE} * 9)(sp)
+                lw a6, ({X_SIZE} * 10)(sp)
+                lw a7, ({X_SIZE} * 11)(sp)
+                lw t3, ({X_SIZE} * 12)(sp)
+                lw t4, ({X_SIZE} * 13)(sp)
+                lw t5, ({X_SIZE} * 14)(sp)
+                lw t6, ({X_SIZE} * 15)(sp)
+                addi sp, sp, ({X_SIZE} * 17)
                 mret
 
             .global {push_second_level_state_and_dispatch}.idle_task
@@ -541,6 +831,10 @@ impl State {
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
                 MPP_M = const mstatus::MPP_M,
                 MIE = const mstatus::MIE,
+                FS_1 = const mstatus::FS_1,
+                X_SIZE = const X_SIZE,
+                F_SIZE = const F_SIZE,
+                FLSF_SIZE = const FLSF_SIZE,
                 options(noreturn)
             );
         }
@@ -638,6 +932,7 @@ impl State {
             slice::from_raw_parts_mut(sp, 12)
         };
 
+        // SLS.X
         // s0-s12: Uninitialized
         if preload_all {
             extra_ctx[0] = MaybeUninit::new(0x08080808);
@@ -652,6 +947,16 @@ impl State {
             extra_ctx[9] = MaybeUninit::new(0x25252525);
             extra_ctx[10] = MaybeUninit::new(0x26262626);
             extra_ctx[11] = MaybeUninit::new(0x27272727);
+        }
+
+        // SLS.F is non-existent when `mstatus.FS[1] == 0`
+
+        // SLS.HDR
+        if cfg!(target_feature = "f") {
+            // mstatus
+            //  - FS[1] = 0
+            sp = sp.wrapping_sub(1);
+            unsafe { *sp = MaybeUninit::new(0) };
         }
 
         let task_state = &task.port_task_state;
@@ -761,21 +1066,32 @@ impl State {
         // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
+        const FRAME_SIZE: usize = if cfg!(target_feature = "f") {
+            // [background_sp, mstatus]
+            X_SIZE * 2
+        } else {
+            // [background_sp]
+            X_SIZE
+        };
+
         unsafe {
             pp_asm!("
-                # Skip the stacking of the first-level state if the background
-                # context is the idle task.
+            "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
+
+                # Skip the stacking of FLS if the background context is the idle
+                # task.
                 #
                 #   <[a0-a7, t0-t6, s0-s11, sp] = background context state,
                 #    background context ∈ [task, idle task, interrupt]>
                 #   if sp == 0:
-                #       [background context ∈ [idle task]]
+                #       mstatus_part = 0;
+                #       <background context ∈ [idle task], a2 == mstatus_part>
                 #       INTERRUPT_NESTING += 1;
                 #       goto SwitchToMainStack;
                 #
-                beqz sp, 3f
+                beqz sp, 3f     # → EntryFromIdleTask
 
-                # Push the first-level state to the background context's stack
+                # Push FLS.X to the background context's stack
                 #
                 #   <[a0-a7, t0-t6, s0-s11, sp] = background context state,
                 #    background context ∈ [task, interrupt], sp != 0>
@@ -786,15 +1102,16 @@ impl State {
                 #   sp[16] = mepc
                 #
                 #   let background_sp = sp;
+                #   let background_flsx = sp;
                 #   <[s0-s11] = background context state, sp != 0>
                 #
-                addi sp, sp, (-4 * 17)
-                sw ra, (4 * 0)(sp)
-                sw t0, (4 * 1)(sp)
-                sw t1, (4 * 2)(sp)
-                sw t2, (4 * 3)(sp)
-                sw a0, (4 * 4)(sp)
-                sw a1, (4 * 5)(sp)
+                addi sp, sp, (-{X_SIZE} * 17)
+                sw ra, ({X_SIZE} * 0)(sp)
+                sw t0, ({X_SIZE} * 1)(sp)
+                sw t1, ({X_SIZE} * 2)(sp)
+                sw t2, ({X_SIZE} * 3)(sp)
+                sw a0, ({X_SIZE} * 4)(sp)
+                sw a1, ({X_SIZE} * 5)(sp)
                                                 # Increment the nesting count.
                                                 #
                                                 #   <INTERRUPT_NESTING ≥ -1>
@@ -803,21 +1120,72 @@ impl State {
                                                 #
                                                 la a1, {INTERRUPT_NESTING}
                                                 lw a0, (a1)
-                sw a2, (4 * 6)(sp)
+                sw a2, ({X_SIZE} * 6)(sp)
                 csrr a2, mepc
-                sw a3, (4 * 7)(sp)
-                sw a4, (4 * 8)(sp)
-                sw a5, (4 * 9)(sp)
-                sw a6, (4 * 10)(sp)
-                sw a7, (4 * 11)(sp)
-                sw t3, (4 * 12)(sp)
-                sw t4, (4 * 13)(sp)
-                sw t5, (4 * 14)(sp)
-                sw t6, (4 * 15)(sp)
-                sw a2, (4 * 16)(sp)
+                sw a3, ({X_SIZE} * 7)(sp)
+                sw a4, ({X_SIZE} * 8)(sp)
+                sw a5, ({X_SIZE} * 9)(sp)
+                sw a6, ({X_SIZE} * 10)(sp)
+                sw a7, ({X_SIZE} * 11)(sp)
+                sw t3, ({X_SIZE} * 12)(sp)
+                sw t4, ({X_SIZE} * 13)(sp)
+                sw t5, ({X_SIZE} * 14)(sp)
+                sw t6, ({X_SIZE} * 15)(sp)
+                sw a2, ({X_SIZE} * 16)(sp)
+            "   if cfg!(target_feature = "f") {                                     "
+                    csrr a2, mstatus
+            "   }                                                                   "
                                                 addi a0, a0, 1
                                                 sw a0, (a1)
 
+            "   if cfg!(target_feature = "f") {                                     "
+                    # If FP registers are in use, push FLS.F to the background
+                    # context's stack
+                    #
+                    #   <a2 = mstatus_part>
+                    #   if mstatus_part.FS[1] != 0:
+                    #       sp: *mut FlsF;
+                    #       sp -= 1;
+                    #       sp['ft0'-'ft7'] = [ft0-ft7];
+                    #       sp['fa0'-'fa7'] = [fa0-fa7];
+                    #       sp['ft8'-'ft11'] = [ft8-ft11];
+                    #       sp.fcsr = fcsr;
+                    #
+                    #   let background_sp = sp;
+                    #   <a2 = mstatus_part>
+                    #
+                    li a0, {FS_1}
+                    and a0, a0, a2
+                    beqz a0, 0f      # → PushFLSFEnd
+
+                    csrr a0, fcsr
+
+                    addi sp, sp, -{FLSF_SIZE}
+                    FSTORE ft0, ({F_SIZE} * 0)(sp)
+                    FSTORE ft1, ({F_SIZE} * 1)(sp)
+                    FSTORE ft2, ({F_SIZE} * 2)(sp)
+                    FSTORE ft3, ({F_SIZE} * 3)(sp)
+                    FSTORE ft4, ({F_SIZE} * 4)(sp)
+                    FSTORE ft5, ({F_SIZE} * 5)(sp)
+                    FSTORE ft6, ({F_SIZE} * 6)(sp)
+                    FSTORE ft7, ({F_SIZE} * 7)(sp)
+                    FSTORE fa0, ({F_SIZE} * 8)(sp)
+                    FSTORE fa1, ({F_SIZE} * 9)(sp)
+                    FSTORE fa2, ({F_SIZE} * 10)(sp)
+                    FSTORE fa3, ({F_SIZE} * 11)(sp)
+                    FSTORE fa4, ({F_SIZE} * 12)(sp)
+                    FSTORE fa5, ({F_SIZE} * 13)(sp)
+                    FSTORE fa6, ({F_SIZE} * 14)(sp)
+                    FSTORE fa7, ({F_SIZE} * 15)(sp)
+                    FSTORE ft8, ({F_SIZE} * 16)(sp)
+                    FSTORE ft9, ({F_SIZE} * 17)(sp)
+                    FSTORE ft10, ({F_SIZE} * 18)(sp)
+                    FSTORE ft11, ({F_SIZE} * 19)(sp)
+                    sw a0, ({F_SIZE} * 20)(sp)
+                0:      # PushFLSFEnd
+            "   } else {                                                            "
+                    # unused: {F_SIZE} {FS_1} {FLSF_SIZE}
+            "   }                                                                   "
 
                 # If the background context is an interrupt context, we don't
                 # have to switch stacks. However, we still need to re-align
@@ -840,15 +1208,16 @@ impl State {
                 # to `MAIN_STACK`. Meanwhile, push the original `sp` to
                 # `MAIN_STACK`.
                 #
-                #   <INTERRUPT_NESTING == 0, background context ∈ [task, idle task]>
-                #   *(MAIN_STACK - 4) = sp;
-                #   sp = MAIN_STACK - 4;
+                #   <INTERRUPT_NESTING == 0, background context ∈ [task, idle task],
+                #    a2 == mstatus_part>
+                #   *(MAIN_STACK - ceil(FRAME_SIZE, 16)) = sp;
+                #   sp = MAIN_STACK - ceil(FRAME_SIZE, 16);
                 #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
-                #    a0 == background_sp>
+                #    a0 == background_sp, a2 == mstatus_part>
                 #
                 mv a0, sp
                 lw sp, ({MAIN_STACK})
-                addi sp, sp, -16
+                addi sp, sp, -(({FRAME_SIZE} + 15) / 16 * 16)
                 sw a0, (sp)
 
                 j 1f            # → RealignStackEnd
@@ -865,22 +1234,28 @@ impl State {
                 # (applicable to RV32E), where `sp` is only required to be
                 # aligned to a word boundary.
                 #
-                #   <INTERRUPT_NESTING > 0, background context ∈ [interrupt]>
-                #   *((sp - 4) & !15) = sp
-                #   sp = (sp - 4) & !15
+                #   <INTERRUPT_NESTING > 0, background context ∈ [interrupt],
+                #    a2 == mstatus_part>
+                #   *((sp - FRAME_SIZE) & !15) = sp
+                #   sp = (sp - FRAME_SIZE) & !15
                 #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
-                #    a0 == background_sp>
+                #    a0 == background_sp, a2 == mstatus_part>
                 #
                 mv a0, sp
-                addi sp, sp, -4
+                addi sp, sp, -{FRAME_SIZE}
                 andi sp, sp, -16
                 sw a0, (sp)
 
             1:      # RealignStackEnd
+            "   if cfg!(target_feature = "f") {                                     "
+                    # Save `mstatus_part`.
+                    sw a2, {X_SIZE}(sp)
+            "   }                                                                   "
+
                 # Check `mcause.Interrurpt`.
                 csrr a1, mcause
-                srli a2, a1, 31
-                beqz a2, 1f
+                srli a3, a1, 31
+                beqz a3, 1f
 
                 # If the cause is an interrupt, call `handle_interrupt`
                 #
@@ -900,15 +1275,28 @@ impl State {
                     sw x0, ({RESERVATION_ADDR_VALUE}), a1
             "   } else {                                                            "
                     # unused: {RESERVATION_ADDR_VALUE}
-                    addi a1, sp, -4
+                    addi a1, sp, -{X_SIZE}
                     sc.w x0, x0, (a1)
             "   }                                                                   "
 
                 j 2f
             1:
                 # If the cause is a software trap, call `handle_exception`
+            "   if cfg!(target_feature = "f") {                                     "
+                    #
+                    #   <a0 == background_sp, a1 == mcause, a2 = mstatus_part>
+                    #   if mstatus_part.FS[1]:
+                    #       a0 += 20 * F_SIZE;
+                    #
+                    srli a2, a2, {X_SIZE} * 8 - 1 - {FS_1_SHIFT}
+                    bgez a2, 1f     # → NoFLSF
+                    addi a0, a0, 20 * {F_SIZE}
+                1:      # NoFLSF
+            "   } else {                                                            "
+                    # unused: {FS_1_SHIFT}
+            "   }                                                                   "
                 #
-                #   <a0 == background_sp, a1 == mcause>
+                #   <a0 == background_flsx, a1 == mcause>
                 #   handle_exception(a0, a1);
                 #
                 call {handle_exception}
@@ -920,14 +1308,19 @@ impl State {
                                             #   INTERRUPT_NESTING -= 1;
                                             #   <INTERRUPT_NESTING ≥ -1>
                                             #
-                                            la a1, {INTERRUPT_NESTING}
-                                            lw a0, (a1)
+                                            la a2, {INTERRUPT_NESTING}
+                                            lw a1, (a2)
+
+            "   if cfg!(target_feature = "f") {                                     "
+                    # Restore `mstatus_part`
+                    lw a0, {X_SIZE}(sp)
+            "   }                                                                   "
 
                 # Restore `background_sp`
                 lw sp, (sp)
 
-                                            addi a0, a0, -1
-                                            sw a0, (a1)
+                                            addi a1, a1, -1
+                                            sw a1, (a2)
 
                 # Are we returning to an interrupt context?
                 #
@@ -939,7 +1332,7 @@ impl State {
                 #   if INTERRUPT_NESTING > 0:
                 #       goto pop_first_level_state;
                 #
-                bgez a0, 2f
+                bgez a1, 2f
 
                 # Return to the task context by restoring the first-level and
                 # second-level state of the next task.
@@ -948,7 +1341,7 @@ impl State {
             2:
                 tail {push_second_level_state_and_dispatch}.pop_first_level_state
 
-            3:
+            3:      # EntryFromIdleTask
                 # Increment the nesting count.
                 #
                 #   <INTERRUPT_NESTING == -1, background context ∈ [idle task]>
@@ -956,6 +1349,7 @@ impl State {
                 #   <INTERRUPT_NESTING == 0>
                 #
                 sw x0, ({INTERRUPT_NESTING}), a1
+                mv a2, x0
                 j 4b        # → SwitchToMainStack
                 ",
                 handle_interrupt = sym Self::handle_interrupt::<System>,
@@ -965,6 +1359,12 @@ impl State {
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
                 RESERVATION_ADDR_VALUE = sym instemu::RESERVATION_ADDR_VALUE,
                 MAIN_STACK = sym MAIN_STACK,
+                X_SIZE = const X_SIZE,
+                F_SIZE = const F_SIZE,
+                FLSF_SIZE = const FLSF_SIZE,
+                FRAME_SIZE = const FRAME_SIZE,
+                FS_1 = const mstatus::FS_1,
+                FS_1_SHIFT = const mstatus::FS_1.trailing_zeros(),
                 options(noreturn)
             );
         }

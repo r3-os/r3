@@ -18,6 +18,11 @@ pub trait Target: Send + Sync {
     ///
     fn target_triple(&self) -> &str;
 
+    /// Extra target feature flags.
+    fn target_features(&self) -> &str {
+        ""
+    }
+
     /// Get the additional Cargo features to enable when building
     /// `constance_port_arm_m_test_driver`.
     fn cargo_features(&self) -> &[&str];
@@ -88,6 +93,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("qemu_realview_pbx_a9", &QemuRealviewPbxA9),
     ("gr_peach", &GrPeach),
     ("qemu_sifive_e", &QemuSiFiveE),
+    ("qemu_sifive_u", &QemuSiFiveU),
     ("red_v", &RedV),
 ];
 
@@ -343,6 +349,70 @@ impl Target for QemuSiFiveE {
                 &[
                     "-machine",
                     "sifive_e",
+                    // UART0 → stdout
+                    "-serial",
+                    "file:/dev/stdout",
+                    // UART1 → stderr
+                    "-serial",
+                    "file:/dev/stderr",
+                    // Disable monitor
+                    "-monitor",
+                    "none",
+                ],
+            )) as Box<dyn DebugProbe>)
+        })
+    }
+}
+
+/// The RISC-V board compatible with SiFive U SDK on QEMU
+pub struct QemuSiFiveU;
+
+impl Target for QemuSiFiveU {
+    fn target_triple(&self) -> &str {
+        "riscv32imac-unknown-none-elf"
+    }
+
+    fn target_features(&self) -> &str {
+        // There's no builtin target for `riscv32gc`, so enable the use of FPU
+        // by target features
+        "+f,+d"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-u540-uart", "interrupt-u540-qemu", "board-u540-qemu"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                RAM : ORIGIN = 0x80000000, LENGTH = 16M
+            }
+
+            REGION_ALIAS("REGION_TEXT", RAM);
+            REGION_ALIAS("REGION_RODATA", RAM);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+
+            _hart_stack_size = 1K;
+            _max_hart_id = 1;
+        "#
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async {
+            Ok(Box::new(qemu::QemuDebugProbe::new(
+                "qemu-system-riscv32",
+                &[
+                    "-machine",
+                    "sifive_u",
+                    "-bios",
+                    "none",
                     // UART0 → stdout
                     "-serial",
                     "file:/dev/stdout",

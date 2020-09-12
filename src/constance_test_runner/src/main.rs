@@ -226,6 +226,27 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
+        // Derive `RUSTFLAGS`.
+        let target_features = opt.target.target_features();
+        let rustflags = if target_features.is_empty() {
+            // Use the default value specified by `.cargo/config.toml` of the
+            // test driver crate
+            None
+        } else {
+            // Construct `RUSTFLAGS` from scratch.
+            // TODO: The fixed part is currently based on `config.toml` of
+            //       `constance_port_riscv_test_driver`. Make it adaptable to
+            //       other targets. Maybe do this whether `target_features` is
+            //       empty or not? (And get rid of `.cargo/config.toml`?)
+            Some((
+                "RUSTFLAGS",
+                format!(
+                    "-C link-arg=-Tmemory.x -C link-arg=-Tlink.x -C target-feature={}",
+                    target_features,
+                ),
+            ))
+        };
+
         // Build the test driver
         log::debug!("Building the test");
         let cmd_result = {
@@ -263,7 +284,8 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
                     "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",
                     link_dir.path(),
                 )
-                .env("CONSTANCE_TEST", &full_test_name);
+                .env("CONSTANCE_TEST", &full_test_name)
+                .envs(rustflags);
             if opt.verbose {
                 cmd.spawn_expecting_success().await
             } else {
