@@ -14,8 +14,6 @@ use core::{
 
 use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
 
-mod instemu;
-
 /// `mstatus` (Machine Status Register)
 mod mstatus {
     pub const MIE: usize = 1 << 3;
@@ -146,6 +144,65 @@ const FLSF_SIZE: usize = 20 * F_SIZE + REG_ALIGN;
 #[allow(unused_macros)]
 #[allow(dead_code)]
 mod asm_inc {
+    // define_load_store - defines the macros for XLEN-bit load/store
+    // -----------------------------------------------------------------
+    #[cfg(target_pointer_width = "128")]
+    pub macro define_load_store() {r"
+        .ifndef load_store_defined
+            .set load_store_defined, 1
+            .macro LOAD p:vararg
+                lq \p
+            .endm
+            .macro STORE p:vararg
+                sq \p
+            .endm
+            .macro C.LOAD p:vararg
+                c.lq \p
+            .endm
+            .macro C.STORE p:vararg
+                c.sq \p
+            .endm
+        .endif
+    "}
+
+    #[cfg(target_pointer_width = "64")]
+    pub macro define_load_store() {r"
+        .ifndef load_store_defined
+            .set load_store_defined, 1
+            .macro LOAD p:vararg
+                ld \p
+            .endm
+            .macro STORE p:vararg
+                sd \p
+            .endm
+            .macro C.LOAD p:vararg
+                c.ld \p
+            .endm
+            .macro C.STORE p:vararg
+                c.sd \p
+            .endm
+        .endif
+    "}
+
+    #[cfg(target_pointer_width = "32")]
+    pub macro define_load_store() {r"
+        .ifndef load_store_defined
+            .set load_store_defined, 1
+            .macro LOAD p:vararg
+                lw \p
+            .endm
+            .macro STORE p:vararg
+                sw \p
+            .endm
+            .macro C.LOAD p:vararg
+                c.lw \p
+            .endm
+            .macro C.STORE p:vararg
+                c.sw \p
+            .endm
+        .endif
+    "}
+
     // define_fload_fstore - defines the macros for FLEN-bit load/store
     // -----------------------------------------------------------------
     #[cfg(target_feature = "q")]
@@ -188,6 +245,10 @@ mod asm_inc {
     "}
 }
 
+// Should be defined after `asm_inc` for a "cannot determine resolution for the
+// macro" error not to occur
+mod instemu;
+
 /// The part of `mstatus` which is specific to each thread.
 ///
 /// `mstatus_part` is only used if `cfg!(target_feature = "f")`. `mstatus_part`
@@ -228,7 +289,7 @@ static mut MAIN_STACK: usize = 0;
 /// this reason, `INTERRUPT_NESTING` is initialized as `0`. This
 /// doesn't reflect the actual nesting level, but it doesn't matter
 /// because interrupts are disabled during booting.
-static mut INTERRUPT_NESTING: isize = 0;
+static mut INTERRUPT_NESTING: i32 = 0;
 
 pub struct State {}
 
@@ -237,7 +298,7 @@ unsafe impl Sync for State {}
 #[derive(Debug)]
 #[repr(C)]
 pub struct TaskState {
-    sp: UnsafeCell<u32>,
+    sp: UnsafeCell<usize>,
 }
 
 unsafe impl Sync for TaskState {}
@@ -298,9 +359,10 @@ impl State {
         unsafe { INTERRUPT_NESTING = -1 };
 
         unsafe {
-            asm!("
+            pp_asm!("
+            "   crate::threading::imp::asm_inc::define_load_store!()              "
                 # Save the stack pointer for later use
-                sw sp, ({MAIN_STACK}), a0
+                STORE sp, ({MAIN_STACK}), a0
 
                 # `mstatus.MPIE` will be `1` all the time except in a software
                 # exception handler
@@ -348,6 +410,7 @@ impl State {
     {
         unsafe {
             pp_asm!("
+            "   crate::threading::imp::asm_inc::define_load_store!()              "
             "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
 
                 # Push the first level context state. The saved `pc` directly
@@ -360,22 +423,22 @@ impl State {
                 #   sp[16] = ra
                 #
                 addi sp, sp, ({X_SIZE} * -17)
-                sw t0, ({X_SIZE} * 1)(sp)
-                sw t1, ({X_SIZE} * 2)(sp)
-                sw t2, ({X_SIZE} * 3)(sp)
-                sw a0, ({X_SIZE} * 4)(sp)
-                sw a1, ({X_SIZE} * 5)(sp)
-                sw a2, ({X_SIZE} * 6)(sp)
-                sw a3, ({X_SIZE} * 7)(sp)
-                sw a4, ({X_SIZE} * 8)(sp)
-                sw a5, ({X_SIZE} * 9)(sp)
-                sw a6, ({X_SIZE} * 10)(sp)
-                sw a7, ({X_SIZE} * 11)(sp)
-                sw t3, ({X_SIZE} * 12)(sp)
-                sw t4, ({X_SIZE} * 13)(sp)
-                sw t5, ({X_SIZE} * 14)(sp)
-                sw t6, ({X_SIZE} * 15)(sp)
-                sw ra, ({X_SIZE} * 16)(sp)
+                STORE t0, ({X_SIZE} * 1)(sp)
+                STORE t1, ({X_SIZE} * 2)(sp)
+                STORE t2, ({X_SIZE} * 3)(sp)
+                STORE a0, ({X_SIZE} * 4)(sp)
+                STORE a1, ({X_SIZE} * 5)(sp)
+                STORE a2, ({X_SIZE} * 6)(sp)
+                STORE a3, ({X_SIZE} * 7)(sp)
+                STORE a4, ({X_SIZE} * 8)(sp)
+                STORE a5, ({X_SIZE} * 9)(sp)
+                STORE a6, ({X_SIZE} * 10)(sp)
+                STORE a7, ({X_SIZE} * 11)(sp)
+                STORE t3, ({X_SIZE} * 12)(sp)
+                STORE t4, ({X_SIZE} * 13)(sp)
+                STORE t5, ({X_SIZE} * 14)(sp)
+                STORE t6, ({X_SIZE} * 15)(sp)
+                STORE ra, ({X_SIZE} * 16)(sp)
 
                 # MIE := 0
                 csrrci a0, mstatus, {MIE}
@@ -420,7 +483,7 @@ impl State {
                     FSTORE ft9, ({F_SIZE} * 17)(sp)
                     FSTORE ft10, ({F_SIZE} * 18)(sp)
                     FSTORE ft11, ({F_SIZE} * 19)(sp)
-                    sw a1, ({F_SIZE} * 20)(sp)
+                    STORE a1, ({F_SIZE} * 20)(sp)
                 0:      # PushFLSFEnd
             "   } else {                                                            "
                     # unused: {F_SIZE} {FS_1} {FLSF_SIZE}
@@ -525,6 +588,7 @@ impl State {
 
         unsafe {
             pp_asm!("
+            "   crate::threading::imp::asm_inc::define_load_store!()              "
             "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
 
                 # <a0 = mstatus_part>
@@ -572,18 +636,18 @@ impl State {
 
                 # Push the SLS.X.
                 addi sp, sp, ({X_SIZE} * -12)
-                sw s0, ({X_SIZE} * 0)(sp)
-                sw s1, ({X_SIZE} * 1)(sp)
-                sw s2, ({X_SIZE} * 2)(sp)
-                sw s3, ({X_SIZE} * 3)(sp)
-                sw s4, ({X_SIZE} * 4)(sp)
-                sw s5, ({X_SIZE} * 5)(sp)
-                sw s6, ({X_SIZE} * 6)(sp)
-                sw s7, ({X_SIZE} * 7)(sp)
-                sw s8, ({X_SIZE} * 8)(sp)
-                sw s9, ({X_SIZE} * 9)(sp)
-                sw s10, ({X_SIZE} * 10)(sp)
-                sw s11, ({X_SIZE} * 11)(sp)
+                STORE s0, ({X_SIZE} * 0)(sp)
+                STORE s1, ({X_SIZE} * 1)(sp)
+                STORE s2, ({X_SIZE} * 2)(sp)
+                STORE s3, ({X_SIZE} * 3)(sp)
+                STORE s4, ({X_SIZE} * 4)(sp)
+                STORE s5, ({X_SIZE} * 5)(sp)
+                STORE s6, ({X_SIZE} * 6)(sp)
+                STORE s7, ({X_SIZE} * 7)(sp)
+                STORE s8, ({X_SIZE} * 8)(sp)
+                STORE s9, ({X_SIZE} * 9)(sp)
+                STORE s10, ({X_SIZE} * 10)(sp)
+                STORE s11, ({X_SIZE} * 11)(sp)
 
                 # The following branch checks the following conditions, which
                 # are coincidentally identical, at the same time
@@ -622,7 +686,7 @@ impl State {
 
                     # Push `mstatus_part`
                     addi sp, sp, -{X_SIZE}
-                    sw a0, (sp)
+                    STORE a0, (sp)
             "   } else {                                                            "
                     # unused: {F_SIZE} {FS_1}
             "   }                                                                   "
@@ -632,12 +696,12 @@ impl State {
                 #    <a1 = running_task>
                 #    a1.port_task_state.sp = sp
                 #
-                sw sp, (a1)
+                STORE sp, (a1)
 
                 j {push_second_level_state_and_dispatch}.dispatch
 
             1:
-                lw sp, ({MAIN_STACK})
+                LOAD sp, ({MAIN_STACK})
 
             .global {push_second_level_state_and_dispatch}.dispatch
             {push_second_level_state_and_dispatch}.dispatch:
@@ -655,7 +719,7 @@ impl State {
                 #    sp = a1.port_task_state.sp
                 #
                 beqz a1, {push_second_level_state_and_dispatch}.idle_task
-                lw sp, (a1)
+                LOAD sp, (a1)
 
                 # The following branch checks the following conditions, which
                 # are coincidentally identical, at the same time
@@ -665,7 +729,7 @@ impl State {
                 #
             "   if cfg!(target_feature = "f") {                                     "
                     # Pop `mstatus_part`
-                    lw a0, (sp)
+                    LOAD a0, (sp)
                     addi sp, sp, {X_SIZE}
 
                     # If FP registers are in use, pop SLS.F.
@@ -698,18 +762,18 @@ impl State {
             "   }                                                                   "
 
                 # Pop the second-level context state.
-                lw s0, ({X_SIZE} * 0)(sp)
-                lw s1, ({X_SIZE} * 1)(sp)
-                lw s2, ({X_SIZE} * 2)(sp)
-                lw s3, ({X_SIZE} * 3)(sp)
-                lw s4, ({X_SIZE} * 4)(sp)
-                lw s5, ({X_SIZE} * 5)(sp)
-                lw s6, ({X_SIZE} * 6)(sp)
-                lw s7, ({X_SIZE} * 7)(sp)
-                lw s8, ({X_SIZE} * 8)(sp)
-                lw s9, ({X_SIZE} * 9)(sp)
-                lw s10, ({X_SIZE} * 10)(sp)
-                lw s11, ({X_SIZE} * 11)(sp)
+                LOAD s0, ({X_SIZE} * 0)(sp)
+                LOAD s1, ({X_SIZE} * 1)(sp)
+                LOAD s2, ({X_SIZE} * 2)(sp)
+                LOAD s3, ({X_SIZE} * 3)(sp)
+                LOAD s4, ({X_SIZE} * 4)(sp)
+                LOAD s5, ({X_SIZE} * 5)(sp)
+                LOAD s6, ({X_SIZE} * 6)(sp)
+                LOAD s7, ({X_SIZE} * 7)(sp)
+                LOAD s8, ({X_SIZE} * 8)(sp)
+                LOAD s9, ({X_SIZE} * 9)(sp)
+                LOAD s10, ({X_SIZE} * 10)(sp)
+                LOAD s11, ({X_SIZE} * 11)(sp)
                 addi sp, sp, ({X_SIZE} * 12)
 
             .global {push_second_level_state_and_dispatch}.pop_first_level_state
@@ -755,7 +819,7 @@ impl State {
                     FLOAD ft9, ({F_SIZE} * 17)(sp)
                     FLOAD ft10, ({F_SIZE} * 18)(sp)
                     FLOAD ft11, ({F_SIZE} * 19)(sp)
-                    lw a0, ({F_SIZE} * 20)(sp)
+                    LOAD a0, ({F_SIZE} * 20)(sp)
                     addi sp, sp, {FLSF_SIZE}
 
                     csrw fcsr, a0
@@ -786,24 +850,24 @@ impl State {
                 #
                 #   <end of procedure>
                 #
-                lw a7, ({X_SIZE} * 16)(sp)
-                lw ra, ({X_SIZE} * 0)(sp)
-                lw t0, ({X_SIZE} * 1)(sp)
-                lw t1, ({X_SIZE} * 2)(sp)
-                lw t2, ({X_SIZE} * 3)(sp)
+                LOAD a7, ({X_SIZE} * 16)(sp)
+                LOAD ra, ({X_SIZE} * 0)(sp)
+                LOAD t0, ({X_SIZE} * 1)(sp)
+                LOAD t1, ({X_SIZE} * 2)(sp)
+                LOAD t2, ({X_SIZE} * 3)(sp)
                 csrw mepc, a7
-                lw a0, ({X_SIZE} * 4)(sp)
-                lw a1, ({X_SIZE} * 5)(sp)
-                lw a2, ({X_SIZE} * 6)(sp)
-                lw a3, ({X_SIZE} * 7)(sp)
-                lw a4, ({X_SIZE} * 8)(sp)
-                lw a5, ({X_SIZE} * 9)(sp)
-                lw a6, ({X_SIZE} * 10)(sp)
-                lw a7, ({X_SIZE} * 11)(sp)
-                lw t3, ({X_SIZE} * 12)(sp)
-                lw t4, ({X_SIZE} * 13)(sp)
-                lw t5, ({X_SIZE} * 14)(sp)
-                lw t6, ({X_SIZE} * 15)(sp)
+                LOAD a0, ({X_SIZE} * 4)(sp)
+                LOAD a1, ({X_SIZE} * 5)(sp)
+                LOAD a2, ({X_SIZE} * 6)(sp)
+                LOAD a3, ({X_SIZE} * 7)(sp)
+                LOAD a4, ({X_SIZE} * 8)(sp)
+                LOAD a5, ({X_SIZE} * 9)(sp)
+                LOAD a6, ({X_SIZE} * 10)(sp)
+                LOAD a7, ({X_SIZE} * 11)(sp)
+                LOAD t3, ({X_SIZE} * 12)(sp)
+                LOAD t4, ({X_SIZE} * 13)(sp)
+                LOAD t5, ({X_SIZE} * 14)(sp)
+                LOAD t6, ({X_SIZE} * 15)(sp)
                 addi sp, sp, ({X_SIZE} * 17)
                 mret
 
@@ -883,10 +947,22 @@ impl State {
         task: &'static TaskCb<System>,
     ) {
         let stack = task.attr.stack.as_ptr();
-        let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<u32>;
+        let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<usize>;
         // TODO: Enforce minimum stack size
 
         let preload_all = cfg!(feature = "preload-registers");
+
+        #[inline]
+        fn preload_val(i: usize) -> MaybeUninit<usize> {
+            match () {
+                #[cfg(target_pointer_width = "32")]
+                () => MaybeUninit::new(i * 0x01010101),
+                #[cfg(target_pointer_width = "64")]
+                () => MaybeUninit::new(i * 0x0101010101010101),
+                #[cfg(target_pointer_width = "128")]
+                () => MaybeUninit::new(i * 0x01010101010101010101010101010101),
+            }
+        }
 
         // First-level state (always saved and restored as part of our exception
         // entry/return sequence)
@@ -896,34 +972,34 @@ impl State {
         };
 
         // ra: The return address
-        first_level[0] = MaybeUninit::new(System::exit_task as usize as u32);
+        first_level[0] = MaybeUninit::new(System::exit_task as usize as usize);
         // t0-t2: Uninitialized
         if preload_all {
-            first_level[1] = MaybeUninit::new(0x05050505);
-            first_level[2] = MaybeUninit::new(0x06060606);
-            first_level[3] = MaybeUninit::new(0x07070707);
+            first_level[1] = preload_val(0x05);
+            first_level[2] = preload_val(0x06);
+            first_level[3] = preload_val(0x07);
         }
         // a0: Parameter to the entry point
-        first_level[4] = MaybeUninit::new(task.attr.entry_param as u32);
+        first_level[4] = MaybeUninit::new(task.attr.entry_param as usize);
         // a1-a7: Uninitialized
         if preload_all {
-            first_level[5] = MaybeUninit::new(0x11111111);
-            first_level[6] = MaybeUninit::new(0x12121212);
-            first_level[7] = MaybeUninit::new(0x13131313);
-            first_level[8] = MaybeUninit::new(0x14141414);
-            first_level[9] = MaybeUninit::new(0x15151515);
-            first_level[10] = MaybeUninit::new(0x16161616);
-            first_level[11] = MaybeUninit::new(0x17171717);
+            first_level[5] = preload_val(0x11);
+            first_level[6] = preload_val(0x12);
+            first_level[7] = preload_val(0x13);
+            first_level[8] = preload_val(0x14);
+            first_level[9] = preload_val(0x15);
+            first_level[10] = preload_val(0x16);
+            first_level[11] = preload_val(0x17);
         }
         // t3-t6: Uninitialized
         if preload_all {
-            first_level[12] = MaybeUninit::new(0x28282828);
-            first_level[13] = MaybeUninit::new(0x29292929);
-            first_level[14] = MaybeUninit::new(0x30303030);
-            first_level[15] = MaybeUninit::new(0x31313131);
+            first_level[12] = preload_val(0x28);
+            first_level[13] = preload_val(0x29);
+            first_level[14] = preload_val(0x30);
+            first_level[15] = preload_val(0x31);
         }
         // pc: The entry point
-        first_level[16] = MaybeUninit::new(task.attr.entry_point as usize as u32);
+        first_level[16] = MaybeUninit::new(task.attr.entry_point as usize as usize);
 
         // Second-level state (saved and restored only when we are doing context
         // switching)
@@ -935,18 +1011,18 @@ impl State {
         // SLS.X
         // s0-s12: Uninitialized
         if preload_all {
-            extra_ctx[0] = MaybeUninit::new(0x08080808);
-            extra_ctx[1] = MaybeUninit::new(0x09090909);
-            extra_ctx[2] = MaybeUninit::new(0x18181818);
-            extra_ctx[3] = MaybeUninit::new(0x19191919);
-            extra_ctx[4] = MaybeUninit::new(0x20202020);
-            extra_ctx[5] = MaybeUninit::new(0x21212121);
-            extra_ctx[6] = MaybeUninit::new(0x22222222);
-            extra_ctx[7] = MaybeUninit::new(0x23232323);
-            extra_ctx[8] = MaybeUninit::new(0x24242424);
-            extra_ctx[9] = MaybeUninit::new(0x25252525);
-            extra_ctx[10] = MaybeUninit::new(0x26262626);
-            extra_ctx[11] = MaybeUninit::new(0x27272727);
+            extra_ctx[0] = preload_val(0x08);
+            extra_ctx[1] = preload_val(0x09);
+            extra_ctx[2] = preload_val(0x18);
+            extra_ctx[3] = preload_val(0x19);
+            extra_ctx[4] = preload_val(0x20);
+            extra_ctx[5] = preload_val(0x21);
+            extra_ctx[6] = preload_val(0x22);
+            extra_ctx[7] = preload_val(0x23);
+            extra_ctx[8] = preload_val(0x24);
+            extra_ctx[9] = preload_val(0x25);
+            extra_ctx[10] = preload_val(0x26);
+            extra_ctx[11] = preload_val(0x27);
         }
 
         // SLS.F is non-existent when `mstatus.FS[1] == 0`
@@ -1076,6 +1152,7 @@ impl State {
 
         unsafe {
             pp_asm!("
+            "   crate::threading::imp::asm_inc::define_load_store!()              "
             "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
 
                 # Skip the stacking of FLS if the background context is the idle
@@ -1106,12 +1183,12 @@ impl State {
                 #   <[s0-s11] = background context state, sp != 0>
                 #
                 addi sp, sp, (-{X_SIZE} * 17)
-                sw ra, ({X_SIZE} * 0)(sp)
-                sw t0, ({X_SIZE} * 1)(sp)
-                sw t1, ({X_SIZE} * 2)(sp)
-                sw t2, ({X_SIZE} * 3)(sp)
-                sw a0, ({X_SIZE} * 4)(sp)
-                sw a1, ({X_SIZE} * 5)(sp)
+                STORE ra, ({X_SIZE} * 0)(sp)
+                STORE t0, ({X_SIZE} * 1)(sp)
+                STORE t1, ({X_SIZE} * 2)(sp)
+                STORE t2, ({X_SIZE} * 3)(sp)
+                STORE a0, ({X_SIZE} * 4)(sp)
+                STORE a1, ({X_SIZE} * 5)(sp)
                                                 # Increment the nesting count.
                                                 #
                                                 #   <INTERRUPT_NESTING ≥ -1>
@@ -1120,18 +1197,18 @@ impl State {
                                                 #
                                                 la a1, {INTERRUPT_NESTING}
                                                 lw a0, (a1)
-                sw a2, ({X_SIZE} * 6)(sp)
+                STORE a2, ({X_SIZE} * 6)(sp)
                 csrr a2, mepc
-                sw a3, ({X_SIZE} * 7)(sp)
-                sw a4, ({X_SIZE} * 8)(sp)
-                sw a5, ({X_SIZE} * 9)(sp)
-                sw a6, ({X_SIZE} * 10)(sp)
-                sw a7, ({X_SIZE} * 11)(sp)
-                sw t3, ({X_SIZE} * 12)(sp)
-                sw t4, ({X_SIZE} * 13)(sp)
-                sw t5, ({X_SIZE} * 14)(sp)
-                sw t6, ({X_SIZE} * 15)(sp)
-                sw a2, ({X_SIZE} * 16)(sp)
+                STORE a3, ({X_SIZE} * 7)(sp)
+                STORE a4, ({X_SIZE} * 8)(sp)
+                STORE a5, ({X_SIZE} * 9)(sp)
+                STORE a6, ({X_SIZE} * 10)(sp)
+                STORE a7, ({X_SIZE} * 11)(sp)
+                STORE t3, ({X_SIZE} * 12)(sp)
+                STORE t4, ({X_SIZE} * 13)(sp)
+                STORE t5, ({X_SIZE} * 14)(sp)
+                STORE t6, ({X_SIZE} * 15)(sp)
+                STORE a2, ({X_SIZE} * 16)(sp)
             "   if cfg!(target_feature = "f") {                                     "
                     csrr a2, mstatus
             "   }                                                                   "
@@ -1154,11 +1231,11 @@ impl State {
                     #   let background_sp = sp;
                     #   <a2 = mstatus_part>
                     #
-                    li a0, {FS_1}
-                    and a0, a0, a2
-                    beqz a0, 0f      # → PushFLSFEnd
+                    li a1, {FS_1}
+                    and a1, a1, a2
+                    beqz a1, 0f      # → PushFLSFEnd
 
-                    csrr a0, fcsr
+                    csrr a1, fcsr
 
                     addi sp, sp, -{FLSF_SIZE}
                     FSTORE ft0, ({F_SIZE} * 0)(sp)
@@ -1181,7 +1258,7 @@ impl State {
                     FSTORE ft9, ({F_SIZE} * 17)(sp)
                     FSTORE ft10, ({F_SIZE} * 18)(sp)
                     FSTORE ft11, ({F_SIZE} * 19)(sp)
-                    sw a0, ({F_SIZE} * 20)(sp)
+                    STORE a1, ({F_SIZE} * 20)(sp)
                 0:      # PushFLSFEnd
             "   } else {                                                            "
                     # unused: {F_SIZE} {FS_1} {FLSF_SIZE}
@@ -1216,9 +1293,9 @@ impl State {
                 #    a0 == background_sp, a2 == mstatus_part>
                 #
                 mv a0, sp
-                lw sp, ({MAIN_STACK})
+                LOAD sp, ({MAIN_STACK})
                 addi sp, sp, -(({FRAME_SIZE} + 15) / 16 * 16)
-                sw a0, (sp)
+                STORE a0, (sp)
 
                 j 1f            # → RealignStackEnd
 
@@ -1244,12 +1321,12 @@ impl State {
                 mv a0, sp
                 addi sp, sp, -{FRAME_SIZE}
                 andi sp, sp, -16
-                sw a0, (sp)
+                STORE a0, (sp)
 
             1:      # RealignStackEnd
             "   if cfg!(target_feature = "f") {                                     "
                     # Save `mstatus_part`.
-                    sw a2, {X_SIZE}(sp)
+                    STORE a2, {X_SIZE}(sp)
             "   }                                                                   "
 
                 # Check `mcause.Interrurpt`.
@@ -1272,7 +1349,7 @@ impl State {
                 # > required (e.g., by using a dummy SC) before executing the
                 # > xRET.
             "   if cfg!(feature = "emulate-lr-sc")  {                               "
-                    sw x0, ({RESERVATION_ADDR_VALUE}), a1
+                    STORE x0, ({RESERVATION_ADDR_VALUE}), a1
             "   } else {                                                            "
                     # unused: {RESERVATION_ADDR_VALUE}
                     addi a1, sp, -{X_SIZE}
@@ -1286,11 +1363,11 @@ impl State {
                     #
                     #   <a0 == background_sp, a1 == mcause, a2 = mstatus_part>
                     #   if mstatus_part.FS[1]:
-                    #       a0 += 20 * F_SIZE;
+                    #       a0 += FLSF_SIZE;
                     #
-                    srli a2, a2, {X_SIZE} * 8 - 1 - {FS_1_SHIFT}
+                    slli a2, a2, {X_SIZE} * 8 - 1 - {FS_1_SHIFT}
                     bgez a2, 1f     # → NoFLSF
-                    addi a0, a0, 20 * {F_SIZE}
+                    addi a0, a0, {FLSF_SIZE}
                 1:      # NoFLSF
             "   } else {                                                            "
                     # unused: {FS_1_SHIFT}
@@ -1313,11 +1390,11 @@ impl State {
 
             "   if cfg!(target_feature = "f") {                                     "
                     # Restore `mstatus_part`
-                    lw a0, {X_SIZE}(sp)
+                    LOAD a0, {X_SIZE}(sp)
             "   }                                                                   "
 
                 # Restore `background_sp`
-                lw sp, (sp)
+                LOAD sp, (sp)
 
                                             addi a1, a1, -1
                                             sw a1, (a2)
