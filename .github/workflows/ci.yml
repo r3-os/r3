@@ -167,8 +167,8 @@ jobs:
 
       - name: Test (SiFive U, RV32GC)
         run: |
-          cargo run -p constance_test_runner -- -t qemu_sifive_u -l debug
+          cargo run -p constance_test_runner -- -t qemu_sifive_u_rv32 -l debug
 
       - name: Test (SiFive E, RV32IMAC)
         run: |
-          cargo run -p constance_test_runner -- -t qemu_sifive_e -l debug
+          cargo run -p constance_test_runner -- -t qemu_sifive_e_rv32 -l debug
