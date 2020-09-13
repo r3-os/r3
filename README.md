@@ -25,10 +25,10 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | Kernel Core            | ![Tasks: Supported] ![Hunks: Supported] ![Wait Objects: Supported] ![Timeouts: Supported] ![Timers: Supported] ![Interrupts: Supported] ![Startup Hooks: Supported] ![CPU Exceptions: Under Consideration] ![Panicking: Under Consideration] |
 | Kernel Synchronization | ![Semaphores: Under Consideration] ![Event Groups: Supported] ![Mutexes: Under Consideration] |
 | Library                | ![Mutex: Under Consideration] ![RwLock: Under Consideration] ![Once: Under Consideration] ![C API: Under Consideration] |
-| Ports (Simulator)      | ![POSIX: Supported] ![Windows: Under Consideration] |
-| Ports (Arm M-Profile)  | ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] |
-| Ports (Arm A-Profile)  | ![Armv7-A (no FPU): Supported] |
-| Ports (RISC-V)         | ![RV32IMACFD: Supported] ![RV64IMACFD: Supported] |
+| Port (Simulator)       | ![POSIX: Supported] ![Windows: Under Consideration] |
+| Port (Arm M-Profile)   | ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] |
+| Port (Arm A-Profile)   | ![Armv7-A (no FPU): Supported] |
+| Port (RISC-V)          | ![RV32IMACFD: Supported] ![RV64IMACFD: Supported] |
 
 [Uniprocessor: Supported]: https://img.shields.io/badge/Uniprocessor-Supported-success?style=flat-square
 [Homogeneous Multiprocessor: Under Consideration]: https://img.shields.io/badge/Homogeneous%20Multiprocessor-Under%20Consideration-cc7070?style=flat-square
