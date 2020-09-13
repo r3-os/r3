@@ -603,9 +603,9 @@ define_error! {
 
 define_error! {
     mod poll_semaphore_error {}
-    /// Error type for [`Semaphore::poll`].
+    /// Error type for [`Semaphore::poll_one`].
     ///
-    /// [`Semaphore::poll`]: super::Semaphore::poll
+    /// [`Semaphore::poll_one`]: super::Semaphore::poll_one
     pub enum PollSemaphoreError: BadContextError, BadIdError {
         /// The semaphore ID is out of range.
         BadId,
@@ -617,9 +617,9 @@ define_error! {
 
 define_error! {
     mod wait_semaphore_error {}
-    /// Error type for [`Semaphore::wait`].
+    /// Error type for [`Semaphore::wait_one`].
     ///
-    /// [`Semaphore::wait`]: super::Semaphore::wait
+    /// [`Semaphore::wait_one`]: super::Semaphore::wait_one
     pub enum WaitSemaphoreError: BadContextError, BadIdError, WaitError {
         /// The semaphore ID is out of range.
         BadId,
@@ -633,9 +633,9 @@ define_error! {
 
 define_error! {
     mod wait_semaphore_timeout_error {}
-    /// Error type for [`Semaphore::wait_timeout`].
+    /// Error type for [`Semaphore::wait_one_timeout`].
     ///
-    /// [`Semaphore::wait_timeout`]: super::Semaphore::wait_timeout
+    /// [`Semaphore::wait_one_timeout`]: super::Semaphore::wait_one_timeout
     pub enum WaitSemaphoreTimeoutError: BadContextError, BadIdError, WaitTimeoutError, BadParamError {
         /// The semaphore ID is out of range.
         BadId,

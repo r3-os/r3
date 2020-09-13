@@ -57,11 +57,11 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
 
-    D::app().sem.wait().unwrap(); // start waiting, switching to `task3`
+    D::app().sem.wait_one().unwrap(); // start waiting, switching to `task3`
 
     D::app().seq.expect_and_replace(3, 4);
 
-    D::app().sem.wait().unwrap(); // start waiting, switching to `task1`
+    D::app().sem.wait_one().unwrap(); // start waiting, switching to `task1`
 
     D::app().seq.expect_and_replace(6, 7);
 }
@@ -69,7 +69,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
-    D::app().sem.wait().unwrap(); // start waiting, switching to `task1`
+    D::app().sem.wait_one().unwrap(); // start waiting, switching to `task1`
 
     D::app().seq.expect_and_replace(4, 5);
 }

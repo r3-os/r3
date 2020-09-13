@@ -69,7 +69,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     assert_eq!(
         // start waiting, switching to `task0`
-        eg.wait_timeout(Duration::from_millis(200)),
+        eg.wait_one_timeout(Duration::from_millis(200)),
         // ... the control is returned on timeout
         Err(WaitSemaphoreTimeoutError::Timeout),
     );
@@ -77,13 +77,13 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     seq.expect_and_replace(2, 3);
 
     // start waiting. wakes up when `task0` signals the semaphore
-    eg.wait_timeout(Duration::from_millis(200)).unwrap();
+    eg.wait_one_timeout(Duration::from_millis(200)).unwrap();
 
     seq.expect_and_replace(4, 5);
 
     // this doesn't block
     eg.signal(1).unwrap();
-    eg.wait_timeout(Duration::from_millis(200)).unwrap();
+    eg.wait_one_timeout(Duration::from_millis(200)).unwrap();
 
     seq.expect_and_replace(5, 6);
 }

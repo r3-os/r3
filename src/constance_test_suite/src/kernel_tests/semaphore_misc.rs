@@ -67,11 +67,11 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         Err(constance::kernel::SignalSemaphoreError::BadContext)
     );
     assert_eq!(
-        app.eg1.wait(),
+        app.eg1.wait_one(),
         Err(constance::kernel::WaitSemaphoreError::BadContext)
     );
     assert_eq!(
-        app.eg1.poll(),
+        app.eg1.poll_one(),
         Err(constance::kernel::PollSemaphoreError::BadContext)
     );
     unsafe { System::release_cpu_lock().unwrap() };
@@ -85,7 +85,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // 1 (current) + 1 <= 2 (maximum)
     assert_eq!(app.eg2.get().unwrap(), 1);
-    app.eg2.signal(1).unwrap();
+    app.eg2.signal_one().unwrap();
 
     // 2 (current) + 1 > 2 (maximum)
     assert_eq!(app.eg2.get().unwrap(), 2);
@@ -104,16 +104,16 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // 2 (current) - 1 >= 0 (minimum)
     assert_eq!(app.eg2.get().unwrap(), 2);
-    app.eg2.poll().unwrap();
+    app.eg2.poll_one().unwrap();
 
     // 1 (current) - 1 >= 0 (minimum)
     assert_eq!(app.eg2.get().unwrap(), 1);
-    app.eg2.poll().unwrap();
+    app.eg2.poll_one().unwrap();
 
     // 0 (current) - 1 < 0 (minimum)
     assert_eq!(app.eg2.get().unwrap(), 0);
     assert_eq!(
-        app.eg2.poll(),
+        app.eg2.poll_one(),
         Err(constance::kernel::PollSemaphoreError::Timeout)
     );
 

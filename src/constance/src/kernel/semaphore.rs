@@ -120,6 +120,11 @@ impl<System: Kernel> Semaphore<System> {
         signal(semaphore_cb, lock, count)
     }
 
+    /// Release a permit, returning it to the semaphore.
+    pub fn signal_one(self) -> Result<(), SignalSemaphoreError> {
+        self.signal(1)
+    }
+
     /// Acquire a permit, potentially blocking the calling thread until one is
     /// available.
     ///
@@ -127,32 +132,43 @@ impl<System: Kernel> Semaphore<System> {
     /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
     ///
     /// [a non-waitable context]: crate#contexts
-    pub fn wait(self) -> Result<(), WaitSemaphoreError> {
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Rationale:** Multi-wait (waiting for more than one permit) is not
+    /// > supported because it introduces additional complexity to the wait
+    /// > queue mechanism by requiring it to reevaluate wait conditions after
+    /// > reordering the queue.
+    /// >
+    /// > The support for multi-wait is relatively rare among operating systems.
+    /// > It's not supported by POSIX, RTEMS, TOPPERS, VxWorks, nor Win32. The
+    /// > rare exception is μT-Kernel.
+    pub fn wait_one(self) -> Result<(), WaitSemaphoreError> {
         let lock = utils::lock_cpu::<System>()?;
         state::expect_waitable_context::<System>()?;
         let semaphore_cb = self.semaphore_cb()?;
 
-        wait(semaphore_cb, lock)
+        wait_one(semaphore_cb, lock)
     }
 
-    /// [`wait`](Self::wait) with timeout.
-    pub fn wait_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
+    /// [`wait_one`](Self::wait_one) with timeout.
+    pub fn wait_one_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
         let time32 = timeout::time32_from_duration(timeout)?;
         let lock = utils::lock_cpu::<System>()?;
         state::expect_waitable_context::<System>()?;
         let semaphore_cb = self.semaphore_cb()?;
 
-        wait_timeout(semaphore_cb, lock, time32)
+        wait_one_timeout(semaphore_cb, lock, time32)
     }
 
-    /// Non-blocking version of [`wait`](Self::wait). Returns immediately with
-    /// [`PollSemaphoreError::Timeout`] if the unblocking condition is not
-    /// satisfied.
-    pub fn poll(self) -> Result<(), PollSemaphoreError> {
+    /// Non-blocking version of [`wait_one`](Self::wait_one). Returns
+    /// immediately with [`PollSemaphoreError::Timeout`] if the unblocking
+    /// condition is not satisfied.
+    pub fn poll_one(self) -> Result<(), PollSemaphoreError> {
         let lock = utils::lock_cpu::<System>()?;
         let semaphore_cb = self.semaphore_cb()?;
 
-        poll(semaphore_cb, lock)
+        poll_one(semaphore_cb, lock)
     }
 }
 
@@ -181,7 +197,7 @@ impl<System: Kernel> fmt::Debug for SemaphoreCb<System> {
     }
 }
 
-fn poll<System: Kernel>(
+fn poll_one<System: Kernel>(
     semaphore_cb: &'static SemaphoreCb<System>,
     mut lock: utils::CpuLockGuard<System>,
 ) -> Result<(), PollSemaphoreError> {
@@ -192,7 +208,7 @@ fn poll<System: Kernel>(
     }
 }
 
-fn wait<System: Kernel>(
+fn wait_one<System: Kernel>(
     semaphore_cb: &'static SemaphoreCb<System>,
     mut lock: utils::CpuLockGuard<System>,
 ) -> Result<(), WaitSemaphoreError> {
@@ -210,7 +226,7 @@ fn wait<System: Kernel>(
     }
 }
 
-fn wait_timeout<System: Kernel>(
+fn wait_one_timeout<System: Kernel>(
     semaphore_cb: &'static SemaphoreCb<System>,
     mut lock: utils::CpuLockGuard<System>,
     time32: timeout::Time32,

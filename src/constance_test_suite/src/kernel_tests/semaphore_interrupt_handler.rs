@@ -67,7 +67,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
 
-    D::app().sem.wait().unwrap(); // start waiting, switching to `task1`
+    D::app().sem.wait_one().unwrap(); // start waiting, switching to `task1`
 
     D::app().seq.expect_and_replace(3, 4);
 
@@ -82,11 +82,11 @@ fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
 
     assert_eq!(
-        sem.poll(),
+        sem.poll_one(),
         Err(constance::kernel::PollSemaphoreError::Timeout)
     );
     assert_eq!(
-        sem.wait(),
+        sem.wait_one(),
         Err(constance::kernel::WaitSemaphoreError::BadContext)
     );
 
