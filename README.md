@@ -166,23 +166,40 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 
 ### How to Run Tests
 
- - Hosted platform and target-independent tests: `cargo test --all`
- - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re`
- - The Armv7-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385`
- - The Armv6-M port and Arm MPS2+ AN385 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_mps2_an385_v6m`
- - The Armv7-A port and GR-PEACH: `cargo run -p constance_test_runner -- -t gr_peach`
- - The Armv7-A port and Arm RealView Platform Baseboard Explore for Cortex-A9 (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_realview_pbx_a9`
- - The RV32IMAC port and SiFive E (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv32`
- - The RV32GC port and SiFive U (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv32`
- - The RV64IMAC port and SiFive E (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv64`
- - The RV64GC port and SiFive U (QEMU emulation): `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv64`
- - The RV32IMAC port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v`
+| Architecture    |                  Board                   |                             Command                              |
+| --------------- | ---------------------------------------- | ---------------------------------------------------------------- |
+| Host            | Host                                     | `cargo test --all`                                               |
+| Armv7-M+FPU+DSP | [NUCLEO-F401RE]                          | `cargo run -p constance_test_runner -- -t nucleo_f401re`         |
+| Armv8-MML+FPU   | [Arm MPS2+]​ [AN505]​ (QEMU)               | `cargo run -p constance_test_runner -- -t qemu_mps2_an505`       |
+| Armv8-MML       | Arm MPS2+ AN505 (QEMU)                   | `cargo run -p constance_test_runner -- -t qemu_mps2_an505_v8mml` |
+| Armv8-MBL       | Arm MPS2+ AN505 (QEMU)                   | `cargo run -p constance_test_runner -- -t qemu_mps2_an505_v8mbl` |
+| Armv7-M         | Arm MPS2+ [AN385]​ (QEMU)                 | `cargo run -p constance_test_runner -- -t qemu_mps2_an385`       |
+| Armv6-M         | Arm MPS2+ AN385 (QEMU)                   | `cargo run -p constance_test_runner -- -t qemu_mps2_an385_v6m`   |
+| Armv7-A         | [GR-PEACH]                               | `cargo run -p constance_test_runner -- -t gr_peach`              |
+| Armv7-A         | [Arm RealView PBX for Cortex-A9]​ (QEMU)  | `cargo run -p constance_test_runner -- -t qemu_realview_pbx_a9`  |
+| RV32IMAC        | [SiFive E]​ (QEMU)                        | `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv32`    |
+| RV32GC          | [SiFive U]​ (QEMU)                        | `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv32`    |
+| RV64IMAC        | SiFive E (QEMU)                          | `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv64`    |
+| RV64GC          | SiFive U (QEMU)                          | `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv64`    |
+| RV32IMAC        | [RED-V]​ (SPI flash XIP)                  | `cargo run -p constance_test_runner -- -t red_v`                 |
+
+[NUCLEO-F401RE]: https://www.st.com/en/evaluation-tools/nucleo-f401re.html
+[Arm MPS2+]: https://developer.arm.com/tools-and-software/development-boards/fpga-prototyping-boards/mps2
+[AN505]: http://infocenter.arm.com/help/topic/com.arm.doc.dai0505b/index.html
+[AN385]: https://developer.arm.com/documentation/dai0385/d/
+[GR-PEACH]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html
+[Arm RealView PBX for Cortex-A9]: https://developer.arm.com/docs/dui0440/latest/preface
+[SiFive E]: https://github.com/sifive/freedom-e-sdk
+[SiFive U]: https://github.com/sifive/freedom-u-sdk
+[RED-V]: https://www.sparkfun.com/products/15594?_ga=2.171541280.1047902909.1599963676-1377824336.1599963676
 
 ### How to Run Benchmarks
 
 The `-b` option instructs `constance_test_runner` to run benchmark tests. Note that some targets (notably QEMU Arm-M machines, which lack DWT) don't support benchmarking and the test code might crash, stall, or simply fail to compile on such targets.
 
- - Hosted platform: `cargo bench -p constance_port_std`
- - The Armv7-M port and NUCLEO-F401RE: `cargo run -p constance_test_runner -- -t nucleo_f401re -b`
- - The Armv7-A port and GR-PEACH: `cargo run -p constance_test_runner -- -t gr_peach -b`
- - The RV32IMAC port and RED-V (SPI flash XIP): `cargo run -p constance_test_runner -- -t red_v -b`
+| Architecture |         Board         |                           Command                           |
+| ------------ | --------------------- | ----------------------------------------------------------- |
+| Host         | Host                  | `cargo bench -p constance_port_std`                         |
+| Armv7-M      | NUCLEO-F401RE         | `cargo run -p constance_test_runner -- -t nucleo_f401re -b` |
+| Armv7-A      | GR-PEACH              | `cargo run -p constance_test_runner -- -t gr_peach -b`      |
+| RV32IMAC     | RED-V (SPI flash XIP) | `cargo run -p constance_test_runner -- -t red_v -b`         |
