@@ -23,7 +23,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | ---------------------- | ------------ |
 | System Topology        | ![Uniprocessor: Supported] ![Homogeneous Multiprocessor: Under Consideration] ![Heterogeneous Multiprocessor: Not Considering] |
 | Kernel Core            | ![Tasks: Supported] ![Hunks: Supported] ![Wait Objects: Supported] ![Timeouts: Supported] ![Timers: Supported] ![Interrupts: Supported] ![Startup Hooks: Supported] ![CPU Exceptions: Under Consideration] ![Panicking: Under Consideration] |
-| Kernel Synchronization | ![Semaphores: Under Consideration] ![Event Groups: Supported] ![Mutexes: Under Consideration] |
+| Kernel Synchronization | ![Semaphores: Supported] ![Event Groups: Supported] ![Mutexes: Under Consideration] |
 | Library                | ![Mutex: Under Consideration] ![RwLock: Under Consideration] ![Once: Under Consideration] ![C API: Under Consideration] |
 | Port (Simulator)       | ![POSIX: Supported] ![Windows: Under Consideration] |
 | Port (Arm M-Profile)   | ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] |
@@ -38,7 +38,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 [Hunks: Supported]: https://img.shields.io/badge/Hunks-Supported-success?style=flat-square
 [Wait Objects: Supported]: https://img.shields.io/badge/Wait%20Objects-Supported-success?style=flat-square
 [Timeouts: Supported]: https://img.shields.io/badge/Timeouts-Supported-success?style=flat-square
-[Semaphores: Under Consideration]: https://img.shields.io/badge/Semaphores-Under%20Consideration-cc7070?style=flat-square
+[Semaphores: Supported]: https://img.shields.io/badge/Semaphores-Under%20Consideration-success?style=flat-square
 [Event Groups: Supported]: https://img.shields.io/badge/Event%20Groups-Supported-success?style=flat-square
 [Mutexes: Under Consideration]: https://img.shields.io/badge/Mutexes-Under%20Consideration-cc7070?style=flat-square
 [Timers: Supported]: https://img.shields.io/badge/Timers-Supported-success?style=flat-square

@@ -561,6 +561,96 @@ define_error! {
 }
 
 define_error! {
+    mod get_semaphore_error {}
+    /// Error type for [`Semaphore::get`].
+    ///
+    /// [`Semaphore::get`]: super::Semaphore::get
+    pub enum GetSemaphoreError: BadContextError, BadIdError {
+        /// The semaphore ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+    }
+}
+
+define_error! {
+    mod drain_semaphore_error {}
+    /// Error type for [`Semaphore::drain`].
+    ///
+    /// [`Semaphore::drain`]: super::Semaphore::drain
+    pub enum DrainSemaphoreError: BadContextError, BadIdError {
+        /// The semaphore ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+    }
+}
+
+define_error! {
+    mod signal_semaphore_error {}
+    /// Error type for [`Semaphore::signal`].
+    ///
+    /// [`Semaphore::signal`]: super::Semaphore::signal
+    pub enum SignalSemaphoreError: BadContextError, BadIdError {
+        /// The semaphore ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        /// The semaphore value is already at the maximum value.
+        QueueOverflow,
+    }
+}
+
+define_error! {
+    mod poll_semaphore_error {}
+    /// Error type for [`Semaphore::poll`].
+    ///
+    /// [`Semaphore::poll`]: super::Semaphore::poll
+    pub enum PollSemaphoreError: BadContextError, BadIdError {
+        /// The semaphore ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        Timeout,
+    }
+}
+
+define_error! {
+    mod wait_semaphore_error {}
+    /// Error type for [`Semaphore::wait`].
+    ///
+    /// [`Semaphore::wait`]: super::Semaphore::wait
+    pub enum WaitSemaphoreError: BadContextError, BadIdError, WaitError {
+        /// The semaphore ID is out of range.
+        BadId,
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        Interrupted,
+    }
+}
+
+define_error! {
+    mod wait_semaphore_timeout_error {}
+    /// Error type for [`Semaphore::wait_timeout`].
+    ///
+    /// [`Semaphore::wait_timeout`]: super::Semaphore::wait_timeout
+    pub enum WaitSemaphoreTimeoutError: BadContextError, BadIdError, WaitTimeoutError, BadParamError {
+        /// The semaphore ID is out of range.
+        BadId,
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        Interrupted,
+        Timeout,
+        /// The timeout duration is negative.
+        BadParam,
+    }
+}
+
+define_error! {
     mod set_interrupt_line_priority_error {}
     /// Error type for [`InterruptLine::set_priority`] and
     /// [`InterruptLine::set_priority_unchecked`].

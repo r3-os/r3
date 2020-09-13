@@ -9,10 +9,13 @@ use crate::{
 mod event_group;
 mod hunk;
 mod interrupt;
+mod semaphore;
 mod startup;
 mod task;
 mod timer;
-pub use self::{event_group::*, hunk::*, interrupt::*, startup::*, task::*, timer::*};
+pub use self::{
+    event_group::*, hunk::*, interrupt::*, semaphore::*, startup::*, task::*, timer::*,
+};
 
 /// Attach [a configuration function] to a "system" type by implementing
 /// [`KernelCfg2`].
@@ -30,7 +33,7 @@ macro_rules! build {
                 },
                 EventGroupCb, HunkAttr, HunkInitAttr, InterruptAttr, InterruptLineInit, KernelCfg1,
                 KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
-                TimerCb,
+                TimerCb, SemaphoreCb,
             },
             staticvec::StaticVec,
             utils::{
@@ -93,6 +96,13 @@ macro_rules! build {
             static EVENT_GROUP_CB_POOL:
                 [EventGroupCb<$sys>; _] =
                     (0..CFG.event_groups.len()).map(|i| CFG.event_groups.get(i).to_state());
+        }
+
+        // Instantiiate semaphore structures
+        $crate::array_item_from_fn! {
+            static SEMAPHORE_CB_POOL:
+                [SemaphoreCb<$sys>; _] =
+                    (0..CFG.semaphores.len()).map(|i| CFG.semaphores.get(i).to_state());
         }
 
         // Instantiiate timer structures
@@ -195,6 +205,11 @@ macro_rules! build {
             }
 
             #[inline(always)]
+            fn semaphore_cb_pool() -> &'static [SemaphoreCb<$sys>] {
+                &SEMAPHORE_CB_POOL
+            }
+
+            #[inline(always)]
             fn timer_cb_pool() -> &'static [TimerCb<$sys>] {
                 &TIMER_CB_POOL
             }
@@ -251,6 +266,7 @@ pub struct CfgBuilderInner<System> {
     pub interrupt_handlers: ComptimeVec<CfgBuilderInterruptHandler>,
     pub startup_hooks: ComptimeVec<CfgBuilderStartupHook>,
     pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
+    pub semaphores: ComptimeVec<CfgBuilderSemaphore>,
     pub timers: ComptimeVec<CfgBuilderTimer>,
 }
 
@@ -278,6 +294,7 @@ impl<System> CfgBuilder<System> {
                 interrupt_handlers: ComptimeVec::new(),
                 startup_hooks: ComptimeVec::new(),
                 event_groups: ComptimeVec::new(),
+                semaphores: ComptimeVec::new(),
                 timers: ComptimeVec::new(),
             },
         }
