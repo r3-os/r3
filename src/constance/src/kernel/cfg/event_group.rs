@@ -3,8 +3,8 @@ use core::{marker::PhantomData, num::NonZeroUsize};
 use crate::kernel::{cfg::CfgBuilder, event_group, utils::CpuLockCell, wait, Port};
 
 impl<System: Port> event_group::EventGroup<System> {
-    /// Construct a `CfgTaskBuilder` to define a task in [a configuration
-    /// function](crate#static-configuration).
+    /// Construct a `CfgTaskBuilder` to define an event group in [a
+    /// configuration function](crate#static-configuration).
     pub const fn build() -> CfgEventGroupBuilder<System> {
         CfgEventGroupBuilder::new()
     }
