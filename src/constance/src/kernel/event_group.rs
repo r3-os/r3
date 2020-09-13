@@ -112,10 +112,10 @@ impl<System: Kernel> EventGroup<System> {
     }
 
     /// Clear the specified bits.
-    pub fn clear(self, _bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
+    pub fn clear(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let event_group_cb = self.event_group_cb()?;
-        event_group_cb.bits.replace(&mut *lock, 0);
+        event_group_cb.bits.replace_with(&mut *lock, |b| *b & !bits);
         Ok(())
     }
 

@@ -27,7 +27,8 @@ impl<System: Kernel> App<System> {
 fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     let eg = D::app().eg;
 
-    eg.set(0b11).unwrap();
+    eg.set(0b100011).unwrap();
+    eg.clear(0b100000).unwrap();
     eg.wait(0b11111, EventGroupWaitFlags::CLEAR).unwrap();
     assert_eq!(eg.get().unwrap(), 0b00);
 
