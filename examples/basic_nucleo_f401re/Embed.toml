@@ -10,7 +10,6 @@ restore_unwritten_bytes = false
 [default.general]
 chip = "stm32f401re"
 chip_descriptions = []
-log_level = "Warn"
 
 [default.rtt]
 enabled = true

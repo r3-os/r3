@@ -122,7 +122,7 @@ Start the `basic` example application using the simulator port:
 cargo run -p constance_example_basic
 ```
 
-Start the `basic` example application using [the NUCLEO-F401RE board](https://www.st.com/en/evaluation-tools/nucleo-f401re.html) and [`cargo-embed`](https://crates.io/crates/cargo-embed) for flashing:
+Start the `basic` example application using [the NUCLEO-F401RE board](https://www.st.com/en/evaluation-tools/nucleo-f401re.html) and [`cargo-embed`](https://crates.io/crates/cargo-embed) 0.9 for flashing:
 
 ```shell
 cd examples/basic_nucleo_f401re
