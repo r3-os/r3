@@ -149,6 +149,7 @@ pub mod kernel_tests {
         (mod event_group_misc {}, "event_group_misc"),
         (mod event_group_order_fifo {}, "event_group_order_fifo"),
         (mod event_group_order_task_priority {}, "event_group_order_task_priority"),
+        (mod event_group_poll {}, "event_group_poll"),
         (mod event_group_reorder_task_priority {}, "event_group_reorder_task_priority"),
         (mod event_group_set_and_dispatch {}, "event_group_set_and_dispatch"),
         (mod event_group_timeout {}, "event_group_timeout"),

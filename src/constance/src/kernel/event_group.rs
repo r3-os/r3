@@ -8,8 +8,8 @@ use core::{
 use super::{
     state, task, timeout, utils,
     wait::{WaitPayload, WaitQueue},
-    BadIdError, GetEventGroupError, Id, Kernel, Port, UpdateEventGroupError, WaitEventGroupError,
-    WaitEventGroupTimeoutError,
+    BadIdError, GetEventGroupError, Id, Kernel, PollEventGroupError, Port, UpdateEventGroupError,
+    WaitEventGroupError, WaitEventGroupTimeoutError,
 };
 use crate::{time::Duration, utils::Init};
 
@@ -162,6 +162,20 @@ impl<System: Kernel> EventGroup<System> {
 
         wait_timeout(event_group_cb, lock, bits, flags, time32)
     }
+
+    /// Non-blocking version of [`wait`](Self::wait). Returns immediately with
+    /// [`PollEventGroupError::Timeout`] if the unblocking condition is not
+    /// satisfied.
+    pub fn poll(
+        self,
+        bits: EventGroupBits,
+        flags: EventGroupWaitFlags,
+    ) -> Result<EventGroupBits, PollEventGroupError> {
+        let lock = utils::lock_cpu::<System>()?;
+        let event_group_cb = self.event_group_cb()?;
+
+        poll(event_group_cb, lock, bits, flags)
+    }
 }
 
 /// *Event group control block* - the state data of an event group.
@@ -186,6 +200,19 @@ impl<System: Kernel, EventGroupBits: fmt::Debug + 'static> fmt::Debug
         f.debug_struct("EventGroupCb")
             .field("bits", &self.bits)
             .finish()
+    }
+}
+
+fn poll<System: Kernel>(
+    event_group_cb: &'static EventGroupCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+    bits: EventGroupBits,
+    flags: EventGroupWaitFlags,
+) -> Result<EventGroupBits, PollEventGroupError> {
+    if let Some(original_value) = poll_core(event_group_cb.bits.write(&mut *lock), bits, flags) {
+        Ok(original_value)
+    } else {
+        Err(PollEventGroupError::Timeout)
     }
 }
 

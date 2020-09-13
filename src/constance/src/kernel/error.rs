@@ -512,6 +512,20 @@ define_error! {
 }
 
 define_error! {
+    mod poll_event_group_error {}
+    /// Error type for [`EventGroup::poll`].
+    ///
+    /// [`EventGroup::poll`]: super::EventGroup::poll
+    pub enum PollEventGroupError: BadContextError, BadIdError {
+        /// The event group ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        Timeout,
+    }
+}
+
+define_error! {
     mod wait_event_group_error {}
     /// Error type for [`EventGroup::wait`].
     ///
