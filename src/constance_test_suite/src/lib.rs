@@ -4,6 +4,7 @@
 #![feature(const_option)]
 #![feature(decl_macro)]
 #![feature(is_sorted)]
+#![feature(asm)]
 #![feature(cfg_target_has_atomic)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -465,6 +466,8 @@ pub mod kernel_benchmarks {
 
     define_kernel_benchmarks! {
         [$]
+        (mod cpu_analysis_int {}, "cpu_analysis_int"),
+        (mod cpu_analysis_load {}, "cpu_analysis_load"),
         (mod task_lifecycle {}, "task_lifecycle"),
     }
 

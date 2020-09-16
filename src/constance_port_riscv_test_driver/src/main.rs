@@ -214,7 +214,7 @@ macro_rules! instantiate_test {
                         }
                         1: {
                             size: 1024
-                            mode: NoBlockSkip
+                            mode: BlockIfFull
                             name: "Log"
                         }
                     }
