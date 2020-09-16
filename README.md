@@ -182,6 +182,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 | RV64IMAC        | SiFive E (QEMU)                          | `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv64`    |
 | RV64GC          | SiFive U (QEMU)                          | `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv64`    |
 | RV32IMAC        | [RED-V]​ (SPI flash XIP)                  | `cargo run -p constance_test_runner -- -t red_v`                 |
+| RV64GC          | [Maix] boards (UART ISP)                 | `cargo run -p constance_test_runner -- -t maix`                  |
 
 [NUCLEO-F401RE]: https://www.st.com/en/evaluation-tools/nucleo-f401re.html
 [Arm MPS2+]: https://developer.arm.com/tools-and-software/development-boards/fpga-prototyping-boards/mps2
@@ -192,6 +193,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 [SiFive E]: https://github.com/sifive/freedom-e-sdk
 [SiFive U]: https://github.com/sifive/freedom-u-sdk
 [RED-V]: https://www.sparkfun.com/products/15594?_ga=2.171541280.1047902909.1599963676-1377824336.1599963676
+[Maix]: https://maixduino.sipeed.com/en/
 
 ### How to Run Benchmarks
 

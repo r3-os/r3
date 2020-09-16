@@ -25,12 +25,17 @@ mod uart;
 #[cfg(feature = "output-u540-uart")]
 #[path = "uart_u540.rs"]
 mod uart;
+#[cfg(feature = "output-k210-uart")]
+#[path = "uart_k210.rs"]
+mod uart;
 
 #[cfg(feature = "interrupt-e310x")]
 mod interrupt_e310x;
 
 #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
 mod e310x;
+#[cfg(feature = "board-maix")]
+mod k210;
 #[cfg(feature = "board-u540-qemu")]
 mod u540;
 
@@ -88,10 +93,24 @@ macro_rules! instantiate_test {
             const CONTEXT: usize = 1;
         }
 
+        #[cfg(feature = "interrupt-k210")]
+        port::use_plic!(unsafe impl InterruptController for System);
+        #[cfg(feature = "interrupt-k210")]
+        impl port::PlicOptions for System {
+            const MAX_PRIORITY: InterruptPriority = 7;
+            const MAX_NUM: InterruptNum = 65;
+            const PLIC_BASE: usize = 0x0c00_0000;
+            const CONTEXT: usize = 0;
+        }
+
         impl port::TimerOptions for System {
             const MTIME_PTR: usize = 0x0200_bff8;
 
-            #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
+            #[cfg(any(
+                feature = "board-e310x-red-v",
+                feature = "board-e310x-qemu",
+                feature = "board-maix"
+            ))]
             const MTIMECMP_PTR: usize = 0x0200_4000;
             #[cfg(feature = "board-u540-qemu")]
             const MTIMECMP_PTR: usize = 0x0200_4008 /* kernel runs on hart 1 */;
@@ -100,6 +119,8 @@ macro_rules! instantiate_test {
             const FREQUENCY: u64 = e310x::MTIME_FREQUENCY;
             #[cfg(feature = "board-u540-qemu")]
             const FREQUENCY: u64 = u540::MTIME_FREQUENCY;
+            #[cfg(feature = "board-maix")]
+            const FREQUENCY: u64 = k210::MTIME_FREQUENCY;
 
             // Updating `mtime` is not supported by QEMU.
             const RESET_MTIME: bool = false;
@@ -172,6 +193,9 @@ macro_rules! instantiate_test {
             System::configure_interrupt(b);
 
             #[cfg(feature = "interrupt-u540-qemu")]
+            System::configure_plic(b);
+
+            #[cfg(feature = "interrupt-k210")]
             System::configure_plic(b);
 
             System::configure_timer(b);

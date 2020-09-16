@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, future::Future};
 
 pub struct CommaSeparated<T>(pub T);
 impl<T> fmt::Display for CommaSeparated<T>
@@ -39,5 +39,27 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}{}", self.0.0, self.0.1)
+    }
+}
+
+pub async fn retry_on_fail<R, T, E: std::fmt::Debug>(mut f: impl FnMut() -> R) -> Result<T, E>
+where
+    R: Future<Output = Result<T, E>>,
+{
+    let mut count = 8u32;
+    loop {
+        match f().await {
+            Ok(x) => return Ok(x),
+            Err(e) => {
+                log::warn!("Attempt failed: {:?}", e);
+                count -= 1;
+                if count == 0 {
+                    log::warn!("Retry limit reached");
+                    return Err(e);
+                } else {
+                    log::warn!("Retrying... (remaining count = {:?})", count);
+                }
+            }
+        }
     }
 }
