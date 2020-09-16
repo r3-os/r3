@@ -547,7 +547,12 @@ impl Target for Maix {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-k210-uart", "interrupt-k210", "board-maix"]
+        &[
+            "output-k210-uart",
+            "interrupt-k210",
+            "board-maix",
+            "constance_port_riscv/maintain-pie",
+        ]
     }
 
     fn memory_layout_script(&self) -> String {

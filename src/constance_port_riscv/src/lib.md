@@ -56,7 +56,9 @@ Your system type should be combined with an interrupt controller driver by imple
 [`PortInterrupts`]: constance::kernel::PortInterrupts
 [`INTERRUPT_HANDLERS`]: constance::kernel::KernelCfg2::INTERRUPT_HANDLERS
 
-# `LR`/`SC` Emulation
+# Emulation
+
+## `LR`/`SC` Emulation
 
 The **`emulate-lr-sc`** Cargo feature enables the software emulation of the `lr` (load-reserved) and `sc` (store-conditional) instructions. This is useful for a target that supports atomic memory operations but doesn't support these particular instructions, such as FE310. The following limitations should be kept in mind when using this feature:
 
@@ -67,6 +69,10 @@ The **`emulate-lr-sc`** Cargo feature enables the software emulation of the `lr`
  - It doesn't do actual bus snooping and can't detect a conflicting memory write that doesn't modify the memory contents. This shouldn't be a problem for the atomic operations currently provided by the standard library.
 
 `lr` and `sc` instructions are generated when the program uses atomic operations that aren't covered by AMO instructions (e.g., `Atomic*::compare_and_swap`).
+
+## `mstatus.MPIE` Maintenance
+
+The **`maintain-pie`** Cargo feature enables the work-around for the hardware quirk where the `mret` instruction clears `mstatus.MPIE` in violation of the specification. This quirk is found in QEMU 4.2 and K210. The common symptom is methods returning `Err(BadContext)`.
 
 # Implementation
 

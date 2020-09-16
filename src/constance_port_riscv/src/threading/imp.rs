@@ -833,7 +833,13 @@ impl State {
             "   }                                                                   "
 
                 # mstatus.MPP := M
-                li a0, {MPP_M}
+                # mstatus.MPIE := 1 (if `maintain-mpie` is enabled)
+            "   if cfg!(feature = "maintain-pie") {                                "
+                    li a0, {MPP_M} | {MPIE}
+            "   } else {                                                            "
+                    li a0, {MPP_M}
+                    # unused: {MPIE}
+            "   }                                                                   "
                 csrs mstatus, a0
 
                 # Resume the next task by restoring FLS.X
@@ -896,6 +902,7 @@ impl State {
                 MPP_M = const mstatus::MPP_M,
                 MIE = const mstatus::MIE,
                 FS_1 = const mstatus::FS_1,
+                MPIE = const mstatus::MPIE,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
                 FLSF_SIZE = const FLSF_SIZE,
