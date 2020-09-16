@@ -153,7 +153,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 
  - [rustup], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
  - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M/-A port.
- - libusb 1.x to test the Arm-M/-A port.
+ - libusb 1.x and libudev to run `constance_test_runner` (used to test various ports).
  - [OpenOCD](http://openocd.org) to test the Arm-A port on GR-PEACH.
  - `JLinkExe`<sup>†</sup> from [J-Link Software] to test the RISC-V port on RED-V.
 
