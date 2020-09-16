@@ -41,7 +41,7 @@ pub trait Target: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>>;
 }
 
-pub trait DebugProbe: Send + Sync {
+pub trait DebugProbe: Send {
     /// Program the specified ELF image and run it from the beginning to
     /// capture its output.
     fn program_and_get_output(
