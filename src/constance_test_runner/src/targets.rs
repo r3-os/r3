@@ -2,9 +2,12 @@ use std::{convert::TryInto, error::Error, future::Future, path::Path, pin::Pin};
 use tokio::{io::AsyncRead, task::spawn_blocking};
 
 mod jlink;
+mod kflash;
 mod openocd;
 mod probe_rs;
 mod qemu;
+mod serial;
+mod slip;
 
 pub trait Target: Send + Sync {
     /// Get the target triple.
@@ -38,7 +41,7 @@ pub trait Target: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>>;
 }
 
-pub trait DebugProbe: Send + Sync {
+pub trait DebugProbe: Send {
     /// Program the specified ELF image and run it from the beginning to
     /// capture its output.
     fn program_and_get_output(
@@ -97,6 +100,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("qemu_sifive_u_rv32", &QemuSiFiveURv32),
     ("qemu_sifive_u_rv64", &QemuSiFiveURv64),
     ("red_v", &RedV),
+    ("maix", &Maix),
 ];
 
 pub struct NucleoF401re;
@@ -531,6 +535,54 @@ impl Target for RedV {
         Box::pin(std::future::ready(Ok(
             Box::new(jlink::Fe310JLinkDebugProbe::new()) as _,
         )))
+    }
+}
+
+/// Maix development boards based on Kendryte K210, download by UART ISP
+pub struct Maix;
+
+impl Target for Maix {
+    fn target_triple(&self) -> &str {
+        "riscv64gc-unknown-none-elf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &[
+            "output-k210-uart",
+            "interrupt-k210",
+            "board-maix",
+            "constance_port_riscv/maintain-pie",
+        ]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                RAM : ORIGIN = 0x80000000, LENGTH = 6M
+            }
+
+            REGION_ALIAS("REGION_TEXT", RAM);
+            REGION_ALIAS("REGION_RODATA", RAM);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+
+            _hart_stack_size = 1K;
+        "#
+        .to_owned()
+    }
+
+    fn connect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+        Box::pin(async {
+            match kflash::KflashDebugProbe::new().await {
+                Ok(x) => Ok(Box::new(x) as _),
+                Err(x) => Err(Box::new(x) as _),
+            }
+        })
     }
 }
 

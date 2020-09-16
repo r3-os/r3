@@ -29,12 +29,18 @@ output-e310x-uart = [
 output-u540-uart = [
     "output-uart"
 ]
+output-k210-uart = [
+    "k210-hal",
+    "output-uart",
+    "nb",
+]
 output-uart = []
 
 interrupt-e310x = [
     "e310x",
 ]
 interrupt-u540-qemu = []
+interrupt-k210 = []
 
 board-e310x-red-v = [
     "e310x-hal",
@@ -43,6 +49,7 @@ board-e310x-qemu = [
     "e310x-hal",
 ]
 board-u540-qemu = []
+board-maix = []
 
 [dependencies]
 constance_port_riscv = { path = "../constance_port_riscv", optional = true }
@@ -50,6 +57,7 @@ constance = { path = "../constance", optional = true }
 
 rtt-target = { version = "0.2.0", optional = true }
 e310x-hal = { version = "0.8.3", optional = true, features = ["g002"] }
+k210-hal = { version = "0.2.0", optional = true }
 riscv-rt = { version = "0.8.0", optional = true }
 e310x = { version = "0.8.1", optional = true }
 riscv = { version = "0.6.0", optional = true }

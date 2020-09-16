@@ -19,7 +19,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Install Dependencies (Linux)
-        run: sudo apt-get install libusb-1.0-0-dev
+        run: sudo apt-get install libusb-1.0-0-dev libudev-dev
 
       - name: Exclude Crates
         run: |
@@ -57,7 +57,7 @@ jobs:
 
       - name: Install Dependencies (Linux)
         if: startsWith(matrix.os, 'ubuntu-')
-        run: sudo apt-get install libusb-1.0-0-dev
+        run: sudo apt-get install libusb-1.0-0-dev libudev-dev
 
       - name: Exclude Crates (Windows)
         if: startsWith(matrix.os, 'windows-')
@@ -92,7 +92,7 @@ jobs:
       - name: Install Dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install libusb-1.0-0-dev qemu-system-arm
+          sudo apt-get install libusb-1.0-0-dev libudev-dev qemu-system-arm
 
       - name: Install Additional Target of the Rust Toolchain
         run: |
@@ -159,7 +159,7 @@ jobs:
       - name: Install Dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install libusb-1.0-0-dev
+          sudo apt-get install libusb-1.0-0-dev libudev-dev
 
       - name: Install QEMU 5.1.0 from Source
         run: |
