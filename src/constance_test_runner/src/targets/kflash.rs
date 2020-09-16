@@ -201,7 +201,7 @@ enum BootCmd {
     Delay,
 }
 
-const ISP_BOOT_CMDS: &[(&'static str, &[BootCmd])] = &[
+const ISP_BOOT_CMDS: &[(&str, &[BootCmd])] = &[
     // `reset_to_isp_kd233`
     (
         "kd233",

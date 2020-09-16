@@ -87,7 +87,7 @@ pub enum FrameExtractorError {
     Io(#[source] std::io::Error),
 }
 
-pub fn read_frame<'a, T: AsyncBufRead + Unpin>(reader: &'a mut T) -> ReadFrame<'a, T> {
+pub fn read_frame<T: AsyncBufRead + Unpin>(reader: &mut T) -> ReadFrame<'_, T> {
     ReadFrame {
         reader,
         partial_packet: Vec::new(),
@@ -101,7 +101,7 @@ pub struct ReadFrame<'a, T> {
     state: FrameExtractorState,
 }
 
-impl<'a, T: AsyncBufRead + Unpin> Future for ReadFrame<'a, T> {
+impl<T: AsyncBufRead + Unpin> Future for ReadFrame<'_, T> {
     type Output = Result<Vec<u8>, FrameExtractorError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
