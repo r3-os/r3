@@ -17,7 +17,7 @@ pub fn choose_serial() -> Result<String, ChooseSerialError> {
     } else {
         let ports = mio_serial::available_ports()?;
         log::trace!("Available ports: {:?}", ports);
-        if ports.len() == 0 {
+        if ports.is_empty() {
             return Err(ChooseSerialError::NoPortsAvailable);
         } else if ports.len() > 1 {
             return Err(ChooseSerialError::MultiplePortsAvailable(

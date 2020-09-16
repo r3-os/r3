@@ -95,7 +95,7 @@ impl KflashDebugProbe {
         let isp_boot_cmds = ISP_BOOT_CMDS
             .iter()
             .find(|x| x.0 == board)
-            .ok_or(KflashDebugProbeOpenError::UnknownBoardName(board.clone()))?
+            .ok_or_else(|| KflashDebugProbeOpenError::UnknownBoardName(board.clone()))?
             .1;
 
         let serial = spawn_blocking(|| {
