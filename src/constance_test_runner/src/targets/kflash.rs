@@ -516,19 +516,3 @@ async fn read_elf(exe: &Path) -> Result<LoadableCode, ProcessElfError> {
         entry: elf.entry,
     })
 }
-
-/*
-struct OutputReader {
-    child: Child,
-}
-
-impl AsyncRead for OutputReader {
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-        buf: &mut [u8],
-    ) -> Poll<io::Result<usize>> {
-        Pin::new(self.child.stdout.as_mut().unwrap()).poll_read(cx, buf)
-    }
-}
-*/
