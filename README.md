@@ -199,9 +199,10 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 
 The `-b` option instructs `constance_test_runner` to run benchmark tests. Note that some targets (notably QEMU Arm-M machines, which lack DWT) don't support benchmarking and the test code might crash, stall, or simply fail to compile on such targets.
 
-| Architecture |         Board         |                           Command                           |
-| ------------ | --------------------- | ----------------------------------------------------------- |
-| Host         | Host                  | `cargo bench -p constance_port_std`                         |
-| Armv7-M      | NUCLEO-F401RE         | `cargo run -p constance_test_runner -- -t nucleo_f401re -b` |
-| Armv7-A      | GR-PEACH              | `cargo run -p constance_test_runner -- -t gr_peach -b`      |
-| RV32IMAC     | RED-V (SPI flash XIP) | `cargo run -p constance_test_runner -- -t red_v -b`         |
+| Architecture |         Board          |                           Command                           |
+| ------------ | ---------------------- | ----------------------------------------------------------- |
+| Host         | Host                   | `cargo bench -p constance_port_std`                         |
+| Armv7-M      | NUCLEO-F401RE          | `cargo run -p constance_test_runner -- -t nucleo_f401re -b` |
+| Armv7-A      | GR-PEACH               | `cargo run -p constance_test_runner -- -t gr_peach -b`      |
+| RV32IMAC     | RED-V (SPI flash XIP)  | `cargo run -p constance_test_runner -- -t red_v -b`         |
+| RV64GC       | Maix boards (UART ISP) | `cargo run -p constance_test_runner -- -t maix -b`          |
