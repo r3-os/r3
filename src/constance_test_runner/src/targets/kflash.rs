@@ -12,6 +12,7 @@ use tokio::{
 use tokio_serial::{Serial, SerialPort, SerialPortSettings};
 
 use super::{
+    demux::Demux,
     serial::{choose_serial, ChooseSerialError},
     slip, DebugProbe, DynAsyncRead,
 };
@@ -73,12 +74,6 @@ pub(crate) struct KflashDebugProbe {
 
 impl KflashDebugProbe {
     pub(super) async fn new() -> Result<Self, KflashDebugProbeOpenError> {
-        log::warn!(
-            "this target doesn't support redirecting log output. use an \
-            external serial adapter and connect its receiving terminal to \
-            pin 6 to see the log output"
-        );
-
         // Choose the ISP sequence specific to a target board
         let board = match std::env::var("MAIX_BOARD") {
             Ok(x) => x,
@@ -189,7 +184,7 @@ impl DebugProbe for KflashDebugProbe {
             boot(&mut self.serial, entry as u32).await?;
 
             // Now, pass the channel to the caller
-            Ok(Box::pin(&mut self.serial) as _)
+            Ok(Box::pin(Demux::new(&mut self.serial)) as _)
         })
     }
 }

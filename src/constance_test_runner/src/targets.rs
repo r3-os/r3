@@ -1,6 +1,7 @@
 use std::{convert::TryInto, error::Error, future::Future, path::Path, pin::Pin};
 use tokio::{io::AsyncRead, task::spawn_blocking};
 
+mod demux;
 mod jlink;
 mod kflash;
 mod openocd;

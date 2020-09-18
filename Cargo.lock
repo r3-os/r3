@@ -407,6 +407,7 @@ dependencies = [
  "constance_test_suite",
  "crc",
  "env_logger",
+ "futures-core",
  "goblin",
  "itertools",
  "lazy_static",
@@ -653,6 +654,12 @@ name = "fuchsia-zircon-sys"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
+
+[[package]]
+name = "futures-core"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59f5fff90fd5d971f936ad674802482ba441b6f09ba5e15fd8b39145582ca399"
 
 [[package]]
 name = "gcc"
