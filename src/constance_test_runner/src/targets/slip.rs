@@ -1,4 +1,5 @@
 //! SLIP (Serial Line Internet Protocol)
+use futures_core::ready;
 use std::{
     future::Future,
     marker::Unpin,
@@ -115,12 +116,9 @@ impl<T: AsyncBufRead + Unpin> Future for ReadFrame<'_, T> {
         let mut consumed = 0;
 
         let result = 'result: loop {
-            let buffer = match Pin::new(&mut *reader).poll_fill_buf(cx) {
-                Poll::Pending => {
-                    return Poll::Pending;
-                }
-                Poll::Ready(Ok(x)) => x,
-                Poll::Ready(Err(e)) => return Poll::Ready(Err(FrameExtractorError::Io(e))),
+            let buffer = match ready!(Pin::new(&mut *reader).poll_fill_buf(cx)) {
+                Ok(x) => x,
+                Err(e) => return Poll::Ready(Err(FrameExtractorError::Io(e))),
             };
 
             for &b in buffer {
