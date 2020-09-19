@@ -83,9 +83,9 @@ impl FrameExtractorState {
 
 #[derive(thiserror::Error, Debug)]
 pub enum FrameExtractorError {
-    #[error("{0}")]
+    #[error("Protocol error")]
     Protocol(#[source] FrameExtractorProtocolError),
-    #[error("{0}")]
+    #[error("I/O error")]
     Io(#[source] std::io::Error),
 }
 

@@ -1,4 +1,5 @@
-use std::{convert::TryInto, error::Error, future::Future, path::Path, pin::Pin};
+use anyhow::Result;
+use std::{convert::TryInto, future::Future, path::Path, pin::Pin};
 use tokio::{io::AsyncRead, task::spawn_blocking};
 
 mod demux;
@@ -37,9 +38,7 @@ pub trait Target: Send + Sync {
     fn memory_layout_script(&self) -> String;
 
     /// Connect to the target.
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>>;
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>>;
 }
 
 pub trait DebugProbe: Send {
@@ -48,7 +47,7 @@ pub trait DebugProbe: Send {
     fn program_and_get_output(
         &mut self,
         exe: &Path,
-    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>, Box<dyn Error>>> + '_>>;
+    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>>> + '_>>;
 }
 
 type DynAsyncRead<'a> = Pin<Box<dyn AsyncRead + 'a>>;
@@ -132,17 +131,15 @@ impl Target for NucleoF401re {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             spawn_blocking(|| {
                 match probe_rs::ProbeRsDebugProbe::new(
                     "0483:374b".try_into().unwrap(),
                     "stm32f401re".into(),
                 ) {
-                    Ok(x) => Ok(Box::new(x) as Box<dyn DebugProbe>),
-                    Err(x) => Err(Box::new(x) as Box<dyn Error + Send>),
+                    Ok(x) => Ok(Box::new(x) as _),
+                    Err(x) => Err(x.into()),
                 }
             })
             .await
@@ -176,9 +173,7 @@ impl Target for QemuMps2An385 {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-arm",
@@ -220,9 +215,7 @@ impl Target for QemuMps2An505 {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-arm",
@@ -262,9 +255,7 @@ impl Target for QemuRealviewPbxA9 {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-arm",
@@ -303,9 +294,7 @@ impl Target for GrPeach {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(openocd::GrPeachOpenOcdDebugProbe::new()) as Box<dyn DebugProbe>)
         })
@@ -356,9 +345,7 @@ impl Target for QemuSiFiveE {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         let xlen = self.0;
         Box::pin(async move {
             Ok(Box::new(qemu::QemuDebugProbe::new(
@@ -422,9 +409,7 @@ impl Target for QemuSiFiveURv32 {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-riscv32",
@@ -464,9 +449,7 @@ impl Target for QemuSiFiveURv64 {
         QemuSiFiveURv32.memory_layout_script()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(qemu::QemuDebugProbe::new(
                 "qemu-system-riscv64",
@@ -530,9 +513,7 @@ impl Target for RedV {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(std::future::ready(Ok(
             Box::new(jlink::Fe310JLinkDebugProbe::new()) as _,
         )))
@@ -575,13 +556,11 @@ impl Target for Maix {
         .to_owned()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             match kflash::KflashDebugProbe::new().await {
                 Ok(x) => Ok(Box::new(x) as _),
-                Err(x) => Err(Box::new(x) as _),
+                Err(x) => Err(x.into()),
             }
         })
     }
@@ -602,9 +581,7 @@ impl<T: Target> Target for OverrideTargetTriple<T> {
         self.1.memory_layout_script()
     }
 
-    fn connect(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>, Box<dyn Error + Send>>>>> {
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         self.1.connect()
     }
 }

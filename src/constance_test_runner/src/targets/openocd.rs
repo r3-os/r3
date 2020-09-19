@@ -1,5 +1,5 @@
+use anyhow::Result;
 use std::{
-    error::Error,
     future::Future,
     io,
     path::Path,
@@ -14,15 +14,15 @@ use crate::subprocess;
 
 #[derive(thiserror::Error, Debug)]
 enum GrPeachOpenOcdDebugProbeGetOutputError {
-    #[error("{0}")]
+    #[error("Error while analyzing the ELF file")]
     ProcessElf(#[source] ProcessElfError),
-    #[error("Error while creating a temporary directory: {0}")]
+    #[error("Error while creating a temporary directory")]
     CreateTempDir(#[source] std::io::Error),
-    #[error("Error while creating a temporary file: {0}")]
+    #[error("Error while creating a temporary file")]
     CreateTempFile(#[source] std::io::Error),
-    #[error("Error while download the image: {0}")]
+    #[error("Error while download the image")]
     Download(#[source] subprocess::SubprocessError),
-    #[error("Error while running the program: {0}")]
+    #[error("Error while running the program")]
     Run(#[source] subprocess::SubprocessError),
 }
 
@@ -70,7 +70,7 @@ impl DebugProbe for GrPeachOpenOcdDebugProbe {
     fn program_and_get_output(
         &mut self,
         exe: &Path,
-    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>, Box<dyn Error>>> + '_>> {
+    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>>> + '_>> {
         let exe = exe.to_owned();
         let openocd_cmd = "openocd";
         Box::pin(async move {
@@ -144,9 +144,9 @@ impl DebugProbe for GrPeachOpenOcdDebugProbe {
 
 #[derive(thiserror::Error, Debug)]
 enum ProcessElfError {
-    #[error("Couldn't read the ELF file: {0}")]
+    #[error("Couldn't read the ELF file")]
     Read(#[source] std::io::Error),
-    #[error("Couldn't parse the ELF file: {0}")]
+    #[error("Couldn't parse the ELF file")]
     Parse(#[source] goblin::error::Error),
 }
 

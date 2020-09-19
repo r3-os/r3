@@ -1,6 +1,6 @@
+use anyhow::Result;
 use std::{
     convert::TryInto,
-    error::Error,
     fmt::Write,
     future::Future,
     io,
@@ -17,17 +17,17 @@ use crate::subprocess;
 
 #[derive(thiserror::Error, Debug)]
 enum Fe310JLinkDebugProbeGetOutputError {
-    #[error("{0}")]
+    #[error("Error while analyzing the ELF file")]
     ProcessElf(#[source] ProcessElfError),
-    #[error("Error while creating a temporary directory: {0}")]
+    #[error("Error while creating a temporary directory")]
     CreateTempDir(#[source] std::io::Error),
-    #[error("Error while creating a temporary file: {0}")]
+    #[error("Error while creating a temporary file")]
     CreateTempFile(#[source] std::io::Error),
-    #[error("Error while flashing the device: {0}")]
+    #[error("Error while flashing the device")]
     Flash(#[source] subprocess::SubprocessError),
-    #[error("Error while opening the probe: {0}")]
+    #[error("Error while opening the probe")]
     OpenProbe(#[source] probe_rs::DebugProbeError),
-    #[error("Error while attaching to the probe: {0}")]
+    #[error("Error while attaching to the probe")]
     Attach(#[source] probe_rs::Error),
 }
 
@@ -43,7 +43,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
     fn program_and_get_output(
         &mut self,
         exe: &Path,
-    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>, Box<dyn Error>>> + '_>> {
+    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>>> + '_>> {
         let exe = exe.to_owned();
         Box::pin(async move {
             // Extract loadable sections
@@ -143,9 +143,9 @@ impl DebugProbe for Fe310JLinkDebugProbe {
 
 #[derive(thiserror::Error, Debug)]
 enum ProcessElfError {
-    #[error("Couldn't read the ELF file: {0}")]
+    #[error("Couldn't read the ELF file")]
     Read(#[source] std::io::Error),
-    #[error("Couldn't parse the ELF file: {0}")]
+    #[error("Couldn't parse the ELF file")]
     Parse(#[source] goblin::error::Error),
 }
 

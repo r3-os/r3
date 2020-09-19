@@ -41,7 +41,7 @@ pub enum ChooseSerialError {
         environment variable `SERIAL`: {0:?}"
     )]
     MultiplePortsAvailable(Vec<String>),
-    #[error("Could not enumerate serial ports.\n\n{0}")]
+    #[error("Could not enumerate serial ports.")]
     SystemError(
         #[from]
         #[source]

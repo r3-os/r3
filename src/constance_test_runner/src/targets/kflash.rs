@@ -1,9 +1,8 @@
 //! Kendryte K210 UART ISP, based on [`kflash.py`]
 //! (https://github.com/sipeed/kflash.py)
+use anyhow::Result;
 use crc::{crc32, Hasher32};
-use std::{
-    error::Error, future::Future, marker::Unpin, path::Path, pin::Pin, sync::Mutex, time::Duration,
-};
+use std::{future::Future, marker::Unpin, path::Path, pin::Pin, sync::Mutex, time::Duration};
 use tokio::{
     io::{AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufStream},
     task::spawn_blocking,
@@ -20,10 +19,10 @@ use crate::utils::retry_on_fail;
 
 #[derive(thiserror::Error, Debug)]
 pub(super) enum KflashDebugProbeOpenError {
-    #[error("{0}")]
+    #[error("Error while choosing the serial port to use")]
     ChooseSerial(#[source] ChooseSerialError),
-    #[error("Error while opening the serial port: {0}")]
-    Serial(#[source] Box<dyn Error + Send>),
+    #[error("Error while opening the serial port '{0}'")]
+    Serial(String, #[source] anyhow::Error),
     #[error(
         "Please provide a board name by `MAIX_BOARD` environment variable. \
         Valid values: {0:?}"
@@ -31,22 +30,22 @@ pub(super) enum KflashDebugProbeOpenError {
     NoBoardName(Vec<&'static str>),
     #[error("Unknown board name: '{0}'")]
     UnknownBoardName(String),
-    #[error("{0}")]
+    #[error("Communication error")]
     Communication(#[source] CommunicationError),
 }
 
 // Maybe we should remove module name prefixes from other type names
 #[derive(thiserror::Error, Debug)]
 pub(super) enum CommunicationError {
-    #[error("Error while controlling the serial port: {0}")]
+    #[error("Error while controlling the serial port")]
     Serial(#[source] tokio_serial::Error),
-    #[error("Error while reading from or writing to the serial port: {0}")]
+    #[error("Error while reading from or writing to the serial port")]
     SerialIo(
         #[source]
         #[from]
         std::io::Error,
     ),
-    #[error("Protocol error: {0}")]
+    #[error("Protocol error")]
     FrameExtractor(#[source] slip::FrameExtractorProtocolError),
     #[error("Timeout while waiting for a response")]
     Timeout,
@@ -104,7 +103,7 @@ impl KflashDebugProbe {
                     ..Default::default()
                 },
             )
-            .map_err(|e| KflashDebugProbeOpenError::Serial(Box::new(e)))?)
+            .map_err(|e| KflashDebugProbeOpenError::Serial(dev, e.into()))?)
         })
         .await
         .unwrap()?;
@@ -149,7 +148,7 @@ impl DebugProbe for KflashDebugProbe {
     fn program_and_get_output(
         &mut self,
         exe: &Path,
-    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>, Box<dyn Error>>> + '_>> {
+    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>>> + '_>> {
         let exe = exe.to_owned();
         Box::pin(async move {
             // Extract loadable sections

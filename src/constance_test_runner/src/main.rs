@@ -22,20 +22,20 @@ async fn main() {
     .init();
 
     if let Err(e) = main_inner().await {
-        log::error!("Command failed.\n{}", e);
+        log::error!("Command failed.\n{:?}", e);
         std::process::exit(1);
     }
 }
 
 #[derive(Error, Debug)]
 enum MainError {
-    #[error("Error while creating a temporary directory: {0}")]
+    #[error("Error while creating a temporary directory.")]
     TempDirError(#[source] std::io::Error),
-    #[error("Error while writing {0:?}: {1}")]
+    #[error("Error while writing {0:?}.")]
     WriteError(PathBuf, #[source] std::io::Error),
-    #[error("Error while changing the current directory to {0:?}: {1}")]
+    #[error("Error while changing the current directory to {0:?}.")]
     CdError(PathBuf, #[source] std::io::Error),
-    #[error("Could not gather the Cargo metadata using `cargo metadata`.\n\n{0}")]
+    #[error("Could not gather the Cargo metadata using `cargo metadata`.")]
     CargoMetadata(#[source] subprocess::SubprocessError),
     #[error("Could not parse the Cargo metadata.")]
     CargoMetadataParse,
@@ -43,16 +43,12 @@ enum MainError {
     BadDriverPath(PathBuf),
     #[error("Could not locate the compiled executable at {0:?}.")]
     ExeNotFound(PathBuf),
-    #[error("Could not connect to the target.\n\n{0}")]
-    ConnectTarget(#[source] Box<dyn std::error::Error + Send>),
-    #[error("Could not build the test '{0}'.\n\n{1}")]
+    #[error("Could not connect to the target.")]
+    ConnectTarget(#[source] anyhow::Error),
+    #[error("Could not build the test '{0}'.")]
     BuildTest(String, #[source] subprocess::SubprocessError),
-    #[error("{0}")]
-    Run(
-        #[from]
-        #[source]
-        RunError,
-    ),
+    #[error("Could not run the test '{0}'.")]
+    Run(String, #[source] anyhow::Error),
     #[error("Test failed.")]
     TestFail,
 }
@@ -105,7 +101,7 @@ enum LogLevel {
     Trace,
 }
 
-async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
+async fn main_inner() -> anyhow::Result<()> {
     // Parse arguments
     let opt = Opt::from_args();
 
@@ -335,10 +331,10 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(RunError::Timeout) => Err(TestRunError::Timeout),
             Err(RunError::TooLong) => Err(TestRunError::TooLong),
-            Err(e @ RunError::Other(_)) => {
+            Err(RunError::Other(e)) => {
                 // Fail-fast if the problem is the debug connection, not the
                 // test itself
-                return Err(e.into());
+                return Err(MainError::Run(test_run.to_string(), e).into());
             }
         };
 
@@ -367,18 +363,11 @@ async fn main_inner() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 enum RunError {
-    #[error("Timeout while reading the output")]
     Timeout,
-    #[error("Length limit exceeded while reading the output")]
     TooLong,
-    #[error("{0}")]
-    Other(
-        #[from]
-        #[source]
-        Box<dyn std::error::Error>,
-    ),
+    Other(anyhow::Error),
 }
 
 async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
@@ -386,7 +375,10 @@ async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
     exe: &Path,
     markers: impl IntoIterator<Item = P>,
 ) -> Result<Vec<u8>, RunError> {
-    let mut stream = debug_probe.program_and_get_output(exe).await?;
+    let mut stream = debug_probe
+        .program_and_get_output(exe)
+        .await
+        .map_err(RunError::Other)?;
     log::trace!("debug_probe_program_and_get_output_until: Got a stream");
 
     let matcher = aho_corasick::AhoCorasickBuilder::new().build(markers);

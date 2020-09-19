@@ -1,5 +1,5 @@
+use anyhow::Result;
 use std::{
-    error::Error,
     future::Future,
     io::Write,
     path::Path,
@@ -22,17 +22,17 @@ pub(super) struct ProbeRsDebugProbe {
 
 #[derive(thiserror::Error, Debug)]
 pub(super) enum ProbeRsDebugProbeOpenError {
-    #[error("Error while opening the probe: {0}")]
+    #[error("Error while opening the probe")]
     OpenProbe(#[source] probe_rs::DebugProbeError),
-    #[error("Error while attaching to the probe: {0}")]
+    #[error("Error while attaching to the probe")]
     Attach(#[source] probe_rs::Error),
 }
 
 #[derive(thiserror::Error, Debug)]
 enum ProbeRsDebugProbeGetOutputError {
-    #[error("Error while flashing the device: {0}")]
+    #[error("Error while flashing the device")]
     Flash(#[source] probe_rs::flashing::FileDownloadError),
-    #[error("Error while resetting the device: {0}")]
+    #[error("Error while resetting the device")]
     Reset(#[source] probe_rs::Error),
 }
 
@@ -58,7 +58,7 @@ impl DebugProbe for ProbeRsDebugProbe {
     fn program_and_get_output(
         &mut self,
         exe: &Path,
-    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>, Box<dyn Error>>> + '_>> {
+    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>>> + '_>> {
         let exe = exe.to_owned();
         let session = Arc::clone(&self.session);
 
@@ -97,9 +97,9 @@ const RTT_ATTACH_TIMEOUT: Duration = Duration::from_millis(500);
 
 #[derive(thiserror::Error, Debug)]
 pub enum AttachRttError {
-    #[error("Error while attaching to the RTT channel: {0}")]
+    #[error("Error while attaching to the RTT channel")]
     AttachRtt(#[source] probe_rs_rtt::Error),
-    #[error("Error while halting or resuming the core to access the RTT channel: {0}")]
+    #[error("Error while halting or resuming the core to access the RTT channel")]
     HaltCore(#[source] probe_rs::Error),
     #[error("Timeout while trying to attach to the RTT channel.")]
     Timeout,

@@ -10,7 +10,7 @@ use tokio::{
 
 #[derive(Error, Debug)]
 pub enum SubprocessError {
-    #[error("Could not execute the command {cmd:?}: {error}")]
+    #[error("Could not execute the command {cmd:?}")]
     Spawn {
         cmd: Cmd,
         #[source]
@@ -20,7 +20,7 @@ pub enum SubprocessError {
     #[error("The command {cmd:?} returned {status}")]
     FailStatus { cmd: Cmd, status: ExitStatus },
 
-    #[error("Failed to send input to the command {cmd:?}: {error}")]
+    #[error("Failed to send input to the command {cmd:?}")]
     WriteInput {
         cmd: Cmd,
         #[source]

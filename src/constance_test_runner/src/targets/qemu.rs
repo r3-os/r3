@@ -1,5 +1,5 @@
+use anyhow::Result;
 use std::{
-    error::Error,
     future::Future,
     io,
     path::Path,
@@ -29,7 +29,7 @@ impl DebugProbe for QemuDebugProbe {
     fn program_and_get_output(
         &mut self,
         exe: &Path,
-    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>, Box<dyn Error>>> + '_>> {
+    ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>>> + '_>> {
         let result = subprocess::CmdBuilder::new(self.qemu_cmd)
             .arg("-kernel")
             .arg(exe)
