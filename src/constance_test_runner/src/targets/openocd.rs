@@ -9,15 +9,15 @@ use std::{
 use tempdir::TempDir;
 use tokio::{io::AsyncRead, process::Child};
 
-use super::{DebugProbe, DynAsyncRead, Target};
+use super::{Arch, DebugProbe, DynAsyncRead, Target};
 use crate::subprocess;
 
 /// GR-PEACH
 pub struct GrPeach;
 
 impl Target for GrPeach {
-    fn target_triple(&self) -> &str {
-        "armv7a-none-eabi"
+    fn target_arch(&self) -> Arch {
+        Arch::CORTEX_A9
     }
 
     fn cargo_features(&self) -> &[&str] {

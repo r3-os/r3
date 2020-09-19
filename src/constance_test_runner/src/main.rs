@@ -1,4 +1,5 @@
 #![feature(future_readiness_fns)] // `std::future::ready`
+#![feature(or_patterns)] // `|` in subpatterns
 use std::{
     env,
     path::{Path, PathBuf},
@@ -51,6 +52,8 @@ enum MainError {
     Run(String, #[source] anyhow::Error),
     #[error("Test failed.")]
     TestFail,
+    #[error("The target architecture '{0:?}' is invalid or unsupported.")]
+    BadTarget(targets::Arch),
 }
 
 /// Test runner for the Arm-M port of Constance
@@ -116,15 +119,14 @@ async fn main_inner() -> anyhow::Result<()> {
             .expect("Couldn't get the parent of `CARGO_MANIFEST_DIR`")
     };
 
-    let driver_name = if opt.target.target_triple().starts_with("riscv") {
-        // RISC-V
-        "constance_port_riscv_test_driver"
-    } else if opt.target.target_triple().starts_with("thumb") {
-        // Arm-M
-        "constance_port_arm_m_test_driver"
-    } else {
-        // Other Arm
-        "constance_port_arm_test_driver"
+    let target_arch = opt.target.target_arch();
+    let target_arch_opt = target_arch
+        .build_opt()
+        .ok_or(MainError::BadTarget(target_arch))?;
+    let driver_name = match target_arch {
+        targets::Arch::Armv7A => "constance_port_arm_test_driver",
+        targets::Arch::ArmM { .. } => "constance_port_arm_m_test_driver",
+        targets::Arch::Riscv { .. } => "constance_port_riscv_test_driver",
     };
     let driver_path = driver_base_path.join(driver_name);
 
@@ -142,13 +144,15 @@ async fn main_inner() -> anyhow::Result<()> {
         test_filter,
         selection::TestFilter::IsBenchmark(opt.bench),
     ]);
-    let supports_basepri = {
+    let supports_basepri = matches!(
+        target_arch,
         // v6-M, v8-M Baseline, and non-M architectures don't support BASEPRI
-        let triple = opt.target.target_triple();
-        !triple.starts_with("thumbv6m")
-            && !triple.starts_with("thumbv8m.base")
-            && triple.starts_with("thumb")
-    };
+        targets::Arch::ArmM {
+            version: targets::ArmMVersion::Armv7M |
+                targets::ArmMVersion::Armv8MMainline,
+            ..
+        },
+    );
     let test_runs: Vec<_> = test_filter
         .all_matching_test_runs()
         .filter(|r| supports_basepri || !r.cpu_lock_by_basepri)
@@ -203,7 +207,7 @@ async fn main_inner() -> anyhow::Result<()> {
 
     // Executable path
     let exe_path = target_dir
-        .join(opt.target.target_triple())
+        .join(&target_arch_opt.target_triple)
         .join("release")
         .join(driver_name);
     log::debug!("exe_path = '{}'", exe_path.display());
@@ -223,7 +227,7 @@ async fn main_inner() -> anyhow::Result<()> {
         }
 
         // Derive `RUSTFLAGS`.
-        let target_features = opt.target.target_features();
+        let target_features = &target_arch_opt.target_features;
         let rustflags = if target_features.is_empty() {
             // Use the default value specified by `.cargo/config.toml` of the
             // test driver crate
@@ -250,7 +254,7 @@ async fn main_inner() -> anyhow::Result<()> {
                 .arg("build")
                 .arg("--release")
                 .arg("--target")
-                .arg(opt.target.target_triple())
+                .arg(&target_arch_opt.target_triple)
                 .arg(match test_run.case {
                     selection::TestCase::KernelTest(_) => "--features=kernel_tests",
                     selection::TestCase::KernelBenchmark(_) => "--features=kernel_benchmarks",

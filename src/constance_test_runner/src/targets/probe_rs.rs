@@ -15,13 +15,13 @@ use tokio::{
     time::{delay_for, Delay},
 };
 
-use super::{DebugProbe, DynAsyncRead, Target};
+use super::{Arch, DebugProbe, DynAsyncRead, Target};
 
 pub struct NucleoF401re;
 
 impl Target for NucleoF401re {
-    fn target_triple(&self) -> &str {
-        "thumbv7em-none-eabihf"
+    fn target_arch(&self) -> Arch {
+        Arch::CORTEX_M4F
     }
 
     fn cargo_features(&self) -> &[&str] {

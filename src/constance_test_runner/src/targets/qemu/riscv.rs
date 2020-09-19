@@ -1,23 +1,17 @@
 use anyhow::Result;
 use std::{future::Future, pin::Pin};
 
-use super::super::{DebugProbe, Target};
+use super::super::{Arch, DebugProbe, Target, Xlen};
 use super::QemuDebugProbe;
-
-#[derive(Copy, Clone)]
-pub enum Xlen {
-    _32,
-    _64,
-}
 
 /// The RISC-V board compatible with SiFive E SDK on QEMU
 pub struct QemuSiFiveE(pub Xlen);
 
 impl Target for QemuSiFiveE {
-    fn target_triple(&self) -> &str {
+    fn target_arch(&self) -> Arch {
         match self.0 {
-            Xlen::_32 => "riscv32imac-unknown-none-elf",
-            Xlen::_64 => "riscv64imac-unknown-none-elf",
+            Xlen::_32 => Arch::RV32IMAC,
+            Xlen::_64 => Arch::RV64IMAC,
         }
     }
 
@@ -74,18 +68,15 @@ impl Target for QemuSiFiveE {
     }
 }
 
-/// The RISC-V board compatible with SiFive U SDK on QEMU, RV32
-pub struct QemuSiFiveURv32;
+/// The RISC-V board compatible with SiFive U SDK on QEMU
+pub struct QemuSiFiveU(pub Xlen);
 
-impl Target for QemuSiFiveURv32 {
-    fn target_triple(&self) -> &str {
-        "riscv32imac-unknown-none-elf"
-    }
-
-    fn target_features(&self) -> &str {
-        // There's no builtin target for `riscv32gc`, so enable the use of FPU
-        // by target features
-        "+f,+d"
+impl Target for QemuSiFiveU {
+    fn target_arch(&self) -> Arch {
+        match self.0 {
+            Xlen::_32 => Arch::RV32GC,
+            Xlen::_64 => Arch::RV64GC,
+        }
     }
 
     fn cargo_features(&self) -> &[&str] {
@@ -113,49 +104,13 @@ impl Target for QemuSiFiveURv32 {
     }
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
-        Box::pin(async {
+        let xlen = self.0;
+        Box::pin(async move {
             Ok(Box::new(QemuDebugProbe::new(
-                "qemu-system-riscv32",
-                &[
-                    "-machine",
-                    "sifive_u",
-                    "-bios",
-                    "none",
-                    // UART0 → stdout
-                    "-serial",
-                    "file:/dev/stdout",
-                    // UART1 → stderr
-                    "-serial",
-                    "file:/dev/stderr",
-                    // Disable monitor
-                    "-monitor",
-                    "none",
-                ],
-            )) as Box<dyn DebugProbe>)
-        })
-    }
-}
-
-/// The RISC-V board compatible with SiFive U SDK on QEMU, RV64
-pub struct QemuSiFiveURv64;
-
-impl Target for QemuSiFiveURv64 {
-    fn target_triple(&self) -> &str {
-        "riscv64gc-unknown-none-elf"
-    }
-
-    fn cargo_features(&self) -> &[&str] {
-        QemuSiFiveURv32.cargo_features()
-    }
-
-    fn memory_layout_script(&self) -> String {
-        QemuSiFiveURv32.memory_layout_script()
-    }
-
-    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
-        Box::pin(async {
-            Ok(Box::new(QemuDebugProbe::new(
-                "qemu-system-riscv64",
+                match xlen {
+                    Xlen::_32 => "qemu-system-riscv32",
+                    Xlen::_64 => "qemu-system-riscv64",
+                },
                 &[
                     "-machine",
                     "sifive_u",
