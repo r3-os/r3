@@ -11,13 +11,16 @@ use tokio::{io::AsyncRead, process::Child};
 use super::{DebugProbe, DynAsyncRead};
 use crate::subprocess;
 
-pub(super) struct QemuDebugProbe {
+pub mod arm;
+pub mod riscv;
+
+struct QemuDebugProbe {
     qemu_cmd: &'static str,
     qemu_args: &'static [&'static str],
 }
 
 impl QemuDebugProbe {
-    pub(super) fn new(qemu_cmd: &'static str, qemu_args: &'static [&'static str]) -> Self {
+    fn new(qemu_cmd: &'static str, qemu_args: &'static [&'static str]) -> Self {
         Self {
             qemu_cmd,
             qemu_args,

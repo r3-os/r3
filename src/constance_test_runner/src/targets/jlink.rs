@@ -12,8 +12,53 @@ use std::{
 use tempdir::TempDir;
 use tokio::{io::AsyncRead, process::Child};
 
-use super::{DebugProbe, DynAsyncRead};
+use super::{DebugProbe, DynAsyncRead, Target};
 use crate::subprocess;
+
+/// SparkFun RED-V RedBoard or Things Plus
+pub struct RedV;
+
+impl Target for RedV {
+    fn target_triple(&self) -> &str {
+        "riscv32imac-unknown-none-elf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &[
+            "output-rtt",
+            "interrupt-e310x",
+            "board-e310x-red-v",
+            "constance_port_riscv/emulate-lr-sc",
+        ]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                FLASH : ORIGIN = 0x20000000, LENGTH = 16M
+                RAM : ORIGIN = 0x80000000, LENGTH = 16K
+            }
+
+            REGION_ALIAS("REGION_TEXT", FLASH);
+            REGION_ALIAS("REGION_RODATA", FLASH);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+
+            /* Skip first 64K allocated for bootloader */
+            _stext = 0x20010000;
+
+            _hart_stack_size = 1K;
+        "#
+        .to_owned()
+    }
+
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
+        Box::pin(std::future::ready(Ok(Box::new(Fe310JLinkDebugProbe) as _)))
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 enum RunError {
@@ -31,13 +76,7 @@ enum RunError {
     Attach(#[source] probe_rs::Error),
 }
 
-pub(super) struct Fe310JLinkDebugProbe {}
-
-impl Fe310JLinkDebugProbe {
-    pub(super) fn new() -> Self {
-        Self {}
-    }
-}
+struct Fe310JLinkDebugProbe;
 
 impl DebugProbe for Fe310JLinkDebugProbe {
     fn program_and_get_output(

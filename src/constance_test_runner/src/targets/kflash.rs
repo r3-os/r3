@@ -13,9 +13,50 @@ use tokio_serial::{Serial, SerialPort, SerialPortSettings};
 use super::{
     demux::Demux,
     serial::{choose_serial, ChooseSerialError},
-    slip, DebugProbe, DynAsyncRead,
+    slip, DebugProbe, DynAsyncRead, Target,
 };
 use crate::utils::retry_on_fail;
+
+/// Maix development boards based on Kendryte K210, download by UART ISP
+pub struct Maix;
+
+impl Target for Maix {
+    fn target_triple(&self) -> &str {
+        "riscv64gc-unknown-none-elf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &[
+            "output-k210-uart",
+            "interrupt-k210",
+            "board-maix",
+            "constance_port_riscv/maintain-pie",
+        ]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        r#"
+            MEMORY
+            {
+                RAM : ORIGIN = 0x80000000, LENGTH = 6M
+            }
+
+            REGION_ALIAS("REGION_TEXT", RAM);
+            REGION_ALIAS("REGION_RODATA", RAM);
+            REGION_ALIAS("REGION_DATA", RAM);
+            REGION_ALIAS("REGION_BSS", RAM);
+            REGION_ALIAS("REGION_HEAP", RAM);
+            REGION_ALIAS("REGION_STACK", RAM);
+
+            _hart_stack_size = 1K;
+        "#
+        .to_owned()
+    }
+
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
+        Box::pin(async { KflashDebugProbe::new().await.map(|x| Box::new(x) as _) })
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 enum OpenError {
@@ -65,13 +106,13 @@ impl From<slip::FrameExtractorError> for CommunicationError {
 
 const COMM_TIMEOUT: Duration = Duration::from_secs(3);
 
-pub(crate) struct KflashDebugProbe {
+struct KflashDebugProbe {
     serial: BufStream<Serial>,
     isp_boot_cmds: &'static [BootCmd],
 }
 
 impl KflashDebugProbe {
-    pub(super) async fn new() -> anyhow::Result<Self> {
+    async fn new() -> anyhow::Result<Self> {
         // Choose the ISP sequence specific to a target board
         let board = match std::env::var("MAIX_BOARD") {
             Ok(x) => Ok(x),

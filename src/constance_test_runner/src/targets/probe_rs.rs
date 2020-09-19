@@ -1,5 +1,6 @@
 use anyhow::Result;
 use std::{
+    convert::TryInto,
     future::Future,
     io::Write,
     path::Path,
@@ -14,9 +15,49 @@ use tokio::{
     time::{delay_for, Delay},
 };
 
-use super::{DebugProbe, DynAsyncRead};
+use super::{DebugProbe, DynAsyncRead, Target};
 
-pub(super) struct ProbeRsDebugProbe {
+pub struct NucleoF401re;
+
+impl Target for NucleoF401re {
+    fn target_triple(&self) -> &str {
+        "thumbv7em-none-eabihf"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["output-rtt"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        "
+            MEMORY
+            {
+              /* NOTE K = KiBi = 1024 bytes */
+              FLASH : ORIGIN = 0x08000000, LENGTH = 512K
+              RAM : ORIGIN = 0x20000000, LENGTH = 96K
+            }
+
+            /* This is where the call stack will be allocated. */
+            /* The stack is of the full descending type. */
+            /* NOTE Do NOT modify `_stack_start` unless you know what you are doing */
+            _stack_start = ORIGIN(RAM) + LENGTH(RAM);
+        "
+        .to_owned()
+    }
+
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
+        Box::pin(async {
+            spawn_blocking(|| {
+                ProbeRsDebugProbe::new("0483:374b".try_into().unwrap(), "stm32f401re".into())
+                    .map(|x| Box::new(x) as _)
+            })
+            .await
+            .unwrap()
+        })
+    }
+}
+
+struct ProbeRsDebugProbe {
     session: Arc<Mutex<probe_rs::Session>>,
 }
 
@@ -37,7 +78,7 @@ enum RunError {
 }
 
 impl ProbeRsDebugProbe {
-    pub(super) fn new(
+    fn new(
         probe_sel: probe_rs::DebugProbeSelector,
         target_sel: probe_rs::config::TargetSelector,
     ) -> anyhow::Result<Self> {

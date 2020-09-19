@@ -9,8 +9,36 @@ use std::{
 use tempdir::TempDir;
 use tokio::{io::AsyncRead, process::Child};
 
-use super::{DebugProbe, DynAsyncRead};
+use super::{DebugProbe, DynAsyncRead, Target};
 use crate::subprocess;
+
+/// GR-PEACH
+pub struct GrPeach;
+
+impl Target for GrPeach {
+    fn target_triple(&self) -> &str {
+        "armv7a-none-eabi"
+    }
+
+    fn cargo_features(&self) -> &[&str] {
+        &["board-rza1"]
+    }
+
+    fn memory_layout_script(&self) -> String {
+        "
+            MEMORY
+            {
+                RAM_CODE : ORIGIN = 0x20000000, LENGTH = 5120K
+                RAM_DATA : ORIGIN = 0x20500000, LENGTH = 5120K
+            }
+        "
+        .to_owned()
+    }
+
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
+        Box::pin(async { Ok(Box::new(GrPeachOpenOcdDebugProbe::new()) as Box<dyn DebugProbe>) })
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 enum GrPeachOpenOcdDebugProbeGetOutputError {
@@ -54,7 +82,7 @@ mwb 0xFCFE0404 0xff
 mwb 0xFCFE0408 0xff
 ";
 
-pub(super) struct GrPeachOpenOcdDebugProbe {}
+struct GrPeachOpenOcdDebugProbe {}
 
 impl GrPeachOpenOcdDebugProbe {
     pub(super) fn new() -> Self {
