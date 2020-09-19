@@ -16,7 +16,7 @@ use super::{DebugProbe, DynAsyncRead};
 use crate::subprocess;
 
 #[derive(thiserror::Error, Debug)]
-enum Fe310JLinkDebugProbeGetOutputError {
+enum RunError {
     #[error("Error while analyzing the ELF file")]
     ProcessElf(#[source] ProcessElfError),
     #[error("Error while creating a temporary directory")]
@@ -47,13 +47,11 @@ impl DebugProbe for Fe310JLinkDebugProbe {
         let exe = exe.to_owned();
         Box::pin(async move {
             // Extract loadable sections
-            let LoadableCode { regions, entry } = read_elf(&exe)
-                .await
-                .map_err(Fe310JLinkDebugProbeGetOutputError::ProcessElf)?;
+            let LoadableCode { regions, entry } =
+                read_elf(&exe).await.map_err(RunError::ProcessElf)?;
 
             // Extract loadable regions to separate binary files
-            let tempdir = TempDir::new("constance_test_runner")
-                .map_err(Fe310JLinkDebugProbeGetOutputError::CreateTempDir)?;
+            let tempdir = TempDir::new("constance_test_runner").map_err(RunError::CreateTempDir)?;
             let section_files: Vec<_> = (0..regions.len())
                 .map(|i| {
                     let name = format!("{}.bin", i);
@@ -64,7 +62,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
                 log::debug!("Writing {} byte(s) to '{}'", data.len(), path.display());
                 tokio::fs::write(&path, data)
                     .await
-                    .map_err(Fe310JLinkDebugProbeGetOutputError::CreateTempFile)?;
+                    .map_err(RunError::CreateTempFile)?;
             }
 
             // Generate commands for `JLinkExe`
@@ -99,7 +97,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
                 ])
                 .spawn_expecting_success_quiet_with_input(cmd.as_bytes())
                 .await
-                .map_err(Fe310JLinkDebugProbeGetOutputError::Flash)?;
+                .map_err(RunError::Flash)?;
 
             log::debug!("Waiting for 1 seconds");
 
@@ -113,14 +111,11 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             // to check its usage)
             // TODO: Use the J-Link software for RTT connection
             let selector: probe_rs::DebugProbeSelector = "1366:1061".try_into().unwrap();
-            let probe = probe_rs::Probe::open(selector)
-                .map_err(Fe310JLinkDebugProbeGetOutputError::OpenProbe)?;
+            let probe = probe_rs::Probe::open(selector).map_err(RunError::OpenProbe)?;
 
             let selector: probe_rs::config::TargetSelector = "riscv".try_into().unwrap();
             let session = Arc::new(Mutex::new(
-                probe
-                    .attach(selector)
-                    .map_err(Fe310JLinkDebugProbeGetOutputError::Attach)?,
+                probe.attach(selector).map_err(RunError::Attach)?,
             ));
 
             // Open the RTT channels

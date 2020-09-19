@@ -21,7 +21,7 @@ pub(super) struct ProbeRsDebugProbe {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum ProbeRsDebugProbeOpenError {
+enum OpenError {
     #[error("Error while opening the probe")]
     OpenProbe(#[source] probe_rs::DebugProbeError),
     #[error("Error while attaching to the probe")]
@@ -29,7 +29,7 @@ enum ProbeRsDebugProbeOpenError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum ProbeRsDebugProbeGetOutputError {
+enum RunError {
     #[error("Error while flashing the device")]
     Flash(#[source] probe_rs::flashing::FileDownloadError),
     #[error("Error while resetting the device")]
@@ -41,13 +41,10 @@ impl ProbeRsDebugProbe {
         probe_sel: probe_rs::DebugProbeSelector,
         target_sel: probe_rs::config::TargetSelector,
     ) -> anyhow::Result<Self> {
-        let probe =
-            probe_rs::Probe::open(probe_sel).map_err(ProbeRsDebugProbeOpenError::OpenProbe)?;
+        let probe = probe_rs::Probe::open(probe_sel).map_err(OpenError::OpenProbe)?;
 
         let session = Arc::new(Mutex::new(
-            probe
-                .attach(target_sel)
-                .map_err(ProbeRsDebugProbeOpenError::Attach)?,
+            probe.attach(target_sel).map_err(OpenError::Attach)?,
         ));
 
         Ok(Self { session })
@@ -78,13 +75,13 @@ impl DebugProbe for ProbeRsDebugProbe {
             })
             .await
             .unwrap()
-            .map_err(ProbeRsDebugProbeGetOutputError::Flash)?;
+            .map_err(RunError::Flash)?;
 
             // Reset the core
             (session.lock().unwrap().core(0))
-                .map_err(ProbeRsDebugProbeGetOutputError::Reset)?
+                .map_err(RunError::Reset)?
                 .reset()
-                .map_err(ProbeRsDebugProbeGetOutputError::Reset)?;
+                .map_err(RunError::Reset)?;
 
             // Attach to RTT
             Ok(attach_rtt(session, &exe, Default::default()).await?)

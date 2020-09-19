@@ -18,7 +18,7 @@ use super::{
 use crate::utils::retry_on_fail;
 
 #[derive(thiserror::Error, Debug)]
-enum KflashDebugProbeOpenError {
+enum OpenError {
     #[error("Error while choosing the serial port to use")]
     ChooseSerial(#[source] ChooseSerialError),
     #[error("Error while opening the serial port '{0}'")]
@@ -34,7 +34,6 @@ enum KflashDebugProbeOpenError {
     Communication(#[source] CommunicationError),
 }
 
-// Maybe we should remove module name prefixes from other type names
 #[derive(thiserror::Error, Debug)]
 enum CommunicationError {
     #[error("Error while controlling the serial port")]
@@ -78,20 +77,20 @@ impl KflashDebugProbe {
             Ok(x) => Ok(x),
             Err(std::env::VarError::NotPresent) => {
                 let valid_board_names = ISP_BOOT_CMDS.iter().map(|x| x.0).collect();
-                Err(KflashDebugProbeOpenError::NoBoardName(valid_board_names))
+                Err(OpenError::NoBoardName(valid_board_names))
             }
-            Err(std::env::VarError::NotUnicode(_)) => Err(
-                KflashDebugProbeOpenError::UnknownBoardName("<invalid UTF-8 string>".to_owned()),
-            ),
+            Err(std::env::VarError::NotUnicode(_)) => Err(OpenError::UnknownBoardName(
+                "<invalid UTF-8 string>".to_owned(),
+            )),
         }?;
         let isp_boot_cmds = ISP_BOOT_CMDS
             .iter()
             .find(|x| x.0 == board)
-            .ok_or_else(|| KflashDebugProbeOpenError::UnknownBoardName(board.clone()))?
+            .ok_or_else(|| OpenError::UnknownBoardName(board.clone()))?
             .1;
 
         let serial = spawn_blocking(|| {
-            let dev = choose_serial().map_err(KflashDebugProbeOpenError::ChooseSerial)?;
+            let dev = choose_serial().map_err(OpenError::ChooseSerial)?;
 
             Serial::from_path(
                 &dev,
@@ -101,7 +100,7 @@ impl KflashDebugProbe {
                     ..Default::default()
                 },
             )
-            .map_err(|e| KflashDebugProbeOpenError::Serial(dev, e.into()))
+            .map_err(|e| OpenError::Serial(dev, e.into()))
         })
         .await
         .unwrap()?;
@@ -114,7 +113,7 @@ impl KflashDebugProbe {
             maix_enter_isp_mode(&mut serial_m.try_lock().unwrap(), isp_boot_cmds).await
         })
         .await
-        .map_err(KflashDebugProbeOpenError::Communication)?;
+        .map_err(OpenError::Communication)?;
         let serial = serial_m.into_inner().unwrap();
 
         let probe = Self {
@@ -160,7 +159,7 @@ impl DebugProbe for KflashDebugProbe {
                 maix_enter_isp_mode(*serial_m.try_lock().unwrap(), isp_boot_cmds).await
             })
             .await
-            .map_err(KflashDebugProbeOpenError::Communication)?;
+            .map_err(RunError::Communication)?;
             drop(serial_m);
 
             // Program the executable image
