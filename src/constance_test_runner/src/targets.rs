@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::{future::Future, path::Path, pin::Pin};
+use std::{fmt, future::Future, path::Path, pin::Pin};
 use tokio::io::AsyncRead;
 
 mod demux;
@@ -42,48 +42,7 @@ type DynAsyncRead<'a> = Pin<Box<dyn AsyncRead + 'a>>;
 pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("nucleo_f401re", &probe_rs::NucleoF401re),
     ("qemu_mps2_an385", &qemu::arm::QemuMps2An385),
-    // QEMU doesn't provide any predefined machine with Armv6-M, so just use
-    // the Armv7-M machine
-    (
-        "qemu_mps2_an385_v6m",
-        &OverrideTargetArch(Arch::CORTEX_M0, qemu::arm::QemuMps2An385),
-    ),
     ("qemu_mps2_an505", &qemu::arm::QemuMps2An505),
-    (
-        "qemu_mps2_an505_v8mml",
-        &OverrideTargetArch(Arch::CORTEX_M33, qemu::arm::QemuMps2An505),
-    ),
-    (
-        "qemu_mps2_an505_v8mbl",
-        &OverrideTargetArch(Arch::CORTEX_M23, qemu::arm::QemuMps2An505),
-    ),
-    (
-        "qemu_mps2_an505_v7em_hf",
-        &OverrideTargetArch(Arch::CORTEX_M4F, qemu::arm::QemuMps2An505),
-    ),
-    (
-        "qemu_mps2_an505_v7m_hf",
-        &OverrideTargetArch(
-            Arch::ArmM {
-                version: ArmMVersion::Armv7M,
-                fpu: true,
-                dsp: false,
-            },
-            qemu::arm::QemuMps2An505,
-        ),
-    ),
-    (
-        "qemu_mps2_an505_v7em",
-        &OverrideTargetArch(Arch::CORTEX_M4, qemu::arm::QemuMps2An505),
-    ),
-    (
-        "qemu_mps2_an505_v7m",
-        &OverrideTargetArch(Arch::CORTEX_M3, qemu::arm::QemuMps2An505),
-    ),
-    (
-        "qemu_mps2_an505_v6m",
-        &OverrideTargetArch(Arch::CORTEX_M0, qemu::arm::QemuMps2An505),
-    ),
     ("qemu_realview_pbx_a9", &qemu::arm::QemuRealviewPbxA9),
     ("gr_peach", &openocd::GrPeach),
     ("qemu_sifive_e_rv32", &qemu::riscv::QemuSiFiveE(Xlen::_32)),
@@ -114,7 +73,7 @@ impl<T: Target> Target for OverrideTargetArch<T> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Arch {
     /// Armv7-A
     Armv7A,
@@ -143,7 +102,7 @@ pub enum Arch {
     },
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ArmMVersion {
     Armv6M,
     Armv7M,
@@ -151,21 +110,53 @@ pub enum ArmMVersion {
     Armv8MMainline,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Xlen {
-    _32,
-    _64,
+    _32 = 32,
+    _64 = 64,
 }
 
 /// A set of build options passed to `rustc` to build an application for some
 /// target specified by [`Arch`].
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct BuildOpt {
     pub target_triple: &'static str,
     pub target_features: String,
 }
 
 impl Arch {
+    const NAMED_ARCHS: &'static [(&'static str, Self)] = &[
+        ("cortex_a9", Self::CORTEX_A9),
+        ("cortex_m0", Self::CORTEX_M0),
+        ("cortex_m3", Self::CORTEX_M3),
+        ("cortex_m4", Self::CORTEX_M4),
+        ("cortex_m4f", Self::CORTEX_M4F),
+        ("cortex_m23", Self::CORTEX_M23),
+        ("cortex_m33", Self::CORTEX_M33),
+        (
+            "rv32i",
+            Self::Riscv {
+                xlen: Xlen::_32,
+                m: false,
+                a: false,
+                c: false,
+                f: false,
+                d: false,
+            },
+        ),
+        (
+            "rv64i",
+            Self::Riscv {
+                xlen: Xlen::_64,
+                m: false,
+                a: false,
+                c: false,
+                f: false,
+                d: false,
+            },
+        ),
+    ];
+
     const CORTEX_A9: Self = Self::Armv7A;
 
     const CORTEX_M0: Self = Self::ArmM {
@@ -377,6 +368,38 @@ impl Arch {
             ),
         }
     }
+
+    fn with_feature_by_name(self, name: &str, enable: bool) -> Option<Self> {
+        macro features(
+            Self::$variant:ident {
+                // Allow these features to be modified
+                $($feat:ident),*;
+                // These fields are left untouched
+                $($extra:ident),*
+            }
+        ) {{
+            $( let mut $feat = $feat; )*
+            match name {
+                $(
+                    stringify!($feat) => $feat = enable,
+                )*
+                _ => return None,
+            }
+            Some(Self::$variant { $($feat,)* $($extra,)* })
+        }}
+        match self {
+            Self::Armv7A => None,
+            Self::ArmM { fpu, dsp, version } => features!(Self::ArmM { fpu, dsp; version }),
+            Self::Riscv {
+                m,
+                a,
+                c,
+                f,
+                d,
+                xlen,
+            } => features!(Self::Riscv { m, a, c, f, d; xlen }),
+        }
+    }
 }
 
 impl BuildOpt {
@@ -392,6 +415,138 @@ impl BuildOpt {
             target_features: crate::utils::CommaSeparatedNoSpace(seq.iter().filter_map(|x| *x))
                 .to_string(),
             ..self
+        }
+    }
+}
+
+impl fmt::Display for Arch {
+    fn fmt(&self, fm: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Armv7A => write!(fm, "cortex_a9"),
+            Self::ArmM {
+                mut fpu,
+                mut dsp,
+                version,
+            } => {
+                match (version, fpu, dsp) {
+                    (ArmMVersion::Armv6M, _, _) => write!(fm, "cortex_m0")?,
+                    (ArmMVersion::Armv7M, true, true) => {
+                        write!(fm, "cortex_m4f")?;
+                        fpu = false;
+                        dsp = false;
+                    }
+                    (ArmMVersion::Armv7M, false, true) => {
+                        write!(fm, "cortex_m4")?;
+                        dsp = false;
+                    }
+                    (ArmMVersion::Armv7M, _, _) => write!(fm, "cortex_m3")?,
+                    (ArmMVersion::Armv8MBaseline, _, _) => write!(fm, "cortex_m23")?,
+                    (ArmMVersion::Armv8MMainline, _, _) => write!(fm, "cortex_m33")?,
+                }
+                if fpu {
+                    write!(fm, "+fpu")?;
+                }
+                if dsp {
+                    write!(fm, "+dsp")?;
+                }
+                Ok(())
+            }
+            Self::Riscv {
+                m,
+                a,
+                c,
+                f,
+                d,
+                xlen,
+            } => {
+                write!(fm, "rv{}i", *xlen as u8)?;
+                if *m {
+                    write!(fm, "+m")?;
+                }
+                if *a {
+                    write!(fm, "+a")?;
+                }
+                if *c {
+                    write!(fm, "+c")?;
+                }
+                if *f {
+                    write!(fm, "+f")?;
+                }
+                if *d {
+                    write!(fm, "+d")?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ArchParseError {
+    #[error("Unknown base architecture: '{0}'")]
+    UnknownBase(String),
+    #[error("Unknown feature: '{0}'")]
+    UnknownFeature(String),
+}
+
+impl std::str::FromStr for Arch {
+    type Err = ArchParseError;
+
+    /// Parse a target architecture string.
+    ///
+    /// A target architecture string should be specified in the following form:
+    /// `base+feat1-feat2`
+    ///
+    ///  - `base` chooses a named architecture from `NAMED_ARCHS`.
+    ///  - `+feat1` enables the feature `feat1`.
+    ///  - `-feat2` disables the feature `feat2`.
+    ///
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut i = s.find(&['-', '+'][..]).unwrap_or_else(|| s.len());
+        let base = &s[0..i];
+        let mut arch = Self::NAMED_ARCHS
+            .iter()
+            .find(|x| x.0 == base)
+            .ok_or_else(|| ArchParseError::UnknownBase(base.to_owned()))?
+            .1;
+
+        while i < s.len() {
+            let add = match s.as_bytes()[i] {
+                b'+' => true,
+                b'-' => false,
+                _ => unreachable!(),
+            };
+            i += 1;
+
+            // Find the next `-` or `+`
+            let k = s[i..]
+                .find(&['-', '+'][..])
+                .map(|k| k + i)
+                .unwrap_or_else(|| s.len());
+
+            let feature = &s[i..k];
+
+            arch = arch
+                .with_feature_by_name(feature, add)
+                .ok_or_else(|| ArchParseError::UnknownFeature(feature.to_owned()))?;
+
+            i = k;
+        }
+
+        Ok(arch)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn arch_round_trip() {
+        for (_, arch) in Arch::NAMED_ARCHS {
+            let arch_str = arch.to_string();
+            let arch2: Arch = arch_str.parse().unwrap();
+            assert_eq!(*arch, arch2);
         }
     }
 }

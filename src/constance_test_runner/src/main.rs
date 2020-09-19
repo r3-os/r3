@@ -1,5 +1,6 @@
 #![feature(future_readiness_fns)] // `std::future::ready`
 #![feature(or_patterns)] // `|` in subpatterns
+#![feature(decl_macro)] // `macro`
 use std::{
     env,
     path::{Path, PathBuf},
@@ -52,17 +53,25 @@ enum MainError {
     Run(String, #[source] anyhow::Error),
     #[error("Test failed.")]
     TestFail,
-    #[error("The target architecture '{0:?}' is invalid or unsupported.")]
+    #[error("The target architecture '{0}' is invalid or unsupported.")]
     BadTarget(targets::Arch),
 }
 
 /// Test runner for the Arm-M port of Constance
 #[derive(StructOpt)]
 struct Opt {
-    /// Target type
+    /// Target chip/board
     #[structopt(short = "t", long = "target", parse(try_from_str = try_parse_target),
         possible_values(&TARGET_POSSIBLE_VALUES))]
     target: &'static dyn targets::Target,
+    /// Override target architecture
+    ///
+    /// See the documentation of `Arch::from_str` for full syntax.
+    #[structopt(short = "a", long = "arch", parse(try_from_str = std::str::FromStr::from_str))]
+    target_arch: Option<targets::Arch>,
+    /// Print the list of supported targets and their architecture strings
+    #[structopt(long = "help-targets")]
+    help_targets: bool,
     /// If specified, only run tests containing this string in their names
     ///
     /// See the documentation of `TestFilter::from_str` for full syntax.
@@ -108,6 +117,15 @@ async fn main_inner() -> anyhow::Result<()> {
     // Parse arguments
     let opt = Opt::from_args();
 
+    // If `--help-targets` is specified, print all targets and exit,
+    if opt.help_targets {
+        println!("Supported targets:");
+        for (name, target) in targets::TARGETS {
+            println!("  {:30}{}", name, target.target_arch());
+        }
+        return Ok(());
+    }
+
     // Hard-coded paths and commands
     let cargo_cmd = "cargo";
 
@@ -119,16 +137,23 @@ async fn main_inner() -> anyhow::Result<()> {
             .expect("Couldn't get the parent of `CARGO_MANIFEST_DIR`")
     };
 
-    let target_arch = opt.target.target_arch();
+    let target_arch = opt.target_arch.unwrap_or_else(|| opt.target.target_arch());
+    log::debug!("target_arch = {}", target_arch);
+
     let target_arch_opt = target_arch
         .build_opt()
         .ok_or(MainError::BadTarget(target_arch))?;
+    log::debug!("target_arch_opt = {:?}", target_arch_opt);
+
     let driver_name = match target_arch {
         targets::Arch::Armv7A => "constance_port_arm_test_driver",
         targets::Arch::ArmM { .. } => "constance_port_arm_m_test_driver",
         targets::Arch::Riscv { .. } => "constance_port_riscv_test_driver",
     };
+
     let driver_path = driver_base_path.join(driver_name);
+    log::debug!("driver_name = {:?}", driver_name);
+    log::debug!("driver_path = {:?}", driver_path);
 
     if !driver_path.is_dir() {
         return Err(MainError::BadDriverPath(driver_path).into());
