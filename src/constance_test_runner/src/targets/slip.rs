@@ -37,13 +37,13 @@ pub enum FrameExtractorProtocolError {
 }
 
 impl FrameExtractorState {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             inner: FrameExtractorStateInner::Initial,
         }
     }
 
-    pub fn process(
+    fn process(
         &mut self,
         b: u8,
     ) -> Result<Option<FrameExtractorAction>, FrameExtractorProtocolError> {
@@ -152,7 +152,7 @@ impl<T: AsyncBufRead + Unpin> Future for ReadFrame<'_, T> {
 }
 
 /// Apply SLIP framing to `data`, appending the result to `out`.
-pub fn escape_frame(data: &[u8], out: &mut Vec<u8>) {
+fn escape_frame(data: &[u8], out: &mut Vec<u8>) {
     let extra_len = data.iter().filter(|x| matches!(x, 0xdb | 0xc0)).count();
     out.reserve(data.len() + extra_len + 2);
     out.push(0xc0);

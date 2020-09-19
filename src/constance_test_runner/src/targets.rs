@@ -134,13 +134,11 @@ impl Target for NucleoF401re {
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             spawn_blocking(|| {
-                match probe_rs::ProbeRsDebugProbe::new(
+                probe_rs::ProbeRsDebugProbe::new(
                     "0483:374b".try_into().unwrap(),
                     "stm32f401re".into(),
-                ) {
-                    Ok(x) => Ok(Box::new(x) as _),
-                    Err(x) => Err(x.into()),
-                }
+                )
+                .map(|x| Box::new(x) as _)
             })
             .await
             .unwrap()
@@ -558,10 +556,9 @@ impl Target for Maix {
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
-            match kflash::KflashDebugProbe::new().await {
-                Ok(x) => Ok(Box::new(x) as _),
-                Err(x) => Err(x.into()),
-            }
+            kflash::KflashDebugProbe::new()
+                .await
+                .map(|x| Box::new(x) as _)
         })
     }
 }

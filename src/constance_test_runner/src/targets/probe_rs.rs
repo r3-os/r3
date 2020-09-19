@@ -21,7 +21,7 @@ pub(super) struct ProbeRsDebugProbe {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub(super) enum ProbeRsDebugProbeOpenError {
+enum ProbeRsDebugProbeOpenError {
     #[error("Error while opening the probe")]
     OpenProbe(#[source] probe_rs::DebugProbeError),
     #[error("Error while attaching to the probe")]
@@ -40,7 +40,7 @@ impl ProbeRsDebugProbe {
     pub(super) fn new(
         probe_sel: probe_rs::DebugProbeSelector,
         target_sel: probe_rs::config::TargetSelector,
-    ) -> Result<Self, ProbeRsDebugProbeOpenError> {
+    ) -> anyhow::Result<Self> {
         let probe =
             probe_rs::Probe::open(probe_sel).map_err(ProbeRsDebugProbeOpenError::OpenProbe)?;
 

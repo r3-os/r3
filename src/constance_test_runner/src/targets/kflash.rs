@@ -18,7 +18,7 @@ use super::{
 use crate::utils::retry_on_fail;
 
 #[derive(thiserror::Error, Debug)]
-pub(super) enum KflashDebugProbeOpenError {
+enum KflashDebugProbeOpenError {
     #[error("Error while choosing the serial port to use")]
     ChooseSerial(#[source] ChooseSerialError),
     #[error("Error while opening the serial port '{0}'")]
@@ -36,7 +36,7 @@ pub(super) enum KflashDebugProbeOpenError {
 
 // Maybe we should remove module name prefixes from other type names
 #[derive(thiserror::Error, Debug)]
-pub(super) enum CommunicationError {
+enum CommunicationError {
     #[error("Error while controlling the serial port")]
     Serial(#[source] tokio_serial::Error),
     #[error("Error while reading from or writing to the serial port")]
@@ -72,20 +72,18 @@ pub(crate) struct KflashDebugProbe {
 }
 
 impl KflashDebugProbe {
-    pub(super) async fn new() -> Result<Self, KflashDebugProbeOpenError> {
+    pub(super) async fn new() -> anyhow::Result<Self> {
         // Choose the ISP sequence specific to a target board
         let board = match std::env::var("MAIX_BOARD") {
-            Ok(x) => x,
+            Ok(x) => Ok(x),
             Err(std::env::VarError::NotPresent) => {
                 let valid_board_names = ISP_BOOT_CMDS.iter().map(|x| x.0).collect();
-                return Err(KflashDebugProbeOpenError::NoBoardName(valid_board_names));
+                Err(KflashDebugProbeOpenError::NoBoardName(valid_board_names))
             }
-            Err(std::env::VarError::NotUnicode(_)) => {
-                return Err(KflashDebugProbeOpenError::UnknownBoardName(
-                    "<invalid UTF-8 string>".to_owned(),
-                ));
-            }
-        };
+            Err(std::env::VarError::NotUnicode(_)) => Err(
+                KflashDebugProbeOpenError::UnknownBoardName("<invalid UTF-8 string>".to_owned()),
+            ),
+        }?;
         let isp_boot_cmds = ISP_BOOT_CMDS
             .iter()
             .find(|x| x.0 == board)
@@ -95,7 +93,7 @@ impl KflashDebugProbe {
         let serial = spawn_blocking(|| {
             let dev = choose_serial().map_err(KflashDebugProbeOpenError::ChooseSerial)?;
 
-            Ok(Serial::from_path(
+            Serial::from_path(
                 &dev,
                 &SerialPortSettings {
                     baud_rate: 115200,
@@ -103,7 +101,7 @@ impl KflashDebugProbe {
                     ..Default::default()
                 },
             )
-            .map_err(|e| KflashDebugProbeOpenError::Serial(dev, e.into()))?)
+            .map_err(|e| KflashDebugProbeOpenError::Serial(dev, e.into()))
         })
         .await
         .unwrap()?;
@@ -420,7 +418,7 @@ async fn write_request(
 }
 
 #[derive(Debug, Copy, Clone)]
-pub(super) enum IspReasonCode {
+enum IspReasonCode {
     Default,
     Ok,
     BadDataLen,
