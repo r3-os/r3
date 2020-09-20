@@ -145,6 +145,12 @@ jobs:
           rustup target add riscv32imac-unknown-none-elf
           rustup target add riscv64imac-unknown-none-elf riscv64gc-unknown-none-elf
 
+      - name: Cache Test Runner's Binary
+        uses: actions/cache@v2
+        with:
+          path: ./target/debug
+          key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/constance_test_runner/**', 'src/constance_test_suite/**') }}
+
       - name: Test
         run: |
           cargo run --package constance_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --log-level debug
