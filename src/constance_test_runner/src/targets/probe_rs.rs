@@ -1,8 +1,10 @@
 use anyhow::Result;
+use futures_core::ready;
 use std::{
     convert::TryInto,
     future::Future,
     io::Write,
+    mem::replace,
     path::Path,
     pin::Pin,
     sync::{Arc, Mutex},
@@ -10,8 +12,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::{
-    io::AsyncRead,
-    task::spawn_blocking,
+    io::{AsyncBufRead, AsyncRead},
+    task::{spawn_blocking, JoinHandle},
     time::{delay_for, Delay},
 };
 
@@ -264,10 +266,36 @@ impl Drop for CoreHaltGuard {
 
 struct ReadRtt {
     session: Arc<Mutex<probe_rs::Session>>,
-    rtt: probe_rs_rtt::Rtt,
-    poll_delay: Delay,
     options: RttOptions,
+    st: ReadRttSt,
 }
+
+enum ReadRttSt {
+    /// `ReadRtt` has some data in a buffer and is ready to return it through
+    /// `<ReadRtt as AsyncRead>`.
+    Idle {
+        buf: ReadRttBuf,
+        rtt: Box<probe_rs_rtt::Rtt>,
+        pos: usize,
+        len: usize,
+    },
+
+    /// `ReadRtt` is currently fetching new data from RTT channels.
+    Read {
+        join_handle: JoinHandle<tokio::io::Result<(ReadRttBuf, usize, Box<probe_rs_rtt::Rtt>)>>,
+    },
+
+    /// `ReadRtt` is waiting for some time before trying reading again.
+    PollDelay {
+        buf: ReadRttBuf,
+        rtt: Box<probe_rs_rtt::Rtt>,
+        delay: Delay,
+    },
+
+    Invalid,
+}
+
+type ReadRttBuf = Box<[u8; 1024]>;
 
 impl ReadRtt {
     fn new(
@@ -277,9 +305,13 @@ impl ReadRtt {
     ) -> Self {
         Self {
             session,
-            rtt,
-            poll_delay: delay_for(POLL_INTERVAL),
             options,
+            st: ReadRttSt::Idle {
+                buf: Box::new([0u8; 1024]),
+                rtt: Box::new(rtt),
+                pos: 0,
+                len: 0,
+            },
         }
     }
 }
@@ -287,66 +319,163 @@ impl ReadRtt {
 impl AsyncRead for ReadRtt {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context,
+        cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<tokio::io::Result<usize>> {
-        let this = &mut *self;
+        // Naïve implementation of `poll_read` that uses `<Self as AsyncBufRead>`
+        let my_buf = match ready!(Pin::as_mut(&mut self).poll_fill_buf(cx)) {
+            Ok(x) => x,
+            Err(e) => return Poll::Ready(Err(e)),
+        };
+        let num_bytes_read = my_buf.len().min(buf.len());
+        buf[..num_bytes_read].copy_from_slice(&my_buf[..num_bytes_read]);
+        Pin::as_mut(&mut self).consume(num_bytes_read);
+        Poll::Ready(Ok(num_bytes_read))
+    }
+}
 
-        // Read up to `buf.len()` bytes
-        let mut pos = 0;
-        for (i, channel) in this.rtt.up_channels().iter().enumerate() {
-            if pos >= buf.len() {
-                break;
-            }
-            match {
-                let _halt_guard = if this.options.halt_on_access {
-                    // TODO: Don't block
-                    Some(match CoreHaltGuard::new(this.session.clone()) {
-                        Ok(x) => x,
-                        Err(e) => {
-                            return Poll::Ready(Err(tokio::io::Error::new(
-                                tokio::io::ErrorKind::Other,
-                                e,
-                            )))
-                        }
-                    })
-                } else {
-                    None
-                };
-                channel.read(&mut buf[pos..])
-            } {
-                Ok(num_read_bytes) => {
-                    if i == 0 {
-                        // Terminal channel
-                        if num_read_bytes > 0 {
-                            log::trace!(
-                                "Read {:?} from {:?}",
-                                String::from_utf8_lossy(&buf[pos..][..num_read_bytes]),
-                                (channel.number(), channel.name()),
-                            );
-                        }
-                        pos += num_read_bytes;
+impl AsyncBufRead for ReadRtt {
+    fn poll_fill_buf(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<tokio::io::Result<&[u8]>> {
+        let this = Pin::into_inner(self);
+
+        loop {
+            match &mut this.st {
+                ReadRttSt::Idle { pos, len, .. } => {
+                    if *pos == *len {
+                        // Buffer is empty; start reading RTT channels
+                        let (mut buf, mut rtt) = match replace(&mut this.st, ReadRttSt::Invalid) {
+                            ReadRttSt::Idle { buf, rtt, .. } => (buf, rtt),
+                            _ => unreachable!(),
+                        };
+
+                        let halt_on_access = this.options.halt_on_access;
+                        let session = this.session.clone();
+
+                        // Reading RTT is a blocking operation, so do it in a
+                        // separate thread
+                        let join_handle = spawn_blocking(move || {
+                            let num_read_bytes =
+                                Self::read_inner(session, &mut rtt, &mut *buf, halt_on_access)?;
+
+                            // Send the buffer back to the `ReadRtt`
+                            Ok((buf, num_read_bytes, rtt))
+                        });
+
+                        this.st = ReadRttSt::Read { join_handle };
                     } else {
-                        // Log channel
-                        std::io::stdout()
-                            .write_all(&buf[pos..][..num_read_bytes])
-                            .unwrap();
+                        // We have some data to return.
+                        //
+                        // Borrow `this.st` again, this time using the full
+                        // lifetime of `self`.
+                        if let ReadRttSt::Idle { buf, pos, len, .. } = &this.st {
+                            return Poll::Ready(Ok(&buf[..*len][*pos..]));
+                        } else {
+                            unreachable!()
+                        }
                     }
                 }
-                Err(e) => {
-                    return Poll::Ready(Err(tokio::io::Error::new(tokio::io::ErrorKind::Other, e)));
+
+                ReadRttSt::Read { join_handle } => {
+                    let (buf, num_read_bytes, rtt) =
+                        match ready!(Pin::new(join_handle).poll(cx)).unwrap() {
+                            Ok(x) => x,
+                            Err(e) => return Poll::Ready(Err(e)),
+                        };
+
+                    this.st = if num_read_bytes == 0 {
+                        // If no bytes were read, wait for a while and try again
+                        ReadRttSt::PollDelay {
+                            buf,
+                            rtt,
+                            delay: delay_for(POLL_INTERVAL),
+                        }
+                    } else {
+                        ReadRttSt::Idle {
+                            buf,
+                            rtt,
+                            pos: 0,
+                            len: num_read_bytes,
+                        }
+                    };
+                }
+
+                ReadRttSt::PollDelay { delay, .. } => {
+                    ready!(Pin::new(delay).poll(cx));
+
+                    let (buf, rtt) = match replace(&mut this.st, ReadRttSt::Invalid) {
+                        ReadRttSt::PollDelay { buf, rtt, .. } => (buf, rtt),
+                        _ => unreachable!(),
+                    };
+
+                    this.st = ReadRttSt::Idle {
+                        buf,
+                        rtt,
+                        pos: 0,
+                        len: 0,
+                    };
+                }
+
+                ReadRttSt::Invalid => unreachable!(),
+            }
+        }
+    }
+
+    fn consume(mut self: Pin<&mut Self>, amt: usize) {
+        match &mut self.st {
+            ReadRttSt::Idle { pos, len, .. } => {
+                *pos += amt;
+                assert!(*pos <= *len);
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ReadRtt {
+    fn read_inner(
+        session: Arc<Mutex<probe_rs::Session>>,
+        rtt: &mut probe_rs_rtt::Rtt,
+        buf: &mut [u8],
+        halt_on_access: bool,
+    ) -> tokio::io::Result<usize> {
+        let _halt_guard = if halt_on_access {
+            Some(
+                CoreHaltGuard::new(session)
+                    .map_err(|e| tokio::io::Error::new(tokio::io::ErrorKind::Other, e))?,
+            )
+        } else {
+            None
+        };
+
+        let mut num_read_bytes = 0;
+
+        for (i, channel) in rtt.up_channels().iter().enumerate() {
+            let num_ch_read_bytes = channel
+                .read(buf)
+                .map_err(|e| tokio::io::Error::new(tokio::io::ErrorKind::Other, e))?;
+
+            if num_ch_read_bytes != 0 {
+                log::trace!(
+                    "Read {:?} from {:?}",
+                    String::from_utf8_lossy(&buf[..num_ch_read_bytes]),
+                    (channel.number(), channel.name()),
+                );
+
+                if i == 0 {
+                    // Terminal channel - send it to `ReadRtt`.
+                    // Don't bother checking other channels because we don't
+                    // want `buf` to be overwritten with a log channel's payload.
+                    num_read_bytes = num_ch_read_bytes;
+                    break;
+                } else {
+                    // Log channel - send it to stdout
+                    std::io::stdout()
+                        .write_all(&buf[..num_ch_read_bytes])
+                        .unwrap();
                 }
             }
         }
 
-        if pos == 0 {
-            // Retry later
-            while let Poll::Ready(()) = Pin::new(&mut this.poll_delay).poll(cx) {
-                this.poll_delay = delay_for(POLL_INTERVAL);
-            }
-            Poll::Pending
-        } else {
-            Poll::Ready(Ok(pos))
-        }
+        Ok(num_read_bytes)
     }
 }
