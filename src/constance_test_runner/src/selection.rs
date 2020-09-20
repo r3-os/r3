@@ -111,7 +111,7 @@ impl std::str::FromStr for TestFilter {
     ///  - `needle` chooses the test cases whose names contain `needle`.
     ///  - `+feat1` requires the feature `feat1`.
     ///  - `-feat2` excludes the feature `feat1`.
-    ///  - `-prop=value` contains the property `prop` to `value`. (This is not
+    ///  - `-prop=value` constrains the property `prop` to `value`. (This is not
     ///    support yet.)
     ///
     fn from_str(s: &str) -> Result<Self, Self::Err> {

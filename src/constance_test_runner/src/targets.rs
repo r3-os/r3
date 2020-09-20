@@ -16,7 +16,7 @@ pub trait Target: Send + Sync {
     fn target_arch(&self) -> Arch;
 
     /// Get the additional Cargo features to enable when building
-    /// `constance_port_arm_m_test_driver`.
+    /// `constance_port_*_test_driver`.
     fn cargo_features(&self) -> &[&str];
 
     /// Generate the `memory.x` file to be included by the linker script of
