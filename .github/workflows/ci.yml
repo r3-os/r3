@@ -104,43 +104,43 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_realview_pbx_a9 -l debug
+          args: --package constance_test_runner -- --target qemu_realview_pbx_a9 --log-level debug
 
       - name: Test (MPS2+ AN505, Armv8-M Mainline + FPU)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an505 -l debug
+          args: --package constance_test_runner -- --target qemu_mps2_an505 --log-level debug
 
       - name: Test (MPS2+ AN505, Armv8-M Mainline)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m33 -l debug
+          args: --package constance_test_runner -- --target qemu_mps2_an505 --arch cortex_m33 --log-level debug
 
       - name: Test (MPS2+ AN505, Armv8-M Baseline)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m23 -l debug
+          args: --package constance_test_runner -- --target qemu_mps2_an505 --arch cortex_m23 --log-level debug
 
       - name: Test (MPS2+ AN505, Armv7-M + FPU + DSP)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m4f -l debug
+          args: --package constance_test_runner -- --target qemu_mps2_an505 --arch cortex_m4f --log-level debug
 
       - name: Test (MPS2+ AN385, Armv7-M)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an385 -l debug
+          args: --package constance_test_runner -- --target qemu_mps2_an385 --log-level debug
 
       - name: Test (MPS2+ AN385, Armv6-M)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an385 -a cortex_m0 -l debug
+          args: --package constance_test_runner -- --target qemu_mps2_an385 --arch cortex_m0 --log-level debug
 
   # Run tests on a freestanding RISC-V target
   test-freestanding-riscv:
@@ -178,16 +178,16 @@ jobs:
 
       - name: Test (SiFive U, RV64GC)
         run: |
-          cargo run -p constance_test_runner -- -t qemu_sifive_u_rv64 -l debug
+          cargo run --package constance_test_runner -- --target qemu_sifive_u_rv64 --log-level debug
 
       - name: Test (SiFive E, RV64IMAC)
         run: |
-          cargo run -p constance_test_runner -- -t qemu_sifive_e_rv64 -l debug
+          cargo run --package constance_test_runner -- --target qemu_sifive_e_rv64 --log-level debug
 
       - name: Test (SiFive U, RV32GC)
         run: |
-          cargo run -p constance_test_runner -- -t qemu_sifive_u_rv32 -l debug
+          cargo run --package constance_test_runner -- --target qemu_sifive_u_rv32 --log-level debug
 
       - name: Test (SiFive E, RV32IMAC)
         run: |
-          cargo run -p constance_test_runner -- -t qemu_sifive_e_rv32 -l debug
+          cargo run --package constance_test_runner -- --target qemu_sifive_e_rv32 --log-level debug
