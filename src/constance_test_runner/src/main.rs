@@ -392,6 +392,13 @@ async fn main_inner() -> anyhow::Result<()> {
         }
     }
 
+    log::info!(
+        "Summary: {} success, {} fail, {} skipped",
+        test_runs.len() - failed_tests.len() - tests_skipped_to_fail_fast.len(),
+        failed_tests.len(),
+        tests_skipped_to_fail_fast.len(),
+    );
+
     if !failed_tests.is_empty() {
         log::error!("Failed tests:");
 
@@ -408,6 +415,8 @@ async fn main_inner() -> anyhow::Result<()> {
 
         return Err(MainError::TestFail.into());
     }
+
+    assert!(tests_skipped_to_fail_fast.is_empty());
 
     Ok(())
 }
