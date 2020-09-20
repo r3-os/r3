@@ -155,6 +155,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
+          components: rust-src
 
       - name: Install Dependencies (Linux)
         run: |
