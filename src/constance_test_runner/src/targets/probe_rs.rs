@@ -261,9 +261,19 @@ impl CoreHaltGuard {
 impl Drop for CoreHaltGuard {
     fn drop(&mut self) {
         let mut session = self.0.lock().unwrap();
-        // TODO: Don't `unwrap` or ignore an error
-        let mut core = session.core(0).unwrap();
-        let _ = core.run();
+        let mut core = match session.core(0) {
+            Ok(x) => x,
+            Err(e) => {
+                log::warn!(
+                    "Failed to get the core object while restarting the core (ignored): {:?}",
+                    e
+                );
+                return;
+            }
+        };
+        if let Err(e) = core.run() {
+            log::warn!("Failed to restart the core (ignored): {:?}", e);
+        }
     }
 }
 
