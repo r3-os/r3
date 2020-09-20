@@ -88,6 +88,9 @@ struct Opt {
     /// Display build progress and warnings
     #[structopt(short = "v")]
     verbose: bool,
+    /// Keep going until N tests fail (0 means infinity)
+    #[structopt(short = "k", long = "keep-going", default_value = "5")]
+    keep_going: usize,
 }
 
 lazy_static::lazy_static! {
@@ -245,8 +248,15 @@ async fn main_inner() -> anyhow::Result<()> {
     log::debug!("exe_path = '{}'", exe_path.display());
 
     let mut failed_tests = Vec::new();
+    let mut tests_skipped_to_fail_fast = Vec::new();
 
     for test_run in test_runs.iter() {
+        if opt.keep_going != 0 && failed_tests.len() >= opt.keep_going {
+            // Skip all remaining tests if a certain number of tests have failed
+            tests_skipped_to_fail_fast.push(test_run.to_string());
+            continue;
+        }
+
         let full_test_name = test_run.case.to_string();
         log::info!(" - {}", test_run);
 
@@ -387,6 +397,13 @@ async fn main_inner() -> anyhow::Result<()> {
 
         for test_run_name in failed_tests {
             log::error!(" - {}", test_run_name);
+        }
+
+        if !tests_skipped_to_fail_fast.is_empty() {
+            log::warn!("Skipped tests:");
+            for test_run_name in tests_skipped_to_fail_fast {
+                log::warn!(" - {}", test_run_name);
+            }
         }
 
         return Err(MainError::TestFail.into());
