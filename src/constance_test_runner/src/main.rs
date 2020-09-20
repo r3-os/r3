@@ -265,6 +265,7 @@ async fn main_inner() -> anyhow::Result<()> {
         } else {
             format!("{} -C target-feature={}", driver_rustflags, target_features)
         };
+        log::debug!("target_features = {:?}", target_features);
 
         // Build the test driver
         log::debug!("Building the test");
@@ -298,6 +299,14 @@ async fn main_inner() -> anyhow::Result<()> {
                     LogLevel::Trace => "--features=log/max_level_trace",
                 })
                 .args(if opt.verbose { None } else { Some("-q") })
+                .args(if target_features.is_empty() {
+                    None
+                } else {
+                    log::debug!(
+                        "Specifying `-Zbuild-std=core` because of a custom target feature set"
+                    );
+                    Some("-Zbuild-std=core")
+                })
                 .env(
                     // TODO: Rename this to `CONSTANCE_PORT_TEST_DRIVER_LINK_SEARCH`
                     "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",
