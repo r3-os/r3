@@ -65,19 +65,6 @@ impl CmdBuilder {
         self
     }
 
-    pub fn envs<I, S, V>(mut self, envs: I) -> Self
-    where
-        I: IntoIterator<Item = (S, V)>,
-        S: AsRef<OsStr>,
-        V: AsRef<OsStr>,
-    {
-        self.env.extend(
-            envs.into_iter()
-                .map(|(key, val)| (key.as_ref().to_owned(), val.as_ref().to_owned())),
-        );
-        self
-    }
-
     fn build_command(&self) -> Command {
         log::debug!(
             "Executing the command {:?} with the environment {:?}",

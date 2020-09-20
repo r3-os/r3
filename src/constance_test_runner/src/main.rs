@@ -145,14 +145,21 @@ async fn main_inner() -> anyhow::Result<()> {
         .ok_or(MainError::BadTarget(target_arch))?;
     log::debug!("target_arch_opt = {:?}", target_arch_opt);
 
-    let driver_name = match target_arch {
-        targets::Arch::Armv7A => "constance_port_arm_test_driver",
-        targets::Arch::ArmM { .. } => "constance_port_arm_m_test_driver",
-        targets::Arch::Riscv { .. } => "constance_port_riscv_test_driver",
+    let (driver_name, driver_rustflags) = match target_arch {
+        targets::Arch::Armv7A => (
+            "constance_port_arm_test_driver",
+            "-C link-arg=-Tlink_ram_harvard.x",
+        ),
+        targets::Arch::ArmM { .. } => ("constance_port_arm_m_test_driver", "-C link-arg=-Tlink.x"),
+        targets::Arch::Riscv { .. } => (
+            "constance_port_riscv_test_driver",
+            "-C link-arg=-Tmemory.x -C link-arg=-Tlink.x",
+        ),
     };
 
     let driver_path = driver_base_path.join(driver_name);
     log::debug!("driver_name = {:?}", driver_name);
+    log::debug!("driver_rustflags = {:?}", driver_rustflags);
     log::debug!("driver_path = {:?}", driver_path);
 
     if !driver_path.is_dir() {
@@ -254,22 +261,9 @@ async fn main_inner() -> anyhow::Result<()> {
         // Derive `RUSTFLAGS`.
         let target_features = &target_arch_opt.target_features;
         let rustflags = if target_features.is_empty() {
-            // Use the default value specified by `.cargo/config.toml` of the
-            // test driver crate
-            None
+            driver_rustflags.to_owned()
         } else {
-            // Construct `RUSTFLAGS` from scratch.
-            // TODO: The fixed part is currently based on `config.toml` of
-            //       `constance_port_riscv_test_driver`. Make it adaptable to
-            //       other targets. Maybe do this whether `target_features` is
-            //       empty or not? (And get rid of `.cargo/config.toml`?)
-            Some((
-                "RUSTFLAGS",
-                format!(
-                    "-C link-arg=-Tmemory.x -C link-arg=-Tlink.x -C target-feature={}",
-                    target_features,
-                ),
-            ))
+            format!("{} -C target-feature={}", driver_rustflags, target_features)
         };
 
         // Build the test driver
@@ -310,7 +304,7 @@ async fn main_inner() -> anyhow::Result<()> {
                     link_dir.path(),
                 )
                 .env("CONSTANCE_TEST", &full_test_name)
-                .envs(rustflags);
+                .env("RUSTFLAGS", rustflags);
             if opt.verbose {
                 cmd.spawn_expecting_success().await
             } else {
