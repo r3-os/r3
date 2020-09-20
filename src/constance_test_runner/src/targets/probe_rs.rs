@@ -185,25 +185,28 @@ pub async fn attach_rtt(
     // Attach to RTT
     let start = Instant::now();
     let rtt = loop {
-        match {
-            let _halt_guard = if options.halt_on_access {
-                let session = session.clone();
-                Some(
-                    spawn_blocking(move || CoreHaltGuard::new(session))
-                        .await
-                        .unwrap()
-                        .map_err(AttachRttError::HaltCore)?,
-                )
+        let session = session.clone();
+        let halt_on_access = options.halt_on_access;
+        let rtt_scan_region = rtt_scan_region.clone();
+
+        let result = spawn_blocking(move || {
+            let _halt_guard = if halt_on_access {
+                Some(CoreHaltGuard::new(session.clone()).map_err(AttachRttError::HaltCore)?)
             } else {
                 None
             };
-            probe_rs_rtt::Rtt::attach_region(session.clone(), &rtt_scan_region)
-        } {
-            Ok(rtt) => break rtt,
-            Err(probe_rs_rtt::Error::ControlBlockNotFound) => {}
-            Err(e) => {
-                return Err(AttachRttError::AttachRtt(e).into());
+
+            match probe_rs_rtt::Rtt::attach_region(session, &rtt_scan_region) {
+                Ok(rtt) => Ok(Some(rtt)),
+                Err(probe_rs_rtt::Error::ControlBlockNotFound) => Ok(None),
+                Err(e) => Err(AttachRttError::AttachRtt(e).into()),
             }
+        })
+        .await
+        .unwrap()?;
+
+        if let Some(rtt) = result {
+            break rtt;
         }
 
         if start.elapsed() > RTT_ATTACH_TIMEOUT {
