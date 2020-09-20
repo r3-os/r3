@@ -1,5 +1,6 @@
 use std::{
     ffi::{OsStr, OsString},
+    fmt,
     process::{ExitStatus, Stdio},
 };
 use thiserror::Error;
@@ -10,17 +11,17 @@ use tokio::{
 
 #[derive(Error, Debug)]
 pub enum SubprocessError {
-    #[error("Could not execute the command {cmd:?}")]
+    #[error("Could not execute command `{cmd}`")]
     Spawn {
         cmd: Cmd,
         #[source]
         error: std::io::Error,
     },
 
-    #[error("The command {cmd:?} returned {status}")]
+    #[error("Command `{cmd}` returned {status}")]
     FailStatus { cmd: Cmd, status: ExitStatus },
 
-    #[error("Failed to send input to the command {cmd:?}")]
+    #[error("Failed to send input to command `{cmd}`")]
     WriteInput {
         cmd: Cmd,
         #[source]
@@ -67,9 +68,9 @@ impl CmdBuilder {
 
     fn build_command(&self) -> Command {
         log::debug!(
-            "Executing the command {:?} with the environment {:?}",
-            self.cmd,
-            self.env
+            "Executing command `{}` with environment `{}`",
+            DisplayCmd(&self.cmd),
+            DisplayEnvs(&self.env)
         );
 
         let mut cmd = Command::new(&self.cmd[0]);
@@ -210,5 +211,106 @@ impl CmdBuilder {
                 error: e,
             }),
         }
+    }
+}
+
+impl fmt::Display for Cmd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        DisplayCmd(&self.0).fmt(f)
+    }
+}
+
+struct DisplayCmd<'a>(&'a [OsString]);
+
+impl fmt::Display for DisplayCmd<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut it = self.0.iter();
+        if let Some(e) = it.next() {
+            write!(f, "{}", ShellEscape(e))?;
+            for e in it {
+                write!(f, " {}", ShellEscape(e))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+struct DisplayEnvs<'a>(&'a [(OsString, OsString)]);
+
+impl fmt::Display for DisplayEnvs<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut it = self.0.iter();
+        if let Some(e) = it.next() {
+            write!(f, "{}={}", ShellEscape(&e.0), ShellEscape(&e.1))?;
+            for e in it {
+                write!(f, " {}={}", ShellEscape(&e.0), ShellEscape(&e.1))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+struct ShellEscape<'a>(&'a std::ffi::OsStr);
+
+impl fmt::Display for ShellEscape<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // These characters need to be quoted or escaped in a bare word
+        let special_chars = b"|&;<>()$`\\\"' \t\n\r*?[#~=%";
+        // These characters need to be quoted or escaped in double-quotes
+        let special_chars_in_dq = b"*?[#~=%";
+
+        if let Some(utf8) = self.0.to_str() {
+            // All bytes are printable. We might need quoting or escaping some
+            // bytes.
+            let bytes = utf8.as_bytes();
+            if bytes.contains(&b'\'') {
+                // Enclose in double quotes
+                write!(f, "\"")?;
+                let mut utf8 = utf8;
+                while !utf8.is_empty() {
+                    let i = utf8
+                        .as_bytes()
+                        .iter()
+                        .position(|b| special_chars_in_dq.contains(b));
+
+                    if let Some(i) = i {
+                        write!(f, "{}", &utf8[..i])?;
+
+                        // Escape the byte at `i`
+                        write!(f, "\\{}", utf8.as_bytes()[i] as char)?;
+
+                        utf8 = &utf8[i + 1..];
+                    } else {
+                        break;
+                    }
+                }
+                write!(f, "{}\"", utf8)
+            } else if bytes.iter().any(|b| special_chars.contains(b)) {
+                // Enclose in single quotes
+                write!(f, "'{}'", utf8)
+            } else {
+                write!(f, "{}", utf8)
+            }
+        } else {
+            // Some bytes are unprintable.
+            write!(f, "<unprintable: {:?}>", self.0)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsStr;
+
+    #[test]
+    #[cfg(unix)]
+    fn shell_escape() {
+        assert_eq!(ShellEscape(OsStr::new("test")).to_string(), "test");
+        assert_eq!(ShellEscape(OsStr::new("te st")).to_string(), "'te st'");
+        assert_eq!(
+            ShellEscape(OsStr::new("hoge 'piyo'")).to_string(),
+            r#""hoge 'piyo'""#
+        );
     }
 }
