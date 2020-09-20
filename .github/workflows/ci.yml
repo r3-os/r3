@@ -38,7 +38,7 @@ jobs:
 
   # Run tests on the host system
   test-hosted:
-    name: Test (Hosted)
+    name: Test
     needs: check
     runs-on: ${{ matrix.os }}
     strategy:
@@ -77,7 +77,7 @@ jobs:
 
   # Run tests on freestanding targets
   test-freestanding-arm:
-    name: Test (Freestanding)
+    name: Test
     needs: check
     runs-on: ubuntu-20.04
     strategy:
