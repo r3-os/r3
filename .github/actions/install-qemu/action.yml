@@ -1,0 +1,35 @@
+name: constance-install-qemu
+description: Install QEMU 5.1.0 from Source
+inputs:
+  version:
+    description: QEMU version to install
+    required: true
+    default: 5.1.0
+  target-list:
+    description: List of targets to build
+    required: true
+runs:
+  using: composite
+  steps:
+    - run: |
+        qemu_prefix=$HOME/.qemu
+        qemu_timestamp=$HOME/.qemu/${{ inputs.version }}
+
+        if [ -f "$qemu_timestamp" ]; then
+          exit
+        fi
+
+        # Build QEMU
+        wget --no-verbose https://download.qemu.org/qemu-${{ inputs.version }}.tar.xz
+        tar -xf qemu-${{ inputs.version }}.tar.xz
+        cd qemu-${{ inputs.version }}
+        ./configure --target-list=${{ inputs.target-list }} --prefix=$qemu_prefix
+        make -j $(nproc)
+        make install
+
+        touch "$qemu_timestamp"
+
+        # Add the prefix to path
+        echo '::add-path::'$qemu_prefix/bin
+
+      shell: bash

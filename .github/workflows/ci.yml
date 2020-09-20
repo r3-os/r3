@@ -163,13 +163,9 @@ jobs:
           sudo apt-get install libusb-1.0-0-dev libudev-dev
 
       - name: Install QEMU 5.1.0 from Source
-        run: |
-          wget --no-verbose https://download.qemu.org/qemu-5.1.0.tar.xz
-          tar -xf qemu-5.1.0.tar.xz
-          cd qemu-5.1.0
-          ./configure --target-list=riscv32-softmmu,riscv64-softmmu
-          make -j $(nproc)
-          sudo make install
+        uses: ./.github/actions/install-qemu
+        with:
+          target-list: riscv32-softmmu,riscv64-softmmu
 
       - name: Install Additional Target of the Rust Toolchain
         run: |
