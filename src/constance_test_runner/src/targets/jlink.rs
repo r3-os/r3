@@ -12,15 +12,15 @@ use std::{
 use tempdir::TempDir;
 use tokio::{io::AsyncRead, process::Child};
 
-use super::{DebugProbe, DynAsyncRead, Target};
+use super::{Arch, DebugProbe, DynAsyncRead, Target};
 use crate::subprocess;
 
 /// SparkFun RED-V RedBoard or Things Plus
 pub struct RedV;
 
 impl Target for RedV {
-    fn target_triple(&self) -> &str {
-        "riscv32imac-unknown-none-elf"
+    fn target_arch(&self) -> Arch {
+        Arch::RV32IMAC
     }
 
     fn cargo_features(&self) -> &[&str] {

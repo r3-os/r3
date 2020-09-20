@@ -13,7 +13,7 @@ use tokio_serial::{Serial, SerialPort, SerialPortSettings};
 use super::{
     demux::Demux,
     serial::{choose_serial, ChooseSerialError},
-    slip, DebugProbe, DynAsyncRead, Target,
+    slip, Arch, DebugProbe, DynAsyncRead, Target,
 };
 use crate::utils::retry_on_fail;
 
@@ -21,8 +21,8 @@ use crate::utils::retry_on_fail;
 pub struct Maix;
 
 impl Target for Maix {
-    fn target_triple(&self) -> &str {
-        "riscv64gc-unknown-none-elf"
+    fn target_arch(&self) -> Arch {
+        Arch::RV64GC
     }
 
     fn cargo_features(&self) -> &[&str] {

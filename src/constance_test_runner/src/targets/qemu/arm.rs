@@ -1,14 +1,14 @@
 use anyhow::Result;
 use std::{future::Future, pin::Pin};
 
-use super::super::{DebugProbe, Target};
+use super::super::{Arch, DebugProbe, Target};
 use super::QemuDebugProbe;
 
 pub struct QemuMps2An385;
 
 impl Target for QemuMps2An385 {
-    fn target_triple(&self) -> &str {
-        "thumbv7m-none-eabi"
+    fn target_arch(&self) -> Arch {
+        Arch::CORTEX_M3
     }
 
     fn cargo_features(&self) -> &[&str] {
@@ -48,8 +48,8 @@ impl Target for QemuMps2An385 {
 pub struct QemuMps2An505;
 
 impl Target for QemuMps2An505 {
-    fn target_triple(&self) -> &str {
-        "thumbv8m-none-eabihf"
+    fn target_arch(&self) -> Arch {
+        Arch::CORTEX_M33_FPU
     }
 
     fn cargo_features(&self) -> &[&str] {
@@ -91,8 +91,8 @@ impl Target for QemuMps2An505 {
 pub struct QemuRealviewPbxA9;
 
 impl Target for QemuRealviewPbxA9 {
-    fn target_triple(&self) -> &str {
-        "armv7a-none-eabi"
+    fn target_arch(&self) -> Arch {
+        Arch::CORTEX_A9
     }
 
     fn cargo_features(&self) -> &[&str] {

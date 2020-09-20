@@ -1,4 +1,6 @@
 #![feature(future_readiness_fns)] // `std::future::ready`
+#![feature(or_patterns)] // `|` in subpatterns
+#![feature(decl_macro)] // `macro`
 use std::{
     env,
     path::{Path, PathBuf},
@@ -51,15 +53,25 @@ enum MainError {
     Run(String, #[source] anyhow::Error),
     #[error("Test failed.")]
     TestFail,
+    #[error("The target architecture '{0}' is invalid or unsupported.")]
+    BadTarget(targets::Arch),
 }
 
 /// Test runner for the Arm-M port of Constance
 #[derive(StructOpt)]
 struct Opt {
-    /// Target type
+    /// Target chip/board
     #[structopt(short = "t", long = "target", parse(try_from_str = try_parse_target),
         possible_values(&TARGET_POSSIBLE_VALUES))]
     target: &'static dyn targets::Target,
+    /// Override target architecture
+    ///
+    /// See the documentation of `Arch::from_str` for full syntax.
+    #[structopt(short = "a", long = "arch", parse(try_from_str = std::str::FromStr::from_str))]
+    target_arch: Option<targets::Arch>,
+    /// Print the list of supported targets and their architecture strings
+    #[structopt(long = "help-targets")]
+    help_targets: bool,
     /// If specified, only run tests containing this string in their names
     ///
     /// See the documentation of `TestFilter::from_str` for full syntax.
@@ -105,6 +117,15 @@ async fn main_inner() -> anyhow::Result<()> {
     // Parse arguments
     let opt = Opt::from_args();
 
+    // If `--help-targets` is specified, print all targets and exit,
+    if opt.help_targets {
+        println!("Supported targets:");
+        for (name, target) in targets::TARGETS {
+            println!("  {:30}{}", name, target.target_arch());
+        }
+        return Ok(());
+    }
+
     // Hard-coded paths and commands
     let cargo_cmd = "cargo";
 
@@ -116,17 +137,30 @@ async fn main_inner() -> anyhow::Result<()> {
             .expect("Couldn't get the parent of `CARGO_MANIFEST_DIR`")
     };
 
-    let driver_name = if opt.target.target_triple().starts_with("riscv") {
-        // RISC-V
-        "constance_port_riscv_test_driver"
-    } else if opt.target.target_triple().starts_with("thumb") {
-        // Arm-M
-        "constance_port_arm_m_test_driver"
-    } else {
-        // Other Arm
-        "constance_port_arm_test_driver"
+    let target_arch = opt.target_arch.unwrap_or_else(|| opt.target.target_arch());
+    log::debug!("target_arch = {}", target_arch);
+
+    let target_arch_opt = target_arch
+        .build_opt()
+        .ok_or(MainError::BadTarget(target_arch))?;
+    log::debug!("target_arch_opt = {:?}", target_arch_opt);
+
+    let (driver_name, driver_rustflags) = match target_arch {
+        targets::Arch::Armv7A => (
+            "constance_port_arm_test_driver",
+            "-C link-arg=-Tlink_ram_harvard.x",
+        ),
+        targets::Arch::ArmM { .. } => ("constance_port_arm_m_test_driver", "-C link-arg=-Tlink.x"),
+        targets::Arch::Riscv { .. } => (
+            "constance_port_riscv_test_driver",
+            "-C link-arg=-Tmemory.x -C link-arg=-Tlink.x",
+        ),
     };
+
     let driver_path = driver_base_path.join(driver_name);
+    log::debug!("driver_name = {:?}", driver_name);
+    log::debug!("driver_rustflags = {:?}", driver_rustflags);
+    log::debug!("driver_path = {:?}", driver_path);
 
     if !driver_path.is_dir() {
         return Err(MainError::BadDriverPath(driver_path).into());
@@ -142,13 +176,15 @@ async fn main_inner() -> anyhow::Result<()> {
         test_filter,
         selection::TestFilter::IsBenchmark(opt.bench),
     ]);
-    let supports_basepri = {
+    let supports_basepri = matches!(
+        target_arch,
         // v6-M, v8-M Baseline, and non-M architectures don't support BASEPRI
-        let triple = opt.target.target_triple();
-        !triple.starts_with("thumbv6m")
-            && !triple.starts_with("thumbv8m.base")
-            && triple.starts_with("thumb")
-    };
+        targets::Arch::ArmM {
+            version: targets::ArmMVersion::Armv7M |
+                targets::ArmMVersion::Armv8MMainline,
+            ..
+        },
+    );
     let test_runs: Vec<_> = test_filter
         .all_matching_test_runs()
         .filter(|r| supports_basepri || !r.cpu_lock_by_basepri)
@@ -203,7 +239,7 @@ async fn main_inner() -> anyhow::Result<()> {
 
     // Executable path
     let exe_path = target_dir
-        .join(opt.target.target_triple())
+        .join(&target_arch_opt.target_triple)
         .join("release")
         .join(driver_name);
     log::debug!("exe_path = '{}'", exe_path.display());
@@ -223,25 +259,13 @@ async fn main_inner() -> anyhow::Result<()> {
         }
 
         // Derive `RUSTFLAGS`.
-        let target_features = opt.target.target_features();
+        let target_features = &target_arch_opt.target_features;
         let rustflags = if target_features.is_empty() {
-            // Use the default value specified by `.cargo/config.toml` of the
-            // test driver crate
-            None
+            driver_rustflags.to_owned()
         } else {
-            // Construct `RUSTFLAGS` from scratch.
-            // TODO: The fixed part is currently based on `config.toml` of
-            //       `constance_port_riscv_test_driver`. Make it adaptable to
-            //       other targets. Maybe do this whether `target_features` is
-            //       empty or not? (And get rid of `.cargo/config.toml`?)
-            Some((
-                "RUSTFLAGS",
-                format!(
-                    "-C link-arg=-Tmemory.x -C link-arg=-Tlink.x -C target-feature={}",
-                    target_features,
-                ),
-            ))
+            format!("{} -C target-feature={}", driver_rustflags, target_features)
         };
+        log::debug!("target_features = {:?}", target_features);
 
         // Build the test driver
         log::debug!("Building the test");
@@ -250,7 +274,7 @@ async fn main_inner() -> anyhow::Result<()> {
                 .arg("build")
                 .arg("--release")
                 .arg("--target")
-                .arg(opt.target.target_triple())
+                .arg(&target_arch_opt.target_triple)
                 .arg(match test_run.case {
                     selection::TestCase::KernelTest(_) => "--features=kernel_tests",
                     selection::TestCase::KernelBenchmark(_) => "--features=kernel_benchmarks",
@@ -275,13 +299,21 @@ async fn main_inner() -> anyhow::Result<()> {
                     LogLevel::Trace => "--features=log/max_level_trace",
                 })
                 .args(if opt.verbose { None } else { Some("-q") })
+                .args(if target_features.is_empty() {
+                    None
+                } else {
+                    log::debug!(
+                        "Specifying `-Zbuild-std=core` because of a custom target feature set"
+                    );
+                    Some("-Zbuild-std=core")
+                })
                 .env(
                     // TODO: Rename this to `CONSTANCE_PORT_TEST_DRIVER_LINK_SEARCH`
                     "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",
                     link_dir.path(),
                 )
                 .env("CONSTANCE_TEST", &full_test_name)
-                .envs(rustflags);
+                .env("RUSTFLAGS", rustflags);
             if opt.verbose {
                 cmd.spawn_expecting_success().await
             } else {

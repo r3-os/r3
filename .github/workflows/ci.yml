@@ -116,19 +116,19 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an505_v8mml -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m33 -l debug
 
       - name: Test (MPS2+ AN505, Armv8-M Baseline)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an505_v8mbl -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m23 -l debug
 
       - name: Test (MPS2+ AN505, Armv7-M + FPU + DSP)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an505_v7em_hf -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m4f -l debug
 
       - name: Test (MPS2+ AN385, Armv7-M)
         uses: actions-rs/cargo@v1
@@ -140,7 +140,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: -p constance_test_runner -- -t qemu_mps2_an385_v6m -l debug
+          args: -p constance_test_runner -- -t qemu_mps2_an385 -a cortex_m0 -l debug
 
   # Run tests on a freestanding RISC-V target
   test-freestanding-riscv:
@@ -155,6 +155,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
+          components: rust-src
 
       - name: Install Dependencies (Linux)
         run: |
