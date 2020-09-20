@@ -75,81 +75,40 @@ jobs:
         env:
           RUST_LOG: debug
 
-  # Run tests on a freestanding Arm target
+  # Run tests on freestanding targets
   test-freestanding-arm:
-    name: Test (Freestanding Arm)
+    name: Test (Freestanding)
     needs: check
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          # Arm RealView PBX for Cortex-A9, Armv7-A
+          - { ty: arm, runner_target: qemu_realview_pbx_a9, runner_args: "" }
+          # MPS2+ AN505, Armv8-M Mainline + FPU
+          - { ty: arm, runner_target: qemu_mps2_an505, runner_args: "" }
+          # MPS2+ AN505, Armv8-M Mainline
+          - { ty: arm, runner_target: qemu_mps2_an505, runner_args: --arch cortex_m33 }
+          # MPS2+ AN505, Armv8-M Baseline
+          - { ty: arm, runner_target: qemu_mps2_an505, runner_args: --arch cortex_m23 }
+          # MPS2+ AN505, Armv7-M + FPU + DSP
+          - { ty: arm, runner_target: qemu_mps2_an505, runner_args: --arch cortex_m4f }
+          # MPS2+ AN385, Armv7-M
+          - { ty: arm, runner_target: qemu_mps2_an385, runner_args: "" }
+          # MPS2+ AN385, Armv6-M
+          - { ty: arm, runner_target: qemu_mps2_an385, runner_args: --arch cortex_m0 }
+
+          # SiFive U, RV64GC
+          - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: "" }
+          # SiFive E, RV64IMAC
+          - { ty: riscv, runner_target: qemu_sifive_e_rv64, runner_args: "" }
+          # SiFive U, RV32GC
+          - { ty: riscv, runner_target: qemu_sifive_u_rv32, runner_args: "" }
+          # SiFive E, RV32IMAC
+          - { ty: riscv, runner_target: qemu_sifive_e_rv32, runner_args: "" }
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-
-      - name: Install Dependencies (Linux)
-        run: |
-          sudo apt-get update
-          sudo apt-get install libusb-1.0-0-dev libudev-dev qemu-system-arm
-
-      - name: Install Additional Target of the Rust Toolchain
-        run: |
-          rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabihf
-          rustup target add thumbv8m.base-none-eabi thumbv8m.main-none-eabi thumbv8m.main-none-eabihf
-          rustup target add armv7a-none-eabi
-
-      - name: Test (Arm RealView PBX for Cortex-A9, Armv7-A)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package constance_test_runner -- --target qemu_realview_pbx_a9 --log-level debug
-
-      - name: Test (MPS2+ AN505, Armv8-M Mainline + FPU)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package constance_test_runner -- --target qemu_mps2_an505 --log-level debug
-
-      - name: Test (MPS2+ AN505, Armv8-M Mainline)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package constance_test_runner -- --target qemu_mps2_an505 --arch cortex_m33 --log-level debug
-
-      - name: Test (MPS2+ AN505, Armv8-M Baseline)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package constance_test_runner -- --target qemu_mps2_an505 --arch cortex_m23 --log-level debug
-
-      - name: Test (MPS2+ AN505, Armv7-M + FPU + DSP)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package constance_test_runner -- --target qemu_mps2_an505 --arch cortex_m4f --log-level debug
-
-      - name: Test (MPS2+ AN385, Armv7-M)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package constance_test_runner -- --target qemu_mps2_an385 --log-level debug
-
-      - name: Test (MPS2+ AN385, Armv6-M)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package constance_test_runner -- --target qemu_mps2_an385 --arch cortex_m0 --log-level debug
-
-  # Run tests on a freestanding RISC-V target
-  test-freestanding-riscv:
-    name: Test (Freestanding RISC-V)
-    needs: check
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -166,30 +125,26 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.qemu
-          key: ${{ runner.os }}-ci-qemu-riscv
+          key: ${{ runner.os }}-ci-qemu-arm_riscv
 
       - name: Install QEMU 5.1.0 from Source
         uses: ./.github/actions/install-qemu
         with:
-          target-list: riscv32-softmmu,riscv64-softmmu
+          target-list: arm-softmmu,riscv32-softmmu,riscv64-softmmu
 
-      - name: Install Additional Target of the Rust Toolchain
+      - name: Install Additional Target of the Rust Toolchain (Arm)
+        if: matrix.ty == 'arm'
+        run: |
+          rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabihf
+          rustup target add thumbv8m.base-none-eabi thumbv8m.main-none-eabi thumbv8m.main-none-eabihf
+          rustup target add armv7a-none-eabi
+
+      - name: Install Additional Target of the Rust Toolchain (RISC-V)
+        if: matrix.ty == 'riscv'
         run: |
           rustup target add riscv32imac-unknown-none-elf
           rustup target add riscv64imac-unknown-none-elf riscv64gc-unknown-none-elf
 
-      - name: Test (SiFive U, RV64GC)
+      - name: Test
         run: |
-          cargo run --package constance_test_runner -- --target qemu_sifive_u_rv64 --log-level debug
-
-      - name: Test (SiFive E, RV64IMAC)
-        run: |
-          cargo run --package constance_test_runner -- --target qemu_sifive_e_rv64 --log-level debug
-
-      - name: Test (SiFive U, RV32GC)
-        run: |
-          cargo run --package constance_test_runner -- --target qemu_sifive_u_rv32 --log-level debug
-
-      - name: Test (SiFive E, RV32IMAC)
-        run: |
-          cargo run --package constance_test_runner -- --target qemu_sifive_e_rv32 --log-level debug
+          cargo run --package constance_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --log-level debug
