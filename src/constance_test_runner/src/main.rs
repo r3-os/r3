@@ -317,11 +317,7 @@ async fn main_inner() -> anyhow::Result<()> {
                     );
                     Some("-Zbuild-std=core")
                 })
-                .env(
-                    // TODO: Rename this to `CONSTANCE_PORT_TEST_DRIVER_LINK_SEARCH`
-                    "CONSTANCE_PORT_ARM_M_TEST_DRIVER_LINK_SEARCH",
-                    link_dir.path(),
-                )
+                .env("CONSTANCE_TEST_DRIVER_LINK_SEARCH", link_dir.path())
                 .env("CONSTANCE_TEST", &full_test_name)
                 .env("RUSTFLAGS", rustflags);
             if opt.verbose {
