@@ -191,101 +191,109 @@ unsafe fn read_x(_fl_state: *mut usize) {
             .cfi_startproc
 
             # Jump to the code corresponding to the target register.
-            # TODO: Support non-C target
             #
             #   a4 &= 0x1f;
-            #   pc = 0f + a4 * 4;
+            #   if cfg!(target_feature = 'c'):
+            #       pc = 0f + a4 * 4;
+            #   else:
+            #       pc = 0f + a4 * 8;
             #
             slli a4, a4, 32 - 5
-            srli a4, a4, 32 - 7
+        "   if cfg!(target_feature = "c") {                                     "
+                srli a4, a4, 32 - 7
+        "   } else {                                                            "
+                srli a4, a4, 32 - 8
+        "   }                                                                   "
             la t1, 0f
             add t1, t1, a4
             jr t1
 
         0:
+            # All of the following instructions are compiled to the compressed
+            # form when the C extension is enabled.
             # x0
-            c.li a4, 0
-            c.j 1f
+            li a4, 0
+            j 1f
 
             # x1/ra - first-level state
-            C.LOAD a4, ({X_SIZE} * 0)(a0)
-            c.j 1f
+            LOAD a4, ({X_SIZE} * 0)(a0)
+            j 1f
 
             # x2/sp - implied from the a0
-            c.j 2f
-            c.nop
+            j 2f
+            nop
 
             # x3-x4 - global
-            c.mv a4, x3
-            c.j 1f
-            c.mv a4, x4
-            c.j 1f
+            mv a4, x3
+            j 1f
+            mv a4, x4
+            j 1f
 
             # x5-x7/t0-t2 - first-level state
-            C.LOAD a4, ({X_SIZE} * 1)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 2)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 3)(a0)
-            c.j 1f
+            LOAD a4, ({X_SIZE} * 1)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 2)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 3)(a0)
+            j 1f
 
             # x8-x9/s0-s1 - preserved
-            c.mv a4, x8
-            c.j 1f
-            c.mv a4, x9
-            c.j 1f
+            mv a4, x8
+            j 1f
+            mv a4, x9
+            j 1f
 
             # x10-x15/a0-a5 - first-level state
-            C.LOAD a4, ({X_SIZE} * 4)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 5)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 6)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 7)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 8)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 9)(a0)
-            c.j 1f
+            LOAD a4, ({X_SIZE} * 4)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 5)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 6)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 7)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 8)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 9)(a0)
+            j 1f
 
             # x16-x17/a6-a7 - first-level state
-            C.LOAD a4, ({X_SIZE} * 10)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 11)(a0)
-            c.j 1f
+            LOAD a4, ({X_SIZE} * 10)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 11)(a0)
+            j 1f
 
             # x18-x27/s2-s11 - preserved
-            c.mv a4, x18
-            c.j 1f
-            c.mv a4, x19
-            c.j 1f
-            c.mv a4, x20
-            c.j 1f
-            c.mv a4, x21
-            c.j 1f
-            c.mv a4, x22
-            c.j 1f
-            c.mv a4, x23
-            c.j 1f
-            c.mv a4, x24
-            c.j 1f
-            c.mv a4, x25
-            c.j 1f
-            c.mv a4, x26
-            c.j 1f
-            c.mv a4, x27
-            c.j 1f
+            mv a4, x18
+            j 1f
+            mv a4, x19
+            j 1f
+            mv a4, x20
+            j 1f
+            mv a4, x21
+            j 1f
+            mv a4, x22
+            j 1f
+            mv a4, x23
+            j 1f
+            mv a4, x24
+            j 1f
+            mv a4, x25
+            j 1f
+            mv a4, x26
+            j 1f
+            mv a4, x27
+            j 1f
 
             # x28-x31/t3-t6 - first-level state
-            C.LOAD a4, ({X_SIZE} * 12)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 13)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 14)(a0)
-            c.j 1f
-            C.LOAD a4, ({X_SIZE} * 15)(a0)
-            c.j 1f
+            LOAD a4, ({X_SIZE} * 12)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 13)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 14)(a0)
+            j 1f
+            LOAD a4, ({X_SIZE} * 15)(a0)
+            j 1f
 
         2:
             addi a4, a0, {X_SIZE} * 17
@@ -311,105 +319,120 @@ unsafe fn read_x(_fl_state: *mut usize) {
 #[cfg(feature = "emulate-lr-sc")]
 unsafe fn write_x(_fl_state: *mut usize) {
     unsafe {
-        asm!(
+        pp_asm!(
             "
             # <a0 == fl_state, a3 == value, a4 == index>
             .cfi_startproc
 
             # Jump to the code corresponding to the target register.
-            # TODO: Support non-C target
             #
             #   a4 &= 0x1f;
-            #   pc = 0f + a4 * 4;
+            #   if cfg!(target_feature = 'c'):
+            #       pc = 0f + a4 * 4;
+            #   else:
+            #       pc = 0f + a4 * 8;
             #
             slli a4, a4, 32 - 5
-            srli a4, a4, 32 - 7
+        "   if cfg!(target_feature = "c") {                                     "
+                srli a4, a4, 32 - 7
+        "   } else {                                                            "
+                srli a4, a4, 32 - 8
+        "   }                                                                   "
             la t1, 0f
             add t1, t1, a4
             jr t1
 
         0:
+            # Most of the following instructions are compiled to the compressed
+            # form when the C extension is enabled.
             # x0 - no-op
-            c.j 1f
-            c.nop
+            j 1f
+            nop
 
             # x1/ra - first-level state
-            c.sw a3, ({X_SIZE} * 0)(a0)
-            c.j 1f
+            sw a3, ({X_SIZE} * 0)(a0)
+            j 1f
 
             # x2/sp - TODO
-            ecall
+        "   if cfg!(target_feature = "c") {                                     "
+                # There's no compressed form for this instruction, so this
+                # instruction occupies 4 bytes
+                ecall
+        "   } else {                                                            "
+                ecall
+                nop
+        "   }                                                                   "
 
             # x3-x4 - global
-            c.mv x3, a3
-            c.j 1f
-            c.mv x4, a3
-            c.j 1f
+            mv x3, a3
+            j 1f
+            mv x4, a3
+            j 1f
 
             # x5-x7/t0-t2 - first-level state
-            C.STORE a3, ({X_SIZE} * 1)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 2)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 3)(a0)
-            c.j 1f
+            STORE a3, ({X_SIZE} * 1)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 2)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 3)(a0)
+            j 1f
 
             # x8-x9/s0-s1 - preserved
-            c.mv x8, a3
-            c.j 1f
-            c.mv x9, a3
-            c.j 1f
+            mv x8, a3
+            j 1f
+            mv x9, a3
+            j 1f
 
             # x10-x15/a0-a5 - first-level state
-            C.STORE a3, ({X_SIZE} * 4)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 5)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 6)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 7)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 8)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 9)(a0)
-            c.j 1f
+            STORE a3, ({X_SIZE} * 4)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 5)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 6)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 7)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 8)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 9)(a0)
+            j 1f
 
             # x16-x17/a6-a7 - first-level state
-            C.STORE a3, ({X_SIZE} * 10)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 11)(a0)
-            c.j 1f
+            STORE a3, ({X_SIZE} * 10)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 11)(a0)
+            j 1f
 
             # x18-x27/s2-s11 - preserved
-            c.mv x18, a3
-            c.j 1f
-            c.mv x19, a3
-            c.j 1f
-            c.mv x20, a3
-            c.j 1f
-            c.mv x21, a3
-            c.j 1f
-            c.mv x22, a3
-            c.j 1f
-            c.mv x23, a3
-            c.j 1f
-            c.mv x24, a3
-            c.j 1f
-            c.mv x25, a3
-            c.j 1f
-            c.mv x26, a3
-            c.j 1f
-            c.mv x27, a3
-            c.j 1f
+            mv x18, a3
+            j 1f
+            mv x19, a3
+            j 1f
+            mv x20, a3
+            j 1f
+            mv x21, a3
+            j 1f
+            mv x22, a3
+            j 1f
+            mv x23, a3
+            j 1f
+            mv x24, a3
+            j 1f
+            mv x25, a3
+            j 1f
+            mv x26, a3
+            j 1f
+            mv x27, a3
+            j 1f
 
             # x28-x31/t3-t6 - first-level state
-            C.STORE a3, ({X_SIZE} * 12)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 13)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 14)(a0)
-            c.j 1f
-            C.STORE a3, ({X_SIZE} * 15)(a0)
+            STORE a3, ({X_SIZE} * 12)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 13)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 14)(a0)
+            j 1f
+            STORE a3, ({X_SIZE} * 15)(a0)
 
         1:  .cfi_endproc",
             X_SIZE = const X_SIZE,
