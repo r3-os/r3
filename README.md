@@ -59,8 +59,8 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 [Armv7-M: Supported]: https://img.shields.io/badge/Armv7--M-Supported-success?style=flat-square
 [Armv6-M: Supported]: https://img.shields.io/badge/Armv6--M-Supported-success?style=flat-square
 [Armv7-A (no FPU): Supported]: https://img.shields.io/badge/Armv7--A%20(no%20FPU)-Supported-success?style=flat-square
-[RV32IMAFDC: Supported]: https://img.shields.io/badge/RV32I%5BM%5DA%5BFD%5DC-Supported-success?style=flat-square
-[RV64IMAFDC: Supported]: https://img.shields.io/badge/RV64I%5BM%5DA%5BFD%5DC-Supported-success?style=flat-square
+[RV32IMAFDC: Supported]: https://img.shields.io/badge/RV32I%5BM%5DA%5BFD%5D%5BC%5D-Supported-success?style=flat-square
+[RV64IMAFDC: Supported]: https://img.shields.io/badge/RV64IMA%5BFD%5D%5BC%5D-Supported-success?style=flat-square
 
 ## Example
 
