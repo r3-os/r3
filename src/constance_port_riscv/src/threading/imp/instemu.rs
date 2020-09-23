@@ -165,6 +165,12 @@ unsafe fn panic_on_unhandled_exception(fl_state: *mut usize, mcause: usize) -> !
     panic!("unhandled exception {} at 0x{:08x}", mcause, pc);
 }
 
+#[cfg(not(feature = "emulate-lr-sc"))]
+extern "C" {
+    fn read_x();
+    fn write_x();
+}
+
 /// Read the `x` register specified by `a4[4:0]`. Write the result to `a4`.
 /// This function trashes `t1`.
 ///
@@ -176,6 +182,7 @@ unsafe fn panic_on_unhandled_exception(fl_state: *mut usize, mcause: usize) -> !
 ///  - `s0-s11`: `s0-s11` from the background context state
 ///
 #[naked]
+#[cfg(feature = "emulate-lr-sc")]
 unsafe fn read_x(_fl_state: *mut usize) {
     unsafe {
         pp_asm!("
@@ -301,6 +308,7 @@ unsafe fn read_x(_fl_state: *mut usize) {
 ///  - `s0-s11`: `s0-s11` from the background context state
 ///
 #[naked]
+#[cfg(feature = "emulate-lr-sc")]
 unsafe fn write_x(_fl_state: *mut usize) {
     unsafe {
         asm!(
