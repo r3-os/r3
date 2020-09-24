@@ -55,10 +55,14 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
                 # to avoid an unaligned access exception on a target with C
                 # extension.
                 LOAD a2, ({X_SIZE} * 16)(a0)
-                lh a3, 2(a2)
-                lhu a2, (a2)
-                slli a3, a3, 16
-                or a2, a2, a3
+        "       if cfg!(target_feature = "c")  {                                "
+                    lh a3, 2(a2)
+                    lhu a2, (a2)
+                    slli a3, a3, 16
+                    or a2, a2, a3
+        "       } else {                                                        "
+                    lw a2, (a2)
+        "       }                                                               "
 
                 # Is it LR.W or SC.W?
                 # TODO: support LR.Q/SC.Q
