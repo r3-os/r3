@@ -167,7 +167,6 @@ impl DebugProbe for Fe310JLinkDebugProbe {
                     // for memory access, so the hart should be halted every
                     // time we access RTT.
                     halt_on_access: true,
-                    ..Default::default()
                 },
             )
             .await?)

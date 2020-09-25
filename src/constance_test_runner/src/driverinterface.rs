@@ -72,7 +72,7 @@ pub(crate) enum TestRunError {
     General(String),
 }
 
-const CARGO_CMD: &'static str = "cargo";
+const CARGO_CMD: &str = "cargo";
 
 impl TestDriver {
     pub(crate) fn new(
@@ -104,7 +104,7 @@ impl TestDriver {
 
         async move {
             if !crate_path.is_dir() {
-                return Err(TestDriverNewError::BadDriverPath(crate_path).into());
+                return Err(TestDriverNewError::BadDriverPath(crate_path));
             }
 
             Self::new_inner(
@@ -226,7 +226,7 @@ impl TestDriver {
             Err(RunError::Other(e)) => {
                 // Fail-fast if the problem is the debug connection, not the
                 // test itself
-                return Err(TestDriverRunError::Run(test_run.to_string(), e).into());
+                return Err(TestDriverRunError::Run(test_run.to_string(), e));
             }
         };
 

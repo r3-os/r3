@@ -199,7 +199,7 @@ pub async fn attach_rtt(
             match probe_rs_rtt::Rtt::attach_region(session, &rtt_scan_region) {
                 Ok(rtt) => Ok(Some(rtt)),
                 Err(probe_rs_rtt::Error::ControlBlockNotFound) => Ok(None),
-                Err(e) => Err(AttachRttError::AttachRtt(e).into()),
+                Err(e) => Err(AttachRttError::AttachRtt(e)),
             }
         })
         .await
@@ -210,7 +210,7 @@ pub async fn attach_rtt(
         }
 
         if start.elapsed() > RTT_ATTACH_TIMEOUT {
-            return Err(AttachRttError::Timeout.into());
+            return Err(AttachRttError::Timeout);
         }
 
         delay_for(POLL_INTERVAL).await;
