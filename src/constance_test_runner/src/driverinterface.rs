@@ -26,7 +26,7 @@ pub(crate) enum TestDriverNewError {
     #[error("Could not gather the Cargo metadata using `cargo metadata`.")]
     CargoMetadata(#[source] subprocess::SubprocessError),
     #[error("Could not parse the Cargo metadata.")]
-    CargoMetadataParse,
+    CargoMetadataParse(#[source] serde_json::Error),
     #[error("{0:?} is not a valid driver path.")]
     BadDriverPath(PathBuf),
     #[error("Error while creating a temporary directory.")]
@@ -139,14 +139,14 @@ impl TestDriver {
                 .await
                 .map_err(TestDriverNewError::CargoMetadata)?;
 
-            #[derive(miniserde::Deserialize)]
+            #[derive(serde::Deserialize)]
             struct MetadataV1 {
                 target_directory: String,
             }
 
             let metadata: MetadataV1 =
-                miniserde::json::from_str(&String::from_utf8_lossy(&metadata_json))
-                    .map_err(|_| TestDriverNewError::CargoMetadataParse)?;
+                serde_json::from_str(&String::from_utf8_lossy(&metadata_json))
+                    .map_err(TestDriverNewError::CargoMetadataParse)?;
 
             PathBuf::from(metadata.target_directory)
         };

@@ -413,10 +413,11 @@ dependencies = [
  "itertools",
  "lazy_static",
  "log",
- "miniserde",
  "mio-serial",
  "probe-rs",
  "probe-rs-rtt",
+ "serde",
+ "serde_json",
  "structopt",
  "tempdir",
  "thiserror",
@@ -970,28 +971,6 @@ name = "memchr"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
-
-[[package]]
-name = "mini-internal"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b3fb39c72c84ffbed14f8ee8b1a0e52ecd323df2ee69499fd3400a95d7269aa"
-dependencies = [
- "proc-macro2 1.0.18",
- "quote 1.0.7",
- "syn 1.0.33",
-]
-
-[[package]]
-name = "miniserde"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e021d8031f6e224438f402d4c59d26c997e6e13498bd34da1aa1f858bd3b2f43"
-dependencies = [
- "itoa",
- "mini-internal",
- "ryu",
-]
 
 [[package]]
 name = "miniz_oxide"
@@ -1715,6 +1694,17 @@ dependencies = [
  "proc-macro2 1.0.18",
  "quote 1.0.7",
  "syn 1.0.33",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.57"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "164eacbdb13512ec2745fb09d51fd5b22b0d65ed294a1dcf7285a360c80a675c"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
