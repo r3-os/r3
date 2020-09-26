@@ -89,6 +89,8 @@ pub enum Arch {
     Riscv {
         /// XLEN
         xlen: Xlen,
+        /// Use the reduced register set
+        e: bool,
         /// The "M" extension (multiplication and division)
         m: bool,
         /// The "A" extension (atomics)
@@ -137,6 +139,7 @@ impl Arch {
             "rv32i",
             Self::Riscv {
                 xlen: Xlen::_32,
+                e: false,
                 m: false,
                 a: false,
                 c: false,
@@ -148,6 +151,19 @@ impl Arch {
             "rv64i",
             Self::Riscv {
                 xlen: Xlen::_64,
+                e: false,
+                m: false,
+                a: false,
+                c: false,
+                f: false,
+                d: false,
+            },
+        ),
+        (
+            "rv32e",
+            Self::Riscv {
+                xlen: Xlen::_32,
+                e: true,
                 m: false,
                 a: false,
                 c: false,
@@ -197,6 +213,7 @@ impl Arch {
 
     const RV32IMAC: Self = Self::Riscv {
         xlen: Xlen::_32,
+        e: false,
         m: true,
         a: true,
         c: true,
@@ -206,6 +223,7 @@ impl Arch {
 
     const RV64IMAC: Self = Self::Riscv {
         xlen: Xlen::_64,
+        e: false,
         m: true,
         a: true,
         c: true,
@@ -215,6 +233,7 @@ impl Arch {
 
     const RV32GC: Self = Self::Riscv {
         xlen: Xlen::_32,
+        e: false,
         m: true,
         a: true,
         c: true,
@@ -224,6 +243,7 @@ impl Arch {
 
     const RV64GC: Self = Self::Riscv {
         xlen: Xlen::_64,
+        e: false,
         m: true,
         a: true,
         c: true,
@@ -303,6 +323,7 @@ impl Arch {
             // -------------------------------------------------------------
             Self::Riscv {
                 xlen: Xlen::_32,
+                e: false,
                 m: false,
                 a: false,
                 c: false,
@@ -312,6 +333,7 @@ impl Arch {
 
             Self::Riscv {
                 xlen: Xlen::_32,
+                e: false,
                 m: true,
                 a: false,
                 c: true,
@@ -321,6 +343,7 @@ impl Arch {
 
             Self::Riscv {
                 xlen: Xlen::_32,
+                e: false,
                 m: true,
                 a: true,
                 c: true,
@@ -330,6 +353,7 @@ impl Arch {
 
             Self::Riscv {
                 xlen: Xlen::_64,
+                e: false,
                 m: true,
                 a: true,
                 c: true,
@@ -339,6 +363,7 @@ impl Arch {
 
             Self::Riscv {
                 xlen: Xlen::_64,
+                e: false,
                 m: true,
                 a: true,
                 c: true,
@@ -348,6 +373,7 @@ impl Arch {
 
             Self::Riscv {
                 xlen,
+                e,
                 m,
                 a,
                 c,
@@ -359,6 +385,7 @@ impl Arch {
                     Xlen::_64 => "riscv64imac-unknown-none-elf",
                 })
                 .with_target_features(&[
+                    if *e { Some("+e") } else { None },
                     if *m { None } else { Some("-m") },
                     if *a { None } else { Some("-a") },
                     if *c { None } else { Some("-c") },
@@ -391,13 +418,14 @@ impl Arch {
             Self::Armv7A => None,
             Self::ArmM { fpu, dsp, version } => features!(Self::ArmM { fpu, dsp; version }),
             Self::Riscv {
+                e,
                 m,
                 a,
                 c,
                 f,
                 d,
                 xlen,
-            } => features!(Self::Riscv { m, a, c, f, d; xlen }),
+            } => features!(Self::Riscv { e, m, a, c, f, d; xlen }),
         }
     }
 }
@@ -452,6 +480,7 @@ impl fmt::Display for Arch {
                 Ok(())
             }
             Self::Riscv {
+                e,
                 m,
                 a,
                 c,
@@ -459,7 +488,11 @@ impl fmt::Display for Arch {
                 d,
                 xlen,
             } => {
-                write!(fm, "rv{}i", *xlen as u8)?;
+                if *e {
+                    write!(fm, "rv{}e", *xlen as u8)?;
+                } else {
+                    write!(fm, "rv{}i", *xlen as u8)?;
+                }
                 if *m {
                     write!(fm, "+m")?;
                 }
