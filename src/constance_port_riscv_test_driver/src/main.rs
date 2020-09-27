@@ -2,7 +2,6 @@
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
 #![feature(naked_functions)]
-#![feature(llvm_asm)]
 #![feature(decl_macro)]
 #![feature(raw_ref_macros)]
 #![feature(const_ptr_offset)]
