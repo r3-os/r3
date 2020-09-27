@@ -101,6 +101,9 @@ macro_rules! instantiate_test {
             // Most targets should have at least four interrupt lines
             const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
             const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0x20, 0x60];
+
+            #[cfg(feature = "cpu-lock-by-basepri")]
+            const UNMANAGED_INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0x00];
         }
 
         static COTTAGE: test_case::App<System> =

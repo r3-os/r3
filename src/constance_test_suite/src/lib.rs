@@ -51,7 +51,7 @@ pub mod kernel_tests {
         /// [`pend_interrupt_line`]: constance::kernel::PortInterrupts::pend_interrupt_line
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
-        /// Valid priority values.
+        /// Valid managed priority values.
         ///
         ///  - The list can have an arbitrary number of elements. Some tests
         ///    will be silently skipped if it's not enough. There should be at
@@ -66,6 +66,29 @@ pub mod kernel_tests {
         ///
         /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
+
+        /// Valid unmanaged priority values.
+        ///
+        ///  - The list can have an arbitrary number of elements. Some tests
+        ///    will be silently skipped if it's not enough. There should be at
+        ///    least one for all test cases to run.
+        ///
+        ///  - No elements must be in range
+        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///
+        ///  - The elements must be sorted in a descending order of priority.
+        ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
+        ///    `p[i]` should be high enough to preempt `p[o + 1]`.
+        ///
+        ///  - For every element `pri_unmanaged` in
+        ///    `UNMANAGED_INTERRUPT_PRIORITIES` and every element `pri_managed`
+        ///    in [`INTERRUPT_PRIORITIES`], `pri_unmanaged` should be high
+        ///    enough to preempt `pri_managed`.
+        ///
+        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`INTERRUPT_PRIORITIES`]: Self::INTERRUPT_PRIORITIES
+        ///
+        const UNMANAGED_INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
     }
 
     macro_rules! define_kernel_tests {
@@ -159,6 +182,7 @@ pub mod kernel_tests {
         (mod interrupt_misc {}, "interrupt_misc"),
         (mod interrupt_priority {}, "interrupt_priority"),
         (mod interrupt_task_activate {}, "interrupt_task_activate"),
+        (mod interrupt_unmanaged {}, "interrupt_unmanaged"),
         (mod priority_boost {}, "priority_boost"),
         (mod semaphore_interrupt_handler {}, "semaphore_interrupt_handler"),
         (mod semaphore_misc {}, "semaphore_misc"),
