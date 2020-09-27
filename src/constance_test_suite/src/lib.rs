@@ -51,22 +51,21 @@ pub mod kernel_tests {
         /// [`pend_interrupt_line`]: constance::kernel::PortInterrupts::pend_interrupt_line
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
-        /// A low priority value.
+        /// Valid priority values.
         ///
-        /// Ignored if `INTERRUPT_LINES` is empty.
+        ///  - The list can have an arbitrary number of elements. Some tests
+        ///    will be silently skipped if it's not enough. There should be at
+        ///    least two for all test cases to run.
         ///
-        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        ///  - All elements must be in range
+        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///
+        ///  - The elements must be sorted in a descending order of priority.
+        ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
+        ///    `p[i]` should be high enough to preempt `p[o + 1]`.
         ///
         /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
-        const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0;
-        /// A high priority value.
-        ///
-        /// Ignored if `INTERRUPT_LINES` is empty.
-        ///
-        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
-        ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
-        const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;
+        const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
     }
 
     macro_rules! define_kernel_tests {
@@ -283,22 +282,21 @@ pub mod kernel_benchmarks {
         /// [`pend_interrupt_line`]: constance::kernel::PortInterrupts::pend_interrupt_line
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
-        /// A low priority value.
+        /// Valid priority values.
         ///
-        /// Ignored if `INTERRUPT_LINES` is empty.
+        ///  - The list can have an arbitrary number of elements. Some tests
+        ///    will be silently skipped if it's not enough. There should be at
+        ///    least two for all test cases to run.
         ///
-        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
+        ///  - All elements must be in range
+        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///
+        ///  - The elements must be sorted in a descending order of priority.
+        ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
+        ///    `p[i]` should be high enough to preempt `p[o + 1]`.
         ///
         /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
-        const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0;
-        /// A high priority value.
-        ///
-        /// Ignored if `INTERRUPT_LINES` is empty.
-        ///
-        /// Must be in range [`MANAGED_INTERRUPT_PRIORITY_RANGE`]
-        ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: constance::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
-        const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0;
+        const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
     }
 
     /// The interface provided by [`use_benchmark_in_kernel_benchmark!`] and

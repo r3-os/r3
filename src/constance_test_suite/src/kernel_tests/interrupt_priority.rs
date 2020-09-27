@@ -23,9 +23,9 @@ impl<System: Kernel> App<System> {
 
         #[allow(clippy::len_zero)] // for symmetry
         let int = [
-            if D::INTERRUPT_LINES.len() >= 1 {
+            if D::INTERRUPT_LINES.len() >= 1 && D::INTERRUPT_PRIORITIES.len() >= 1 {
                 let int_line = D::INTERRUPT_LINES[0];
-                let pri = D::INTERRUPT_PRIORITY_HIGH;
+                let pri = D::INTERRUPT_PRIORITIES[0];
                 InterruptHandler::build()
                     .line(int_line)
                     .start(isr0::<System, D>)
@@ -40,9 +40,9 @@ impl<System: Kernel> App<System> {
             } else {
                 None
             },
-            if D::INTERRUPT_LINES.len() >= 2 {
+            if D::INTERRUPT_LINES.len() >= 2 && D::INTERRUPT_PRIORITIES.len() >= 2 {
                 let int_line = D::INTERRUPT_LINES[1];
-                let pri = D::INTERRUPT_PRIORITY_LOW;
+                let pri = D::INTERRUPT_PRIORITIES[1];
                 InterruptHandler::build()
                     .line(int_line)
                     .start(isr1::<System, D>)

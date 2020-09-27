@@ -110,7 +110,9 @@ impl<System: Kernel> App<System> {
             .active(true)
             .finish(b);
 
-        let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
+        let int = if let (&[int_line, ..], &[int_pri, ..]) =
+            (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
+        {
             InterruptHandler::build()
                 .line(int_line)
                 .start(isr::<System, D>)
@@ -119,7 +121,7 @@ impl<System: Kernel> App<System> {
             Some(
                 InterruptLine::build()
                     .line(int_line)
-                    .priority(D::INTERRUPT_PRIORITY_LOW)
+                    .priority(int_pri)
                     .enabled(true)
                     .finish(b),
             )

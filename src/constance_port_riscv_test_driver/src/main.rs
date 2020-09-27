@@ -155,8 +155,7 @@ macro_rules! instantiate_test {
                 #[cfg(feature = "board-e310x-qemu")]
                 crate::interrupt_e310x::INTERRUPT_GPIO1,
             ];
-            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 2;
-            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 6;
+            const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[6, 2];
         }
 
         #[cfg(feature = "kernel_tests")]
@@ -177,8 +176,7 @@ macro_rules! instantiate_test {
                 #[cfg(feature = "board-e310x-qemu")]
                 crate::interrupt_e310x::INTERRUPT_GPIO1,
             ];
-            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 2;
-            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 6;
+            const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[6, 2];
         }
 
         static COTTAGE: test_case::App<System> =

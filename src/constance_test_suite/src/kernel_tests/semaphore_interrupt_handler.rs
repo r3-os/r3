@@ -29,7 +29,9 @@ impl<System: Kernel> App<System> {
         let sem = Semaphore::build().initial(0).maximum(2).finish(b);
         let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-        let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
+        let int = if let (&[int_line, ..], &[int_pri, ..]) =
+            (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
+        {
             InterruptHandler::build()
                 .line(int_line)
                 .start(isr::<System, D>)
@@ -39,7 +41,7 @@ impl<System: Kernel> App<System> {
                 InterruptLine::build()
                     .line(int_line)
                     .enabled(true)
-                    .priority(D::INTERRUPT_PRIORITY_HIGH)
+                    .priority(int_pri)
                     .finish(b),
             )
         } else {

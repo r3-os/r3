@@ -141,8 +141,7 @@ macro_rules! instantiate_test {
             // Chose PPIs.
             // SGIs (software-generated interrupts) don't support disabling.
             const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
-            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0x60;
-            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0x20;
+            const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0x20, 0x60];
         }
 
         #[cfg(feature = "kernel_tests")]
@@ -160,8 +159,7 @@ macro_rules! instantiate_test {
             // Chose PPIs.
             // SGIs (software-generated interrupts) don't support disabling.
             const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
-            const INTERRUPT_PRIORITY_LOW: InterruptPriority = 0x60;
-            const INTERRUPT_PRIORITY_HIGH: InterruptPriority = 0x20;
+            const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0x20, 0x60];
         }
 
         static COTTAGE: test_case::App<System> =
