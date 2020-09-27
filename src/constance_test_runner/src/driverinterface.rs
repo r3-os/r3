@@ -17,6 +17,7 @@ pub(crate) struct TestDriver {
     target: &'static dyn targets::Target,
     target_arch_opt: targets::BuildOpt,
     link_dir: tempdir::TempDir,
+    meta: Meta,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -27,6 +28,10 @@ pub(crate) enum TestDriverNewError {
     CargoMetadata(#[source] subprocess::SubprocessError),
     #[error("Could not parse the Cargo metadata.")]
     CargoMetadataParse(#[source] serde_json::Error),
+    #[error("Could not read the test driver metadata.")]
+    DriverMetadata(#[source] std::io::Error),
+    #[error("Could not parse the test driver metadata.")]
+    DriverMetadataParse(#[source] toml::de::Error),
     #[error("{0:?} is not a valid driver path.")]
     BadDriverPath(PathBuf),
     #[error("Error while creating a temporary directory.")]
@@ -70,6 +75,20 @@ pub(crate) enum TestRunError {
     TooLong,
     #[error("'{0}'")]
     General(String),
+}
+
+/// Driver metadata (`TestDriver.toml`).
+#[derive(Default, Debug, serde::Deserialize)]
+struct Meta {
+    tests: MetaTests,
+}
+
+/// A section of driver metadata describing the additional tests defined by a
+/// test driver.
+#[derive(Default, Debug, serde::Deserialize)]
+struct MetaTests {
+    /// The list of custom kernel tests defined by the test driver.
+    kernel_tests: Vec<String>,
 }
 
 const CARGO_CMD: &str = "cargo";
@@ -130,6 +149,23 @@ impl TestDriver {
         std::env::set_current_dir(&crate_path)
             .map_err(|e| TestDriverNewError::CdError(crate_path.clone(), e))?;
 
+        // Load the driver metadata
+        let meta_path = crate_path.join("TestDriver.toml");
+        log::debug!("Loading driver metadata from '{}'", meta_path.display());
+        let meta: Meta = match tokio::fs::read(meta_path).await {
+            Ok(data) => {
+                toml::de::from_slice(&data).map_err(TestDriverNewError::DriverMetadataParse)?
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                log::debug!("`TestDriver.toml` wasn't found; using the default metadata");
+                Default::default()
+            }
+            Err(e) => {
+                return Err(TestDriverNewError::DriverMetadata(e));
+            }
+        };
+        log::trace!("driver.meta = {:?}", meta);
+
         // Find the target directory
         let target_dir = {
             let metadata_json = subprocess::CmdBuilder::new(CARGO_CMD)
@@ -144,11 +180,11 @@ impl TestDriver {
                 target_directory: String,
             }
 
-            let metadata: MetadataV1 =
+            let crate_metadata: MetadataV1 =
                 serde_json::from_str(&String::from_utf8_lossy(&metadata_json))
                     .map_err(TestDriverNewError::CargoMetadataParse)?;
 
-            PathBuf::from(metadata.target_directory)
+            PathBuf::from(crate_metadata.target_directory)
         };
         log::debug!("target_dir = '{}'", target_dir.display());
 
@@ -187,14 +223,20 @@ impl TestDriver {
             target_arch_opt,
             link_dir,
             target,
+            meta,
         })
+    }
+
+    /// Get the list of kernel tests defined by the test driver.
+    pub(crate) fn driver_kernel_tests(&self) -> Vec<String> {
+        self.meta.tests.kernel_tests.clone()
     }
 
     /// Compile an executable of the test driver and run it using the specified
     /// debug probe interface.
     pub(crate) async fn run(
         &self,
-        test_run: &selection::TestRun,
+        test_run: &selection::TestRun<'_>,
         build_opt: BuildOpt,
         debug_probe: &mut (impl targets::DebugProbe + ?Sized),
     ) -> Result<Result<(), TestRunError>, TestDriverRunError> {
@@ -236,7 +278,7 @@ impl TestDriver {
     /// Compile an executable of the test driver.
     async fn compile(
         &self,
-        test_run: &selection::TestRun,
+        test_run: &selection::TestRun<'_>,
         BuildOpt { verbose, log_level }: BuildOpt,
     ) -> Result<(), TestDriverRunError> {
         let Self {
@@ -267,7 +309,8 @@ impl TestDriver {
                 .arg("--target")
                 .arg(&target_arch_opt.target_triple)
                 .arg(match test_run.case {
-                    selection::TestCase::KernelTest(_) => "--features=kernel_tests",
+                    selection::TestCase::KernelTest(_)
+                    | selection::TestCase::DriverKernelTest(_) => "--features=kernel_tests",
                     selection::TestCase::KernelBenchmark(_) => "--features=kernel_benchmarks",
                 })
                 .args(
@@ -299,7 +342,24 @@ impl TestDriver {
                     Some("-Zbuild-std=core")
                 })
                 .env("CONSTANCE_TEST_DRIVER_LINK_SEARCH", link_dir.path())
-                .env("CONSTANCE_TEST", &full_test_name)
+                // Tell `constance_test_suite/build.rs` which test to run
+                .env(
+                    "CONSTANCE_TEST",
+                    match test_run.case {
+                        selection::TestCase::KernelTest(_)
+                        | selection::TestCase::KernelBenchmark(_) => &full_test_name,
+                        selection::TestCase::DriverKernelTest(_) => "",
+                    },
+                )
+                // Tell `constance_*_test_driver/build.rs` which test to run
+                .env(
+                    "CONSTANCE_DRIVER_TEST",
+                    match test_run.case {
+                        selection::TestCase::KernelTest(_)
+                        | selection::TestCase::KernelBenchmark(_) => "",
+                        selection::TestCase::DriverKernelTest(_) => &full_test_name,
+                    },
+                )
                 .env("RUSTFLAGS", rustflags);
             if verbose {
                 cmd.spawn_expecting_success().await

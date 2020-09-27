@@ -5,9 +5,13 @@ use thiserror::Error;
 
 use crate::utils::Joined;
 
+pub struct TestSource {
+    pub driver_kernel_tests: Vec<String>,
+}
+
 #[derive(Debug, Clone)]
-pub struct TestRun {
-    pub case: TestCase,
+pub struct TestRun<'a> {
+    pub case: TestCase<'a>,
     pub cpu_lock_by_basepri: bool,
 }
 
@@ -15,12 +19,14 @@ pub struct TestRun {
 const FEAT_CPU_LOCK_BY_BASEPRI: &str = "basepri";
 
 #[derive(Debug, Clone)]
-pub enum TestCase {
+pub enum TestCase<'a> {
     KernelTest(&'static str),
     KernelBenchmark(&'static str),
+    /// Driver-defined kernel test
+    DriverKernelTest(&'a str),
 }
 
-impl fmt::Display for TestRun {
+impl fmt::Display for TestRun<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -35,16 +41,17 @@ impl fmt::Display for TestRun {
     }
 }
 
-impl fmt::Display for TestCase {
+impl fmt::Display for TestCase<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::KernelTest(name) => write!(f, "kernel_tests::{}", name),
+            Self::DriverKernelTest(name) => write!(f, "kernel_tests::{}", name),
             Self::KernelBenchmark(name) => write!(f, "kernel_benchmarks::{}", name),
         }
     }
 }
 
-fn all_test_runs() -> impl Iterator<Item = TestRun> {
+fn all_test_runs(test_source: &TestSource) -> impl Iterator<Item = TestRun<'_>> {
     let cases = constance_test_suite::kernel_tests::TEST_NAMES
         .iter()
         .cloned()
@@ -55,6 +62,13 @@ fn all_test_runs() -> impl Iterator<Item = TestRun> {
             .iter()
             .cloned()
             .map(TestCase::KernelBenchmark),
+    );
+
+    let cases = cases.chain(
+        test_source
+            .driver_kernel_tests
+            .iter()
+            .map(|s| TestCase::DriverKernelTest(&**s)),
     );
 
     iproduct!(cases, &[false, true]).map(|(case, &cpu_lock_by_basepri)| TestRun {
@@ -89,8 +103,11 @@ impl TestFilter {
         }
     }
 
-    pub fn all_matching_test_runs(&self) -> impl Iterator<Item = TestRun> + '_ {
-        all_test_runs().filter(move |r| self.matches(r))
+    pub fn all_matching_test_runs<'a>(
+        &'a self,
+        test_source: &'a TestSource,
+    ) -> impl Iterator<Item = TestRun> + 'a {
+        all_test_runs(test_source).filter(move |r| self.matches(r))
     }
 }
 
