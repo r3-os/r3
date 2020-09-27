@@ -12,6 +12,7 @@ kernel_tests = ["run"]
 run = [
     "constance_test_suite",
     "constance_port_riscv",
+    "constance_portkit",
     "constance",
     "riscv-rt",
     "riscv",
@@ -53,6 +54,7 @@ board-maix = []
 
 [dependencies]
 constance_port_riscv = { path = "../constance_port_riscv", optional = true }
+constance_portkit = { path = "../constance_portkit", optional = true }
 constance = { path = "../constance", optional = true }
 
 rtt-target = { version = "0.2.0", optional = true }

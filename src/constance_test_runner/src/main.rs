@@ -130,6 +130,9 @@ async fn main_inner() -> anyhow::Result<()> {
     .map_err(MainError::TestDriver)?;
 
     // Select tests
+    let test_source = selection::TestSource {
+        driver_kernel_tests: test_driver.driver_kernel_tests(),
+    };
     let test_filter = if opt.tests.is_empty() {
         selection::TestFilter::Pass
     } else {
@@ -149,7 +152,7 @@ async fn main_inner() -> anyhow::Result<()> {
         },
     );
     let test_runs: Vec<_> = test_filter
-        .all_matching_test_runs()
+        .all_matching_test_runs(&test_source)
         .filter(|r| supports_basepri || !r.cpu_lock_by_basepri)
         .collect();
 
