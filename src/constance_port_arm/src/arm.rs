@@ -5,15 +5,12 @@ macro_rules! sys_coproc_read_raw {
         fn get(&self) -> u32 {
             let reg;
             unsafe {
-                llvm_asm!(
+                asm!(
                     concat!(
-                        "mrc ", stringify!($cp), ", ", stringify!($opc1), ", $0, ",
+                        "mrc ", stringify!($cp), ", ", stringify!($opc1), ", {}, ",
                         stringify!($crn), ", ", stringify!($crm), ", ", stringify!($opc2)
-                    )
-                :   "=r"(reg)
-                :
-                :
-                :   "volatile"
+                    ),
+                    lateout(reg) reg,
                 );
             }
             reg
@@ -26,15 +23,12 @@ macro_rules! sys_coproc_write_raw {
         #[inline]
         fn set(&self, value: u32) {
             unsafe {
-                llvm_asm!(
+                asm!(
                     concat!(
-                        "mcr ", stringify!($cp), ", ", stringify!($opc1), ", $0, ",
+                        "mcr ", stringify!($cp), ", ", stringify!($opc1), ", {}, ",
                         stringify!($crn), ", ", stringify!($crm), ", ", stringify!($opc2)
-                    )
-                :
-                :   "r"(value)
-                :
-                :   "volatile"
+                    ),
+                    in(reg) value,
                 );
             }
         }

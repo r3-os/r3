@@ -35,7 +35,7 @@ impl VectorTable {
 pub fn start<System: EntryPoint + StartupOptions>() {
     unsafe {
         // Set the stack pointer before calling Rust code
-        llvm_asm!("
+        asm!("
             ldr r0, =_stack_start
 
             # Set the stack for IRQ mode
@@ -59,12 +59,11 @@ pub fn start<System: EntryPoint + StartupOptions>() {
             msr cpsr_c, #0xd3
             mov sp, r0
 
-            b $0
-        "
-        :
-        :   "X"(reset_handler1::<System> as extern "C" fn())
-        :
-        :   "volatile");
+            b {reset_handler1}
+            ",
+            reset_handler1 = sym reset_handler1::<System>,
+            options(noreturn),
+        );
     }
 }
 
@@ -99,7 +98,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
             // Level = level, InD = 0
             // Use `isb` to make sure the change to CSSELR takes effect.
             arm::CSSELR.set(level * 2);
-            unsafe { llvm_asm!("isb") };
+            unsafe { asm!("isb") };
 
             let cssidr = arm::CCSIDR.extract();
             let log2_line_size = cssidr.read(arm::CCSIDR::LineSize) + 4;
@@ -151,8 +150,8 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
     // DSB causes completion of all preceding cache and branch predictor
     // mantenance operations. ISB causes the effect to be visible to all
     // subsequent instructions.
-    unsafe { llvm_asm!("dsb") };
-    unsafe { llvm_asm!("isb") };
+    unsafe { asm!("dsb") };
+    unsafe { asm!("isb") };
 
     arm::SCTLR.modify(
         // Enable data and unified caches
@@ -178,7 +177,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
     );
 
     // Ensure the changes made to `SCTLR` here take effect immediately
-    unsafe { llvm_asm!("isb") };
+    unsafe { asm!("isb") };
 
     extern "C" {
         // These symbols come from `link.x`

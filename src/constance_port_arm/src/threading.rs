@@ -66,7 +66,7 @@ impl State {
         debug_assert!(self.is_cpu_lock_active::<System>());
 
         unsafe {
-            llvm_asm!("
+            asm!("
                 mov r0, sp
 
                 # Switch to System mode
@@ -79,12 +79,10 @@ impl State {
                 str r0, [r1]
 
                 b Dispatch
-                "
-            :
-            :   "{r1}"(self.main_stack.get())
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+                ",
+                in("r1") self.main_stack.get(),
+                options(noreturn),
+            );
         }
     }
 
@@ -100,7 +98,7 @@ impl State {
         }
 
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Push the first level context state. The return address is
                 # set to `YieldReturn`. The value of CPSR is captured before
                 # `cpsid i` so that interrupts are re-enabled when the current
@@ -116,20 +114,20 @@ impl State {
                 #
                 adr r2, YieldReturn
                 mrs r3, CPSR
-                push {r2, r3}
-                push {r12, lr}
+                push {{r2, r3}}
+                push {{r12, lr}}
                 subs sp, #8
-                push {r0, r1}
+                push {{r0, r1}}
 
                 cpsid i
-                b $0
+                b {push_second_level_state_and_dispatch}
 
             YieldReturn:
-                "
-            :
-            :   "X"(Self::push_second_level_state_and_dispatch::<System> as unsafe fn() -> !)
-            :   "r2", "r3"
-            :   "volatile"
+                ",
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
+                out("r2") _,
+                out("r3") _,
             );
         }
     }
@@ -181,18 +179,18 @@ impl State {
         let main_stack_ptr = System::port_state().main_stack.get();
 
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
                 # but `choose_and_get_next_task` needs one. Therefore we borrow
                 # the main stack.
                 #
-                #   if sp_usr == 0 {
-                #       [running_task is None]
+                #   if sp_usr == 0:
+                #       <running_task is None>
                 #       sp_usr = *main_stack_ptr;
-                #   } else {
+                #   else:
                 #       /* ... */
-                #   }
+                #   
                 #   choose_and_get_next_task();
                 #
                 tst sp, sp
@@ -200,11 +198,11 @@ impl State {
                 beq Dispatch
 
                 # Push the second-level context state.
-                push {r4-r11}
+                push {{r4-r11}}
 
                 # Store SP to `TaskState`.
                 #
-                #    [r0 = &running_task]
+                #    <r0 = &running_task>
                 #    r0 = running_task
                 #    r0.port_task_state.sp = sp_usr
                 #
@@ -215,22 +213,22 @@ impl State {
             Dispatch:
                 # Choose the next task to run. `choose_and_get_next_task`
                 # returns the new value of `running_task`.
-                bl $1
+                bl {choose_and_get_next_task}
 
                 # Restore SP from `TaskState`
                 #
-                #    [r0 = running_task]
-                #    if r0.is_none() {
+                #    <r0 = running_task>
+                #    if r0.is_none():
                 #        goto idle_task;
-                #    }
+                #    
                 #    sp_usr = r0.port_task_state.sp
                 #
                 tst r0, r0
-                beq $2
+                beq {idle_task}
                 ldr sp, [r0]
 
                 # Pop the second-level context state.
-                pop {r4-r11}
+                pop {{r4-r11}}
 
             .global PopFirstLevelState
             PopFirstLevelState:
@@ -240,28 +238,26 @@ impl State {
 
                 # Resume the next task by restoring the first-level state
                 #
-                #   [{r4-r11, sp_usr} = resumed context]
+                #   <[r4-r11, sp_usr] = resumed context>
                 #
-                #   {r0-r3} = SP_usr[0..4];
+                #   [r0-r3] = SP_usr[0..4];
                 #   r12 = SP_usr[4];
                 #   lr = SP_usr[5];
                 #   pc = SP_usr[6];
                 #   CPSR = SP_usr[7];
                 #   SP_usr += 8;
                 #
-                #   [end of procedure]
+                #   <end of procedure>
                 #
-                pop {r0-r3, r12, lr}
+                pop {{r0-r3, r12, lr}}
                 rfeia sp!
-            "
-            :
-            :   "{r0}"(running_task_ptr)
-            ,   "X"(choose_and_get_next_task::<System> as extern fn() -> _)
-            ,   "X"(Self::idle_task::<System> as unsafe fn() -> !)
-            ,   "{r1}"(main_stack_ptr)
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+            ",
+                choose_and_get_next_task = sym choose_and_get_next_task::<System>,
+                idle_task = sym Self::idle_task::<System>,
+                in("r0") running_task_ptr,
+                in("r1") main_stack_ptr,
+                options(noreturn),
+            );
         }
     }
 
@@ -280,7 +276,7 @@ impl State {
         let dispatch_pending_ptr = System::port_state().dispatch_pending.get();
 
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Read `dispatch_pending`
                 ldrb r1, [r0]
                 tst r1, r1
@@ -292,7 +288,7 @@ impl State {
                 # If we are returning to the idle task, branch to `idle_task`
                 # directly because `PopFirstLevelState` can't handle this case.
                 tst sp, sp
-                beq $2
+                beq {idle_task}
 
                 b PopFirstLevelState
 
@@ -303,15 +299,14 @@ impl State {
             NotShortcutting:
                 movs r1, #0
                 strb r1, [r0]
-                b $1
-            "
-            :
-            :   "{r0}"(dispatch_pending_ptr)
-            ,   "X"(Self::push_second_level_state_and_dispatch::<System> as unsafe fn() -> !)
-            ,   "X"(Self::idle_task::<System> as unsafe fn() -> !)
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+                b {push_second_level_state_and_dispatch}
+            ",
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
+                idle_task = sym Self::idle_task::<System>,
+                in("r0") dispatch_pending_ptr,
+                options(noreturn),
+            );
         }
     }
 
@@ -328,7 +323,8 @@ impl State {
     #[naked]
     unsafe fn idle_task<System: PortInstance>() -> ! {
         unsafe {
-            llvm_asm!("
+            asm!(
+                "
                 movs sp, #0
                 cpsie i
             IdleLoop:
@@ -337,12 +333,9 @@ impl State {
                 dsb
                 wfi
                 b IdleLoop
-            "
-            :
-            :
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+            ",
+                options(noreturn),
+            );
         }
     }
 
@@ -351,27 +344,25 @@ impl State {
         _task: &'static TaskCb<System>,
     ) -> ! {
         unsafe {
-            llvm_asm!("
+            asm!(
+                "
                 cpsid i
                 b Dispatch
-                "
-            :
-            :
-            :
-            :   "volatile");
-            core::hint::unreachable_unchecked();
+                ",
+                options(noreturn),
+            );
         }
     }
 
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
         // TODO: support unmanaged interrupts
-        unsafe { llvm_asm!("cpsid i"::::"volatile") };
+        unsafe { asm!("cpsid i") };
     }
 
     #[inline(always)]
     pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
-        unsafe { llvm_asm!("cpsie i"::::"volatile") };
+        unsafe { asm!("cpsie i") };
     }
 
     pub unsafe fn initialize_task_state<System: PortInstance>(
@@ -433,14 +424,14 @@ impl State {
     #[inline(always)]
     pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
         let cpsr: u32;
-        unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr):::"volatile") };
+        unsafe { asm!("mrs {}, cpsr", out(reg) cpsr) };
         (cpsr & (1 << 7)) != 0
     }
 
     #[inline(always)]
     pub fn is_task_context<System: PortInstance>(&self) -> bool {
         let cpsr: u32;
-        unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr):::"volatile") };
+        unsafe { asm!("mrs {}, cpsr", out(reg) cpsr) };
         (cpsr & 0xf) == 0xf // System mode
     }
 
@@ -452,7 +443,7 @@ impl State {
         System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
     {
         unsafe {
-            llvm_asm!("
+            asm!("
                 # Adjust `lr_irq` to get the preferred return address. (The
                 # required adjustment is different for each exception type.)
                 subs lr, #4
@@ -460,17 +451,16 @@ impl State {
                 # Switch back to the background mode. The background mode is
                 # indicated by SPSR.M on handler entry.
                 #
-                #   [{r0-r12, sp_xxx, lr_xxx, SPSR} = background context,
-                #    lr_irq = preferred return address]
+                #   <[r0-r12, sp_xxx, lr_xxx, SPSR] = background context,
+                #    lr_irq = preferred return address>
                 #
                 #   sp_irq = SPSR
-                #   match sp_irq.M {
-                #       Supervisor => cps Supervisor,
-                #       System => cps System,
-                #   }
+                #   match sp_irq.M:
+                #       Supervisor => cps Supervisor
+                #       System => cps System
                 #
-                #   [{r0-r12, sp_xxx, lr_xxx, SPSR} = background context,
-                #    lr_irq = preferred return address]
+                #   <[r0-r12, sp_xxx, lr_xxx, SPSR] = background context,
+                #    lr_irq = preferred return address>
                 #
                 mrs sp, SPSR
                 tst sp, #0x8
@@ -484,12 +474,12 @@ impl State {
                 # Skip saving the first-level state if the background context
                 # is an idle task.
                 #
-                #   if sp_xxx == 0 {
-                #       [&sp_xxx == &sp_usr, running_task is None]
+                #   if sp_xxx == 0:
+                #       <&sp_xxx == &sp_usr, running_task is None>
                 #       spsr_saved = 0x8
                 #       goto PushFirstLevelStateEnd;
-                #   }
-                #   [&sp_xxx != &sp_usr || running_task is Some(_)]
+                #   
+                #   <&sp_xxx != &sp_usr || running_task is Some(_)>
                 #
                 tst sp, sp
                 it eq
@@ -499,19 +489,19 @@ impl State {
                 # Save the first-level state to the background context's stack
                 # (sp_xxx = SP_usr or sp_svc).
                 #
-                #   [{r0-r12, sp_xxx, lr_xxx, SPSR} = background context,
-                #    lr_irq = preferred return address]
+                #   <[r0-r12, sp_xxx, lr_xxx, SPSR] = background context,
+                #    lr_irq = preferred return address>
                 #
                 #   sp_xxx -= 8;
-                #   sp_xxx[0..4] = {r0-r3};
+                #   sp_xxx[0..4] = [r0-r3];
                 #   sp_xxx[4] = r12;
                 #   sp_xxx[5] = lr_xxx;
                 #
-                #   [r2 = sp_xxx, {r4-r11, sp_xxx, SPSR} = background context,
-                #    lr_irq = preferred return address]
+                #   <r2 = sp_xxx, [r4-r11, sp_xxx, SPSR] = background context,
+                #    lr_irq = preferred return address>
                 #
                 subs sp, #8
-                push {r0-r3, r12, lr}
+                push {{r0-r3, r12, lr}}
                 mov r2, sp
 
                 # Switch to IRQ mode. Save the return address to the background
@@ -521,7 +511,7 @@ impl State {
                 #   sp_xxx[7] = SPSR;
                 #   spsr_saved = SPSR;
                 #
-                #   [r1 = spsr_saved, {r4-r11, sp_xxx} = background context]
+                #   <r1 = spsr_saved, [r4-r11, sp_xxx] = background context>
                 #
                 cps #0x12
                 mov r0, lr
@@ -534,38 +524,36 @@ impl State {
 
                 # Align `sp_svc` to 8 bytes and save the original `sp_svc`
                 # (this is required by AAPCS). At the same time, save `spsr_saved`
-                #   [r1 = spsr_saved]
-                #   match sp % 8 {
-                #       0 => {
+                #
+                #   <r1 = spsr_saved>
+                #   match sp % 8:
+                #       0 =>
                 #           sp[-2] = spsr_saved;
                 #           sp[-1] = sp;
                 #           sp -= 2;
-                #       }
-                #       4 => {
+                #       4 =>
                 #           sp[-3] = spsr_saved;
                 #           sp[-2] = sp;
                 #           sp -= 3;
-                #       }
-                #   }
+                #
                 mov r2, sp
                 bic sp, #4
-                push {r1, r2}
+                push {{r1, r2}}
 
                 # Call `handle_irq`
-                bl $0
+                bl {handle_irq}
 
                 # Restore the original `sp_svc` snd `spsr_saved`
                 ldrd ip, sp, [sp]
 
                 # Are we returning to a task context?
                 #
-                #   [ip = spsr_saved]
-                #   match spsr_saved.M {
-                #       Supervisor => {}
-                #       System => {
+                #   <ip = spsr_saved>
+                #   match spsr_saved.M:
+                #       Supervisor => pass
+                #       System =>
                 #           goto ReturnToTask;
-                #       }
-                #   }
+                #
                 tst ip, #0x8
                 bne ReturnToTask
 
@@ -573,20 +561,20 @@ impl State {
                 # processor mode or finding the next task to dispatch is
                 # unnecessary in this case.
                 #
-                #   [&sp_xxx == &sp_svc, {r4-r11, sp_xxx} = background context]
+                #   <&sp_xxx == &sp_svc, [r4-r11, sp_xxx] = background context>
                 #
-                #   {r0-r3} = sp_svc[0..4];
+                #   [r0-r3] = sp_svc[0..4];
                 #   r12 = sp_svc[4];
                 #   lr_svc = sp_svc[5];
                 #   pc = sp_svc[6];
                 #   CPSR = sp_svc[7];
                 #   sp_svc += 8;
                 #
-                #   [end of procedure]
+                #   <end of procedure>
                 #
                 cpsid i
                 clrex
-                pop {r0-r3, r12, lr}
+                pop {{r0-r3, r12, lr}}
                 rfeia sp!
 
             ReturnToTask:
@@ -597,15 +585,13 @@ impl State {
 
                 # Return to the task context by restoring the first-level and
                 # second-level state of the next task.
-                b $1
-                "
-            :
-            :   "X"(Self::handle_irq::<System> as unsafe fn())
-            ,   "X"(Self::push_second_level_state_and_dispatch_shortcutting::<System> as unsafe fn() -> !)
-            :
-            :   "volatile"
+                b {push_second_level_state_and_dispatch_shortcutting}
+                ",
+                handle_irq = sym Self::handle_irq::<System>,
+                push_second_level_state_and_dispatch_shortcutting =
+                    sym Self::push_second_level_state_and_dispatch_shortcutting::<System>,
+                options(noreturn),
             );
-            core::hint::unreachable_unchecked();
         }
     }
 
@@ -618,7 +604,7 @@ impl State {
         if let Some(line) = unsafe { System::acknowledge_interrupt() } {
             // Now that we have signaled the acknowledgement of the current
             // exception, we can start accepting nested exceptions.
-            unsafe { llvm_asm!("cpsie i"::::"volatile") };
+            unsafe { asm!("cpsie i") };
 
             if let Some(handler) = System::INTERRUPT_HANDLERS.get(line) {
                 // Safety: The first-level interrupt handler is the only code

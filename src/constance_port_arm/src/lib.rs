@@ -4,7 +4,7 @@
 #![feature(const_panic)]
 #![feature(const_ptr_offset)]
 #![feature(decl_macro)]
-#![feature(llvm_asm)]
+#![feature(asm)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`

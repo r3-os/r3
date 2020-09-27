@@ -7,7 +7,7 @@ static mut BUFFER: StaticString<512> = StaticString::new();
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     // Disable interrupts
-    unsafe { llvm_asm!("cpsid i"::::"volatile") };
+    unsafe { asm!("cpsid i") };
 
     if let Ok(mut hstdout) = hio::hstdout() {
         // The test runner stops reading the output when it encounters a stop
