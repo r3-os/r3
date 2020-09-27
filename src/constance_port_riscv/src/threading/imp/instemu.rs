@@ -3,7 +3,8 @@ use constance_portkit::pptext::pp_asm;
 
 use super::X_SIZE;
 
-// TODO: add tests for `emulate-lr-sc`
+// TODO: The test case `execute_lr_sc` can test `emulate-lr-sc`, but it won't on
+//       QEMU (and thus our CI) because QEMU handles LR/SC as intended
 
 /// The reserved address, used for emulating SC/LR.
 pub(super) static mut RESERVATION_ADDR_VALUE: [usize; 2] = [0; 2];

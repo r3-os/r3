@@ -4,6 +4,8 @@
 #![feature(naked_functions)]
 #![feature(llvm_asm)]
 #![feature(decl_macro)]
+#![feature(raw_ref_macros)]
+#![feature(const_ptr_offset)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(feature = "run", no_std)]
@@ -261,7 +263,7 @@ include!(concat!(env!("OUT_DIR"), "/gen.rs"));
 
 #[cfg(feature = "kernel_tests")]
 mod driver_kernel_tests {
-    pub mod instr_lr_sc;
+    pub mod execute_lr_sc;
 }
 
 #[cfg(not(feature = "run"))]

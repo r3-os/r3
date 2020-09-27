@@ -3,5 +3,5 @@
 # `CONSTANCE_DRIVER_TEST` environment variable.
 [tests]
 kernel_tests = [
-    "instr_lr_sc",
+    "execute_lr_sc",
 ]

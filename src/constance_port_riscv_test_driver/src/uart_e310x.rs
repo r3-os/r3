@@ -2,7 +2,6 @@
 //! (RISC-V Board compatible with SiFive E SDK).
 use core::fmt;
 use e310x_hal::{
-    clock::Clocks,
     e310x::{UART0, UART1},
     prelude::*,
     serial::{Serial, Tx, UartX},

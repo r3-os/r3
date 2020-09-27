@@ -140,10 +140,11 @@ const FLSF_SIZE: usize = 20 * F_SIZE + REG_ALIGN;
 
 /// The assembler fragments used by `pp_asm!`. Because of a mysterious macro
 /// hygienics behavior, they have to referred to by absolute paths.
+///
+/// They are marked as `pub` to be used by `constance_port_riscv_test_driver`.
 #[rustfmt::skip]
-#[allow(unused_macros)]
-#[allow(dead_code)]
-mod asm_inc {
+#[doc(hidden)]
+pub mod asm_inc {
     // define_load_store - defines the macros for XLEN-bit load/store
     // -----------------------------------------------------------------
     #[cfg(target_pointer_width = "128")]
