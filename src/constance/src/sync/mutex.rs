@@ -5,6 +5,9 @@ use crate::{
     prelude::*,
 };
 
+// TODO: Upgrade `Mutex` to use a real mutex. And then remove the paragraph
+//       in `Mutex` regarding this
+
 /// A mutual exclusion primitive useful for protecting shared data from
 /// concurrent access.
 ///
