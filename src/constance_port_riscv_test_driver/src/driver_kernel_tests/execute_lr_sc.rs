@@ -553,7 +553,7 @@ extern "C" fn save_st1() {
 
 /// Restore from `a0` all X registers except for `ra` (`x1`).
 #[naked]
-unsafe extern "C" fn restore_st(a0: *const St) {
+unsafe extern "C" fn restore_st(_a0: *const St) {
     unsafe {
         pp_asm!("
         "   constance_port_riscv::threading::imp::asm_inc::define_load_store!() "
