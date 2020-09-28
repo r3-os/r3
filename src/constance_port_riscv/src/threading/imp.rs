@@ -1225,7 +1225,9 @@ impl State {
 
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push FLS.F to the background
-                    # context's stack
+                    # context's stack. Clear `mstatus.FS[1]` to indicate that
+                    # FP registers are not in use in the current invocation of
+                    # the trap handler (it'll be set again on first use).
                     #
                     #   <a2 = mstatus_part>
                     #   if mstatus_part.FS[1] != 0:
@@ -1235,6 +1237,7 @@ impl State {
                     #       sp['fa0'-'fa7'] = [fa0-fa7];
                     #       sp['ft8'-'ft11'] = [ft8-ft11];
                     #       sp.fcsr = fcsr;
+                    #       mstatus.FS[1] = 0;
                     #
                     #   let background_sp = sp;
                     #   <a2 = mstatus_part>
@@ -1243,6 +1246,7 @@ impl State {
                     and a1, a1, a2
                     beqz a1, 0f      # → PushFLSFEnd
 
+                    csrc mstatus, a1
                     csrr a1, fcsr
 
                     addi sp, sp, -{FLSF_SIZE}
