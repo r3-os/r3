@@ -570,7 +570,11 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
 
     let prev_task_priority =
         if let Some(running_task) = System::state().running_task(lock.borrow_mut()) {
-            running_task.priority.read(&*lock).to_usize().unwrap()
+            if *running_task.st.read(&*lock) == TaskSt::Running {
+                running_task.priority.read(&*lock).to_usize().unwrap()
+            } else {
+                usize::MAX
+            }
         } else {
             usize::MAX
         };
@@ -667,12 +671,18 @@ pub(super) fn choose_next_running_task<System: Kernel>(
         // Transition `next_running_task` into the Running state
         task.st.replace(&mut *lock, TaskSt::Running);
 
+        if ptr_from_option_ref(prev_running_task) == task {
+            // Skip the remaining steps if `task == prev_running_task`
+            return;
+        }
+
         Some(task)
     } else {
         None
     };
 
-    // If `prev_running_task` is in the Running state, transition it into Ready
+    // If `prev_running_task` is in the Running state, transition it into Ready.
+    // Assumes `prev_running_task != next_running_task`.
     if let Some(running_task) = prev_running_task {
         match running_task.st.read(&*lock) {
             TaskSt::Running => {
@@ -687,6 +697,15 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     System::state()
         .running_task
         .replace(&mut *lock, next_running_task);
+}
+
+#[inline]
+fn ptr_from_option_ref<T>(x: Option<&T>) -> *const T {
+    if let Some(x) = x {
+        x
+    } else {
+        core::ptr::null()
+    }
 }
 
 /// Transition the currently running task into the Waiting state. Returns when
@@ -723,6 +742,8 @@ pub(super) fn wait_until_woken_up<System: Kernel>(
         if *running_task.st.read(&*lock) == TaskSt::Running {
             break;
         }
+
+        assert_eq!(*running_task.st.read(&*lock), TaskSt::Waiting);
     }
 }
 

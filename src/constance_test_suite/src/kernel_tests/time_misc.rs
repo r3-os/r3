@@ -122,5 +122,9 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         Err(constance::kernel::SleepError::BadParam)
     );
 
+    // Wait zero microseconds
+    log::trace!("sleep(0)");
+    System::sleep(Duration::ZERO).unwrap();
+
     D::success();
 }
