@@ -487,6 +487,7 @@ pub mod kernel_benchmarks {
 
     define_kernel_benchmarks! {
         [$]
+        (mod semaphore {}, "semaphore"),
         (mod task_lifecycle {}, "task_lifecycle"),
     }
 
