@@ -24,7 +24,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 | System Topology        | ![Uniprocessor: Supported] ![Homogeneous Multiprocessor: Under Consideration] ![Heterogeneous Multiprocessor: Not Considering] |
 | Kernel Core            | ![Tasks: Supported] ![Hunks: Supported] ![Wait Objects: Supported] ![Timeouts: Supported] ![Timers: Supported] ![Interrupts: Supported] ![Startup Hooks: Supported] ![CPU Exceptions: Under Consideration] ![Panicking: Under Consideration] |
 | Kernel Synchronization | ![Semaphores: Supported] ![Event Groups: Supported] ![Mutexes: Under Consideration] |
-| Library                | ![Mutex: Under Consideration] ![RwLock: Under Consideration] ![Once: Under Consideration] ![C API: Under Consideration] |
+| Library                | ![Mutex: Supported] ![RwLock: Under Consideration] ![Once: Under Consideration] ![C API: Under Consideration] |
 | Port (Simulator)       | ![POSIX: Supported] ![Windows: Under Consideration] |
 | Port (Arm M-Profile)   | ![Armv8-M Mainline (no CMSE): Supported] ![Armv8-M Baseline (no CMSE): Supported] ![Armv7-M: Supported] ![Armv6-M: Supported] |
 | Port (Arm A-Profile)   | ![Armv7-A (no FPU): Supported] |
@@ -47,7 +47,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 [CPU Exceptions: Under Consideration]: https://img.shields.io/badge/CPU%20Exceptions-Under%20Consideration-cc7070?style=flat-square
 [Panicking: Under Consideration]: https://img.shields.io/badge/Panicking-Under%20Consideration-cc7070?style=flat-square
 
-[Mutex: Under Consideration]: https://img.shields.io/badge/Mutex-Under%20Consideration-cc7070?style=flat-square
+[Mutex: Supported]: https://img.shields.io/badge/Mutex-Supported-success?style=flat-square
 [RwLock: Under Consideration]: https://img.shields.io/badge/RwLock-Under%20Consideration-cc7070?style=flat-square
 [Once: Under Consideration]: https://img.shields.io/badge/Once-Under%20Consideration-cc7070?style=flat-square
 [C API: Under Consideration]: https://img.shields.io/badge/C%20API-Under%20Consideration-cc7070?style=flat-square
