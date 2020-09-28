@@ -22,6 +22,9 @@ pub struct Mutex<System, T> {
     _phantom: PhantomData<(System, T)>,
 }
 
+unsafe impl<System: Kernel, T: 'static + Send> Send for Mutex<System, T> {}
+unsafe impl<System: Kernel, T: 'static + Send> Sync for Mutex<System, T> {}
+
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure
 /// is dropped, the lock will be released.
 ///
@@ -30,6 +33,7 @@ pub struct Mutex<System, T> {
 ///
 /// [`lock`]: Mutex::lock
 /// [`try_lock`]: Mutex::try_lock
+#[must_use = "if unused the Mutex will immediately unlock"]
 pub struct MutexGuard<'a, System: Kernel, T: 'static> {
     mutex: &'a Mutex<System, T>,
     _no_send_sync: PhantomData<*mut ()>,
@@ -38,7 +42,7 @@ pub struct MutexGuard<'a, System: Kernel, T: 'static> {
 unsafe impl<System: Kernel, T: 'static + Sync> Sync for MutexGuard<'_, System, T> {}
 
 /// Error type of [`Mutex::lock`].
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(i8)]
 pub enum LockError {
     /// CPU Lock is active, the current context is not [waitable], or the
@@ -54,7 +58,7 @@ pub enum LockError {
 }
 
 /// Error type of [`Mutex::try_lock`].
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(i8)]
 pub enum TryLockError {
     /// CPU Lock is active.
