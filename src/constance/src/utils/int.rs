@@ -96,7 +96,7 @@ macro_rules! impl_binary_integer {
         impl BinInteger for $type {
             type OneDigits = OneDigits<Self>;
 
-            const BITS: u32 = core::mem::size_of::<$type>() as u32 * 8;
+            const BITS: u32 = <$type>::BITS;
 
             #[inline]
             fn ones(range: ops::Range<u32>) -> Self {
