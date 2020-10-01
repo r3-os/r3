@@ -2,6 +2,8 @@
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(const_option)]
+#![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(decl_macro)]
 #![feature(is_sorted)]

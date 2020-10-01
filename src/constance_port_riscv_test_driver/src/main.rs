@@ -1,6 +1,7 @@
 #![feature(asm)]
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(naked_functions)]
 #![feature(decl_macro)]
 #![feature(raw_ref_macros)]

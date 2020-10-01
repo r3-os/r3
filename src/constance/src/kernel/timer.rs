@@ -249,6 +249,8 @@ use crate::{
 ///
 /// ```rust
 /// # #![feature(const_fn)]
+/// # #![feature(const_mut_refs)]
+/// # #![feature(const_fn_fn_ptr_basics)]
 /// use constance::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
 ///
 /// const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) -> Timer<System> {
@@ -278,6 +280,8 @@ use crate::{
 ///
 /// ```rust
 /// # #![feature(const_fn)]
+/// # #![feature(const_mut_refs)]
+/// # #![feature(const_fn_fn_ptr_basics)]
 /// use constance::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
 ///
 /// const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) -> Timer<System> {
