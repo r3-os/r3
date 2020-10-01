@@ -90,6 +90,7 @@ struct SchedState {
 unsafe impl Sync for State {}
 
 impl Init for State {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         ref_output: Init::INIT,
         task_state: Init::INIT,

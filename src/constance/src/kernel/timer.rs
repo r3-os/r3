@@ -460,6 +460,7 @@ pub struct TimerCb<System: Kernel> {
 }
 
 impl<System: Kernel> Init for TimerCb<System> {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         attr: &Init::INIT,
         timeout: Init::INIT,

@@ -140,6 +140,7 @@ pub(crate) struct WaitQueue<System: PortThreading> {
 }
 
 impl<System: PortThreading> Init for WaitQueue<System> {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         waits: Init::INIT,
         order: QueueOrder::Fifo,
@@ -170,6 +171,7 @@ pub(crate) struct TaskWait<System: PortThreading> {
 }
 
 impl<System: PortThreading> Init for TaskWait<System> {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         current_wait: Init::INIT,
         wait_result: CpuLockCell::new(Ok(())),

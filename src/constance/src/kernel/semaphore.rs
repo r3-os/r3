@@ -182,6 +182,7 @@ pub struct SemaphoreCb<System: Port> {
 }
 
 impl<System: Port> Init for SemaphoreCb<System> {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         value: Init::INIT,
         max_value: Init::INIT,

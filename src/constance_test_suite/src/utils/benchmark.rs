@@ -66,6 +66,7 @@ struct IntervalRecord {
 }
 
 impl Init for BencherState {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self(UnsafeCell::new(BencherStateInner {
         mark: 0,
         intervals: StaticVec::new(),
