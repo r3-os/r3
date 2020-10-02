@@ -1,6 +1,5 @@
 //! Count trailing zeros
 #![allow(clippy::if_same_then_else)]
-use super::int::BinInteger;
 
 const USIZE_BITS: u32 = usize::BITS;
 

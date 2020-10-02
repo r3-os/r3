@@ -5,6 +5,7 @@ Simulator for running [`::constance`] on a hosted environment
 ```rust
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 
 // Require `unsafe` even in `unsafe fn` - highly recommended
 #![feature(unsafe_block_in_unsafe_fn)]

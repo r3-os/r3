@@ -1,3 +1,4 @@
+#![allow(clippy::declare_interior_mutable_const)]
 use core::{cell::UnsafeCell, mem, sync::atomic};
 
 use super::RawCell;
@@ -8,7 +9,6 @@ use super::RawCell;
 /// This trait is subject to the API stability guarantee.
 pub trait Init {
     /// The default value.
-    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self;
 }
 

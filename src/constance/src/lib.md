@@ -207,6 +207,8 @@ Configuration functions are highly composable as they can call other configurati
 
 ```rust
 # #![feature(const_fn)]
+# #![feature(const_mut_refs)]
+# #![feature(const_fn_fn_ptr_basics)]
 # use constance::kernel::{cfg::CfgBuilder, Kernel};
 # struct Objects<System> { my_module: m::MyModule<System> }
 // Top-level configuration function

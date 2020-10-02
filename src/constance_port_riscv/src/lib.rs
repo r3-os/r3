@@ -7,6 +7,8 @@
 #![feature(raw_ref_op)]
 #![feature(const_generics)]
 #![feature(const_option)]
+#![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]

@@ -368,6 +368,7 @@ pub(super) type TimeoutFn<System> = fn(usize, CpuLockGuard<System>) -> CpuLockGu
 const HEAP_POS_NONE: usize = usize::MAX;
 
 impl<System: Kernel> Init for Timeout<System> {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         at: Init::INIT,
         heap_pos: Init::INIT,

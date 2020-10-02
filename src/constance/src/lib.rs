@@ -1,6 +1,8 @@
 #![feature(external_doc)] // `#[doc(include = ...)]`
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_generics)]
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
@@ -13,6 +15,7 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
 #![feature(specialization)]
+#![feature(int_bits_const)]
 #![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]

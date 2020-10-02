@@ -67,6 +67,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 ```rust
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 #![no_std]
 #![no_main]
 

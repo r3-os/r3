@@ -1,6 +1,7 @@
 //! Runs test cases defined in `constance_test_suite`.
 #![feature(never_type)]
 #![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn)]
 #![feature(slice_ptr_len)]
 

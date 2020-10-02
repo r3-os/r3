@@ -170,6 +170,7 @@ struct SchedState {
 unsafe impl Sync for State {}
 
 impl Init for State {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         counter: Init::INIT,
         local_counters: Init::INIT,

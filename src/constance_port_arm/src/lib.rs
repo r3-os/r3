@@ -3,6 +3,8 @@
 #![feature(const_generics)]
 #![feature(const_panic)]
 #![feature(const_ptr_offset)]
+#![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(decl_macro)]
 #![feature(asm)]
 #![feature(naked_functions)]
@@ -174,6 +176,7 @@ macro_rules! use_port {
             // Assume `$sys: Kernel`
             unsafe impl PortThreading for $sys {
                 type PortTaskState = TaskState;
+                #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
                     $crate::constance::utils::Init::INIT;
 

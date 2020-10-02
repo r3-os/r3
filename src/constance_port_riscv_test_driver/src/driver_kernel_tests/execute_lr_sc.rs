@@ -57,47 +57,134 @@ unsafe impl Sync for St {}
 static mut VAR: isize = 0;
 static mut ST1: MaybeUninit<St> = MaybeUninit::uninit();
 static mut ST2: MaybeUninit<St> = MaybeUninit::uninit();
-static mut ALTSTACK: MaybeUninit<Stack> = MaybeUninit::uninit();
 
-#[repr(align(16))]
-struct Stack([u8; 1024]);
+// Creating a `static` item referencing to another `static mut` item is tricky.
+// Therefore we circumvent the restriction by `global_asm!`.
+extern "C" {
+    static execute_lr_sc_init_st: St;
+}
 
-static INIT_ST: St = St {
-    x: [
-        0x00000000 as _,
-        0x01010101 as _,
-        unsafe { raw_mut!(ALTSTACK) as *mut u8 }.wrapping_add(1024 - 16),
-        0x03030303 as _,
-        0x04040404 as _,
-        0x05050505 as _,
-        0x06060606 as _,
-        0x07070707 as _,
-        0x08080808 as _,
-        0x09090909 as _,
-        0x10101010 as _,
-        0x11111111 as _,
-        0x12121212 as _,
-        0x13131313 as _,
-        0x14141414 as _,
-        0x15151515 as _,
-        0x16161616 as _,
-        0x17171717 as _,
-        0x18181818 as _,
-        0x19191919 as _,
-        0x20202020 as _,
-        0x21212121 as _,
-        0x22222222 as _,
-        0x23232323 as _,
-        0x24242424 as _,
-        0x25252525 as _,
-        0x26262626 as _,
-        0x27272727 as _,
-        0x28282828 as _,
-        0x29292929 as _,
-        0x30303030 as _,
-        0x31313131 as _,
-    ],
-};
+global_asm!(
+    ".section .bss
+    .align 4
+    execute_lr_sc_alt_stack:
+        .zero 1024
+    execute_lr_sc_alt_stack_top:"
+);
+
+#[cfg(target_pointer_width = "32")]
+global_asm!(
+    ".section .rodata
+    execute_lr_sc_init_st:
+        .word 0x00000000
+        .word 0x01010101
+        .word execute_lr_sc_alt_stack_top - 16
+        .word 0x03030303
+        .word 0x04040404
+        .word 0x05050505
+        .word 0x06060606
+        .word 0x07070707
+        .word 0x08080808
+        .word 0x09090909
+        .word 0x10101010
+        .word 0x11111111
+        .word 0x12121212
+        .word 0x13131313
+        .word 0x14141414
+        .word 0x15151515
+        .word 0x16161616
+        .word 0x17171717
+        .word 0x18181818
+        .word 0x19191919
+        .word 0x20202020
+        .word 0x21212121
+        .word 0x22222222
+        .word 0x23232323
+        .word 0x24242424
+        .word 0x25252525
+        .word 0x26262626
+        .word 0x27272727
+        .word 0x28282828
+        .word 0x29292929
+        .word 0x30303030
+        .word 0x31313131"
+);
+
+#[cfg(target_pointer_width = "64")]
+global_asm!(
+    ".section .rodata
+    execute_lr_sc_init_st:
+        .quad 0x0000000000000000
+        .quad 0x0101010101010101
+        .quad execute_lr_sc_alt_stack_top - 16
+        .quad 0x0303030303030303
+        .quad 0x0404040404040404
+        .quad 0x0505050505050505
+        .quad 0x0606060606060606
+        .quad 0x0707070707070707
+        .quad 0x0808080808080808
+        .quad 0x0909090909090909
+        .quad 0x1010101010101010
+        .quad 0x1111111111111111
+        .quad 0x1212121212121212
+        .quad 0x1313131313131313
+        .quad 0x1414141414141414
+        .quad 0x1515151515151515
+        .quad 0x1616161616161616
+        .quad 0x1717171717171717
+        .quad 0x1818181818181818
+        .quad 0x1919191919191919
+        .quad 0x2020202020202020
+        .quad 0x2121212121212121
+        .quad 0x2222222222222222
+        .quad 0x2323232323232323
+        .quad 0x2424242424242424
+        .quad 0x2525252525252525
+        .quad 0x2626262626262626
+        .quad 0x2727272727272727
+        .quad 0x2828282828282828
+        .quad 0x2929292929292929
+        .quad 0x3030303030303030
+        .quad 0x3131313131313131"
+);
+
+#[cfg(target_pointer_width = "128")]
+global_asm!(
+    ".section .rodata
+    execute_lr_sc_init_st:
+        .octa 0x00000000000000000000000000000000
+        .octa 0x01010101010101010101010101010101
+        .octa execute_lr_sc_alt_stack_top - 16
+        .octa 0x03030303030303030303030303030303
+        .octa 0x04040404040404040404040404040404
+        .octa 0x05050505050505050505050505050505
+        .octa 0x06060606060606060606060606060606
+        .octa 0x07070707070707070707070707070707
+        .octa 0x08080808080808080808080808080808
+        .octa 0x09090909090909090909090909090909
+        .octa 0x10101010101010101010101010101010
+        .octa 0x11111111111111111111111111111111
+        .octa 0x12121212121212121212121212121212
+        .octa 0x13131313131313131313131313131313
+        .octa 0x14141414141414141414141414141414
+        .octa 0x15151515151515151515151515151515
+        .octa 0x16161616161616161616161616161616
+        .octa 0x17171717171717171717171717171717
+        .octa 0x18181818181818181818181818181818
+        .octa 0x19191919191919191919191919191919
+        .octa 0x20202020202020202020202020202020
+        .octa 0x21212121212121212121212121212121
+        .octa 0x22222222222222222222222222222222
+        .octa 0x23232323232323232323232323232323
+        .octa 0x24242424242424242424242424242424
+        .octa 0x25252525252525252525252525252525
+        .octa 0x26262626262626262626262626262626
+        .octa 0x27272727272727272727272727272727
+        .octa 0x28282828282828282828282828282828
+        .octa 0x29292929292929292929292929292929
+        .octa 0x30303030303030303030303030303030
+        .octa 0x31313131313131313131313131313131"
+);
 
 /// `XLEN / 8`
 const X_SIZE: usize = core::mem::size_of::<usize>();
@@ -128,7 +215,7 @@ unsafe fn do_test<System: Kernel>() {
                 # set_current_state_including_ra(INIT_ST);
                 la a0, {INIT_ST}
                 call {restore_st}
-                li ra, 0x01010101
+                LOAD ra, {INIT_ST} + 1 * {X_SIZE}
 
                 # The test code might trash any X registers. `sp` should still
                 # be a valid stack pointer after executing the code.
@@ -150,7 +237,7 @@ unsafe fn do_test<System: Kernel>() {
                 ST1 = sym ST1,
                 ST2 = sym ST2,
                 X_SIZE = const X_SIZE,
-                INIT_ST = sym INIT_ST,
+                INIT_ST = sym execute_lr_sc_init_st,
                 save_st1 = sym save_st1,
                 restore_st = sym restore_st,
                 copy_st = sym copy_st,
@@ -160,7 +247,7 @@ unsafe fn do_test<System: Kernel>() {
             // Simulate the intended behavior
             {
                 let $st = &mut *ST2.as_mut_ptr();
-                *$st = INIT_ST;
+                *$st = execute_lr_sc_init_st;
                 $behavior;
             }
 
