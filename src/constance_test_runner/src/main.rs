@@ -1,4 +1,3 @@
-#![feature(future_readiness_fns)] // `std::future::ready`
 #![feature(or_patterns)] // `|` in subpatterns
 #![feature(decl_macro)] // `macro`
 use std::{env, path::Path};
