@@ -3,6 +3,7 @@
 
 const USIZE_BITS: u32 = usize::BITS;
 
+#[allow(clippy::needless_bool)]
 const HAS_CTZ: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "riscv64") {
     cfg!(target_feature = "b") || cfg!(target_feature = "experimental-b")
 } else if cfg!(target_arch = "arm") {
@@ -19,6 +20,7 @@ const HAS_CTZ: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "ri
 };
 
 /// Indicates whether the target includes a 32-bit hardware multiplier.
+#[allow(clippy::needless_bool)]
 const HAS_MUL: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "riscv64") {
     cfg!(target_feature = "m")
 } else if cfg!(target_arch = "msp430") {
@@ -31,6 +33,7 @@ const HAS_MUL: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "ri
 };
 
 /// Indicates whether the target includes a 32-bit barrel shifter.
+#[allow(clippy::needless_bool)]
 const HAS_SHIFTER: bool = if cfg!(target_arch = "msp430") {
     false
 } else if cfg!(target_arch = "avr") {
@@ -133,6 +136,8 @@ fn ctz3_lut(x: usize) -> u32 {
 /// Implements [`trailing_zeros`] using a look-up table.
 /// `x` must be in range `1..8`.
 #[inline]
+// This code groups digits irregularly to express a specific meaning
+#[allow(clippy::inconsistent_digit_grouping)]
 fn ctz3_lut_nonzero(x: usize) -> u32 {
     debug_assert!(x < 8);
     debug_assert!(x != 0);

@@ -7,7 +7,7 @@ use constance::kernel::{
 use crate::{Plic, INTERRUPT_EXTERNAL, INTERRUPT_PLATFORM_START};
 
 /// The configuration function.
-pub const fn configure<System: Plic + Kernel>(b: &mut CfgBuilder<System>) -> () {
+pub const fn configure<System: Plic + Kernel>(b: &mut CfgBuilder<System>) {
     InterruptHandler::build()
         .line(INTERRUPT_EXTERNAL)
         .start(interrupt_handler::<System>)
