@@ -99,6 +99,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_matches"
+version = "1.3.0"
+source = "git+https://github.com/yvt/assert_matches.git?rev=8b959e51ac75f9760378cd4e0722246235a23270#8b959e51ac75f9760378cd4e0722246235a23270"
+
+[[package]]
 name = "atomic_ref"
 version = "0.1.2"
 source = "git+https://github.com/yvt/atomic_ref.git?rev=37523c17a2a535f4d04c204d65d2742647abed25#37523c17a2a535f4d04c204d65d2742647abed25"
@@ -431,6 +436,7 @@ dependencies = [
 name = "constance_test_suite"
 version = "0.0.1"
 dependencies = [
+ "assert_matches",
  "constance",
  "env_logger",
  "log",

@@ -1,26 +1,35 @@
 use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 
 use crate::{
-    kernel::{cfg::CfgBuilder, Hunk, PollSemaphoreError, Semaphore, WaitSemaphoreError},
+    kernel::{
+        self, cfg::CfgBuilder, Hunk, LockMutexError, MarkConsistentMutexError, TryLockMutexError,
+    },
     prelude::*,
 };
-
-// TODO: Upgrade `Mutex` to use a real mutex. And then remove the paragraph
-//       in `Mutex` regarding this
 
 /// A mutual exclusion primitive useful for protecting shared data from
 /// concurrent access.
 ///
-/// This type is currently implemented using [`Semaphore`]. It will be
-/// upgraded to a real mutex (with priority inversion prevention) in a
-/// future version of Constance.
+/// This type is implemented using [`constance::kernel::Mutex`], the low-level
+/// synchronization primitive and therefore inherits its properties.
+/// The important inherited properties are listed below:
 ///
-/// [`Semaphore`]: crate::kernel::Semaphore
+///  - When trying to lock an abandoned mutex, the lock function will return
+///    `Err(LockError::Abandoned(lock_guard))`. This state can be exited by
+///    calling [`Mutex::mark_consistent`].
+///
+///  - Mutexes must be unlocked in a lock-reverse order. [`MutexGuard`]`::drop`
+///    will panic if this is violated.
+///
+/// [`constance::kernel::Mutex`]: crate::kernel::Mutex
 pub struct Mutex<System, T> {
     hunk: Hunk<System, UnsafeCell<T>>,
-    sem: Semaphore<System>,
+    mutex: kernel::Mutex<System>,
     _phantom: PhantomData<(System, T)>,
 }
+
+// TODO: Test the panicking behavior on invalid unlock order
+// TODO: Test the abandonment behavior
 
 unsafe impl<System: Kernel, T: 'static + Send> Send for Mutex<System, T> {}
 unsafe impl<System: Kernel, T: 'static + Send> Sync for Mutex<System, T> {}
@@ -41,31 +50,93 @@ pub struct MutexGuard<'a, System: Kernel, T: 'static> {
 
 unsafe impl<System: Kernel, T: 'static + Sync> Sync for MutexGuard<'_, System, T> {}
 
+/// Type alias for the result of [`Mutex::lock`].
+pub type LockResult<Guard> = Result<Guard, LockError<Guard>>;
+
+/// Type alias for the result of [`Mutex::try_lock`].
+pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
+
 /// Error type of [`Mutex::lock`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(i8)]
-pub enum LockError {
-    /// CPU Lock is active, the current context is not [waitable], or the
-    /// current context is not [a task context].
+pub enum LockError<Guard> {
+    /// CPU Lock is active, or the current context is not [waitable].
     ///
     /// [waitable]: crate#contexts
-    /// [a task context]: crate#contexts
-    BadContext = WaitSemaphoreError::BadContext as i8,
+    BadContext = LockMutexError::BadContext as i8,
     /// The wait operation was interrupted by [`Task::interrupt`].
     ///
     /// [`Task::interrupt`]: crate::kernel::Task::interrupt
-    Interrupted = WaitSemaphoreError::Interrupted as i8,
+    Interrupted = LockMutexError::Interrupted as i8,
+    /// The current task already owns the mutex.
+    WouldDeadlock = LockMutexError::WouldDeadlock as i8,
+    /// The mutex was created with the protocol attribute having the value
+    /// [`Ceiling`] and the current task's priority is higher than the
+    /// mutex's priority ceiling.
+    ///
+    /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
+    BadParam = LockMutexError::BadParam as i8,
+    /// The previous owning task exited while holding the mutex lock. *The
+    /// current task shall hold the mutex lock*, but is up to make the
+    /// state consistent.
+    Abandoned(Guard) = LockMutexError::Abandoned as i8,
+}
+
+impl<Guard> fmt::Debug for LockError<Guard> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::BadContext => "BadContext",
+            Self::Interrupted => "Interrupted",
+            Self::WouldDeadlock => "WouldDeadlock",
+            Self::BadParam => "BadParam",
+            Self::Abandoned(_) => "Abandoned",
+        })
+    }
 }
 
 /// Error type of [`Mutex::try_lock`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(i8)]
-pub enum TryLockError {
-    /// CPU Lock is active.
-    BadContext = PollSemaphoreError::BadContext as i8,
+pub enum TryLockError<Guard> {
+    /// CPU Lock is active, or the current context is not [a task context].
+    ///
+    /// [a task context]: crate#contexts
+    BadContext = TryLockMutexError::BadContext as i8,
+    /// The current task already owns the mutex.
+    WouldDeadlock = LockMutexError::WouldDeadlock as i8,
     /// The lock could not be acquire at this time because the operation would
     /// otherwise block.
-    WouldBlock = PollSemaphoreError::Timeout as i8,
+    WouldBlock = TryLockMutexError::Timeout as i8,
+    /// The mutex was created with the protocol attribute having the value
+    /// [`Ceiling`] and the current task's priority is higher than the
+    /// mutex's priority ceiling.
+    ///
+    /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
+    BadParam = TryLockMutexError::BadParam as i8,
+    /// The previous owning task exited while holding the mutex lock. *The
+    /// current task shall hold the mutex lock*, but is up to make the
+    /// state consistent.
+    Abandoned(Guard) = TryLockMutexError::Abandoned as i8,
+}
+
+impl<Guard> fmt::Debug for TryLockError<Guard> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::BadContext => "BadContext",
+            Self::WouldBlock => "WouldBlock",
+            Self::WouldDeadlock => "WouldDeadlock",
+            Self::BadParam => "BadParam",
+            Self::Abandoned(_) => "Abandoned",
+        })
+    }
+}
+
+/// Error type of [`Mutex::mark_consistent`].
+#[derive(Debug)]
+#[repr(i8)]
+pub enum MarkConsistentError {
+    /// CPU Lock is active.
+    BadContext = MarkConsistentMutexError::BadContext as i8,
+    /// The mutex does not protect an inconsistent state.
+    Consistent = MarkConsistentMutexError::BadObjectState as i8,
 }
 
 impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
@@ -76,7 +147,7 @@ impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
     pub const fn new(b: &mut CfgBuilder<System>) -> Self {
         Self {
             hunk: Hunk::<_, UnsafeCell<T>>::build().finish(b),
-            sem: Semaphore::build().initial(1).maximum(1).finish(b),
+            mutex: kernel::Mutex::build().finish(b),
             _phantom: PhantomData,
         }
     }
@@ -85,35 +156,49 @@ impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
 impl<System: Kernel, T: 'static> Mutex<System, T> {
     /// Acquire the mutex, blocking the current thread until it is able to do
     /// so.
-    pub fn lock(&self) -> Result<MutexGuard<'_, System, T>, LockError> {
-        self.sem.wait_one().map_err(|e| match e {
-            WaitSemaphoreError::BadId => unreachable!(),
-            WaitSemaphoreError::BadContext => LockError::BadContext,
-            WaitSemaphoreError::Interrupted => LockError::Interrupted,
-        })?;
-        Ok(MutexGuard {
-            mutex: self,
-            _no_send_sync: PhantomData,
-        })
+    pub fn lock(&self) -> LockResult<MutexGuard<'_, System, T>> {
+        match self.mutex.lock() {
+            Ok(()) => Ok(MutexGuard {
+                mutex: self,
+                _no_send_sync: PhantomData,
+            }),
+            Err(LockMutexError::BadId) => unreachable!(),
+            Err(LockMutexError::BadContext) => Err(LockError::BadContext),
+            Err(LockMutexError::Interrupted) => Err(LockError::Interrupted),
+            Err(LockMutexError::WouldDeadlock) => Err(LockError::WouldDeadlock),
+            Err(LockMutexError::BadParam) => Err(LockError::BadParam),
+            Err(LockMutexError::Abandoned) => Err(LockError::Abandoned(MutexGuard {
+                mutex: self,
+                _no_send_sync: PhantomData,
+            })),
+        }
     }
 
     /// Attempt to acquire the mutex.
-    pub fn try_lock(&self) -> Result<MutexGuard<'_, System, T>, TryLockError> {
-        // A real mutex can't be locked by an interrupt handler. We emulate it
-        // by a semaphore at this time, so we need to check whether this
-        // condition is violated
-        if !System::is_task_context() {
-            return Err(TryLockError::BadContext);
+    pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, System, T>> {
+        match self.mutex.try_lock() {
+            Ok(()) => Ok(MutexGuard {
+                mutex: self,
+                _no_send_sync: PhantomData,
+            }),
+            Err(TryLockMutexError::BadId) => unreachable!(),
+            Err(TryLockMutexError::BadContext) => Err(TryLockError::BadContext),
+            Err(TryLockMutexError::WouldDeadlock) => Err(TryLockError::WouldDeadlock),
+            Err(TryLockMutexError::Timeout) => Err(TryLockError::WouldBlock),
+            Err(TryLockMutexError::BadParam) => Err(TryLockError::BadParam),
+            Err(TryLockMutexError::Abandoned) => Err(TryLockError::Abandoned(MutexGuard {
+                mutex: self,
+                _no_send_sync: PhantomData,
+            })),
         }
+    }
 
-        self.sem.poll_one().map_err(|e| match e {
-            PollSemaphoreError::BadId => unreachable!(),
-            PollSemaphoreError::BadContext => TryLockError::BadContext,
-            PollSemaphoreError::Timeout => TryLockError::WouldBlock,
-        })?;
-        Ok(MutexGuard {
-            mutex: self,
-            _no_send_sync: PhantomData,
+    /// Mark the state protected by the mutex as consistent.
+    pub fn mark_consistent(&self) -> Result<(), MarkConsistentError> {
+        self.mutex.mark_consistent().map_err(|e| match e {
+            MarkConsistentMutexError::BadId => unreachable!(),
+            MarkConsistentMutexError::BadContext => MarkConsistentError::BadContext,
+            MarkConsistentMutexError::BadObjectState => MarkConsistentError::Consistent,
         })
     }
 
@@ -140,7 +225,7 @@ impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Mutex<System, T> {
                     .field("data", &BadContextPlaceholder)
                     .finish()
             }
-            Err(TryLockError::WouldBlock) => {
+            Err(TryLockError::WouldBlock | TryLockError::WouldDeadlock) => {
                 struct LockedPlaceholder;
                 impl fmt::Debug for LockedPlaceholder {
                     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -150,6 +235,30 @@ impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Mutex<System, T> {
 
                 f.debug_struct("Mutex")
                     .field("data", &LockedPlaceholder)
+                    .finish()
+            }
+            Err(TryLockError::Abandoned(_)) => {
+                struct AbandonedPlaceholder;
+                impl fmt::Debug for AbandonedPlaceholder {
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        f.write_str("<abandoned>")
+                    }
+                }
+
+                f.debug_struct("Mutex")
+                    .field("data", &AbandonedPlaceholder)
+                    .finish()
+            }
+            Err(TryLockError::BadParam) => {
+                struct BadParamPlaceholder;
+                impl fmt::Debug for BadParamPlaceholder {
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        f.write_str("<current priority too high>")
+                    }
+                }
+
+                f.debug_struct("Mutex")
+                    .field("data", &BadParamPlaceholder)
                     .finish()
             }
         }
@@ -173,7 +282,7 @@ impl<System: Kernel, T: fmt::Display + 'static> fmt::Display for MutexGuard<'_, 
 impl<System: Kernel, T: 'static> Drop for MutexGuard<'_, System, T> {
     #[inline]
     fn drop(&mut self) {
-        self.mutex.sem.signal_one().unwrap();
+        self.mutex.mutex.unlock().unwrap();
     }
 }
 

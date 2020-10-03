@@ -1,4 +1,5 @@
 //! Checks miscellaneous properties of [`constance::sync::Mutex`].
+use assert_matches::assert_matches;
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
     prelude::*,
@@ -64,11 +65,8 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
-    assert_eq!(app.eg1.lock().err(), Some(mutex::LockError::BadContext));
-    assert_eq!(
-        app.eg1.try_lock().err(),
-        Some(mutex::TryLockError::BadContext),
-    );
+    assert_matches!(app.eg1.lock(), Err(mutex::LockError::BadContext));
+    assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::BadContext));
     unsafe { System::release_cpu_lock().unwrap() };
 
     // Smoke test
@@ -86,14 +84,8 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Double lock
     {
         let _eg1 = app.eg1.lock();
-        assert_eq!(
-            app.eg1.try_lock().err(),
-            Some(mutex::TryLockError::WouldBlock),
-        );
-        assert_eq!(
-            app.eg1.try_lock().err(),
-            Some(mutex::TryLockError::WouldBlock),
-        );
+        assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::WouldBlock));
+        assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::WouldBlock));
     }
 
     // Inner data
@@ -117,9 +109,6 @@ fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
     app.seq.expect_and_replace(1, 2);
 
     // Non-task context
-    assert_eq!(app.eg1.lock().err(), Some(mutex::LockError::BadContext));
-    assert_eq!(
-        app.eg1.try_lock().err(),
-        Some(mutex::TryLockError::BadContext),
-    );
+    assert_matches!(app.eg1.lock(), Err(mutex::LockError::BadContext));
+    assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::BadContext));
 }

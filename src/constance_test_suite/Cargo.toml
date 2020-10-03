@@ -21,6 +21,12 @@ staticvec = { version = "0.10.5", default-features = false }
 wyhash = { version = "0.3.0" }
 log = { version = "0.4.8" }
 
+[dependencies.assert_matches]
+# - “Make the crate `no_std`”
+#   <https://github.com/murarth/assert_matches/pull/8>
+git = "https://github.com/yvt/assert_matches.git"
+rev = "8b959e51ac75f9760378cd4e0722246235a23270"
+
 [dev-dependencies]
 quickcheck_macros = "0.9.1"
 env_logger = "0.7.1"
