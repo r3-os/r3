@@ -80,11 +80,17 @@ define_result_code! {
         BadId = -18,
         /// The current context disallows the operation.
         BadContext = -25,
+        /// The caller does not own the resource.
+        NotOwner = -29,
+        /// Resource deadlock would occur.
+        WouldDeadlock = -30,
         /// A target object is in a state that disallows the operation.
         BadObjectState = -41,
         /// An operation or an object couldn't be enqueued because there are too
         /// many of such things that already have been enqueued.
         QueueOverflow = -43,
+        /// The owner of a mutex exited while holding the mutex lock.
+        Abandoned = -44,
         /// The wait operation was interrupted by [`Task::interrupt`].
         ///
         /// [`Task::interrupt`]: crate::kernel::Task::interrupt
@@ -302,7 +308,11 @@ define_error! {
         BadId,
         /// CPU Lock is active.
         BadContext,
-        /// The priority is out of range.
+        /// The priority is out of range, or the task owns a mutex created with
+        /// with the protocol attribute having the value [`Ceiling`] and the
+        /// task's new priority is higher than the mutex's priority ceiling.
+        ///
+        /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
         BadParam,
         /// The task is in the Dormant state.
         BadObjectState,
@@ -647,6 +657,136 @@ define_error! {
         Timeout,
         /// The timeout duration is negative.
         BadParam,
+    }
+}
+
+define_error! {
+    mod query_mutex_error {}
+    /// Error type for [`Mutex::is_locked`].
+    ///
+    /// [`Mutex::is_locked`]: super::Mutex::is_locked
+    pub enum QueryMutexError: BadContextError, BadIdError {
+        /// The mutex ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+    }
+}
+
+define_error! {
+    mod unlock_mutex_error {}
+    /// Error type for [`Mutex::unlock`].
+    ///
+    /// [`Mutex::unlock`]: super::Mutex::unlock
+    pub enum UnlockMutexError: BadContextError, BadIdError {
+        /// The mutex ID is out of range.
+        BadId,
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        /// The current task does not currently own the mutex.
+        NotOwner,
+        /// The correct mutex unlocking order is violated.
+        BadObjectState,
+    }
+}
+
+define_error! {
+    mod try_lock_mutex_error {}
+    /// Error type for [`Mutex::try_lock`].
+    ///
+    /// [`Mutex::try_lock`]: super::Mutex::try_lock
+    pub enum TryLockMutexError: BadContextError, BadIdError {
+        /// The mutex ID is out of range.
+        BadId,
+        /// CPU Lock is active, or the current context is not a [task context].
+        ///
+        /// [task context]: crate#contexts
+        BadContext,
+        Timeout,
+        /// The current task already owns the mutex.
+        WouldDeadlock,
+        /// The mutex was created with the protocol attribute having the value
+        /// [`Ceiling`] and the current task's priority is higher than the
+        /// mutex's priority ceiling.
+        ///
+        /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
+        BadParam,
+        /// The previous owning task exited while holding the mutex lock. *The
+        /// current task shall hold the mutex lock*, but is up to make the
+        /// state consistent.
+        Abandoned,
+    }
+}
+
+define_error! {
+    mod lock_mutex_error {}
+    /// Error type for [`Mutex::lock`].
+    ///
+    /// [`Mutex::lock`]: super::Mutex::lock
+    pub enum LockMutexError: BadContextError, BadIdError, WaitError {
+        /// The mutex ID is out of range.
+        BadId,
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        Interrupted,
+        /// The current task already owns the mutex.
+        WouldDeadlock,
+        /// The mutex was created with the protocol attribute having the value
+        /// [`Ceiling`] and the current task's priority is higher than the
+        /// mutex's priority ceiling.
+        ///
+        /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
+        BadParam,
+        /// The previous owning task exited while holding the mutex lock. *The
+        /// current task shall hold the mutex lock*, but is up to make the
+        /// state consistent.
+        Abandoned,
+    }
+}
+
+define_error! {
+    mod lock_mutex_timeout_error {}
+    /// Error type for [`Mutex::lock_timeout`].
+    ///
+    /// [`Mutex::lock_timeout`]: super::Mutex::lock_timeout
+    pub enum LockMutexTimeoutError: BadContextError, BadIdError, WaitTimeoutError, BadParamError {
+        /// The mutex ID is out of range.
+        BadId,
+        /// CPU Lock is active, or the current context is not [waitable].
+        ///
+        /// [waitable]: crate#contexts
+        BadContext,
+        Interrupted,
+        Timeout,
+        /// The timeout duration is negative, or the mutex was created with the
+        /// protocol attribute having the value [`Ceiling`] and the current
+        /// task's priority is higher than the mutex's priority ceiling.
+        ///
+        /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
+        BadParam,
+        /// The previous owning task exited while holding the mutex lock. *The
+        /// current task shall hold the mutex lock*, but is up to make the
+        /// state consistent.
+        Abandoned,
+    }
+}
+
+define_error! {
+    mod mark_consistent_mutex_error {}
+    /// Error type for [`Mutex::mark_consistent`].
+    ///
+    /// [`Mutex::mark_consistent`]: super::Mutex::mark_consistent
+    pub enum MarkConsistentMutexError: BadContextError, BadIdError {
+        /// The mutex ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        /// The mutex does not protect an inconsistent state.
+        BadObjectState,
     }
 }
 

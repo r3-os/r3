@@ -424,6 +424,8 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
         .priority_boost
         .store(false, Ordering::Release);
 
+    // TODO: Abandon mutexes
+
     // Transition the current task to Dormant
     let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
@@ -848,6 +850,9 @@ fn set_task_priority<System: Kernel>(
     }
     let priority_internal =
         System::TaskPriority::try_from(priority).unwrap_or_else(|_| unreachable!());
+
+    // TODO: Fail with `BadParam` if the operation would violate the
+    //       precondition of the priority ceiling protocol
 
     let st = *task_cb.st.read(&*lock);
 

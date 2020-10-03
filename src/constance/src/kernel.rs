@@ -19,6 +19,7 @@ mod error;
 mod event_group;
 mod hunk;
 mod interrupt;
+mod mutex;
 mod semaphore;
 mod startup;
 mod state;
@@ -28,8 +29,8 @@ mod timer;
 mod utils;
 mod wait;
 pub use self::{
-    error::*, event_group::*, hunk::*, interrupt::*, semaphore::*, startup::*, task::*, timeout::*,
-    timer::*, wait::*,
+    error::*, event_group::*, hunk::*, interrupt::*, mutex::*, semaphore::*, startup::*, task::*,
+    timeout::*, timer::*, wait::*,
 };
 
 /// Numeric value used to identify various kinds of kernel objects.
@@ -798,6 +799,18 @@ pub unsafe trait KernelCfg2: Port + Sized {
     #[inline(always)]
     fn get_event_group_cb(i: usize) -> Option<&'static EventGroupCb<Self>> {
         Self::event_group_cb_pool().get(i)
+    }
+
+    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
+    //        to be resolved because `EventGroupCb` includes interior mutability
+    //        and can't be referred to by `const`
+    #[doc(hidden)]
+    fn mutex_cb_pool() -> &'static [MutexCb<Self>];
+
+    #[doc(hidden)]
+    #[inline(always)]
+    fn get_mutex_cb(i: usize) -> Option<&'static MutexCb<Self>> {
+        Self::mutex_cb_pool().get(i)
     }
 
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
