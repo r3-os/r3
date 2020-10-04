@@ -277,7 +277,11 @@ fn signal<System: Kernel>(
     // This is equivalent to using `wake_up_all_conditional` and calling
     // `poll_core` for each waiting task, but is (presumably) more efficient
     while count > 0 {
-        if semaphore_cb.wait_queue.wake_up_one(lock.borrow_mut()) {
+        if semaphore_cb
+            .wait_queue
+            .wake_up_one(lock.borrow_mut())
+            .is_some()
+        {
             // We just woke up a task. Give one permit to that task.
             count -= 1;
         } else {

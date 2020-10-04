@@ -389,12 +389,15 @@ impl<System: Kernel> WaitQueue<System> {
         accessor.insert(wait_ref, insert_at);
     }
 
-    /// Wake up up to one waiting task. Returns `true` if it has successfully
-    /// woken up a task.
+    /// Wake up up to one waiting task. Returns `Some(task)` if it has
+    /// successfully woken up a task.
     ///
     /// This method may make a task Ready, but doesn't yield the processor.
     /// Call `unlock_cpu_and_check_preemption` as needed.
-    pub(super) fn wake_up_one(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
+    pub(super) fn wake_up_one(
+        &self,
+        mut lock: CpuLockGuardBorrowMut<'_, System>,
+    ) -> Option<&'static TaskCb<System>> {
         // Get the first wait object
         // Safety: All elements of `self.waits` are extant.
         let wait_ref = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }.pop_front();
@@ -402,7 +405,7 @@ impl<System: Kernel> WaitQueue<System> {
         let wait_ref = if let Some(wait_ref) = wait_ref {
             wait_ref
         } else {
-            return false;
+            return None;
         };
 
         // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` was
@@ -413,7 +416,7 @@ impl<System: Kernel> WaitQueue<System> {
 
         complete_wait(lock.borrow_mut(), wait, Ok(()));
 
-        true
+        Some(wait.task)
     }
 
     /// Conditionally wake up waiting tasks.
