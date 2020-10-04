@@ -693,11 +693,29 @@ define_error! {
 }
 
 define_error! {
+    mod lock_mutex_precheck_error {}
+    /// Some of the error codes shared by [`TryLockMutexError`],
+    /// [`LockMutexError`], and [`LockMutexTimeoutError`]. Used internally
+    /// by the mutex implementation.
+    pub(super) enum LockMutexPrecheckError {
+        /// The current task already owns the mutex.
+        WouldDeadlock,
+        /// The mutex was created with the protocol attribute having the value
+        /// [`Ceiling`] and the current task's priority is higher than the
+        /// mutex's priority ceiling.
+        ///
+        /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
+        BadParam,
+    }
+}
+
+define_error! {
     mod try_lock_mutex_error {}
     /// Error type for [`Mutex::try_lock`].
     ///
     /// [`Mutex::try_lock`]: super::Mutex::try_lock
-    pub enum TryLockMutexError: BadContextError, BadIdError {
+    pub enum TryLockMutexError: BadContextError, BadIdError, LockMutexPrecheckError
+    {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not a [task context].
@@ -725,7 +743,9 @@ define_error! {
     /// Error type for [`Mutex::lock`].
     ///
     /// [`Mutex::lock`]: super::Mutex::lock
-    pub enum LockMutexError: BadContextError, BadIdError, WaitError {
+    pub enum LockMutexError: BadContextError, BadIdError, WaitError,
+        LockMutexPrecheckError
+    {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -753,7 +773,9 @@ define_error! {
     /// Error type for [`Mutex::lock_timeout`].
     ///
     /// [`Mutex::lock_timeout`]: super::Mutex::lock_timeout
-    pub enum LockMutexTimeoutError: BadContextError, BadIdError, WaitTimeoutError, BadParamError {
+    pub enum LockMutexTimeoutError: BadContextError, BadIdError, WaitTimeoutError, 
+        BadParamError, LockMutexPrecheckError
+    {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -762,6 +784,8 @@ define_error! {
         BadContext,
         Interrupted,
         Timeout,
+        /// The current task already owns the mutex.
+        WouldDeadlock,
         /// The timeout duration is negative, or the mutex was created with the
         /// protocol attribute having the value [`Ceiling`] and the current
         /// task's priority is higher than the mutex's priority ceiling.

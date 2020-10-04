@@ -122,6 +122,7 @@ pub(super) enum WaitPayload<System> {
         orig_bits: event_group::AtomicEventGroupBits,
     },
     Semaphore,
+    Mutex,
     Park,
     Sleep,
     __Nonexhaustive(System),

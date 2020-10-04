@@ -5,7 +5,7 @@ use core::{
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
+    hunk::Hunk, mutex, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
     GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, ParkTimeoutError,
     Port, PortThreading, SetTaskPriorityError, SleepError, UnparkError, UnparkExactError,
     WaitTimeoutError,
@@ -328,6 +328,9 @@ pub struct TaskCb<
 
     /// The wait state of the task.
     pub(super) wait: wait::TaskWait<System>,
+
+    /// The last mutex locked by the task.
+    pub(super) last_mutex_held: utils::CpuLockCell<System, Option<&'static mutex::MutexCb<System>>>,
 
     /// A flag indicating whether the task has a park token or not.
     pub(super) park_token: utils::CpuLockCell<System, bool>,

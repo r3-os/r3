@@ -1,6 +1,6 @@
 use core::{marker::PhantomData, num::NonZeroUsize};
 
-use crate::kernel::{cfg::CfgBuilder, mutex, wait, Port};
+use crate::kernel::{cfg::CfgBuilder, mutex, utils::CpuLockCell, wait, Port};
 
 impl<System: Port> mutex::Mutex<System> {
     /// Construct a `CfgTaskBuilder` to define a mutex in [a configuration
@@ -48,14 +48,22 @@ impl<System: Port> CfgMutexBuilder<System> {
 #[doc(hidden)]
 #[derive(Copy, Clone)]
 pub struct CfgBuilderMutex {
-    #[allow(dead_code)]
     protocol: mutex::MutexProtocol,
 }
 
 impl CfgBuilderMutex {
     pub const fn to_state<System: Port>(&self) -> mutex::MutexCb<System> {
         mutex::MutexCb {
+            ceiling: match self.protocol {
+                mutex::MutexProtocol::None => None,
+                mutex::MutexProtocol::Ceiling(ceiling) => {
+                    Some(System::TASK_PRIORITY_LEVELS[ceiling])
+                }
+            },
+            inconsistent: CpuLockCell::new(false),
             wait_queue: wait::WaitQueue::new(wait::QueueOrder::TaskPriority),
+            prev_mutex_held: CpuLockCell::new(None),
+            owning_task: CpuLockCell::new(None),
         }
     }
 }

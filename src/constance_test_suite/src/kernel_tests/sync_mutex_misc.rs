@@ -84,8 +84,8 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Double lock
     {
         let _eg1 = app.eg1.lock();
-        assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::WouldBlock));
-        assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::WouldBlock));
+        assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::WouldDeadlock));
+        assert_matches!(app.eg1.try_lock(), Err(mutex::TryLockError::WouldDeadlock));
     }
 
     // Inner data

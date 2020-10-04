@@ -2,9 +2,11 @@
 use core::{fmt, hash, marker::PhantomData};
 
 use super::{
-    state, timeout, utils, wait::WaitQueue, BadIdError, Id, Kernel, LockMutexError,
-    LockMutexTimeoutError, MarkConsistentMutexError, Port, QueryMutexError, TryLockMutexError,
-    UnlockMutexError,
+    state, task, timeout, utils,
+    wait::{WaitPayload, WaitQueue},
+    BadIdError, Id, Kernel, KernelCfg1, LockMutexError, LockMutexPrecheckError,
+    LockMutexTimeoutError, MarkConsistentMutexError, PortThreading, QueryMutexError,
+    TryLockMutexError, UnlockMutexError,
 };
 use crate::{time::Duration, utils::Init};
 
@@ -340,8 +342,7 @@ impl<System: Kernel> Mutex<System> {
     pub fn is_locked(self) -> Result<bool, QueryMutexError> {
         let lock = utils::lock_cpu::<System>()?;
         let mutex_cb = self.mutex_cb()?;
-        let _ = (lock, mutex_cb);
-        todo!()
+        Ok(mutex_cb.owning_task.get(&*lock).is_some())
     }
 
     /// Unlock the mutex.
@@ -352,8 +353,8 @@ impl<System: Kernel> Mutex<System> {
         let lock = utils::lock_cpu::<System>()?;
         state::expect_waitable_context::<System>()?;
         let mutex_cb = self.mutex_cb()?;
-        let _ = (lock, mutex_cb);
-        todo!()
+
+        unlock_mutex(mutex_cb, lock)
     }
 
     /// Acquire the mutex, blocking the current thread until it is able to do
@@ -374,8 +375,7 @@ impl<System: Kernel> Mutex<System> {
         state::expect_waitable_context::<System>()?;
         let mutex_cb = self.mutex_cb()?;
 
-        let _ = (lock, mutex_cb);
-        todo!()
+        lock_mutex(mutex_cb, lock)
     }
 
     /// [`lock`](Self::lock) with timeout.
@@ -385,8 +385,7 @@ impl<System: Kernel> Mutex<System> {
         state::expect_waitable_context::<System>()?;
         let mutex_cb = self.mutex_cb()?;
 
-        let _ = (lock, mutex_cb, time32);
-        todo!()
+        lock_mutex_timeout(mutex_cb, lock, time32)
     }
 
     /// Non-blocking version of [`lock`](Self::lock). Returns
@@ -402,9 +401,7 @@ impl<System: Kernel> Mutex<System> {
         state::expect_task_context::<System>()?;
         let mutex_cb = self.mutex_cb()?;
 
-        let _ = (lock, mutex_cb);
-
-        todo!()
+        try_lock_mutex(mutex_cb, lock)
     }
 
     /// Mark the state protected by the mutex as consistent.
@@ -425,21 +422,217 @@ impl<System: Kernel> Mutex<System> {
 
 /// *Mutex control block* - the state data of a mutex.
 #[doc(hidden)]
-pub struct MutexCb<System: Port> {
-    // TODO
-    #[allow(dead_code)]
+pub struct MutexCb<
+    System: PortThreading,
+    TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
+> {
+    pub(super) ceiling: Option<TaskPriority>,
+
+    pub(super) inconsistent: utils::CpuLockCell<System, bool>,
+
     pub(super) wait_queue: WaitQueue<System>,
+
+    /// The next element in the singly-linked list headed by
+    /// `TaskCb::last_mutex_held`, containing all mutexes currently held by the
+    /// task.
+    pub(super) prev_mutex_held: utils::CpuLockCell<System, Option<&'static Self>>,
+
+    /// The task that currently owns the mutex lock.
+    pub(super) owning_task: utils::CpuLockCell<System, Option<&'static task::TaskCb<System>>>,
 }
 
-impl<System: Port> Init for MutexCb<System> {
+impl<System: PortThreading> Init for MutexCb<System> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
+        ceiling: Init::INIT,
+        inconsistent: Init::INIT,
         wait_queue: Init::INIT,
+        prev_mutex_held: Init::INIT,
+        owning_task: Init::INIT,
     };
 }
 
 impl<System: Kernel> fmt::Debug for MutexCb<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("MutexCb").finish()
+        f.debug_struct("MutexCb")
+            .field("ceiling", &self.ceiling)
+            .field("inconsistent", &self.inconsistent)
+            .field("prev_mutex_held", &self.prev_mutex_held)
+            .finish()
+    }
+}
+
+/// Check the error conditions covered by [`LockMutexPrecheckError`].
+///
+///  - `WouldDeadlock`: The current task already owns the mutex.
+///
+///  - `BadParam`: The mutex was created with the protocol attribute having the
+///    value `Ceiling` and the current task's priority is higher than the
+///    mutex's priority ceiling.
+///
+/// Returns the currently running task for convenience of the caller.
+#[inline]
+fn precheck_and_get_running_task<System: Kernel>(
+    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mutex_cb: &'static MutexCb<System>,
+) -> Result<&'static task::TaskCb<System>, LockMutexPrecheckError> {
+    let task = System::state().running_task(lock.borrow_mut()).unwrap();
+
+    if ptr_from_option_ref(mutex_cb.owning_task.get(&*lock)) == task {
+        return Err(LockMutexPrecheckError::WouldDeadlock);
+    }
+
+    if let Some(ceiling) = mutex_cb.ceiling {
+        // TODO: priority can change while being blocked
+        if ceiling > task.priority.get(&*lock) {
+            return Err(LockMutexPrecheckError::BadParam);
+        }
+    }
+
+    Ok(task)
+}
+
+/// Check if the current state of a mutex satisfies the wait
+/// condition.
+///
+/// If it satisfies the wait condition, this function updates it and
+/// returns `true`. Otherwise, it returns `false`, indicating the calling task
+/// should be blocked.
+#[inline]
+fn poll_core<System: Kernel>(
+    mutex_cb: &'static MutexCb<System>,
+    running_task: &'static task::TaskCb<System>,
+    lock: utils::CpuLockGuardBorrowMut<'_, System>,
+) -> bool {
+    if mutex_cb.owning_task.get(&*lock).is_some() {
+        false
+    } else {
+        lock_core(mutex_cb, running_task, lock);
+        true
+    }
+}
+
+/// Give the ownership of the mutex to `task`.
+fn lock_core<System: Kernel>(
+    mutex_cb: &'static MutexCb<System>,
+    task: &'static task::TaskCb<System>,
+    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+) {
+    mutex_cb.owning_task.replace(&mut *lock, Some(task));
+
+    // Push `mutex_cb` to the list of the mutexes held by the task.
+    let prev_mutex_held = task.last_mutex_held.replace(&mut *lock, Some(mutex_cb));
+    mutex_cb
+        .prev_mutex_held
+        .replace(&mut *lock, prev_mutex_held);
+
+    if mutex_cb.ceiling.is_some() {
+        todo!("priority ceiling");
+    }
+}
+
+fn lock_mutex<System: Kernel>(
+    mutex_cb: &'static MutexCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+) -> Result<(), LockMutexError> {
+    let running_task = precheck_and_get_running_task(lock.borrow_mut(), mutex_cb)?;
+
+    if !poll_core(mutex_cb, running_task, lock.borrow_mut()) {
+        // The current state does not satify the wait condition. In this case,
+        // start waiting. The wake-upper is responsible for using `poll_core`
+        // to complete the effect of the wait operation.
+        mutex_cb
+            .wait_queue
+            .wait(lock.borrow_mut(), WaitPayload::Mutex)?;
+    }
+
+    if mutex_cb.inconsistent.get(&*lock) {
+        Err(LockMutexError::Abandoned)
+    } else {
+        Ok(())
+    }
+}
+
+fn try_lock_mutex<System: Kernel>(
+    mutex_cb: &'static MutexCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+) -> Result<(), TryLockMutexError> {
+    let running_task = precheck_and_get_running_task(lock.borrow_mut(), mutex_cb)?;
+
+    if !poll_core(mutex_cb, running_task, lock.borrow_mut()) {
+        return Err(TryLockMutexError::Timeout);
+    }
+
+    if mutex_cb.inconsistent.get(&*lock) {
+        Err(TryLockMutexError::Abandoned)
+    } else {
+        Ok(())
+    }
+}
+
+fn lock_mutex_timeout<System: Kernel>(
+    mutex_cb: &'static MutexCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+    time32: timeout::Time32,
+) -> Result<(), LockMutexTimeoutError> {
+    let running_task = precheck_and_get_running_task(lock.borrow_mut(), mutex_cb)?;
+
+    if !poll_core(mutex_cb, running_task, lock.borrow_mut()) {
+        // The current state does not satify the wait condition. In this case,
+        // start waiting. The wake-upper is responsible for using `poll_core`
+        // to complete the effect of the wait operation.
+        mutex_cb
+            .wait_queue
+            .wait_timeout(lock.borrow_mut(), WaitPayload::Mutex, time32)?;
+    }
+
+    if mutex_cb.inconsistent.get(&*lock) {
+        Err(LockMutexTimeoutError::Abandoned)
+    } else {
+        Ok(())
+    }
+}
+
+fn unlock_mutex<System: Kernel>(
+    mutex_cb: &'static MutexCb<System>,
+    mut lock: utils::CpuLockGuard<System>,
+) -> Result<(), UnlockMutexError> {
+    let task = System::state().running_task(lock.borrow_mut()).unwrap();
+
+    if ptr_from_option_ref(mutex_cb.owning_task.get(&*lock)) != task {
+        // The current task does not currently own the mutex.
+        return Err(UnlockMutexError::NotOwner);
+    }
+
+    if ptr_from_option_ref(task.last_mutex_held.get(&*lock)) != mutex_cb {
+        // The correct mutex unlocking order is violated.
+        return Err(UnlockMutexError::BadObjectState);
+    }
+
+    // Remove `mutex_cb` from the list of the mutexes held by the task.
+    let prev_mutex_held = mutex_cb.prev_mutex_held.get(&*lock);
+    task.last_mutex_held.replace(&mut *lock, prev_mutex_held);
+
+    // TODO: Restore the task's effective priority
+
+    // Wake up the next waiter
+    if let Some(next_task) = mutex_cb.wait_queue.wake_up_one(lock.borrow_mut()) {
+        // Give the ownership of the mutex to `next_task`
+        lock_core(mutex_cb, next_task, lock.borrow_mut());
+        task::unlock_cpu_and_check_preemption(lock);
+    } else {
+        // There's no one waiting
+        mutex_cb.owning_task.replace(&mut *lock, None);
+    }
+
+    Ok(())
+}
+
+#[inline]
+fn ptr_from_option_ref<T>(x: Option<&T>) -> *const T {
+    if let Some(x) = x {
+        x
+    } else {
+        core::ptr::null()
     }
 }
