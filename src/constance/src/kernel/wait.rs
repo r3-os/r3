@@ -416,20 +416,6 @@ impl<System: Kernel> WaitQueue<System> {
         true
     }
 
-    /// Wake up all waiting tasks. Returns `true` if it has successfully
-    /// woken up at least one task.
-    ///
-    /// This method may make a task Ready, but doesn't yield the processor.
-    /// Call `unlock_cpu_and_check_preemption` as needed.
-    pub(super) fn wake_up_all(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
-        // Call `wake_up_one` repeatedly until it returns `false`. If the first
-        // call returns `true`, the result of `wake_up_all` is `true`.
-        self.wake_up_one(lock.borrow_mut()) && {
-            while self.wake_up_one(lock.borrow_mut()) {}
-            true
-        }
-    }
-
     /// Conditionally wake up waiting tasks.
     ///
     /// This method may make a task Ready, but doesn't yield the processor.
