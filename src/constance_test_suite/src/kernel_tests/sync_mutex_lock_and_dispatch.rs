@@ -27,7 +27,7 @@ impl<System: Kernel> App<System> {
             .active(false)
             .finish(b);
 
-        let mutex = Mutex::new(b);
+        let mutex = Mutex::build().finish(b);
 
         let seq = Hunk::<_, SeqTracker>::build().finish(b);
 

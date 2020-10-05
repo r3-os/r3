@@ -30,7 +30,7 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         .finish(b);
     let task2 = Task::build().start(task2_body).priority(3).finish(b);
 
-    let mutex1 = Mutex::new(b);
+    let mutex1 = Mutex::build().finish(b);
 
     Objects {
         task1,

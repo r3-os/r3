@@ -2,10 +2,18 @@ use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 
 use crate::{
     kernel::{
-        self, cfg::CfgBuilder, Hunk, LockMutexError, MarkConsistentMutexError, TryLockMutexError,
+        self,
+        cfg::{CfgBuilder, CfgHunkBuilder, CfgMutexBuilder, DefaultInitTag, HunkIniter},
+        Hunk, LockMutexError, MarkConsistentMutexError, MutexProtocol, TryLockMutexError,
     },
     prelude::*,
 };
+
+/// Configuration builder type for [`Mutex`].
+pub struct MutexBuilder<System, T, InitTag> {
+    mutex: CfgMutexBuilder<System>,
+    hunk: CfgHunkBuilder<System, UnsafeCell<T>, InitTag>,
+}
 
 /// A mutual exclusion primitive useful for protecting shared data from
 /// concurrent access.
@@ -25,7 +33,6 @@ use crate::{
 pub struct Mutex<System, T> {
     hunk: Hunk<System, UnsafeCell<T>>,
     mutex: kernel::Mutex<System>,
-    _phantom: PhantomData<(System, T)>,
 }
 
 // TODO: Test the panicking behavior on invalid unlock order
@@ -139,16 +146,35 @@ pub enum MarkConsistentError {
     Consistent = MarkConsistentMutexError::BadObjectState as i8,
 }
 
-impl<System: Kernel, T: 'static + Init> Mutex<System, T> {
-    /// Construct a `Mutex`. The content is initialized with [`Init`].
-    ///
-    /// This is a configuration function. Call this method from your app's
-    /// configuration function.
-    pub const fn new(b: &mut CfgBuilder<System>) -> Self {
+impl<System: Kernel, T: 'static> Mutex<System, T> {
+    /// Construct a `MutexBuilder` to define a mutex in [a configuration
+    /// function](crate#static-configuration).
+    pub const fn build() -> MutexBuilder<System, T, DefaultInitTag> {
+        MutexBuilder {
+            mutex: kernel::Mutex::build(),
+            hunk: kernel::Hunk::build(),
+        }
+    }
+}
+
+impl<System: Kernel, T: 'static, InitTag> MutexBuilder<System, T, InitTag> {
+    /// Specify the mutex's protocol. Defaults to `None` when unspecified.
+    pub const fn protocol(self, protocol: MutexProtocol) -> Self {
         Self {
-            hunk: Hunk::<_, UnsafeCell<T>>::build().finish(b),
-            mutex: kernel::Mutex::build().finish(b),
-            _phantom: PhantomData,
+            mutex: self.mutex.protocol(protocol),
+            ..self
+        }
+    }
+}
+
+impl<System: Kernel, T: 'static, InitTag: HunkIniter<UnsafeCell<T>>>
+    MutexBuilder<System, T, InitTag>
+{
+    /// Complete the definition of a mutex, returning a reference to the mutex.
+    pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> Mutex<System, T> {
+        Mutex {
+            hunk: self.hunk.finish(cfg),
+            mutex: self.mutex.finish(cfg),
         }
     }
 }

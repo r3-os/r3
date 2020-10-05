@@ -23,8 +23,8 @@ impl<System: Kernel> App<System> {
             .priority(2)
             .active(true)
             .finish(b);
-        let eg1 = Mutex::new(b);
-        let eg2 = Mutex::new(b);
+        let eg1 = Mutex::build().finish(b);
+        let eg2 = Mutex::build().finish(b);
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
