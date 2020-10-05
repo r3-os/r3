@@ -1,7 +1,7 @@
 use core::{fmt, ops, ptr::NonNull};
 
 use super::{
-    event_group, task,
+    event_group, mutex, task,
     task::{TaskCb, TaskSt},
     timeout,
     utils::{CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
@@ -115,14 +115,14 @@ struct Wait<System: PortThreading> {
 
 /// Additional information included in `With`, specific to waitable object
 /// types.
-pub(super) enum WaitPayload<System> {
+pub(super) enum WaitPayload<System: PortThreading> {
     EventGroupBits {
         bits: event_group::EventGroupBits,
         flags: event_group::EventGroupWaitFlags,
         orig_bits: event_group::AtomicEventGroupBits,
     },
     Semaphore,
-    Mutex,
+    Mutex(&'static mutex::MutexCb<System>),
     Park,
     Sleep,
     __Nonexhaustive(System),

@@ -854,25 +854,53 @@ fn set_task_priority<System: Kernel>(
     let priority_internal =
         System::TaskPriority::try_from(priority).unwrap_or_else(|_| unreachable!());
 
-    // TODO: Fail with `BadParam` if the operation would violate the
-    //       precondition of the priority ceiling protocol
-
     let st = *task_cb.st.read(&*lock);
 
     if st == TaskSt::Dormant {
         return Err(SetTaskPriorityError::BadObjectState);
     }
 
-    // Assign the new priority
-    let old_priority = task_cb
-        .priority
-        .replace(&mut *lock, priority_internal)
-        .to_usize()
-        .unwrap();
+    let old_priority = task_cb.priority.read(&*lock).to_usize().unwrap();
 
     if old_priority == priority {
         return Ok(());
     }
+
+    // Fail with `BadParam` if the operation would violate the precondition of
+    // the locking protocol used in any of the held or waited mutexes. This
+    // check is only neded when raising the priority.
+    if priority < old_priority {
+        // Get the currently-waited mutex (if any).
+        let waited_mutex = wait::with_current_wait_payload(lock.borrow_mut(), task_cb, |payload| {
+            if let Some(&wait::WaitPayload::Mutex(mutex_cb)) = payload {
+                Some(mutex_cb)
+            } else {
+                None
+            }
+        });
+
+        if let Some(waited_mutex) = waited_mutex {
+            if !mutex::does_held_mutex_allow_new_task_priority(
+                lock.borrow_mut(),
+                waited_mutex,
+                priority_internal,
+            ) {
+                return Err(SetTaskPriorityError::BadParam);
+            }
+        }
+
+        // Check the precondition for all currently-held mutexes
+        if !mutex::do_held_mutexes_allow_new_task_priority(
+            lock.borrow_mut(),
+            task_cb,
+            priority_internal,
+        ) {
+            return Err(SetTaskPriorityError::BadParam);
+        }
+    }
+
+    // Assign the new priority
+    task_cb.priority.replace(&mut *lock, priority_internal);
 
     match st {
         TaskSt::Ready => {

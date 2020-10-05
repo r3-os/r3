@@ -483,13 +483,53 @@ fn precheck_and_get_running_task<System: Kernel>(
     }
 
     if let Some(ceiling) = mutex_cb.ceiling {
-        // TODO: priority can change while being blocked
         if ceiling > task.priority.get(&*lock) {
             return Err(LockMutexPrecheckError::BadParam);
         }
     }
 
     Ok(task)
+}
+
+/// Check if the specified mutex, which is currently held or waited by a task,
+/// is compatible with the new task priority according to the mutex's locking
+/// protocol.
+///
+/// The check is only needed when raising the priority.
+#[inline]
+pub(super) fn does_held_mutex_allow_new_task_priority<System: Kernel>(
+    _lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mutex_cb: &'static MutexCb<System>,
+    new_priority: System::TaskPriority,
+) -> bool {
+    if let Some(ceiling) = mutex_cb.ceiling {
+        if ceiling > new_priority {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Check if the task's held mutexes are all compatible with the new task
+/// priority according to the mutxes's locking protocols.
+///
+/// The check is only needed when raising the priority.
+#[inline]
+pub(super) fn do_held_mutexes_allow_new_task_priority<System: Kernel>(
+    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    task: &'static task::TaskCb<System>,
+    new_priority: System::TaskPriority,
+) -> bool {
+    let mut maybe_mutex_cb = task.last_mutex_held.get(&*lock);
+    while let Some(mutex_cb) = maybe_mutex_cb {
+        if !does_held_mutex_allow_new_task_priority(lock.borrow_mut(), mutex_cb, new_priority) {
+            return false;
+        }
+
+        maybe_mutex_cb = mutex_cb.prev_mutex_held.get(&*lock);
+    }
+    true
 }
 
 /// Check if the current state of a mutex satisfies the wait
@@ -543,7 +583,7 @@ fn lock_mutex<System: Kernel>(
         // to complete the effect of the wait operation.
         mutex_cb
             .wait_queue
-            .wait(lock.borrow_mut(), WaitPayload::Mutex)?;
+            .wait(lock.borrow_mut(), WaitPayload::Mutex(mutex_cb))?;
     }
 
     if mutex_cb.inconsistent.get(&*lock) {
@@ -581,9 +621,11 @@ fn lock_mutex_timeout<System: Kernel>(
         // The current state does not satify the wait condition. In this case,
         // start waiting. The wake-upper is responsible for using `poll_core`
         // to complete the effect of the wait operation.
-        mutex_cb
-            .wait_queue
-            .wait_timeout(lock.borrow_mut(), WaitPayload::Mutex, time32)?;
+        mutex_cb.wait_queue.wait_timeout(
+            lock.borrow_mut(),
+            WaitPayload::Mutex(mutex_cb),
+            time32,
+        )?;
     }
 
     if mutex_cb.inconsistent.get(&*lock) {
