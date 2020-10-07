@@ -8,6 +8,7 @@
 #![feature(decl_macro)]
 #![feature(is_sorted)]
 #![feature(cfg_target_has_atomic)]
+#![feature(array_windows)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
@@ -186,6 +187,9 @@ pub mod kernel_tests {
         (mod interrupt_priority {}, "interrupt_priority"),
         (mod interrupt_task_activate {}, "interrupt_task_activate"),
         (mod interrupt_unmanaged {}, "interrupt_unmanaged"),
+        (mod mutex_misc {}, "mutex_misc"),
+        (mod mutex_timeout {}, "mutex_timeout"),
+        (mod mutex_unlock_and_dispatch {}, "mutex_unlock_and_dispatch"),
         (mod priority_boost {}, "priority_boost"),
         (mod semaphore_interrupt_handler {}, "semaphore_interrupt_handler"),
         (mod semaphore_misc {}, "semaphore_misc"),
