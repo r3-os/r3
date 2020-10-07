@@ -658,16 +658,54 @@ fn unlock_mutex<System: Kernel>(
     // TODO: Restore the task's effective priority
 
     // Wake up the next waiter
-    if let Some(next_task) = mutex_cb.wait_queue.wake_up_one(lock.borrow_mut()) {
-        // Give the ownership of the mutex to `next_task`
-        lock_core(mutex_cb, next_task, lock.borrow_mut());
+    if unlock_mutex_unchecked(mutex_cb, lock.borrow_mut()) {
         task::unlock_cpu_and_check_preemption(lock);
-    } else {
-        // There's no one waiting
-        mutex_cb.owning_task.replace(&mut *lock, None);
     }
 
     Ok(())
+}
+
+/// Abandoon all mutexes held by the task.
+///
+/// This method doesn't restore the task's effective priority.
+///
+/// This method may make a task Ready, but doesn't yield the processor.
+/// Call `unlock_cpu_and_check_preemption` (or something similar) as needed.
+pub(super) fn abandon_held_mutexes<System: Kernel>(
+    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    task: &'static task::TaskCb<System>,
+) {
+    let mut maybe_mutex_cb = task.last_mutex_held.replace(&mut *lock, None);
+    while let Some(mutex_cb) = maybe_mutex_cb {
+        maybe_mutex_cb = mutex_cb.prev_mutex_held.get(&*lock);
+        mutex_cb.inconsistent.replace(&mut *lock, true);
+        unlock_mutex_unchecked(mutex_cb, lock.borrow_mut());
+    }
+}
+
+/// Wake up the next waiter of the mutex.
+///
+/// Return `true` iff it woke up a task.
+///
+/// This method doesn't restore the task's effective priority.
+///
+/// This method may make a task Ready, but doesn't yield the processor.
+/// Call `unlock_cpu_and_check_preemption` (or something similar) if it returns
+/// `true`.
+fn unlock_mutex_unchecked<System: Kernel>(
+    mutex_cb: &'static MutexCb<System>,
+    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+) -> bool {
+    // Wake up the next waiter
+    if let Some(next_task) = mutex_cb.wait_queue.wake_up_one(lock.borrow_mut()) {
+        // Give the ownership of the mutex to `next_task`
+        lock_core(mutex_cb, next_task, lock.borrow_mut());
+        true
+    } else {
+        // There's no one waiting
+        mutex_cb.owning_task.replace(&mut *lock, None);
+        false
+    }
 }
 
 #[inline]

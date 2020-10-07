@@ -427,10 +427,13 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
         .priority_boost
         .store(false, Ordering::Release);
 
-    // TODO: Abandon mutexes
+    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
+
+    // Abandon mutexes, waking up the next waiters of the mutexes (if any)
+    mutex::abandon_held_mutexes(lock.borrow_mut(), running_task);
+    debug_assert!(running_task.last_mutex_held.read(&*lock).is_none());
 
     // Transition the current task to Dormant
-    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
     running_task.st.replace(&mut *lock, TaskSt::Dormant);
 
