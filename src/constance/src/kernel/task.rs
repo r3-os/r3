@@ -6,9 +6,9 @@ use num_traits::ToPrimitive;
 
 use super::{
     hunk::Hunk, mutex, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
-    GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, ParkTimeoutError,
-    Port, PortThreading, SetTaskPriorityError, SleepError, UnparkError, UnparkExactError,
-    WaitTimeoutError,
+    GetCurrentTaskError, GetTaskPriorityError, Id, InterruptTaskError, Kernel, KernelCfg1,
+    ParkError, ParkTimeoutError, Port, PortThreading, SetTaskPriorityError, SleepError,
+    UnparkError, UnparkExactError, WaitTimeoutError,
 };
 use crate::{
     time::Duration,
@@ -241,6 +241,21 @@ impl<System: Kernel> Task<System> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
         set_task_priority(lock, task_cb, priority)
+    }
+
+    /// Get the task's priority.
+    ///
+    /// The task shouldn't be in the Dormant state. Otherwise, this method will
+    /// return [`GetTaskPriorityError::BadObjectState`].
+    pub fn priority(self) -> Result<usize, GetTaskPriorityError> {
+        let lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+
+        if *task_cb.st.read(&*lock) == TaskSt::Dormant {
+            Err(GetTaskPriorityError::BadObjectState)
+        } else {
+            Ok(task_cb.priority.read(&*lock).to_usize().unwrap())
+        }
     }
 }
 

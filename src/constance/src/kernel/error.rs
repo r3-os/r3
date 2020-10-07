@@ -320,6 +320,21 @@ define_error! {
 }
 
 define_error! {
+    mod get_task_priority_error {}
+    /// Error type for [`Task::priority`].
+    ///
+    /// [`Task::priority`]: super::Task::priority
+    pub enum GetTaskPriorityError: BadContextError, BadIdError {
+        /// The task ID is out of range.
+        BadId,
+        /// CPU Lock is active.
+        BadContext,
+        /// The task is in the Dormant state.
+        BadObjectState,
+    }
+}
+
+define_error! {
     mod exit_task_error {}
     /// Error type for [`Kernel::exit_task`].
     ///

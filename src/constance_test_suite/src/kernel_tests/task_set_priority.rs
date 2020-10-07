@@ -34,6 +34,7 @@ impl<System: Kernel> App<System> {
 fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // `task1` executes first because it has a higher priority.
     D::app().seq.expect_and_replace(0, 1);
+    assert_eq!(D::app().task2.priority(), Ok(2));
 
     // Raise `task2`'s priority to higher than `task1`. `task2` will start
     // executing.
@@ -41,12 +42,14 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // Back from `task2`...
     D::app().seq.expect_and_replace(2, 3);
+    assert_eq!(D::app().task2.priority(), Ok(2));
 
     // Exit from `task1`, relinquishing the control to `task2`.
 }
 
 fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
+    assert_eq!(D::app().task2.priority(), Ok(0));
 
     // Reset `task2`'s priority. `task1` will resume.
     D::app().task2.set_priority(2).unwrap();
