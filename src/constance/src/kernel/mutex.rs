@@ -415,8 +415,11 @@ impl<System: Kernel> Mutex<System> {
         let mut lock = utils::lock_cpu::<System>()?;
         let mutex_cb = self.mutex_cb()?;
 
-        mutex_cb.inconsistent.replace(&mut *lock, false);
-        Ok(())
+        if mutex_cb.inconsistent.replace(&mut *lock, false) {
+            Ok(())
+        } else {
+            Err(MarkConsistentMutexError::BadObjectState)
+        }
     }
 }
 
