@@ -412,11 +412,11 @@ impl<System: Kernel> Mutex<System> {
     /// > `pthread_mutex_consistent` from POSIX.1-2008.
     ///
     pub fn mark_consistent(self) -> Result<(), MarkConsistentMutexError> {
-        let lock = utils::lock_cpu::<System>()?;
+        let mut lock = utils::lock_cpu::<System>()?;
         let mutex_cb = self.mutex_cb()?;
 
-        let _ = (lock, mutex_cb);
-        todo!()
+        mutex_cb.inconsistent.replace(&mut *lock, false);
+        Ok(())
     }
 }
 
