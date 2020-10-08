@@ -300,7 +300,7 @@ impl<System: Kernel> WaitQueue<System> {
                 None
             }
             QueueOrder::TaskPriority => {
-                let cur_task_pri = *task.priority.read(&**accessor.cell_key());
+                let cur_task_pri = *task.effective_priority.read(&**accessor.cell_key());
                 // TODO: It's unfortunate that we need to pass
                 //       `&ListAccessorCell`, which incurs a runtime cost because
                 //       `&T` is always pointer-sized. Find a way to eliminate
@@ -348,7 +348,9 @@ impl<System: Kernel> WaitQueue<System> {
             // Should the new wait object inserted at this or an earlier
             // position?
             let next_cursor_task = accessor.pool()[next_cursor].task;
-            let next_cursor_task_pri = *next_cursor_task.priority.read(&**accessor.cell_key());
+            let next_cursor_task_pri = *next_cursor_task
+                .effective_priority
+                .read(&**accessor.cell_key());
             if next_cursor_task_pri > cur_task_pri {
                 // If so, update `insert_at`. Continue searching because
                 // there might be a viable position that is even
@@ -385,7 +387,7 @@ impl<System: Kernel> WaitQueue<System> {
         accessor.remove(wait_ref);
 
         // Re-insert `wait_ref`.
-        let cur_task_pri = *task.priority.read(&**accessor.cell_key());
+        let cur_task_pri = *task.effective_priority.read(&**accessor.cell_key());
         let insert_at = Self::find_insertion_position_by_task_priority(cur_task_pri, &accessor);
         accessor.insert(wait_ref, insert_at);
     }

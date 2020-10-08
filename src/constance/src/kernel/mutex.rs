@@ -486,7 +486,7 @@ fn precheck_and_get_running_task<System: Kernel>(
     }
 
     if let Some(ceiling) = mutex_cb.ceiling {
-        if ceiling > task.priority.get(&*lock) {
+        if ceiling > task.base_priority.get(&*lock) {
             return Err(LockMutexPrecheckError::BadParam);
         }
     }
@@ -495,18 +495,18 @@ fn precheck_and_get_running_task<System: Kernel>(
 }
 
 /// Check if the specified mutex, which is currently held or waited by a task,
-/// is compatible with the new task priority according to the mutex's locking
-/// protocol.
+/// is compatible with the new task base priority according to the mutex's
+/// locking protocol.
 ///
 /// The check is only needed when raising the priority.
 #[inline]
-pub(super) fn does_held_mutex_allow_new_task_priority<System: Kernel>(
+pub(super) fn does_held_mutex_allow_new_task_base_priority<System: Kernel>(
     _lock: utils::CpuLockGuardBorrowMut<'_, System>,
     mutex_cb: &'static MutexCb<System>,
-    new_priority: System::TaskPriority,
+    new_base_priority: System::TaskPriority,
 ) -> bool {
     if let Some(ceiling) = mutex_cb.ceiling {
-        if ceiling > new_priority {
+        if ceiling > new_base_priority {
             return false;
         }
     }
@@ -514,19 +514,23 @@ pub(super) fn does_held_mutex_allow_new_task_priority<System: Kernel>(
     true
 }
 
-/// Check if the task's held mutexes are all compatible with the new task
+/// Check if the task's held mutexes are all compatible with the new task base
 /// priority according to the mutxes's locking protocols.
 ///
 /// The check is only needed when raising the priority.
 #[inline]
-pub(super) fn do_held_mutexes_allow_new_task_priority<System: Kernel>(
+pub(super) fn do_held_mutexes_allow_new_task_base_priority<System: Kernel>(
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
     task: &'static task::TaskCb<System>,
-    new_priority: System::TaskPriority,
+    new_base_priority: System::TaskPriority,
 ) -> bool {
     let mut maybe_mutex_cb = task.last_mutex_held.get(&*lock);
     while let Some(mutex_cb) = maybe_mutex_cb {
-        if !does_held_mutex_allow_new_task_priority(lock.borrow_mut(), mutex_cb, new_priority) {
+        if !does_held_mutex_allow_new_task_base_priority(
+            lock.borrow_mut(),
+            mutex_cb,
+            new_base_priority,
+        ) {
             return false;
         }
 
