@@ -392,6 +392,25 @@ impl<System: Kernel> WaitQueue<System> {
         accessor.insert(wait_ref, insert_at);
     }
 
+    /// Get the next waiting task to be woken up.
+    pub(super) fn first_waiting_task(
+        &self,
+        mut lock: CpuLockGuardBorrowMut<'_, System>,
+    ) -> Option<&'static TaskCb<System>> {
+        // Get the first wait object
+        // Safety: All elements of `self.waits` are extant.
+        unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }
+            .front()
+            .map(|wait_ref| {
+                // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` was
+                // in `self.waits` at the beginning of this function call.
+                let wait = unsafe { wait_ref.0.as_ref() };
+
+                // Return the waiting task
+                wait.task
+            })
+    }
+
     /// Wake up up to one waiting task. Returns `true` if it has successfully
     /// woken up a task.
     ///

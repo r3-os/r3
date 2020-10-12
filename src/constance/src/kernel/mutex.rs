@@ -703,10 +703,14 @@ fn unlock_mutex_unchecked<System: Kernel>(
     mutex_cb: &'static MutexCb<System>,
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
 ) -> bool {
-    // Wake up the next waiter
-    if let Some(next_task) = mutex_cb.wait_queue.wake_up_one(lock.borrow_mut()) {
+    // Check if there's any other tasks waiting on the mutex
+    if let Some(next_task) = mutex_cb.wait_queue.first_waiting_task(lock.borrow_mut()) {
         // Give the ownership of the mutex to `next_task`
         lock_core(mutex_cb, next_task, lock.borrow_mut());
+
+        // Wake up the next waiter
+        assert!(mutex_cb.wait_queue.wake_up_one(lock.borrow_mut()));
+
         true
     } else {
         // There's no one waiting
