@@ -1,4 +1,7 @@
 //! ~~Mutices~~ Mutexes
+// FIXME: `debug_assert_matches` needing `assert_matches` is fixed by
+//        <https://github.com/murarth/assert_matches/pull/9>
+use assert_matches::{assert_matches, debug_assert_matches};
 use core::{fmt, hash, marker::PhantomData};
 
 use super::{
@@ -274,9 +277,7 @@ pub enum MutexProtocol {
 /// >    > blocking chain can grow arbitrarily long.
 /// >
 /// > We decided to restrict the unlocking order to a lock-reverse order to
-/// > bound the time complexity of the unlock operation with O(1) and to
-/// > accommodate the priority inheritance protocol in an efficient manner in
-/// > the future.
+/// > minimize the cost of maintaining the list of mutexes held by a task.
 ///
 #[doc(include = "../common.md")]
 #[repr(transparent)]
@@ -539,6 +540,28 @@ pub(super) fn do_held_mutexes_allow_new_task_base_priority<System: Kernel>(
     true
 }
 
+/// Reevaluate the task's effective priority and return the result.
+/// (This method doesn't update [`task::TaskCb::effective_priority`]).
+/// The base priority is assumed to be `base_priority`.
+pub(super) fn evaluate_task_effective_priority<System: Kernel>(
+    lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    task: &'static task::TaskCb<System>,
+    base_priority: System::TaskPriority,
+) -> System::TaskPriority {
+    let mut effective_priority = base_priority;
+    let mut maybe_mutex_cb = task.last_mutex_held.get(&*lock);
+
+    while let Some(mutex_cb) = maybe_mutex_cb {
+        if let Some(ceiling) = mutex_cb.ceiling {
+            effective_priority = effective_priority.min(ceiling);
+        }
+
+        maybe_mutex_cb = mutex_cb.prev_mutex_held.get(&*lock);
+    }
+
+    effective_priority
+}
+
 /// Check if the current state of a mutex satisfies the wait
 /// condition.
 ///
@@ -560,11 +583,22 @@ fn poll_core<System: Kernel>(
 }
 
 /// Give the ownership of the mutex to `task`.
+///
+/// The task must be in Running or Waiting state.
+#[inline]
+// FIXME: The extra parentheses in `debug_assert_matches!` are needed until
+//        <https://github.com/murarth/assert_matches/pull/10> is fixed
+#[allow(unused_parens)]
 fn lock_core<System: Kernel>(
     mutex_cb: &'static MutexCb<System>,
     task: &'static task::TaskCb<System>,
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
 ) {
+    debug_assert_matches!(
+        task.st.read(&*lock),
+        (task::TaskSt::Running | task::TaskSt::Waiting)
+    );
+
     mutex_cb.owning_task.replace(&mut *lock, Some(task));
 
     // Push `mutex_cb` to the list of the mutexes held by the task.
@@ -573,8 +607,9 @@ fn lock_core<System: Kernel>(
         .prev_mutex_held
         .replace(&mut *lock, prev_mutex_held);
 
-    if mutex_cb.ceiling.is_some() {
-        todo!("priority ceiling");
+    if let Some(ceiling) = mutex_cb.ceiling {
+        let effective_priority = task.effective_priority.write(&mut *lock);
+        *effective_priority = (*effective_priority).min(ceiling);
     }
 }
 
@@ -662,12 +697,17 @@ fn unlock_mutex<System: Kernel>(
     let prev_mutex_held = mutex_cb.prev_mutex_held.get(&*lock);
     task.last_mutex_held.replace(&mut *lock, prev_mutex_held);
 
-    // TODO: Restore the task's effective priority
+    // Lower the task's effective priority. This may cause preemption.
+    let base_priority = task.base_priority.get(&*lock);
+    let effective_priority =
+        evaluate_task_effective_priority(lock.borrow_mut(), task, base_priority);
+    task.effective_priority
+        .replace(&mut *lock, effective_priority);
 
     // Wake up the next waiter
-    if unlock_mutex_unchecked(mutex_cb, lock.borrow_mut()) {
-        task::unlock_cpu_and_check_preemption(lock);
-    }
+    unlock_mutex_unchecked(mutex_cb, lock.borrow_mut());
+
+    task::unlock_cpu_and_check_preemption(lock);
 
     Ok(())
 }
@@ -692,8 +732,6 @@ pub(super) fn abandon_held_mutexes<System: Kernel>(
 
 /// Wake up the next waiter of the mutex.
 ///
-/// Return `true` iff it woke up a task.
-///
 /// This method doesn't restore the task's effective priority.
 ///
 /// This method may make a task Ready, but doesn't yield the processor.
@@ -702,7 +740,7 @@ pub(super) fn abandon_held_mutexes<System: Kernel>(
 fn unlock_mutex_unchecked<System: Kernel>(
     mutex_cb: &'static MutexCb<System>,
     mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
-) -> bool {
+) {
     // Check if there's any other tasks waiting on the mutex
     if let Some(next_task) = mutex_cb.wait_queue.first_waiting_task(lock.borrow_mut()) {
         // Give the ownership of the mutex to `next_task`
@@ -710,12 +748,9 @@ fn unlock_mutex_unchecked<System: Kernel>(
 
         // Wake up the next waiter
         assert!(mutex_cb.wait_queue.wake_up_one(lock.borrow_mut()));
-
-        true
     } else {
         // There's no one waiting
         mutex_cb.owning_task.replace(&mut *lock, None);
-        false
     }
 }
 

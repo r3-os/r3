@@ -247,6 +247,7 @@ dependencies = [
 name = "constance"
 version = "0.0.1"
 dependencies = [
+ "assert_matches",
  "bitflags",
  "chrono",
  "env_logger",

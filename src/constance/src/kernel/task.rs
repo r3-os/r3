@@ -365,14 +365,16 @@ pub struct TaskCb<
     /// task_cb.base_priority.min(mutexes.map(|mutex_cb| {
     ///     if let Some(ceiling) = mutex_cb.ceiling {
     ///         assert!(ceiling <= task_cb.base_priority);
+    ///         ceiling
+    ///     } else {
+    ///         TaskPriority::MAX
     ///     }
-    ///     mutex_cb.ceiling.unwrap_or(TaskPriority::MAX)
     /// }).min())
     /// ```
     ///
     /// Many operations change the inputs of this calculation. We take care to
     /// ensure the recalculation of this value completes in constant-time (in
-    /// regard to the number of held mutexes) for most cases.
+    /// regard to the number of held mutexes) for as many cases as possible.
     pub(super) effective_priority: utils::CpuLockCell<System, TaskPriority>,
 
     pub(super) st: utils::CpuLockCell<System, TaskSt>,
@@ -985,10 +987,11 @@ fn set_task_base_priority<System: Kernel>(
         }
     }
 
-    // TODO: Recalculate `effective_priority` according to the locking protocol
-    //       of held mutexes
-    let effective_priority = base_priority;
-    let effective_priority_internal = base_priority_internal;
+    // Recalculate `effective_priority` according to the locking protocol
+    // of held mutexes
+    let effective_priority_internal =
+        mutex::evaluate_task_effective_priority(lock.borrow_mut(), task_cb, base_priority_internal);
+    let effective_priority = effective_priority_internal.to_usize().unwrap();
 
     // Assign the new priority
     task_cb

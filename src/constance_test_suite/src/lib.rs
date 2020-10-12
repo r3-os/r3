@@ -188,6 +188,8 @@ pub mod kernel_tests {
         (mod interrupt_task_activate {}, "interrupt_task_activate"),
         (mod interrupt_unmanaged {}, "interrupt_unmanaged"),
         (mod mutex_misc {}, "mutex_misc"),
+        (mod mutex_nesting {}, "mutex_nesting"),
+        (mod mutex_protect_priority_by_ceiling {}, "mutex_protect_priority_by_ceiling"),
         (mod mutex_timeout {}, "mutex_timeout"),
         (mod mutex_unlock_and_dispatch {}, "mutex_unlock_and_dispatch"),
         (mod priority_boost {}, "priority_boost"),

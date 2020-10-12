@@ -1,7 +1,7 @@
 //! Validates error codes returned by mutex manipulation methods. Also,
 //! checks miscellaneous properties of [`constance::kernel::Mutex`].
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Mutex, Task},
+    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task},
     prelude::*,
     time::Duration,
 };
@@ -15,6 +15,8 @@ use crate::utils::SeqTracker;
 const N: usize = 4;
 
 pub struct App<System> {
+    task2: Task<System>,
+    task3: Task<System>,
     int: Option<InterruptLine<System>>,
     m: [Mutex<System>; N],
     seq: Hunk<System, SeqTracker>,
@@ -28,15 +30,19 @@ impl<System: Kernel> App<System> {
             .active(true)
             .finish(b);
 
-        Task::build()
+        let task2 = Task::build()
             .start(task2_body::<System, D>)
             .priority(3)
-            .active(true)
+            .finish(b);
+
+        let task3 = Task::build()
+            .start(task3_body::<System, D>)
+            .priority(2)
             .finish(b);
 
         let m = [
-            Mutex::build().finish(b),
-            Mutex::build().finish(b),
+            Mutex::build().protocol(MutexProtocol::None).finish(b),
+            Mutex::build().protocol(MutexProtocol::Ceiling(1)).finish(b),
             Mutex::build().finish(b),
             Mutex::build().finish(b),
         ];
@@ -62,7 +68,13 @@ impl<System: Kernel> App<System> {
 
         let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
-        App { int, m, seq }
+        App {
+            task2,
+            task3,
+            int,
+            m,
+            seq,
+        }
     }
 }
 
@@ -252,13 +264,131 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         Err(constance::kernel::MarkConsistentMutexError::BadObjectState)
     );
 
-    // TODO: test prioity ceiling errors
+    // Priority ceiling precondition
+    // ----------------------------------------------------------------
 
-    // Abandon `m1`
+    // `m2` uses the priority ceiling `1`. Let's use this to test the errors
+    // specific to the priority ceiling protocol.
+    let cur_task: Task<System> = Task::current().unwrap().unwrap();
+    for pri in 0..=3 {
+        let exceeds_ceiling = pri < 1;
+        log::trace!(
+            "set_priority({}) exceeds_ceiling = {:?}",
+            pri,
+            exceeds_ceiling
+        );
+        cur_task.set_priority(pri).unwrap();
+
+        assert_eq!(cur_task.priority().unwrap(), pri);
+        assert_eq!(cur_task.effective_priority().unwrap(), pri);
+
+        if exceeds_ceiling {
+            // The current priority exceeds the priority ceiling. Locking
+            // operations will fail.
+            assert_eq!(m2.lock(), Err(constance::kernel::LockMutexError::BadParam));
+            assert_eq!(
+                m2.try_lock(),
+                Err(constance::kernel::TryLockMutexError::BadParam)
+            );
+            assert_eq!(
+                m2.lock_timeout(Duration::ZERO),
+                Err(constance::kernel::LockMutexTimeoutError::BadParam)
+            );
+        } else {
+            // The current priority does not exceed the priority ceiling.
+            // Locking operations should succeed.
+            m2.lock().unwrap();
+            assert_eq!(cur_task.priority().unwrap(), pri);
+            assert_eq!(cur_task.effective_priority().unwrap(), 1);
+            m2.unlock().unwrap();
+
+            m2.try_lock().unwrap();
+            m2.unlock().unwrap();
+
+            m2.lock_timeout(Duration::ZERO).unwrap();
+
+            // When holding a mutex lock, raising the task priority is also
+            // restricted according to the locking protocol's precondition.
+            for pri2 in 0..=3 {
+                let exceeds_ceiling = pri2 < 1;
+                log::trace!(
+                    "  set_priority({}) exceeds_ceiling = {:?}",
+                    pri2,
+                    exceeds_ceiling
+                );
+                if exceeds_ceiling {
+                    assert_eq!(
+                        cur_task.set_priority(pri2),
+                        Err(constance::kernel::SetTaskPriorityError::BadParam)
+                    );
+                } else {
+                    cur_task.set_priority(pri2).unwrap();
+                    assert_eq!(cur_task.priority().unwrap(), pri2);
+                    assert_eq!(cur_task.effective_priority().unwrap(), 1);
+                }
+            }
+
+            m2.unlock().unwrap();
+
+            assert_eq!(cur_task.priority().unwrap(), 3);
+            assert_eq!(cur_task.effective_priority().unwrap(), 3);
+        }
+    }
+
+    cur_task.set_priority(2).unwrap();
+
+    // Let `task3` block waiting upon `m2`.
+    app.task3.activate().unwrap();
+    m2.lock().unwrap();
+    System::sleep(Duration::from_millis(200)).unwrap();
+
+    assert_eq!(app.task3.priority().unwrap(), 2);
+    assert_eq!(app.task3.effective_priority().unwrap(), 2);
+
+    // When a task is waiting upon a mutex, raising its priority is also
+    // restricted according to the locking protocol's precondition.
+    for pri in (0..=3).rev() {
+        let exceeds_ceiling = pri < 1;
+        log::trace!(
+            "task3.set_priority({}) exceeds_ceiling = {:?}",
+            pri,
+            exceeds_ceiling
+        );
+        if exceeds_ceiling {
+            assert_eq!(
+                app.task3.set_priority(pri),
+                Err(constance::kernel::SetTaskPriorityError::BadParam)
+            );
+        } else {
+            app.task3.set_priority(pri).unwrap();
+            assert_eq!(app.task3.priority().unwrap(), pri);
+            assert_eq!(app.task3.effective_priority().unwrap(), pri);
+        }
+    }
+
+    // Let `task3` have the mutex lock. (`task3` is running at priority 1, so it
+    // will immediately preempt the current task.)
+    m2.unlock().unwrap();
+
+    // `task3` will abandon `m2`. Clear the abandonment flag.
+    m2.mark_consistent().unwrap();
+
+    // Activate `task3` again. This will check that the effective priority
+    // is reset to the initial value on task activation.
+    app.task3.activate().unwrap();
+    System::sleep(Duration::from_millis(200)).unwrap();
+    m2.mark_consistent().unwrap();
+
+    // Abandonment
+    // ----------------------------------------------------------------
+
+    // Abandon `m1` and `m2`
     m1.lock().unwrap();
     app.seq.expect_and_replace(2, 3);
 
-    // Let task2 run
+    // Run `task2`. It has a low priority, so it will execute after the current
+    // task exits.
+    app.task2.activate().unwrap();
 }
 
 fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
@@ -296,6 +426,17 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     m1.lock().unwrap();
 
     D::success();
+}
+
+fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    let app = D::app();
+    let [_, m2, ..] = app.m;
+
+    let cur_task: Task<System> = Task::current().unwrap().unwrap();
+    assert_eq!(cur_task.priority().unwrap(), 2);
+    assert_eq!(cur_task.effective_priority().unwrap(), 2);
+
+    m2.lock().unwrap();
 }
 
 fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
