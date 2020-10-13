@@ -847,8 +847,9 @@ pub struct State<
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
     TimeoutHeap: 'static = <System as KernelCfg2>::TimeoutHeap,
 > {
-    /// The currently or recently running task. Can be in a Running or Waiting
-    /// state.
+    /// The currently or recently running task. Can be in a Running, Waiting, or
+    /// Ready state. The last two only can be observed momentarily around a
+    /// call to `yield_cpu` or in an interrupt handler.
     running_task:
         utils::CpuLockCell<System, Option<&'static TaskCb<System, PortTaskState, TaskPriority>>>,
 

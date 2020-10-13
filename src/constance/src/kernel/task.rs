@@ -763,15 +763,24 @@ pub(super) fn choose_next_running_task<System: Kernel>(
         None
     };
 
-    // If `prev_running_task` is in the Running state, transition it into Ready.
-    // Assumes `prev_running_task != next_running_task`.
+    // `prev_running_task` now loses the control of the processor.
     if let Some(running_task) = prev_running_task {
+        debug_assert_ne!(
+            ptr_from_option_ref(prev_running_task),
+            ptr_from_option_ref(next_running_task),
+        );
         match running_task.st.read(&*lock) {
             TaskSt::Running => {
+                // Transition `prev_running_task` into Ready state.
                 // Safety: The previous state is Running, so this is safe
                 unsafe { make_ready(lock.borrow_mut(), running_task) };
             }
-            TaskSt::Waiting => {}
+            TaskSt::Waiting => {
+                // `prev_running_task` stays in Waiting state.
+            }
+            TaskSt::Ready => {
+                // `prev_running_task` stays in Ready state.
+            }
             _ => unreachable!(),
         }
     }
