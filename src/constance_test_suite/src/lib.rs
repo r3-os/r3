@@ -498,9 +498,18 @@ pub mod kernel_benchmarks {
 
     define_kernel_benchmarks! {
         [$]
+        (mod mutex_ceiling {}, "mutex_ceiling"),
+        (mod mutex_none {}, "mutex_none"),
         (mod semaphore {}, "semaphore"),
         (mod task_lifecycle {}, "task_lifecycle"),
     }
+
+    #[cfg(any(
+        feature = "tests_all",
+        all(feature = "tests_selective", kernel_benchmark = "mutex_none"),
+        all(feature = "tests_selective", kernel_benchmark = "mutex_ceiling"),
+    ))]
+    mod mutex;
 
     /// Invoke the specified macro with a description of test cases
     /// selected by `CONSTANCE_TEST`.
