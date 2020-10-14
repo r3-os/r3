@@ -485,7 +485,7 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
         utils::assume_cpu_lock::<System>()
     };
 
-    // If Priority Boost is active, deacrivate it.
+    // If Priority Boost is active, deactivate it.
     System::state()
         .priority_boost
         .store(false, Ordering::Release);
@@ -956,7 +956,7 @@ fn set_task_base_priority<System: Kernel>(
 
     // Fail with `BadParam` if the operation would violate the precondition of
     // the locking protocol used in any of the held or waited mutexes. This
-    // check is only neded when raising the priority.
+    // check is only needed when raising the priority.
     if base_priority < old_base_priority {
         // Get the currently-waited mutex (if any).
         let waited_mutex = wait::with_current_wait_payload(lock.borrow_mut(), task_cb, |payload| {
