@@ -92,6 +92,14 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
         app.task2.set_priority(1),
         Err(constance::kernel::SetTaskPriorityError::BadObjectState)
     );
+    assert_eq!(
+        app.task2.priority(),
+        Err(constance::kernel::GetTaskPriorityError::BadObjectState)
+    );
+    assert_eq!(
+        app.task2.effective_priority(),
+        Err(constance::kernel::GetTaskPriorityError::BadObjectState)
+    );
 
     // The task is running
     assert_eq!(
@@ -99,11 +107,17 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
         Err(constance::kernel::InterruptTaskError::BadObjectState)
     );
 
+    assert_eq!(app.task1.priority(), Ok(2));
+    assert_eq!(app.task1.effective_priority(), Ok(2));
+
     // Priority is out of range
     assert_eq!(
         app.task1.set_priority(usize::MAX),
         Err(constance::kernel::SetTaskPriorityError::BadParam)
     );
+
+    assert_eq!(app.task1.priority(), Ok(2));
+    assert_eq!(app.task1.effective_priority(), Ok(2));
 
     // Current task
     // This assertion might not be useful because `task1` always has ID 0, so
@@ -133,6 +147,14 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     assert_eq!(
         app.task1.set_priority(2),
         Err(constance::kernel::SetTaskPriorityError::BadContext)
+    );
+    assert_eq!(
+        app.task1.priority(),
+        Err(constance::kernel::GetTaskPriorityError::BadContext)
+    );
+    assert_eq!(
+        app.task1.effective_priority(),
+        Err(constance::kernel::GetTaskPriorityError::BadContext)
     );
     unsafe { System::release_cpu_lock().unwrap() };
 

@@ -42,13 +42,21 @@ impl<System: Kernel> App<System> {
 fn task_body<System: Kernel, D: Driver<App<System>>>(i: usize) {
     let delay = Duration::from_millis(TASKS[i] as _);
 
-    loop {
+    for i in 0.. {
         let now = System::time().unwrap();
         log::trace!("[{}] time = {:?}", i, now);
 
         if now.as_secs() >= 2 {
             break;
         }
+
+        let delay = if i == 2 {
+            // Exponentially increase the interval, up to 500ms. Small delays
+            // exercise rarely-reached code paths in the kernel.
+            Duration::from_micros(1 << (i / 2).min(19))
+        } else {
+            delay
+        };
 
         System::sleep(delay).unwrap();
 

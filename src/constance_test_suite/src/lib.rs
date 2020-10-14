@@ -8,6 +8,7 @@
 #![feature(decl_macro)]
 #![feature(is_sorted)]
 #![feature(cfg_target_has_atomic)]
+#![feature(array_windows)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
@@ -186,6 +187,11 @@ pub mod kernel_tests {
         (mod interrupt_priority {}, "interrupt_priority"),
         (mod interrupt_task_activate {}, "interrupt_task_activate"),
         (mod interrupt_unmanaged {}, "interrupt_unmanaged"),
+        (mod mutex_misc {}, "mutex_misc"),
+        (mod mutex_nesting {}, "mutex_nesting"),
+        (mod mutex_protect_priority_by_ceiling {}, "mutex_protect_priority_by_ceiling"),
+        (mod mutex_timeout {}, "mutex_timeout"),
+        (mod mutex_unlock_and_dispatch {}, "mutex_unlock_and_dispatch"),
         (mod priority_boost {}, "priority_boost"),
         (mod semaphore_interrupt_handler {}, "semaphore_interrupt_handler"),
         (mod semaphore_misc {}, "semaphore_misc"),
@@ -330,12 +336,14 @@ pub mod kernel_benchmarks {
 
     /// The interface provided by [`use_benchmark_in_kernel_benchmark!`] and
     /// consumed by an inner app.
-    trait Bencher<App> {
+    trait Bencher<System, App> {
         /// Get a reference to `App` of the inner app.
         fn app() -> &'static App;
 
         fn mark_start();
         fn mark_end(int: crate::utils::benchmark::Interval);
+
+        fn main_task() -> constance::kernel::Task<System>;
     }
 
     /// Define an `App` type using [the benchmark
@@ -355,7 +363,7 @@ pub mod kernel_benchmarks {
     macro_rules! use_benchmark_in_kernel_benchmark {
         {
             pub unsafe struct App<System> {
-                inner: $inner_ty:ident<System>,
+                inner: $inner_ty:ty,
             }
         } => {
             use crate::kernel_benchmarks::Driver;
@@ -363,7 +371,7 @@ pub mod kernel_benchmarks {
 
             pub struct App<System> {
                 benchmark: benchmark::BencherCottage<System>,
-                inner: $inner_ty<System>,
+                inner: $inner_ty,
             }
 
             struct MyBencherOptions<System, D>(core::marker::PhantomData<(System, D)>);
@@ -374,7 +382,7 @@ pub mod kernel_benchmarks {
                 ) -> Self {
                     App {
                         benchmark: benchmark::configure::<System, MyBencherOptions<System, D>>(b),
-                        inner: $inner_ty::new::<MyBencherOptions<System, D>>(b),
+                        inner: <$inner_ty>::new::<MyBencherOptions<System, D>>(b),
                     }
                 }
             }
@@ -388,7 +396,7 @@ pub mod kernel_benchmarks {
                 }
 
                 fn iter() {
-                    $inner_ty::iter::<MyBencherOptions<System, D>>();
+                    <$inner_ty>::iter::<MyBencherOptions<System, D>>();
                 }
 
                 fn performance_time() -> u32 {
@@ -404,9 +412,9 @@ pub mod kernel_benchmarks {
 
             /// app → benchmark framework
             impl<System: constance::kernel::Kernel, D: Driver<App<System>>>
-                crate::kernel_benchmarks::Bencher<$inner_ty<System>> for MyBencherOptions<System, D>
+                crate::kernel_benchmarks::Bencher<System, $inner_ty> for MyBencherOptions<System, D>
             {
-                fn app() -> &'static $inner_ty<System> {
+                fn app() -> &'static $inner_ty {
                     &D::app().inner
                 }
 
@@ -415,6 +423,10 @@ pub mod kernel_benchmarks {
                 }
                 fn mark_end(int: benchmark::Interval) {
                     <Self as benchmark::Bencher<System>>::mark_end(int)
+                }
+
+                fn main_task() -> constance::kernel::Task<System> {
+                    <Self as benchmark::Bencher<System>>::main_task()
                 }
             }
         };
@@ -492,9 +504,18 @@ pub mod kernel_benchmarks {
 
     define_kernel_benchmarks! {
         [$]
+        (mod mutex_ceiling {}, "mutex_ceiling"),
+        (mod mutex_none {}, "mutex_none"),
         (mod semaphore {}, "semaphore"),
         (mod task_lifecycle {}, "task_lifecycle"),
     }
+
+    #[cfg(any(
+        feature = "tests_all",
+        all(feature = "tests_selective", kernel_benchmark = "mutex_none"),
+        all(feature = "tests_selective", kernel_benchmark = "mutex_ceiling"),
+    ))]
+    mod mutex;
 
     /// Invoke the specified macro with a description of test cases
     /// selected by `CONSTANCE_TEST`.

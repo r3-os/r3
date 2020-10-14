@@ -1,7 +1,7 @@
 use core::{fmt, ops, ptr::NonNull};
 
 use super::{
-    event_group, task,
+    event_group, mutex, task,
     task::{TaskCb, TaskSt},
     timeout,
     utils::{CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
@@ -115,13 +115,14 @@ struct Wait<System: PortThreading> {
 
 /// Additional information included in `With`, specific to waitable object
 /// types.
-pub(super) enum WaitPayload<System> {
+pub(super) enum WaitPayload<System: PortThreading> {
     EventGroupBits {
         bits: event_group::EventGroupBits,
         flags: event_group::EventGroupWaitFlags,
         orig_bits: event_group::AtomicEventGroupBits,
     },
     Semaphore,
+    Mutex(&'static mutex::MutexCb<System>),
     Park,
     Sleep,
     __Nonexhaustive(System),
@@ -299,7 +300,7 @@ impl<System: Kernel> WaitQueue<System> {
                 None
             }
             QueueOrder::TaskPriority => {
-                let cur_task_pri = *task.priority.read(&**accessor.cell_key());
+                let cur_task_pri = *task.effective_priority.read(&**accessor.cell_key());
                 // TODO: It's unfortunate that we need to pass
                 //       `&ListAccessorCell`, which incurs a runtime cost because
                 //       `&T` is always pointer-sized. Find a way to eliminate
@@ -347,7 +348,9 @@ impl<System: Kernel> WaitQueue<System> {
             // Should the new wait object inserted at this or an earlier
             // position?
             let next_cursor_task = accessor.pool()[next_cursor].task;
-            let next_cursor_task_pri = *next_cursor_task.priority.read(&**accessor.cell_key());
+            let next_cursor_task_pri = *next_cursor_task
+                .effective_priority
+                .read(&**accessor.cell_key());
             if next_cursor_task_pri > cur_task_pri {
                 // If so, update `insert_at`. Continue searching because
                 // there might be a viable position that is even
@@ -384,9 +387,28 @@ impl<System: Kernel> WaitQueue<System> {
         accessor.remove(wait_ref);
 
         // Re-insert `wait_ref`.
-        let cur_task_pri = *task.priority.read(&**accessor.cell_key());
+        let cur_task_pri = *task.effective_priority.read(&**accessor.cell_key());
         let insert_at = Self::find_insertion_position_by_task_priority(cur_task_pri, &accessor);
         accessor.insert(wait_ref, insert_at);
+    }
+
+    /// Get the next waiting task to be woken up.
+    pub(super) fn first_waiting_task(
+        &self,
+        mut lock: CpuLockGuardBorrowMut<'_, System>,
+    ) -> Option<&'static TaskCb<System>> {
+        // Get the first wait object
+        // Safety: All elements of `self.waits` are extant.
+        unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }
+            .front()
+            .map(|wait_ref| {
+                // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` was
+                // in `self.waits` at the beginning of this function call.
+                let wait = unsafe { wait_ref.0.as_ref() };
+
+                // Return the waiting task
+                wait.task
+            })
     }
 
     /// Wake up up to one waiting task. Returns `true` if it has successfully
@@ -414,20 +436,6 @@ impl<System: Kernel> WaitQueue<System> {
         complete_wait(lock.borrow_mut(), wait, Ok(()));
 
         true
-    }
-
-    /// Wake up all waiting tasks. Returns `true` if it has successfully
-    /// woken up at least one task.
-    ///
-    /// This method may make a task Ready, but doesn't yield the processor.
-    /// Call `unlock_cpu_and_check_preemption` as needed.
-    pub(super) fn wake_up_all(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
-        // Call `wake_up_one` repeatedly until it returns `false`. If the first
-        // call returns `true`, the result of `wake_up_all` is `true`.
-        self.wake_up_one(lock.borrow_mut()) && {
-            while self.wake_up_one(lock.borrow_mut()) {}
-            true
-        }
     }
 
     /// Conditionally wake up waiting tasks.

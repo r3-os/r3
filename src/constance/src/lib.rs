@@ -11,11 +11,13 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(const_checked_int_methods)]
 #![feature(const_option)]
+#![feature(or_patterns)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
 #![feature(specialization)]
 #![feature(int_bits_const)]
+#![feature(arbitrary_enum_discriminant)]
 #![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]

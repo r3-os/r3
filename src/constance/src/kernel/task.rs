@@ -5,10 +5,10 @@ use core::{
 use num_traits::ToPrimitive;
 
 use super::{
-    hunk::Hunk, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
-    GetCurrentTaskError, Id, InterruptTaskError, Kernel, KernelCfg1, ParkError, ParkTimeoutError,
-    Port, PortThreading, SetTaskPriorityError, SleepError, UnparkError, UnparkExactError,
-    WaitTimeoutError,
+    hunk::Hunk, mutex, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
+    GetCurrentTaskError, GetTaskPriorityError, Id, InterruptTaskError, Kernel, KernelCfg1,
+    ParkError, ParkTimeoutError, Port, PortThreading, SetTaskPriorityError, SleepError,
+    UnparkError, UnparkExactError, WaitTimeoutError,
 };
 use crate::{
     time::Duration,
@@ -222,12 +222,14 @@ impl<System: Kernel> Task<System> {
         unpark_exact(lock, task_cb)
     }
 
-    /// Set the task's priority.
+    /// Set the task's base priority.
     ///
-    /// Tasks with lower priority values execute first. The priority is reset to
-    /// the initial value specified by [`CfgTaskBuilder::priority`] upon
-    /// activation.
+    /// A task's base priority is used to calculate its [effective priority].
+    /// Tasks with lower effective priorities execute first. The base priority
+    /// is reset to the initial value specified by [`CfgTaskBuilder::priority`]
+    /// upon activation.
     ///
+    /// [effective priority]: Self::effective_priority
     /// [`CfgTaskBuilder::priority`]: crate::kernel::cfg::CfgTaskBuilder::priority
     ///
     /// The value must be in range `0..`[`num_task_priority_levels`]. Otherwise,
@@ -240,7 +242,43 @@ impl<System: Kernel> Task<System> {
     pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
-        set_task_priority(lock, task_cb, priority)
+        set_task_base_priority(lock, task_cb, priority)
+    }
+
+    /// Get the task's base priority.
+    ///
+    /// The task shouldn't be in the Dormant state. Otherwise, this method will
+    /// return [`GetTaskPriorityError::BadObjectState`].
+    pub fn priority(self) -> Result<usize, GetTaskPriorityError> {
+        let lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+
+        if *task_cb.st.read(&*lock) == TaskSt::Dormant {
+            Err(GetTaskPriorityError::BadObjectState)
+        } else {
+            Ok(task_cb.base_priority.read(&*lock).to_usize().unwrap())
+        }
+    }
+
+    /// Get the task's effective priority.
+    ///
+    /// The effective priority is calculated based on the task's [base priority]
+    /// and can be temporarily raised by a [mutex locking protocol].
+    ///
+    /// [base priority]: Self::priority
+    /// [mutex locking protocol]: crate::kernel::MutexProtocol
+    ///
+    /// The task shouldn't be in the Dormant state. Otherwise, this method will
+    /// return [`GetTaskPriorityError::BadObjectState`].
+    pub fn effective_priority(self) -> Result<usize, GetTaskPriorityError> {
+        let lock = utils::lock_cpu::<System>()?;
+        let task_cb = self.task_cb()?;
+
+        if *task_cb.st.read(&*lock) == TaskSt::Dormant {
+            Err(GetTaskPriorityError::BadObjectState)
+        } else {
+            Ok(task_cb.effective_priority.read(&*lock).to_usize().unwrap())
+        }
     }
 }
 
@@ -314,7 +352,30 @@ pub struct TaskCb<
     /// The static properties of the task.
     pub attr: &'static TaskAttr<System, TaskPriority>,
 
-    pub(super) priority: utils::CpuLockCell<System, TaskPriority>,
+    /// The task's base priority.
+    pub(super) base_priority: utils::CpuLockCell<System, TaskPriority>,
+
+    /// The task's effective priority. It's calculated based on `base_priority`
+    /// and may be temporarily elevated by a mutex locking protocol.
+    ///
+    /// Given a set of mutexes held by the task `mutexes`, the value is
+    /// calculated by the following pseudocode:
+    ///
+    /// ```rust,ignore
+    /// task_cb.base_priority.min(mutexes.map(|mutex_cb| {
+    ///     if let Some(ceiling) = mutex_cb.ceiling {
+    ///         assert!(ceiling <= task_cb.base_priority);
+    ///         ceiling
+    ///     } else {
+    ///         TaskPriority::MAX
+    ///     }
+    /// }).min())
+    /// ```
+    ///
+    /// Many operations change the inputs of this calculation. We take care to
+    /// ensure the recalculation of this value completes in constant-time (in
+    /// regard to the number of held mutexes) for as many cases as possible.
+    pub(super) effective_priority: utils::CpuLockCell<System, TaskPriority>,
 
     pub(super) st: utils::CpuLockCell<System, TaskSt>,
 
@@ -329,6 +390,9 @@ pub struct TaskCb<
     /// The wait state of the task.
     pub(super) wait: wait::TaskWait<System>,
 
+    /// The last mutex locked by the task.
+    pub(super) last_mutex_held: utils::CpuLockCell<System, Option<&'static mutex::MutexCb<System>>>,
+
     /// A flag indicating whether the task has a park token or not.
     pub(super) park_token: utils::CpuLockCell<System, bool>,
 }
@@ -340,7 +404,8 @@ impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Deb
         f.debug_struct("TaskCb")
             .field("port_task_state", &self.port_task_state)
             .field("attr", self.attr)
-            .field("priority", &self.priority)
+            .field("base_priority", &self.base_priority)
+            .field("effective_priority", &self.effective_priority)
             .finish()
     }
 }
@@ -364,6 +429,7 @@ pub struct TaskAttr<System, TaskPriority: 'static = <System as KernelCfg1>::Task
     /// The hunk representing the stack region for the task.
     pub stack: StackHunk<System>,
 
+    /// The initial base priority of the task.
     pub priority: TaskPriority,
 }
 
@@ -424,8 +490,13 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
         .priority_boost
         .store(false, Ordering::Release);
 
-    // Transition the current task to Dormant
     let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
+
+    // Abandon mutexes, waking up the next waiters of the mutexes (if any)
+    mutex::abandon_held_mutexes(lock.borrow_mut(), running_task);
+    debug_assert!(running_task.last_mutex_held.read(&*lock).is_none());
+
+    // Transition the current task to Dormant
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
     running_task.st.replace(&mut *lock, TaskSt::Dormant);
 
@@ -511,7 +582,12 @@ fn activate<System: Kernel>(
     unsafe { System::initialize_task_state(task_cb) };
 
     // Reset the task priority
-    task_cb.priority.replace(&mut *lock, task_cb.attr.priority);
+    task_cb
+        .base_priority
+        .replace(&mut *lock, task_cb.attr.priority);
+    task_cb
+        .effective_priority
+        .replace(&mut *lock, task_cb.attr.priority);
 
     // Safety: The previous state is Dormant, and we just initialized the task
     // state, so this is safe
@@ -535,7 +611,7 @@ pub(super) unsafe fn make_ready<System: Kernel>(
     task_cb.st.replace(&mut *lock, TaskSt::Ready);
 
     // Insert the task to a ready queue
-    let pri = task_cb.priority.read(&*lock).to_usize().unwrap();
+    let pri = task_cb.effective_priority.read(&*lock).to_usize().unwrap();
     list_accessor!(<System>::state().task_ready_queue[pri], lock.borrow_mut())
         .push_back(Ident(task_cb));
 
@@ -571,7 +647,11 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
     let prev_task_priority =
         if let Some(running_task) = System::state().running_task(lock.borrow_mut()) {
             if *running_task.st.read(&*lock) == TaskSt::Running {
-                running_task.priority.read(&*lock).to_usize().unwrap()
+                running_task
+                    .effective_priority
+                    .read(&*lock)
+                    .to_usize()
+                    .unwrap()
             } else {
                 usize::MAX
             }
@@ -618,7 +698,11 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     let prev_running_task = System::state().running_task(lock.borrow_mut());
     let prev_task_priority = if let Some(running_task) = prev_running_task {
         if *running_task.st.read(&*lock) == TaskSt::Running {
-            running_task.priority.read(&*lock).to_usize().unwrap()
+            running_task
+                .effective_priority
+                .read(&*lock)
+                .to_usize()
+                .unwrap()
         } else {
             usize::MAX
         }
@@ -681,15 +765,24 @@ pub(super) fn choose_next_running_task<System: Kernel>(
         None
     };
 
-    // If `prev_running_task` is in the Running state, transition it into Ready.
-    // Assumes `prev_running_task != next_running_task`.
+    // `prev_running_task` now loses the control of the processor.
     if let Some(running_task) = prev_running_task {
+        debug_assert_ne!(
+            ptr_from_option_ref(prev_running_task),
+            ptr_from_option_ref(next_running_task),
+        );
         match running_task.st.read(&*lock) {
             TaskSt::Running => {
+                // Transition `prev_running_task` into Ready state.
                 // Safety: The previous state is Running, so this is safe
                 unsafe { make_ready(lock.borrow_mut(), running_task) };
             }
-            TaskSt::Waiting => {}
+            TaskSt::Waiting => {
+                // `prev_running_task` stays in Waiting state.
+            }
+            TaskSt::Ready => {
+                // `prev_running_task` stays in Ready state.
+            }
             _ => unreachable!(),
         }
     }
@@ -837,17 +930,17 @@ pub(super) fn put_current_task_on_sleep_timeout<System: Kernel>(
 }
 
 /// Implements [`Task::set_priority`].
-fn set_task_priority<System: Kernel>(
+fn set_task_base_priority<System: Kernel>(
     mut lock: utils::CpuLockGuard<System>,
     task_cb: &'static TaskCb<System>,
-    priority: usize,
+    base_priority: usize,
 ) -> Result<(), SetTaskPriorityError> {
     // Validate the given priority
-    if priority >= System::NUM_TASK_PRIORITY_LEVELS {
+    if base_priority >= System::NUM_TASK_PRIORITY_LEVELS {
         return Err(SetTaskPriorityError::BadParam);
     }
-    let priority_internal =
-        System::TaskPriority::try_from(priority).unwrap_or_else(|_| unreachable!());
+    let base_priority_internal =
+        System::TaskPriority::try_from(base_priority).unwrap_or_else(|_| unreachable!());
 
     let st = *task_cb.st.read(&*lock);
 
@@ -855,14 +948,62 @@ fn set_task_priority<System: Kernel>(
         return Err(SetTaskPriorityError::BadObjectState);
     }
 
+    let old_base_priority = task_cb.base_priority.read(&*lock).to_usize().unwrap();
+
+    if old_base_priority == base_priority {
+        return Ok(());
+    }
+
+    // Fail with `BadParam` if the operation would violate the precondition of
+    // the locking protocol used in any of the held or waited mutexes. This
+    // check is only neded when raising the priority.
+    if base_priority < old_base_priority {
+        // Get the currently-waited mutex (if any).
+        let waited_mutex = wait::with_current_wait_payload(lock.borrow_mut(), task_cb, |payload| {
+            if let Some(&wait::WaitPayload::Mutex(mutex_cb)) = payload {
+                Some(mutex_cb)
+            } else {
+                None
+            }
+        });
+
+        if let Some(waited_mutex) = waited_mutex {
+            if !mutex::does_held_mutex_allow_new_task_base_priority(
+                lock.borrow_mut(),
+                waited_mutex,
+                base_priority_internal,
+            ) {
+                return Err(SetTaskPriorityError::BadParam);
+            }
+        }
+
+        // Check the precondition for all currently-held mutexes
+        if !mutex::do_held_mutexes_allow_new_task_base_priority(
+            lock.borrow_mut(),
+            task_cb,
+            base_priority_internal,
+        ) {
+            return Err(SetTaskPriorityError::BadParam);
+        }
+    }
+
+    // Recalculate `effective_priority` according to the locking protocol
+    // of held mutexes
+    let effective_priority_internal =
+        mutex::evaluate_task_effective_priority(lock.borrow_mut(), task_cb, base_priority_internal);
+    let effective_priority = effective_priority_internal.to_usize().unwrap();
+
     // Assign the new priority
-    let old_priority = task_cb
-        .priority
-        .replace(&mut *lock, priority_internal)
+    task_cb
+        .base_priority
+        .replace(&mut *lock, base_priority_internal);
+    let old_effective_priority = task_cb
+        .effective_priority
+        .replace(&mut *lock, effective_priority_internal)
         .to_usize()
         .unwrap();
 
-    if old_priority == priority {
+    if old_effective_priority == effective_priority {
         return Ok(());
     }
 
@@ -871,7 +1012,7 @@ fn set_task_priority<System: Kernel>(
             // Move the task between ready queues
             let old_pri_empty = {
                 let mut accessor = list_accessor!(
-                    <System>::state().task_ready_queue[old_priority],
+                    <System>::state().task_ready_queue[old_effective_priority],
                     lock.borrow_mut()
                 );
                 accessor.remove(Ident(task_cb));
@@ -879,17 +1020,17 @@ fn set_task_priority<System: Kernel>(
             };
 
             list_accessor!(
-                <System>::state().task_ready_queue[priority],
+                <System>::state().task_ready_queue[effective_priority],
                 lock.borrow_mut()
             )
             .push_back(Ident(task_cb));
 
             // Update `task_ready_bitmap` accordingly
-            // (This code assumes `priority != old_priority`.)
+            // (This code assumes `effective_priority != old_effective_priority`.)
             let task_ready_bitmap = System::state().task_ready_bitmap.write(&mut *lock);
-            task_ready_bitmap.set(priority);
+            task_ready_bitmap.set(effective_priority);
             if old_pri_empty {
-                task_ready_bitmap.clear(old_priority);
+                task_ready_bitmap.clear(old_effective_priority);
             }
         }
         TaskSt::Running => {}

@@ -84,8 +84,8 @@ impl<System: Port> CfgTaskBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the task's initial priority. Tasks with lower
-    /// priority values execute first. The value must be in range
+    /// [**Required**] Specify the task's initial base priority. Tasks with
+    /// lower priority values execute first. The value must be in range
     /// `0..`[`num_task_priority_levels`].
     ///
     /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
@@ -178,11 +178,14 @@ impl<System> Copy for CfgBuilderTask<System> {}
 
 impl<System: Port> CfgBuilderTask<System> {
     pub const fn to_state(&self, attr: &'static task::TaskAttr<System>) -> task::TaskCb<System> {
+        // `self.priority` has already been checked by `to_attr`
+        let priority = System::TASK_PRIORITY_LEVELS[self.priority];
+
         task::TaskCb {
             port_task_state: System::PORT_TASK_STATE_INIT,
             attr,
-            // `self.priority` has already been checked by `to_attr`
-            priority: CpuLockCell::new(System::TASK_PRIORITY_LEVELS[self.priority]),
+            base_priority: CpuLockCell::new(priority),
+            effective_priority: CpuLockCell::new(priority),
             st: CpuLockCell::new(if self.active {
                 task::TaskSt::PendingActivation
             } else {
@@ -191,6 +194,7 @@ impl<System: Port> CfgBuilderTask<System> {
             link: CpuLockCell::new(None),
             wait: Init::INIT,
             park_token: CpuLockCell::new(false),
+            last_mutex_held: CpuLockCell::new(None),
         }
     }
 

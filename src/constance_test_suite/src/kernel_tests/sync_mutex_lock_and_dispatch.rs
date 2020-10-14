@@ -1,8 +1,9 @@
 //! Checks miscellaneous properties of [`constance::sync::Mutex`].
+use assert_matches::assert_matches;
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Task},
     prelude::*,
-    sync::mutex::Mutex,
+    sync::mutex::{self, Mutex},
 };
 
 use super::Driver;
@@ -27,7 +28,7 @@ impl<System: Kernel> App<System> {
             .active(false)
             .finish(b);
 
-        let mutex = Mutex::new(b);
+        let mutex = Mutex::build().finish(b);
 
         let seq = Hunk::<_, SeqTracker>::build().finish(b);
 
@@ -63,6 +64,9 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
 
     app.seq.expect_and_replace(1, 2);
+
+    // returns `WouldBlock` because `task1` has lock
+    assert_matches!(app.mutex.try_lock(), Err(mutex::TryLockError::WouldBlock));
 
     {
         let mut lock = app.mutex.lock().unwrap(); // blocks because `task1` has lock
