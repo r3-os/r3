@@ -53,15 +53,90 @@ impl<System, T> CpuLockCell<System, T> {
     }
 }
 
+impl<System: Kernel, T: ?Sized> CpuLockCell<System, T> {
+    /// Clone the contents and apply debug formatting.
+    ///
+    /// `CpuLockCell` needs to acquire CPU Lock when doing debug formatting and
+    /// fails to do so if CPU Lock is already active. This means nested
+    /// `CpuLockCell` won't be printed.
+    ///
+    /// The debug formatting proxy returned by this method releases CPU Lock
+    /// before printing the contents, thus allowing any contained `CpuLockCell`s
+    /// to be printed.
+    pub(super) fn get_and_debug_fmt(&self) -> impl fmt::Debug + '_
+    where
+        T: Clone + fmt::Debug,
+    {
+        self.debug_fmt_with(|x, f| x.fmt(f))
+    }
+
+    /// Return a debug formatting proxy of the cell. The given closure is used
+    /// to format the cloned contents.
+    pub(super) fn debug_fmt_with<'a, F: 'a + Fn(T, &mut fmt::Formatter) -> fmt::Result>(
+        &'a self,
+        f: F,
+    ) -> impl fmt::Debug + 'a
+    where
+        T: Clone,
+    {
+        struct DebugFmtWith<'a, System, T: ?Sized, F> {
+            cell: &'a CpuLockCell<System, T>,
+            f: F,
+        }
+
+        impl<System: Kernel, T: Clone, F: Fn(T, &mut fmt::Formatter) -> fmt::Result> fmt::Debug
+            for DebugFmtWith<'_, System, T, F>
+        {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                if let Ok(lock) = lock_cpu() {
+                    let inner = self.cell.0.read(&*lock).clone();
+                    drop(lock);
+
+                    f.write_str("CpuLockCell(")?;
+                    (self.f)(inner, f)?;
+                    f.write_str(")")
+                } else {
+                    f.write_str("CpuLockCell(< locked >)")
+                }
+            }
+        }
+
+        DebugFmtWith { cell: self, f }
+    }
+
+    /// Return a debug formatting proxy of the cell. The given closure is used
+    /// to format the borrowed contents. Note that CPU Lock is active when the
+    /// closure is called.
+    pub(super) fn debug_fmt_with_ref<'a, F: 'a + Fn(&T, &mut fmt::Formatter) -> fmt::Result>(
+        &'a self,
+        f: F,
+    ) -> impl fmt::Debug + 'a {
+        struct DebugFmtWithRef<'a, System, T: ?Sized, F> {
+            cell: &'a CpuLockCell<System, T>,
+            f: F,
+        }
+
+        impl<System: Kernel, T: ?Sized, F: Fn(&T, &mut fmt::Formatter) -> fmt::Result> fmt::Debug
+            for DebugFmtWithRef<'_, System, T, F>
+        {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                if let Ok(lock) = lock_cpu() {
+                    f.write_str("CpuLockCell(")?;
+                    (self.f)(self.cell.0.read(&*lock), f)?;
+                    f.write_str(")")
+                } else {
+                    f.write_str("CpuLockCell(< locked >)")
+                }
+            }
+        }
+
+        DebugFmtWithRef { cell: self, f }
+    }
+}
+
 impl<System: Kernel, T: fmt::Debug> fmt::Debug for CpuLockCell<System, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Ok(lock) = lock_cpu() {
-            f.debug_tuple("CpuLockCell")
-                .field(self.0.read(&*lock))
-                .finish()
-        } else {
-            write!(f, "CpuLockCell(< locked >)")
-        }
+        self.debug_fmt_with_ref(|x, f| x.fmt(f)).fmt(f)
     }
 }
 

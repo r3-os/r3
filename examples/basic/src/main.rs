@@ -40,9 +40,8 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
 }
 
 fn task1_body(_: usize) {
-    use constance::kernel::KernelCfg2;
     log::trace!("COTTAGE = {:#?}", COTTAGE);
-    log::trace!("KENREL_STATE = {:#?}", System::state());
+    log::trace!("KENREL = {:#?}", System::debug());
 
     COTTAGE.task2.activate().unwrap();
 }

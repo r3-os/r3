@@ -2,6 +2,7 @@
 use core::{
     borrow::BorrowMut,
     fmt,
+    marker::PhantomData,
     mem::forget,
     num::NonZeroUsize,
     ops::Range,
@@ -42,6 +43,15 @@ pub type Id = NonZeroUsize;
 /// sufficient trait `impl`s to instantiate the kernel.
 #[doc(include = "./common.md")]
 pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
+    type DebugPrinter: fmt::Debug + Send + Sync;
+
+    /// Get an object that implements [`Debug`](fmt::Debug) for dumping the
+    /// current kernel state.
+    ///
+    /// Note that printing this object might consume a large amount of stack
+    /// space.
+    fn debug() -> Self::DebugPrinter;
+
     /// Activate [CPU Lock].
     ///
     /// Returns [`BadContext`] if CPU Lock is already active.
@@ -330,6 +340,47 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     fn sleep(timeout: Duration) -> Result<(), SleepError> {
         task::put_current_task_on_sleep_timeout::<Self>(timeout)
     }
+
+    type DebugPrinter = KernelDebugPrinter<Self>;
+
+    /// Get an object that implements [`Debug`](fmt::Debug) for dumping the
+    /// current kernel state.
+    ///
+    /// Note that printing this object might consume a large amount of stack
+    /// space.
+    fn debug() -> Self::DebugPrinter {
+        KernelDebugPrinter(PhantomData)
+    }
+}
+
+/// The object returned by [`Kernel::debug`]. Implements [`fmt::Debug`].
+///
+/// **This type is exempt from the API stability guarantee.**
+pub struct KernelDebugPrinter<T>(PhantomData<T>);
+
+impl<T: Kernel> fmt::Debug for KernelDebugPrinter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct PoolPrinter<'a, T>(&'a [T]);
+
+        impl<T: fmt::Debug> fmt::Debug for PoolPrinter<'_, T> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                // dictionary-style printing with key = object ID, value = object
+                f.debug_map().entries(self.0.iter().enumerate()).finish()
+            }
+        }
+
+        f.debug_struct("Kernel")
+            .field("state", T::state())
+            .field("task_cb_pool", &PoolPrinter(T::task_cb_pool()))
+            .field(
+                "event_group_cb_pool",
+                &PoolPrinter(T::event_group_cb_pool()),
+            )
+            .field("mutex_cb_pool", &PoolPrinter(T::mutex_cb_pool()))
+            .field("semaphore_cb_pool", &PoolPrinter(T::semaphore_cb_pool()))
+            .field("timer_cb_pool", &PoolPrinter(T::timer_cb_pool()))
+            .finish()
+    }
 }
 
 /// Associates "system" types with kernel-private data. Use [`build!`] to
@@ -374,7 +425,7 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
 #[doc(include = "./common.md")]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe trait PortThreading: KernelCfg1 {
-    type PortTaskState: Send + Sync + Init + 'static;
+    type PortTaskState: Send + Sync + Init + fmt::Debug + 'static;
 
     /// The initial value of [`TaskCb::port_task_state`] for all tasks.
     #[allow(clippy::declare_interior_mutable_const)] // it's intentional
@@ -759,10 +810,10 @@ pub unsafe trait KernelCfg2: Port + Sized {
     type TaskReadyBitmap: PrioBitmap;
 
     #[doc(hidden)]
-    type TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<Self>>]> + Init + 'static;
+    type TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<Self>>]> + Init + fmt::Debug + 'static;
 
     #[doc(hiddden)]
-    type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + Init + 'static;
+    type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + Init + fmt::Debug + 'static;
 
     /// The table of combined second-level interrupt handlers.
     ///
@@ -903,7 +954,7 @@ impl<
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("State")
-            .field("running_task", &self.running_task)
+            .field("running_task", &self.running_task.get_and_debug_fmt())
             .field("task_ready_bitmap", &self.task_ready_bitmap)
             .field("task_ready_queue", &self.task_ready_queue)
             .field("priority_boost", &self.priority_boost)

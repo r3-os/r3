@@ -459,9 +459,24 @@ impl<System: PortThreading> Init for MutexCb<System> {
 impl<System: Kernel> fmt::Debug for MutexCb<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("MutexCb")
+            .field("self", &(self as *const _))
             .field("ceiling", &self.ceiling)
             .field("inconsistent", &self.inconsistent)
-            .field("prev_mutex_held", &self.prev_mutex_held)
+            .field("wait_queue", &self.wait_queue)
+            .field(
+                "prev_mutex_held",
+                // prevent O((# of held mutexes)²)-order debug printing
+                &self
+                    .prev_mutex_held
+                    .debug_fmt_with(|x, f| x.map(|x| x as *const _).fmt(f)),
+            )
+            .field(
+                "owning_task",
+                // break infinite recursion (TaskCb → MutxeCb → TaskCb → ...)
+                &self
+                    .owning_task
+                    .debug_fmt_with(|x, f| x.map(|x| x as *const _).fmt(f)),
+            )
             .finish()
     }
 }

@@ -198,7 +198,9 @@ impl<System: Kernel, EventGroupBits: fmt::Debug + 'static> fmt::Debug
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("EventGroupCb")
+            .field("self", &(self as *const _))
             .field("bits", &self.bits)
+            .field("wait_queue", &self.wait_queue)
             .finish()
     }
 }

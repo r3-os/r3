@@ -478,6 +478,82 @@ impl<System: Kernel> WaitQueue<System> {
     }
 }
 
+impl<System: Kernel> fmt::Debug for Wait<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{{ task: {:p}, payload: {:?} }}",
+            self.task, self.payload
+        )
+    }
+}
+
+impl<System: Kernel> fmt::Debug for WaitPayload<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::EventGroupBits {
+                bits,
+                flags,
+                orig_bits,
+            } => f
+                .debug_struct("EventGroupBits")
+                .field("bits", bits)
+                .field("flags", flags)
+                .field("orig_bits", orig_bits)
+                .finish(),
+            Self::Semaphore => f.write_str("Semaphore"),
+            Self::Mutex(mutex) => write!(f, "Mutex({:p})", mutex),
+            Self::Park => f.write_str("Park"),
+            Self::Sleep => f.write_str("Sleep"),
+            Self::__Nonexhaustive(_) => unreachable!(),
+        }
+    }
+}
+
+impl<System: Kernel> fmt::Debug for WaitQueue<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct WaitQueuePrinter<'a, System: Kernel> {
+            waits: &'a CpuLockCell<System, intrusive_list::ListHead<WaitRef<System>>>,
+        }
+
+        impl<System: Kernel> fmt::Debug for WaitQueuePrinter<'_, System> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                if let Ok(mut lock) = super::utils::lock_cpu() {
+                    // Safety: All elements of `self.waits` are extant.
+                    let accessor = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) };
+
+                    f.debug_list()
+                        .entries(accessor.iter().map(|x| x.1))
+                        .finish()
+                } else {
+                    f.write_str("< locked >")
+                }
+            }
+        }
+
+        f.debug_struct("WaitQueue")
+            .field("waits", &WaitQueuePrinter { waits: &self.waits })
+            .field("order", &self.order)
+            .finish()
+    }
+}
+
+impl<System: Kernel> fmt::Debug for TaskWait<System> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TaskWait")
+            .field(
+                "current_wait",
+                &self.current_wait.debug_fmt_with(|wait_ref, f| {
+                    // Safety: ... and `wait_ref` must point to an existing `Wait`
+                    let wait = wait_ref.map(|r| &unsafe { &*r.0.as_ptr() }.payload);
+                    wait.fmt(f)
+                }),
+            )
+            .field("wait_result", &self.wait_result)
+            .finish()
+    }
+}
+
 /// Access the specified task's current wait payload object in the supplied
 /// closure.
 ///

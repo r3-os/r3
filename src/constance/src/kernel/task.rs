@@ -402,10 +402,23 @@ impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Deb
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskCb")
+            .field("self", &(self as *const _))
             .field("port_task_state", &self.port_task_state)
             .field("attr", self.attr)
             .field("base_priority", &self.base_priority)
             .field("effective_priority", &self.effective_priority)
+            .field("st", &self.st)
+            .field("link", &self.link)
+            .field("wait", &self.wait)
+            .field(
+                "last_mutex_held",
+                // Don't print the content of the mutex. It'll be printed
+                // somewhere else in the debug printing of `KernelDebugPrinter`.
+                &self
+                    .last_mutex_held
+                    .debug_fmt_with(|x, f| x.map(|x| x as *const _).fmt(f)),
+            )
+            .field("park_token", &self.park_token)
             .finish()
     }
 }

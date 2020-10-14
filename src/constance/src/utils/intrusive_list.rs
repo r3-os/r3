@@ -6,7 +6,7 @@ use core::{fmt, ops};
 use super::Init;
 
 /// Circualr linked list header.
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ListHead<Index> {
     pub first: Option<Index>,
 }
@@ -14,6 +14,12 @@ pub struct ListHead<Index> {
 impl<Index> Default for ListHead<Index> {
     fn default() -> Self {
         Self::INIT
+    }
+}
+
+impl<Index: fmt::Debug> fmt::Debug for ListHead<Index> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ListHead({:?})", &self.first)
     }
 }
 

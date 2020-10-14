@@ -476,6 +476,7 @@ impl<System: Kernel> Init for TimerCb<System> {
 impl<System: Kernel> fmt::Debug for TimerCb<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TimerCb")
+            .field("self", &(self as *const _))
             .field("attr", &self.attr)
             .field("timeout", &self.timeout)
             .field("active", &self.active)

@@ -193,7 +193,10 @@ impl<System: Port> Init for SemaphoreCb<System> {
 impl<System: Kernel> fmt::Debug for SemaphoreCb<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SemaphoreCb")
+            .field("self", &(self as *const _))
             .field("value", &self.value)
+            .field("max_value", &self.max_value)
+            .field("wait_queue", &self.wait_queue)
             .finish()
     }
 }
