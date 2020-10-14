@@ -450,12 +450,13 @@ dependencies = [
 
 [[package]]
 name = "cortex-m"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2954942fbbdd49996704e6f048ce57567c3e1a4e2dc59b41ae9fde06a01fc763"
+checksum = "2be99930c99669a74d986f7fd2162085498b322e6daae8ef63a97cc9ac1dc73c"
 dependencies = [
  "aligned",
  "bare-metal",
+ "bitfield",
  "volatile-register",
 ]
 
