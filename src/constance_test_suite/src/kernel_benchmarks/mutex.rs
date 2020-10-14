@@ -61,7 +61,7 @@ impl<System: Kernel, Options: MutexBenchmarkOptions> AppInner<System, Options> {
         B::mark_end(I_LOCK);
 
         B::app().task1.activate().unwrap();
-        System::sleep(Duration::from_millis(200)).unwrap();
+        System::park().unwrap();
 
         B::mark_start(); // I_UNLOCK_DISPATCHING
         B::app().mtx.unlock().unwrap();
@@ -75,6 +75,7 @@ fn task1_body<
 >(
     _: usize,
 ) {
+    B::main_task().unpark().unwrap();
     B::app().mtx.lock().unwrap();
     B::mark_end(I_UNLOCK_DISPATCHING);
 
