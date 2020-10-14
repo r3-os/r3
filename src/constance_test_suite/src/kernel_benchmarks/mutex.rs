@@ -39,7 +39,7 @@ const I_UNLOCK: Interval = "unlock mutex";
 
 impl<System: Kernel, Options: MutexBenchmarkOptions> AppInner<System, Options> {
     /// Used by `use_benchmark_in_kernel_benchmark!`
-    pub(super) const fn new<B: Bencher<Self>>(b: &mut CfgBuilder<System>) -> Self {
+    pub(super) const fn new<B: Bencher<System, Self>>(b: &mut CfgBuilder<System>) -> Self {
         let task1 = Task::build()
             .start(task1_body::<System, Options, B>)
             .priority(1)
@@ -55,7 +55,7 @@ impl<System: Kernel, Options: MutexBenchmarkOptions> AppInner<System, Options> {
     }
 
     /// Used by `use_benchmark_in_kernel_benchmark!`
-    pub(super) fn iter<B: Bencher<Self>>() {
+    pub(super) fn iter<B: Bencher<System, Self>>() {
         B::mark_start(); // I_LOCK
         B::app().mtx.lock().unwrap();
         B::mark_end(I_LOCK);
@@ -71,7 +71,7 @@ impl<System: Kernel, Options: MutexBenchmarkOptions> AppInner<System, Options> {
 fn task1_body<
     System: Kernel,
     Options: MutexBenchmarkOptions,
-    B: Bencher<AppInner<System, Options>>,
+    B: Bencher<System, AppInner<System, Options>>,
 >(
     _: usize,
 ) {

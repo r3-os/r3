@@ -45,7 +45,7 @@ const I_SIGNAL: Interval = "signal semaphore";
 
 impl<System: Kernel> AppInner<System> {
     /// Used by `use_benchmark_in_kernel_benchmark!`
-    const fn new<B: Bencher<Self>>(b: &mut CfgBuilder<System>) -> Self {
+    const fn new<B: Bencher<System, Self>>(b: &mut CfgBuilder<System>) -> Self {
         let task1 = Task::build()
             .start(task1_body::<System, B>)
             .priority(1)
@@ -57,7 +57,7 @@ impl<System: Kernel> AppInner<System> {
     }
 
     /// Used by `use_benchmark_in_kernel_benchmark!`
-    fn iter<B: Bencher<Self>>() {
+    fn iter<B: Bencher<System, Self>>() {
         B::mark_start(); // I_WAIT
         B::app().sem.wait_one().unwrap();
         B::mark_end(I_WAIT);
@@ -70,7 +70,7 @@ impl<System: Kernel> AppInner<System> {
     }
 }
 
-fn task1_body<System: Kernel, B: Bencher<AppInner<System>>>(_: usize) {
+fn task1_body<System: Kernel, B: Bencher<System, AppInner<System>>>(_: usize) {
     B::mark_start(); // I_WAIT_DISPATCHING
     B::app().sem.wait_one().unwrap();
     B::mark_end(I_SIGNAL_DISPATCHING);

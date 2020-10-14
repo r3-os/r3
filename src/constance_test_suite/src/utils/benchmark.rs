@@ -44,6 +44,7 @@ pub unsafe trait BencherOptions<System> {
 pub trait Bencher<System> {
     fn mark_start();
     fn mark_end(int: Interval);
+    fn main_task() -> Task<System>;
 }
 
 /// The cottage object of the bencher. Created by [`configure`].
@@ -121,6 +122,11 @@ impl<System: Kernel, Options: BencherOptions<System>> Bencher<System> for Option
 
         // Record the measured duration. Drop any excessive samples.
         let _ = interval.samples.try_push(delta);
+    }
+
+    #[inline]
+    fn main_task() -> Task<System> {
+        Options::cottage().task
     }
 }
 

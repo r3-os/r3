@@ -336,12 +336,14 @@ pub mod kernel_benchmarks {
 
     /// The interface provided by [`use_benchmark_in_kernel_benchmark!`] and
     /// consumed by an inner app.
-    trait Bencher<App> {
+    trait Bencher<System, App> {
         /// Get a reference to `App` of the inner app.
         fn app() -> &'static App;
 
         fn mark_start();
         fn mark_end(int: crate::utils::benchmark::Interval);
+
+        fn main_task() -> constance::kernel::Task<System>;
     }
 
     /// Define an `App` type using [the benchmark
@@ -410,7 +412,7 @@ pub mod kernel_benchmarks {
 
             /// app → benchmark framework
             impl<System: constance::kernel::Kernel, D: Driver<App<System>>>
-                crate::kernel_benchmarks::Bencher<$inner_ty> for MyBencherOptions<System, D>
+                crate::kernel_benchmarks::Bencher<System, $inner_ty> for MyBencherOptions<System, D>
             {
                 fn app() -> &'static $inner_ty {
                     &D::app().inner
@@ -421,6 +423,10 @@ pub mod kernel_benchmarks {
                 }
                 fn mark_end(int: benchmark::Interval) {
                     <Self as benchmark::Bencher<System>>::mark_end(int)
+                }
+
+                fn main_task() -> constance::kernel::Task<System> {
+                    <Self as benchmark::Bencher<System>>::main_task()
                 }
             }
         };
