@@ -676,6 +676,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
 }
 
 /// Implements `PortToKernel::choose_running_task`.
+#[inline]
 pub(super) fn choose_next_running_task<System: Kernel>(
     mut lock: utils::CpuLockGuardBorrowMut<System>,
 ) {

@@ -60,6 +60,7 @@ mod unsafe_static {
         ///
         /// All pointees to be accessed through the constructed `UnsafeStatic`
         /// must be valid.
+        #[inline]
         pub const unsafe fn new() -> &'static Self {
             &Self { _nonexhaustive: () }
         }
@@ -68,6 +69,7 @@ mod unsafe_static {
     impl<System: Port> ops::Index<WaitRef<System>> for UnsafeStatic {
         type Output = Wait<System>;
 
+        #[inline]
         fn index(&self, index: WaitRef<System>) -> &Self::Output {
             // Safety: See `wait_queue_accessor`.
             unsafe { &*index.0.as_ptr() }

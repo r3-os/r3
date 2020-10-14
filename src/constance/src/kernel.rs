@@ -725,6 +725,7 @@ impl<System: Kernel> PortToKernel for System {
         }
     }
 
+    #[inline]
     unsafe fn choose_running_task() {
         // Safety: The precondition of this method includes CPU Lock being
         // active
