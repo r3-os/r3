@@ -361,7 +361,7 @@ pub mod kernel_benchmarks {
     macro_rules! use_benchmark_in_kernel_benchmark {
         {
             pub unsafe struct App<System> {
-                inner: $inner_ty:ident<System>,
+                inner: $inner_ty:ty,
             }
         } => {
             use crate::kernel_benchmarks::Driver;
@@ -369,7 +369,7 @@ pub mod kernel_benchmarks {
 
             pub struct App<System> {
                 benchmark: benchmark::BencherCottage<System>,
-                inner: $inner_ty<System>,
+                inner: $inner_ty,
             }
 
             struct MyBencherOptions<System, D>(core::marker::PhantomData<(System, D)>);
@@ -380,7 +380,7 @@ pub mod kernel_benchmarks {
                 ) -> Self {
                     App {
                         benchmark: benchmark::configure::<System, MyBencherOptions<System, D>>(b),
-                        inner: $inner_ty::new::<MyBencherOptions<System, D>>(b),
+                        inner: <$inner_ty>::new::<MyBencherOptions<System, D>>(b),
                     }
                 }
             }
@@ -394,7 +394,7 @@ pub mod kernel_benchmarks {
                 }
 
                 fn iter() {
-                    $inner_ty::iter::<MyBencherOptions<System, D>>();
+                    <$inner_ty>::iter::<MyBencherOptions<System, D>>();
                 }
 
                 fn performance_time() -> u32 {
@@ -410,9 +410,9 @@ pub mod kernel_benchmarks {
 
             /// app → benchmark framework
             impl<System: constance::kernel::Kernel, D: Driver<App<System>>>
-                crate::kernel_benchmarks::Bencher<$inner_ty<System>> for MyBencherOptions<System, D>
+                crate::kernel_benchmarks::Bencher<$inner_ty> for MyBencherOptions<System, D>
             {
-                fn app() -> &'static $inner_ty<System> {
+                fn app() -> &'static $inner_ty {
                     &D::app().inner
                 }
 
