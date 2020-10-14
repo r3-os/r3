@@ -1,9 +1,6 @@
 //! The common part of `mutex_*`. See [`super::mutex_none`] for a sequence
 //! diagram.
-use constance::{
-    kernel::{cfg::CfgBuilder, Kernel, Mutex, MutexProtocol, Task},
-    time::Duration,
-};
+use constance::kernel::{cfg::CfgBuilder, Kernel, Mutex, MutexProtocol, Task};
 use core::marker::PhantomData;
 
 use super::Bencher;
