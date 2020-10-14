@@ -4,14 +4,6 @@ use tokenlock::{Token, TokenLock};
 use super::{error::BadContextError, Kernel};
 use crate::utils::{intrusive_list::CellLike, Init};
 
-pub(super) fn expect_cpu_lock_inactive<System: Kernel>() -> Result<(), BadContextError> {
-    if System::is_cpu_lock_active() {
-        Err(BadContextError::BadContext)
-    } else {
-        Ok(())
-    }
-}
-
 #[non_exhaustive]
 pub(super) struct CpuLockToken<System> {
     _phantom: PhantomData<System>,
