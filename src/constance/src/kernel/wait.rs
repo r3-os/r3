@@ -10,6 +10,7 @@ use super::{
 
 use crate::utils::{
     intrusive_list::{self, ListAccessorCell},
+    unwrap::UnwrapUnchecked,
     Init,
 };
 
@@ -310,7 +311,11 @@ impl<System: Kernel> WaitQueue<System> {
                 Self::find_insertion_position_by_task_priority(cur_task_pri, &accessor)
             }
         };
-        accessor.insert(wait_ref, insert_at);
+
+        // Safety: This linked list is structurally sound, so `insert` shouldn't
+        // return `InconsistentError`. `wait_ref` is not linked, so it shouldn't
+        // return `InsertError::AlreadyLinked` either.
+        unsafe { accessor.insert(wait_ref, insert_at).unwrap_unchecked() };
 
         // Set `task.current_wait`
         task.wait.current_wait.replace(&mut *lock, Some(wait_ref));
@@ -345,7 +350,9 @@ impl<System: Kernel> WaitQueue<System> {
         ) -> &CpuLockCell<System, Option<intrusive_list::Link<WaitRef<System>>>>,
     {
         let mut insert_at = None;
-        let mut cursor = accessor.back();
+        // Safety: This linked list is structurally sound, so it shouldn't
+        //         return `Err(InconsistentError)`
+        let mut cursor = unsafe { accessor.back().unwrap_unchecked() };
         while let Some(next_cursor) = cursor {
             // Should the new wait object inserted at this or an earlier
             // position?
@@ -358,7 +365,9 @@ impl<System: Kernel> WaitQueue<System> {
                 // there might be a viable position that is even
                 // earlier.
                 insert_at = Some(next_cursor);
-                cursor = accessor.prev(next_cursor);
+                // Safety: This linked list is structurally sound, so it shouldn't
+                //         return `Err(InconsistentError)`
+                cursor = unsafe { accessor.prev(next_cursor).unwrap_unchecked() };
             } else {
                 break;
             }
@@ -386,12 +395,24 @@ impl<System: Kernel> WaitQueue<System> {
         let mut accessor = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) };
 
         // Remove `wait_ref` first.
-        accessor.remove(wait_ref);
+        //
+        // Safety: This linked list is structurally sound, so `remove` shouldn't
+        // return `InconsistentError`. `wait_ref` is linked, so it shouldn't
+        // return `ItemError::Unlinked` either.
+        unsafe {
+            accessor.remove(wait_ref).unwrap_unchecked();
+        }
 
         // Re-insert `wait_ref`.
+        //
+        // Safety: This linked list is structurally sound, so `insert` shouldn't
+        // return `InconsistentError`. `wait_ref` is unlinked, so it shouldn't
+        // return `InsertError::AlreadyLinked` either.
         let cur_task_pri = *task.effective_priority.read(&**accessor.cell_key());
         let insert_at = Self::find_insertion_position_by_task_priority(cur_task_pri, &accessor);
-        accessor.insert(wait_ref, insert_at);
+        unsafe {
+            accessor.insert(wait_ref, insert_at).unwrap_unchecked();
+        }
     }
 
     /// Get the next waiting task to be woken up.
@@ -400,17 +421,22 @@ impl<System: Kernel> WaitQueue<System> {
         mut lock: CpuLockGuardBorrowMut<'_, System>,
     ) -> Option<&'static TaskCb<System>> {
         // Get the first wait object
-        // Safety: All elements of `self.waits` are extant.
-        unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }
-            .front()
-            .map(|wait_ref| {
-                // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` was
-                // in `self.waits` at the beginning of this function call.
-                let wait = unsafe { wait_ref.0.as_ref() };
+        unsafe {
+            // Safety: All elements of `self.waits` are extant.
+            wait_queue_accessor!(&self.waits, lock.borrow_mut())
+                .front()
+                // Safety: This linked list is structurally sound, so it shouldn't
+                //         return `Err(InconsistentError)`
+                .unwrap_unchecked()
+        }
+        .map(|wait_ref| {
+            // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` was
+            // in `self.waits` at the beginning of this function call.
+            let wait = unsafe { wait_ref.0.as_ref() };
 
-                // Return the waiting task
-                wait.task
-            })
+            // Return the waiting task
+            wait.task
+        })
     }
 
     /// Wake up up to one waiting task. Returns `true` if it has successfully
@@ -420,8 +446,14 @@ impl<System: Kernel> WaitQueue<System> {
     /// Call `unlock_cpu_and_check_preemption` as needed.
     pub(super) fn wake_up_one(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
         // Get the first wait object
-        // Safety: All elements of `self.waits` are extant.
-        let wait_ref = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }.pop_front();
+        let wait_ref = unsafe {
+            // Safety: All elements of `self.waits` are extant.
+            wait_queue_accessor!(&self.waits, lock.borrow_mut())
+                .pop_front()
+                // Safety: This linked list is structurally sound, so it shouldn't
+                //         return `Err(InconsistentError)`
+                .unwrap_unchecked()
+        };
 
         let wait_ref = if let Some(wait_ref) = wait_ref {
             wait_ref
@@ -449,14 +481,27 @@ impl<System: Kernel> WaitQueue<System> {
         mut lock: CpuLockGuardBorrowMut<'_, System>,
         mut cond: impl FnMut(&WaitPayload<System>) -> bool,
     ) {
-        // Safety: All elements of `self.waits` are extant.
-        let mut cur = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }.front();
+        let mut cur = unsafe {
+            // Safety: All elements of `self.waits` are extant.
+            wait_queue_accessor!(&self.waits, lock.borrow_mut())
+                .front()
+                // Safety: This linked list is structurally sound, so it shouldn't
+                //         return `Err(InconsistentError)`
+                .unwrap_unchecked()
+        };
 
         while let Some(wait_ref) = cur {
             // Find the next wait object before we possibly remove `wait_ref`
             // from `self.waits`.
-            // Safety: All elements of `self.waits` are extant.
-            cur = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }.next(wait_ref);
+            cur = unsafe {
+                // Safety: All elements of `self.waits` are extant.
+                wait_queue_accessor!(&self.waits, lock.borrow_mut())
+                    .next(wait_ref)
+                    // Safety: This linked list is structurally sound, so it
+                    // shouldn't return `InconsistentError`. `wait_ref` is
+                    // still linked, so it shouldn't return `ItemError::Unlinked`.
+                    .unwrap_unchecked()
+            };
 
             // Dereference `wait_ref` and get `&Wait`
             // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` is
@@ -472,7 +517,14 @@ impl<System: Kernel> WaitQueue<System> {
 
             // Wake up the task
             // Safety: All elements of `self.waits` are extant.
-            unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) }.remove(wait_ref);
+            // This linked list is structurally sound, so `remove` shouldn't
+            // return `InconsistentError`. `wait_ref` is still linked, so it
+            // shouldn't return `ItemError::Unlinked` either.
+            unsafe {
+                wait_queue_accessor!(&self.waits, lock.borrow_mut())
+                    .remove(wait_ref)
+                    .unwrap_unchecked();
+            }
             complete_wait(lock.borrow_mut(), wait, Ok(()));
         }
     }
@@ -523,7 +575,7 @@ impl<System: Kernel> fmt::Debug for WaitQueue<System> {
                     let accessor = unsafe { wait_queue_accessor!(&self.waits, lock.borrow_mut()) };
 
                     f.debug_list()
-                        .entries(accessor.iter().map(|x| x.1))
+                        .entries(accessor.iter().map(|x| x.unwrap().1))
                         .finish()
                 } else {
                     f.write_str("< locked >")
@@ -754,9 +806,16 @@ pub(super) fn interrupt_task<System: Kernel>(
             let wait = unsafe { wait_ref.0.as_ref() };
 
             // Remove `wait` from the wait queue it belongs to
+            //
+            // Safety: This linked list is structurally sound, so `remove` shouldn't
+            // return `InconsistentError`. `wait_ref` is linked, so it shouldn't
+            // return `ItemError::Unlinked` either.
             if let Some(wait_queue) = wait.wait_queue {
-                unsafe { wait_queue_accessor!(&wait_queue.waits, lock.borrow_mut()) }
-                    .remove(wait_ref);
+                unsafe {
+                    wait_queue_accessor!(&wait_queue.waits, lock.borrow_mut())
+                        .remove(wait_ref)
+                        .unwrap_unchecked();
+                }
             }
 
             // Wake up the task

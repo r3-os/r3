@@ -29,6 +29,7 @@ pub mod mem;
 pub(crate) mod pin;
 mod prio_bitmap;
 mod rawcell;
+pub(crate) mod unwrap;
 #[macro_use]
 mod vec;
 #[macro_use]

@@ -376,6 +376,10 @@ pub struct TaskCb<
     /// Many operations change the inputs of this calculation. We take care to
     /// ensure the recalculation of this value completes in constant-time (in
     /// regard to the number of held mutexes) for as many cases as possible.
+    ///
+    /// The effective priority determines the task's position within the task
+    /// ready queue. You must call `TaskReadyQueue::reorder_task` after updating
+    /// `effective_priority` of a task which is in Ready state.
     pub(super) effective_priority: utils::CpuLockCell<System, TaskPriority>,
 
     pub(super) st: utils::CpuLockCell<System, TaskSt>,
@@ -595,9 +599,13 @@ pub(super) unsafe fn make_ready<System: Kernel>(
 
     // Insert the task to the ready queue corresponding to the task's current
     // effective priority
-    <System>::state()
-        .task_ready_queue
-        .push_back_task(lock.into(), task_cb);
+    //
+    // Safety: `task_cb` is not in the ready queue
+    unsafe {
+        <System>::state()
+            .task_ready_queue
+            .push_back_task(lock.into(), task_cb);
+    }
 }
 
 /// Relinquish CPU Lock. After that, if there's a higher-priority task than
@@ -965,15 +973,19 @@ fn set_task_base_priority<System: Kernel>(
     }
 
     match st {
-        TaskSt::Ready => {
+        TaskSt::Ready => unsafe {
             // Move the task within the ready queue
+            //
+            // Safety: `task_cb` was previously inserted to the ready queue
+            // with an effective priority that is identical to
+            // `old_effective_priority`.
             System::state().task_ready_queue.reorder_task(
                 lock.borrow_mut().into(),
                 task_cb,
                 effective_priority,
                 old_effective_priority,
             );
-        }
+        },
         TaskSt::Running => {}
         TaskSt::Waiting => {
             // Reposition the task in a wait queue if the task is currently waiting
