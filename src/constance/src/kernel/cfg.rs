@@ -34,12 +34,11 @@ macro_rules! build {
                 },
                 EventGroupCb, HunkAttr, HunkInitAttr, InterruptAttr, InterruptLineInit, KernelCfg1,
                 KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
-                TimerCb, SemaphoreCb, MutexCb,
+                TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
             },
             staticvec::StaticVec,
             utils::{
-                for_times::U, intrusive_list::StaticListHead, AlignedStorage, FixedPrioBitmap,
-                Init, RawCell, UIntegerWithBound,
+                for_times::U, AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound,
             },
         };
 
@@ -76,10 +75,21 @@ macro_rules! build {
                 (0..CFG.num_task_priority_levels).map(|i| i as _);
         };
 
+        // Task ready queue
+        type TaskReadyBitmap = FixedPrioBitmap<{ CFG.num_task_priority_levels }>;
+        type TaskReadyQueue = readyqueue::BitmapQueue<
+            $sys,
+            <$sys as PortThreading>::PortTaskState,
+            <$sys as KernelCfg1>::TaskPriority,
+            TaskReadyBitmap,
+            { CFG.num_task_priority_levels }
+        >;
+
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg1 for $sys {
             const NUM_TASK_PRIORITY_LEVELS: usize = CFG.num_task_priority_levels;
             type TaskPriority = TaskPriority;
+            type TaskReadyQueue = TaskReadyQueue;
             const TASK_PRIORITY_LEVELS: &'static [Self::TaskPriority] = &TASK_PRIORITY_LEVELS;
         }
 
@@ -126,9 +136,6 @@ macro_rules! build {
         static HUNK_POOL: RawCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>> =
             Init::INIT;
         const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
-
-        // Task ready bitmap
-        type TaskReadyBitmap = FixedPrioBitmap<{ CFG.num_task_priority_levels }>;
 
         // Instantiate the global state
         type KernelState = State<$sys>;
@@ -180,8 +187,6 @@ macro_rules! build {
 
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg2 for $sys {
-            type TaskReadyBitmap = TaskReadyBitmap;
-            type TaskReadyQueue = [StaticListHead<TaskCb<Self>>; CFG.num_task_priority_levels];
             type TimeoutHeap = TimeoutHeap;
 
             #[inline(always)]
