@@ -7,16 +7,14 @@ use num_traits::ToPrimitive;
 use super::{
     hunk::Hunk, mutex, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
     GetCurrentTaskError, GetTaskPriorityError, Id, InterruptTaskError, Kernel, KernelCfg1,
-    ParkError, ParkTimeoutError, Port, PortThreading, SetTaskPriorityError, SleepError,
-    UnparkError, UnparkExactError, WaitTimeoutError,
+    ParkError, ParkTimeoutError, PortThreading, SetTaskPriorityError, SleepError, UnparkError,
+    UnparkExactError, WaitTimeoutError,
 };
-use crate::{
-    time::Duration,
-    utils::{
-        intrusive_list::{CellLike, Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
-        Init, PrioBitmap,
-    },
-};
+use crate::{time::Duration, utils::Init};
+
+#[doc(hidden)]
+pub mod readyqueue;
+use self::readyqueue::Queue as _;
 
 #[cfg_attr(doc, svgbobdoc::transform)]
 /// Represents a single task in a system.
@@ -342,6 +340,9 @@ pub struct TaskCb<
     System: PortThreading,
     PortTaskState: 'static = <System as PortThreading>::PortTaskState,
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
+    TaskReadyQueueData: 'static = <<System as KernelCfg1>::TaskReadyQueue as readyqueue::Queue<
+        System,
+    >>::PerTaskData,
 > {
     /// Get a reference to `PortTaskState` in the task control block.
     ///
@@ -385,7 +386,7 @@ pub struct TaskCb<
     ///    [`State::task_ready_queue`].
     ///
     /// [`State::task_ready_queue`]: crate::kernel::State::task_ready_queue
-    pub(super) link: utils::CpuLockCell<System, Option<StaticLink<Self>>>,
+    pub(super) ready_queue_data: TaskReadyQueueData,
 
     /// The wait state of the task.
     pub(super) wait: wait::TaskWait<System>,
@@ -397,8 +398,12 @@ pub struct TaskCb<
     pub(super) park_token: utils::CpuLockCell<System, bool>,
 }
 
-impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Debug + 'static>
-    fmt::Debug for TaskCb<System, PortTaskState, TaskPriority>
+impl<
+        System: Kernel,
+        PortTaskState: fmt::Debug + 'static,
+        TaskPriority: fmt::Debug + 'static,
+        TaskReadyQueueData: fmt::Debug + 'static,
+    > fmt::Debug for TaskCb<System, PortTaskState, TaskPriority, TaskReadyQueueData>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskCb")
@@ -408,7 +413,7 @@ impl<System: Kernel, PortTaskState: fmt::Debug + 'static, TaskPriority: fmt::Deb
             .field("base_priority", &self.base_priority)
             .field("effective_priority", &self.effective_priority)
             .field("st", &self.st)
-            .field("link", &self.link)
+            .field("ready_queue_data", &self.ready_queue_data)
             .field("wait", &self.wait)
             .field(
                 "last_mutex_held",
@@ -544,41 +549,6 @@ pub(super) fn init_task<System: Kernel>(
     }
 }
 
-/// Get a `ListAccessorCell` used to access a task ready queue.
-macro_rules! list_accessor {
-    (<$sys:ty>::state().task_ready_queue[$i:expr], $key:expr) => {
-        ListAccessorCell::new(
-            TaskReadyQueueHeadAccessor($i, &<$sys>::state().task_ready_queue),
-            &Static,
-            |task_cb: &TaskCb<$sys>| &task_cb.link,
-            $key,
-        )
-    };
-}
-
-/// A helper type for `list_accessor`, implementing
-/// `CellLike<StaticListHead<TaskCb<System>>>`.
-struct TaskReadyQueueHeadAccessor<System: Port, TaskReadyQueue: 'static>(
-    usize,
-    &'static utils::CpuLockCell<System, TaskReadyQueue>,
-);
-
-impl<'a, System, TaskReadyQueue> CellLike<utils::CpuLockGuardBorrowMut<'a, System>>
-    for TaskReadyQueueHeadAccessor<System, TaskReadyQueue>
-where
-    System: Kernel,
-    TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]> + 'static,
-{
-    type Target = StaticListHead<TaskCb<System>>;
-
-    fn get(&self, key: &utils::CpuLockGuardBorrowMut<'a, System>) -> Self::Target {
-        self.1.read(&**key).borrow()[self.0]
-    }
-    fn set(&self, key: &mut utils::CpuLockGuardBorrowMut<'a, System>, value: Self::Target) {
-        self.1.write(&mut **key).borrow_mut()[self.0] = value;
-    }
-}
-
 /// Implements `Task::activate`.
 fn activate<System: Kernel>(
     mut lock: utils::CpuLockGuard<System>,
@@ -623,16 +593,11 @@ pub(super) unsafe fn make_ready<System: Kernel>(
     // Make the task Ready
     task_cb.st.replace(&mut *lock, TaskSt::Ready);
 
-    // Insert the task to a ready queue
-    let pri = task_cb.effective_priority.read(&*lock).to_usize().unwrap();
-    list_accessor!(<System>::state().task_ready_queue[pri], lock.borrow_mut())
-        .push_back(Ident(task_cb));
-
-    // Update `task_ready_bitmap` accordingly
+    // Insert the task to the ready queue corresponding to the task's current
+    // effective priority
     <System>::state()
-        .task_ready_bitmap
-        .write(&mut *lock)
-        .set(pri);
+        .task_ready_queue
+        .push_back_task(lock.into(), task_cb);
 }
 
 /// Relinquish CPU Lock. After that, if there's a higher-priority task than
@@ -672,17 +637,14 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
             usize::MAX
         };
 
-    // The priority of the next task to run
-    let next_task_priority = System::state()
-        .task_ready_bitmap
-        .read(&*lock)
-        .find_set()
-        .unwrap_or(usize::MAX);
+    let has_preempting_task = System::state()
+        .task_ready_queue
+        .has_ready_task_in_priority_range(lock.borrow_mut().into(), ..prev_task_priority);
 
     // Relinquish CPU Lock
     drop(lock);
 
-    if next_task_priority < prev_task_priority {
+    if has_preempting_task {
         // Safety: CPU Lock inactive
         unsafe { System::yield_cpu() };
     }
@@ -718,54 +680,39 @@ pub(super) fn choose_next_running_task<System: Kernel>(
                 .to_usize()
                 .unwrap()
         } else {
-            usize::MAX
+            usize::MAX // (2) see the discussion below
         }
     } else {
-        usize::MAX
+        usize::MAX // (1) see the discussion below
     };
 
-    // The priority of the next task to run
+    // Decide the next task to run
     //
-    // The default value is `usize::MAX - 1` for the following reason:
-    // If `running_task` is in the Waiting state and there's no other task to
-    // schedule at the moment, we want to assign `None` to `running_task`. In
-    // this case, if the default value was the same as `prev_task_priority`,
-    // `prev_task_priority` would be equal to `next_task_priority`, and the
-    // `if` statement below would return too early. We make sure this does not
-    // happen by making the default value of `next_task_priority` lower.
-    //
-    // `usize::MAX - 1` never collides with an actual task priority because
-    // of the priority range restriction imposed by `CfgBuilder::
-    // num_task_priority_levels`.
-    let next_task_priority = System::state()
-        .task_ready_bitmap
-        .read(&*lock)
-        .find_set()
-        .unwrap_or(usize::MAX - 1);
+    // The special value `prev_task_priority == usize::MAX` indicates that
+    // (1) there is no running task, or (2) there was one but it is not running
+    // anymore, and we need to elect a new task to run. In case (2), we would
+    // want to update `running_task` regardless of whether there exists a
+    // schedulable task or not. That is, even if there was not such a task, we
+    // would still want to assign `None` to `running_task`. Therefore,
+    // `pop_front_task` is designed to return `SwitchTo(None)` in this case.
+    let decision = System::state()
+        .task_ready_queue
+        .pop_front_task(lock.borrow_mut().into(), prev_task_priority);
 
-    // Return if there's no task willing to take over the current one, and
-    // the current one can still run.
-    if prev_task_priority <= next_task_priority {
-        return;
-    }
+    let next_running_task = match decision {
+        readyqueue::ScheduleDecision::SwitchTo(task) => task,
 
-    // Find the next task to run
-    let next_running_task = if next_task_priority < System::NUM_TASK_PRIORITY_LEVELS {
-        // Take the first task in the ready queue for `next_task_priority`
-        let mut accessor = list_accessor!(
-            <System>::state().task_ready_queue[next_task_priority],
-            lock.borrow_mut()
-        );
-        let task = accessor.pop_front().unwrap().0;
-
-        // Update `task_ready_bitmap` accordingly
-        if accessor.is_empty() {
-            <System>::state()
-                .task_ready_bitmap
-                .write(&mut *lock)
-                .clear(next_task_priority);
+        // Return if there's no task willing to take over the current one, and
+        // the current one can still run.
+        readyqueue::ScheduleDecision::Keep => {
+            // If `prev_task_priority == usize::MAX`, `pop_front_task` must
+            // return `SwitchTo(_)`.
+            debug_assert_ne!(prev_task_priority, usize::MAX);
+            return;
         }
+    };
 
+    if let Some(task) = next_running_task {
         // Transition `next_running_task` into the Running state
         task.st.replace(&mut *lock, TaskSt::Running);
 
@@ -773,11 +720,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
             // Skip the remaining steps if `task == prev_running_task`
             return;
         }
-
-        Some(task)
-    } else {
-        None
-    };
+    }
 
     // `prev_running_task` now loses the control of the processor.
     if let Some(running_task) = prev_running_task {
@@ -1023,29 +966,13 @@ fn set_task_base_priority<System: Kernel>(
 
     match st {
         TaskSt::Ready => {
-            // Move the task between ready queues
-            let old_pri_empty = {
-                let mut accessor = list_accessor!(
-                    <System>::state().task_ready_queue[old_effective_priority],
-                    lock.borrow_mut()
-                );
-                accessor.remove(Ident(task_cb));
-                accessor.is_empty()
-            };
-
-            list_accessor!(
-                <System>::state().task_ready_queue[effective_priority],
-                lock.borrow_mut()
-            )
-            .push_back(Ident(task_cb));
-
-            // Update `task_ready_bitmap` accordingly
-            // (This code assumes `effective_priority != old_effective_priority`.)
-            let task_ready_bitmap = System::state().task_ready_bitmap.write(&mut *lock);
-            task_ready_bitmap.set(effective_priority);
-            if old_pri_empty {
-                task_ready_bitmap.clear(old_effective_priority);
-            }
+            // Move the task within the ready queue
+            System::state().task_ready_queue.reorder_task(
+                lock.borrow_mut().into(),
+                task_cb,
+                effective_priority,
+                old_effective_priority,
+            );
         }
         TaskSt::Running => {}
         TaskSt::Waiting => {

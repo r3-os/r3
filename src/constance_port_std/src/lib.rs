@@ -15,7 +15,6 @@ use constance::{
         SetInterruptLinePriorityError, TaskCb, UTicks,
     },
     prelude::*,
-    utils::intrusive_list::StaticListHead,
 };
 use once_cell::sync::OnceCell;
 use std::{
@@ -284,11 +283,7 @@ impl State {
         }
     }
 
-    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
         log::trace!("dispatch_first_task");
         assert_eq!(expect_worker_thread::<System>(), ThreadRole::Boot);
         assert!(self.is_cpu_lock_active::<System>());
@@ -322,19 +317,11 @@ impl State {
         unsafe { ums::exit_thread() };
     }
 
-    extern "C" fn dispatch_handler<System: PortInstance>()
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    extern "C" fn dispatch_handler<System: PortInstance>() {
         System::port_state().dispatch::<System>();
     }
 
-    fn dispatch<System: PortInstance>(&'static self)
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: std::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    fn dispatch<System: PortInstance>(&'static self) {
         assert_eq!(expect_worker_thread::<System>(), ThreadRole::Interrupt);
 
         unsafe { self.enter_cpu_lock::<System>() };

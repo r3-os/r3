@@ -191,7 +191,7 @@ impl<System: Port> CfgBuilderTask<System> {
             } else {
                 task::TaskSt::Dormant
             }),
-            link: CpuLockCell::new(None),
+            ready_queue_data: Init::INIT,
             wait: Init::INIT,
             park_token: CpuLockCell::new(false),
             last_mutex_held: CpuLockCell::new(None),

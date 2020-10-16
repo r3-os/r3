@@ -5,7 +5,7 @@ use constance::{
         SetInterruptLinePriorityError, TaskCb,
     },
     prelude::*,
-    utils::{intrusive_list::StaticListHead, Init},
+    utils::Init,
 };
 use constance_portkit::pptext::pp_asm;
 use core::{
@@ -347,11 +347,7 @@ impl State {
         unsafe { <System as PortToKernel>::boot() };
     }
 
-    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
         debug_assert!(self.is_cpu_lock_active::<System>());
 
         // We are going to dispatch the first task and enable interrupts, so
@@ -382,11 +378,7 @@ impl State {
     }
 
     #[inline]
-    pub unsafe fn yield_cpu<System: PortInstance>(&'static self)
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
         if !self.is_task_context::<System>() {
             unsafe { DISPATCH_PENDING = true };
         } else {
@@ -404,11 +396,7 @@ impl State {
     }
 
     #[naked]
-    unsafe fn yield_cpu_in_task<System: PortInstance>()
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    unsafe fn yield_cpu_in_task<System: PortInstance>() {
         unsafe {
             pp_asm!("
             "   crate::threading::imp::asm_inc::define_load_store!()              "
@@ -552,20 +540,12 @@ impl State {
     ///  - The current task must not be the idle task.
     ///
     #[naked]
-    unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
         #[repr(C)]
         struct A0A1<S, T>(S, T);
 
         extern "C" fn choose_and_get_next_task<System: PortInstance>(
-        ) -> A0A1<MaybeUninit<usize>, Option<&'static TaskCb<System>>>
-        where
-            // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-            System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-        {
+        ) -> A0A1<MaybeUninit<usize>, Option<&'static TaskCb<System>>> {
             // Safety: CPU Lock active
             unsafe { System::choose_running_task() };
 
@@ -576,11 +556,7 @@ impl State {
 
         extern "C" fn get_running_task<System: PortInstance>(
             a0: usize,
-        ) -> A0A1<usize, Option<&'static TaskCb<System>>>
-        where
-            // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-            System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-        {
+        ) -> A0A1<usize, Option<&'static TaskCb<System>>> {
             A0A1(
                 a0, // preserve `a0`
                 unsafe { *System::state().running_task_ptr() },
@@ -915,11 +891,7 @@ impl State {
     pub unsafe fn exit_and_dispatch<System: PortInstance>(
         &'static self,
         _task: &'static TaskCb<System>,
-    ) -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    ) -> ! {
         unsafe {
             asm!("
                 # MIE := 0
@@ -1145,11 +1117,7 @@ impl State {
     /// Implements [`crate::EntryPoint::exception_handler`].
     #[naked]
     #[inline(always)]
-    pub unsafe fn exception_handler<System: PortInstance>() -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn exception_handler<System: PortInstance>() -> ! {
         const FRAME_SIZE: usize = if cfg!(target_feature = "f") {
             // [background_sp, mstatus]
             X_SIZE * 2
@@ -1459,11 +1427,7 @@ impl State {
         }
     }
 
-    unsafe fn handle_interrupt<System: PortInstance>()
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    unsafe fn handle_interrupt<System: PortInstance>() {
         let all_local_interrupts = [0, mie::MSIE][System::USE_INTERRUPT_SOFTWARE as usize]
             | [0, mie::MTIE][System::USE_INTERRUPT_TIMER as usize]
             | [0, mie::MEIE][System::USE_INTERRUPT_EXTERNAL as usize];

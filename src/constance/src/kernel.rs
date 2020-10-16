@@ -1,6 +1,5 @@
 //! The RTOS kernel
 use core::{
-    borrow::BorrowMut,
     fmt,
     marker::PhantomData,
     mem::forget,
@@ -11,7 +10,7 @@ use core::{
 
 use crate::{
     time::{Duration, Time},
-    utils::{binary_heap::VecLike, intrusive_list::StaticListHead, BinUInteger, Init, PrioBitmap},
+    utils::{binary_heap::VecLike, BinUInteger, Init},
 };
 
 #[macro_use]
@@ -400,6 +399,10 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
     /// Unsigned integer type capable of representing the range
     /// `0..NUM_TASK_PRIORITY_LEVELS`.
     type TaskPriority: BinUInteger;
+
+    /// Task ready queue type.
+    #[doc(hidden)]
+    type TaskReadyQueue: readyqueue::Queue<Self>;
 
     // FIXME: This is a work-around for trait methods being uncallable in `const fn`
     //        <https://github.com/rust-lang/rfcs/pull/2632>
@@ -806,12 +809,6 @@ pub unsafe trait KernelCfg2: Port + Sized {
     #[doc(hidden)]
     const HUNK_ATTR: HunkAttr;
 
-    #[doc(hidden)]
-    type TaskReadyBitmap: PrioBitmap;
-
-    #[doc(hidden)]
-    type TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<Self>>]> + Init + fmt::Debug + 'static;
-
     #[doc(hiddden)]
     type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + Init + fmt::Debug + 'static;
 
@@ -894,8 +891,7 @@ pub unsafe trait KernelCfg2: Port + Sized {
 pub struct State<
     System: KernelCfg2,
     PortTaskState: 'static = <System as PortThreading>::PortTaskState,
-    TaskReadyBitmap: 'static = <System as KernelCfg2>::TaskReadyBitmap,
-    TaskReadyQueue: 'static = <System as KernelCfg2>::TaskReadyQueue,
+    TaskReadyQueue: 'static = <System as KernelCfg1>::TaskReadyQueue,
     TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
     TimeoutHeap: 'static = <System as KernelCfg2>::TimeoutHeap,
 > {
@@ -905,16 +901,8 @@ pub struct State<
     running_task:
         utils::CpuLockCell<System, Option<&'static TaskCb<System, PortTaskState, TaskPriority>>>,
 
-    /// The task ready bitmap, in which each bit indicates whether the
-    /// task ready queue corresponding to that bit contains a task or not.
-    task_ready_bitmap: utils::CpuLockCell<System, TaskReadyBitmap>,
-
-    /// The task ready queues, in which each queue represents the list of
-    /// Ready tasks at the corresponding priority level.
-    ///
-    /// Invariant: `task_ready_bitmap[i].first.is_some() ==
-    ///  task_ready_queue.get(i)`
-    task_ready_queue: utils::CpuLockCell<System, TaskReadyQueue>,
+    /// The task ready queue.
+    task_ready_queue: TaskReadyQueue,
 
     /// `true` if Priority Boost is active.
     priority_boost: AtomicBool,
@@ -926,16 +914,13 @@ pub struct State<
 impl<
         System: KernelCfg2,
         PortTaskState: 'static,
-        TaskReadyBitmap: 'static + Init,
         TaskReadyQueue: 'static + Init,
         TaskPriority: 'static,
         TimeoutHeap: 'static + Init,
-    > Init
-    for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority, TimeoutHeap>
+    > Init for State<System, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     const INIT: Self = Self {
         running_task: utils::CpuLockCell::new(None),
-        task_ready_bitmap: Init::INIT,
         task_ready_queue: Init::INIT,
         priority_boost: AtomicBool::new(false),
         timeout: Init::INIT,
@@ -945,17 +930,14 @@ impl<
 impl<
         System: Kernel,
         PortTaskState: 'static + fmt::Debug,
-        TaskReadyBitmap: 'static + fmt::Debug,
         TaskReadyQueue: 'static + fmt::Debug,
         TaskPriority: 'static + fmt::Debug,
         TimeoutHeap: 'static + fmt::Debug,
-    > fmt::Debug
-    for State<System, PortTaskState, TaskReadyBitmap, TaskReadyQueue, TaskPriority, TimeoutHeap>
+    > fmt::Debug for State<System, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("State")
             .field("running_task", &self.running_task.get_and_debug_fmt())
-            .field("task_ready_bitmap", &self.task_ready_bitmap)
             .field("task_ready_queue", &self.task_ready_queue)
             .field("priority_boost", &self.priority_boost)
             .field("timeout", &self.timeout)

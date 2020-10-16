@@ -1,7 +1,7 @@
 use constance::{
     kernel::{Port, PortToKernel, TaskCb},
     prelude::*,
-    utils::{intrusive_list::StaticListHead, Init},
+    utils::Init,
 };
 use core::{borrow::BorrowMut, cell::UnsafeCell, mem::MaybeUninit, slice};
 
@@ -87,11 +87,7 @@ impl State {
     }
 
     #[inline(never)] // avoid symbol collision with `YieldReturn`
-    pub unsafe fn yield_cpu<System: PortInstance>(&'static self)
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
         if !self.is_task_context::<System>() {
             unsafe { self.dispatch_pending.get().write_volatile(true) };
             return;
@@ -155,17 +151,9 @@ impl State {
     ///  - This function may overwrite any contents in the main stack.
     ///
     #[naked]
-    unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
         extern "C" fn choose_and_get_next_task<System: PortInstance>(
-        ) -> Option<&'static TaskCb<System>>
-        where
-            // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-            System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-        {
+        ) -> Option<&'static TaskCb<System>> {
             // Safety: CPU Lock active
             unsafe { System::choose_running_task() };
 
@@ -265,11 +253,7 @@ impl State {
     /// is set. Otherwise, branch to `PopFirstLevelState` (thus skipping the
     /// saving/restoration of second-level states).
     #[naked]
-    unsafe fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>() -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    unsafe fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>() -> ! {
         // Compilation assumption:
         //  - The compiled code does not trash any registers other than r0-r3
         //    before entering the inline assembly code below.
@@ -437,11 +421,7 @@ impl State {
 
     /// Implements [`crate::EntryPoint::irq_entry`]
     #[inline(always)]
-    pub unsafe fn irq_entry<System: PortInstance>() -> !
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn irq_entry<System: PortInstance>() -> ! {
         unsafe {
             asm!("
                 # Adjust `lr_irq` to get the preferred return address. (The
@@ -595,11 +575,7 @@ impl State {
         }
     }
 
-    unsafe fn handle_irq<System: PortInstance>()
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    unsafe fn handle_irq<System: PortInstance>() {
         // Safety: We are the port, so it's okay to call this
         if let Some(line) = unsafe { System::acknowledge_interrupt() } {
             // Now that we have signaled the acknowledgement of the current

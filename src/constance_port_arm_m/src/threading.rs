@@ -5,7 +5,7 @@ use constance::{
         SetInterruptLinePriorityError, TaskCb,
     },
     prelude::*,
-    utils::{intrusive_list::StaticListHead, Init},
+    utils::Init,
 };
 use constance_portkit::pptext::pp_llvm_asm;
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
@@ -194,11 +194,7 @@ impl State {
     }
 
     #[inline(always)]
-    pub unsafe fn handle_pend_sv<System: PortInstance>(&'static self)
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn handle_pend_sv<System: PortInstance>(&'static self) {
         // Precondition:
         //  - `EXC_RETURN.Mode == 1` - Exception was taken in Thread mode. This
         //    is true because PendSV is configured with the lowest priority.
@@ -610,11 +606,7 @@ impl State {
     }
 
     #[inline(always)]
-    pub unsafe fn handle_sys_tick<System: PortInstance>(&'static self)
-    where
-        // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-        System::TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-    {
+    pub unsafe fn handle_sys_tick<System: PortInstance>(&'static self) {
         if let Some(x) = System::INTERRUPT_HANDLERS.get(INTERRUPT_SYSTICK) {
             // Safety: It's a first-level interrupt handler here. CPU Lock inactive
             unsafe { x() };
@@ -634,11 +626,7 @@ const NUM_INTERRUPTS: usize = if cfg!(armv6m) { 32 } else { 240 };
 pub type InterruptHandlerTable = [InterruptHandler; NUM_INTERRUPTS];
 
 /// Used by `use_port!`
-pub const fn make_interrupt_handler_table<System: PortInstance>() -> InterruptHandlerTable
-where
-    // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/43475>
-    System::TaskReadyQueue: core::borrow::BorrowMut<[StaticListHead<TaskCb<System>>]>,
-{
+pub const fn make_interrupt_handler_table<System: PortInstance>() -> InterruptHandlerTable {
     let mut table = [InterruptHandler { undefined: 0 }; NUM_INTERRUPTS];
     let mut i = 0;
 
