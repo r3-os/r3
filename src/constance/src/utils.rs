@@ -24,7 +24,7 @@ pub(crate) mod convert;
 mod ctz;
 mod init;
 mod int;
-pub mod intrusive_list;
+pub(crate) mod intrusive_list;
 pub mod mem;
 pub(crate) mod pin;
 mod prio_bitmap;
