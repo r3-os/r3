@@ -420,18 +420,11 @@ impl<System: Kernel> WaitQueue<System> {
         &self,
         mut lock: CpuLockGuardBorrowMut<'_, System>,
     ) -> Option<&'static TaskCb<System>> {
-        // Get the first wait object
+        // Get the waiting task of the first wait object
         // Safety: This linked list is structurally sound, so it shouldn't
         //         return `Err(InconsistentError)`
         let accessor = wait_queue_accessor!(&self.waits, lock.borrow_mut());
-        unsafe { accessor.front().unwrap_unchecked() }.map(|wait_ref| {
-            // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` was
-            // in `self.waits` at the beginning of this function call.
-            let wait = unsafe { wait_ref.0.as_ref() };
-
-            // Return the waiting task
-            wait.task
-        })
+        unsafe { accessor.front_data().unwrap_unchecked() }.map(|wait| wait.task)
     }
 
     /// Wake up up to one waiting task. Returns `true` if it has successfully
