@@ -3,7 +3,7 @@ use constance::{
     prelude::*,
     utils::Init,
 };
-use core::{borrow::BorrowMut, cell::UnsafeCell, mem::MaybeUninit, slice};
+use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
 use super::{InterruptController, ThreadingOptions, Timer};
 

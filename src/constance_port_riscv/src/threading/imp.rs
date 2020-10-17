@@ -8,9 +8,7 @@ use constance::{
     utils::Init,
 };
 use constance_portkit::pptext::pp_asm;
-use core::{
-    borrow::BorrowMut, cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice,
-};
+use core::{cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice};
 
 use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
 
