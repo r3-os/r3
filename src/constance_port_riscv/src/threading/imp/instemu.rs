@@ -25,15 +25,17 @@ pub(super) static mut RESERVATION_ADDR_VALUE: [usize; 2] = [0; 2];
 #[naked]
 pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
     // TODO: catch double fault
+    // FIXME: We can't put CFI directives yet because the compiler wraps the
+    //     function with `.cfi_startproc` and `.cfi_endproc` conditionally,
+    //     but we can't write assembler code that generate custom CFI
+    //     directives conditionally in the same way as the compiler does.
+    //     Possibly related: <https://github.com/rust-lang/rust/issues/75897>
     unsafe {
         pp_asm!("
         "   crate::threading::imp::asm_inc::define_load_store!()                "
             # <a0 == fl_state, a1 == mcause>
-            .cfi_startproc
             addi sp, sp, -16
-            .cfi_def_cfa_offset 16
             STORE ra, (sp)
-            .cfi_offset ra, -12
 
         "   if cfg!(feature = "emulate-lr-sc")  {                               "
                 # If `mcause` ∈ [5, 7], LR/SC emulation might resolve the
@@ -147,12 +149,10 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
 
                 LOAD ra, (sp)
                 addi sp, sp, 16
-                .cfi_def_cfa_offset 0
                 ret
         "   } else {                                                            "
                 # unused: {RESERVATION_ADDR_VALUE} {read_x} {write_x} {X_SIZE}
         "   }                                                                   "
-            .cfi_endproc
             ",
             panic_on_unhandled_exception = sym panic_on_unhandled_exception,
             read_x = sym read_x,
@@ -193,7 +193,6 @@ unsafe fn read_x(_fl_state: *mut usize) {
         pp_asm!("
         "   crate::threading::imp::asm_inc::define_load_store!()                "
             # <a0 == fl_state, a4 == index>
-            .cfi_startproc
 
             # Jump to the code corresponding to the target register.
             #
@@ -303,7 +302,7 @@ unsafe fn read_x(_fl_state: *mut usize) {
         2:
             addi a4, a0, {X_SIZE} * 17
 
-        1:  .cfi_endproc",
+        1:  ",
             X_SIZE = const X_SIZE,
         );
     }
@@ -327,7 +326,6 @@ unsafe fn write_x(_fl_state: *mut usize) {
         pp_asm!(
             "
             # <a0 == fl_state, a3 == value, a4 == index>
-            .cfi_startproc
 
             # Jump to the code corresponding to the target register.
             #
@@ -439,7 +437,7 @@ unsafe fn write_x(_fl_state: *mut usize) {
             j 1f
             STORE a3, ({X_SIZE} * 15)(a0)
 
-        1:  .cfi_endproc",
+        1:  ",
             X_SIZE = const X_SIZE,
         );
     }
