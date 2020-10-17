@@ -597,8 +597,7 @@ pub(super) unsafe fn make_ready<System: Kernel>(
     // Make the task Ready
     task_cb.st.replace(&mut *lock, TaskSt::Ready);
 
-    // Insert the task to the ready queue corresponding to the task's current
-    // effective priority
+    // Insert the task to the ready queue.
     //
     // Safety: `task_cb` is not in the ready queue
     unsafe {
