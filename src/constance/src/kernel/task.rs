@@ -380,6 +380,9 @@ pub struct TaskCb<
 
     pub(super) st: utils::CpuLockCell<System, TaskSt>,
 
+    /// A flag indicating whether the task has a park token or not.
+    pub(super) park_token: utils::CpuLockCell<System, bool>,
+
     /// Allows `TaskCb` to participate in one of linked lists.
     ///
     ///  - In a `Ready` state, this forms the linked list headed by
@@ -393,9 +396,6 @@ pub struct TaskCb<
 
     /// The last mutex locked by the task.
     pub(super) last_mutex_held: utils::CpuLockCell<System, Option<&'static mutex::MutexCb<System>>>,
-
-    /// A flag indicating whether the task has a park token or not.
-    pub(super) park_token: utils::CpuLockCell<System, bool>,
 }
 
 impl<
