@@ -134,6 +134,10 @@ where
     fn set(&self, key: &mut &'a mut Key, value: Self::Target) {
         self.replace(*key, value);
     }
+    fn modify<T>(&self, key: &mut &'a mut Key, f: impl FnOnce(&mut Self::Target) -> T) -> T {
+        let x = self.write(*key);
+        f(x)
+    }
 }
 
 impl<Key, Element: CellLike<Key>> CellLike<Key> for &Element {
@@ -144,6 +148,9 @@ impl<Key, Element: CellLike<Key>> CellLike<Key> for &Element {
     }
     fn set(&self, key: &mut Key, value: Self::Target) {
         (*self).set(key, value);
+    }
+    fn modify<T>(&self, key: &mut Key, f: impl FnOnce(&mut Self::Target) -> T) -> T {
+        (*self).modify(key, f)
     }
 }
 
