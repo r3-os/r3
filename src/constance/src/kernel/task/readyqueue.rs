@@ -228,14 +228,20 @@ impl<System: Kernel, PortTaskState: 'static, TaskPriority: 'static> fmt::Debug
 
 /// Get a `ListAccessorCell` used to access a task ready queue.
 macro_rules! list_accessor {
-    ($head:expr, $key:expr) => {
-        ListAccessorCell::new(
+    ($head:expr, $key:expr) => {{
+        let accessor = ListAccessorCell::new(
             $head,
             &Static,
             |task_cb| &task_cb.ready_queue_data.link,
             $key,
-        )
-    };
+        );
+
+        // Safety: This linked list is structurally sound.
+        #[allow(unused_unsafe)]
+        unsafe {
+            accessor.unchecked()
+        }
+    }};
 }
 
 impl<System: Kernel, Bitmap: PrioBitmap, const LEN: usize> Queue<System>
@@ -273,9 +279,8 @@ where
     ) {
         // Insert the task to a ready queue
         //
-        // Safety: This linked list is structurally sound, so `push_back`
-        // shouldn't return `InconsistentError`. `task_cb` is unlinked, so it
-        // shouldn't return `InsertError::AlreadyLinked` either.
+        // Safety: `task_cb` is unlinked, so it shouldn't return
+        //         `InsertError::AlreadyLinked`.
         let pri = task_cb.effective_priority.read(&*lock).to_usize().unwrap();
         unsafe {
             list_accessor!(&self.queues[pri], lock.borrow_mut())
@@ -323,13 +328,10 @@ where
             // Take the first task from the ready queue corresponding to
             // `next_task_priority`
             let mut accessor = list_accessor!(&self.queues[next_task_priority], lock.borrow_mut());
-            // Safety: This linked list is structurally sound, so it shouldn't
-            //         return `Err(InconsistentError)`
-            let task = unsafe { accessor.pop_front().unwrap_unchecked() }
-                // There must be at least one element, because the bitmap
-                // indicated so
-                .unwrap()
-                .0;
+            let Ok(task) = accessor.pop_front();
+            // There must be at least one element, because the bitmap
+            // indicated so
+            let task = task.unwrap().0;
 
             // Update `bitmap` accordingly
             if accessor.is_empty() {
@@ -356,18 +358,14 @@ where
         let old_pri_empty = {
             let mut accessor =
                 list_accessor!(&self.queues[old_effective_priority], lock.borrow_mut());
-            // Safety: This linked list is structurally sound, so `remove`
-            // shouldn't return `InconsistentError`. `task_cb` is definitely
-            // linked to this list, so it shouldn't return
-            // `ItemError::NotLinked` either.
+            // Safety:  `task_cb` is definitely linked to this list, so `remove`
+            //          shouldn't return `ItemError::NotLinked`.
             unsafe { accessor.remove(Ident(task_cb)).unwrap_unchecked() };
             accessor.is_empty()
         };
 
-        // Safety: This linked list is structurally sound, so `push_back`
-        // shouldn't return `InconsistentError`. `task_cb` was just unlinked
-        // in the above code, so it shouldn't return
-        // `InsertError::AlreadyLinked` either.
+        // Safety: `task_cb` is not affiliated to any of `self.queues[..]` at
+        //         this point, so `push_back` shouldn't return `AlreadyLinked`.
         unsafe {
             list_accessor!(&self.queues[effective_priority], lock.borrow_mut())
                 .push_back(Ident(task_cb))

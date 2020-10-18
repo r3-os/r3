@@ -147,17 +147,13 @@ impl<Key, Element: CellLike<Key>> CellLike<Key> for &Element {
     }
 }
 
-/// An error type indicating inconsistency in a linked list structure.
 #[derive(Debug, Clone, Copy)]
-pub struct InconsistentError;
-
-#[derive(Debug, Clone, Copy)]
-pub enum InsertError {
+pub enum InsertError<InconsistentError> {
     AlreadyLinked,
     Inconsistent(InconsistentError),
 }
 
-impl From<InconsistentError> for InsertError {
+impl<InconsistentError> From<InconsistentError> for InsertError<InconsistentError> {
     #[inline(always)]
     fn from(x: InconsistentError) -> Self {
         Self::Inconsistent(x)
@@ -165,30 +161,79 @@ impl From<InconsistentError> for InsertError {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ItemError {
+pub enum ItemError<InconsistentError> {
     NotLinked,
     Inconsistent(InconsistentError),
 }
 
-impl From<InconsistentError> for ItemError {
+impl<InconsistentError> From<InconsistentError> for ItemError<InconsistentError> {
     #[inline(always)]
     fn from(x: InconsistentError) -> Self {
         Self::Inconsistent(x)
+    }
+}
+
+pub trait HandleInconsistency {
+    /// The error type to be returned by `ListAccessorCell`'s methods when
+    /// structural inconsistency is detected.
+    type Output;
+
+    fn on_inconsistency(&self) -> Self::Output;
+}
+
+/// Responds to structural inconsistency by returning [`InconsistentError`].
+pub struct HandleInconsistencyByReturningError;
+
+/// Unsafely assumes the absence of structural inconsistency.
+pub struct HandleInconsistencyUnchecked {
+    _private_ctor: (),
+}
+
+/// An error type indicating inconsistency in a linked list structure.
+#[derive(Debug, Clone, Copy)]
+pub struct InconsistentError;
+
+impl HandleInconsistency for HandleInconsistencyByReturningError {
+    type Output = InconsistentError;
+
+    #[inline(always)]
+    fn on_inconsistency(&self) -> Self::Output {
+        InconsistentError
+    }
+}
+
+impl HandleInconsistency for HandleInconsistencyUnchecked {
+    type Output = !;
+
+    #[inline(always)]
+    fn on_inconsistency(&self) -> Self::Output {
+        if cfg!(debug_assertions) {
+            panic!("linked list is inconsistent");
+        }
+        unsafe { core::hint::unreachable_unchecked() }
     }
 }
 
 /// `Cell`-based accessor to a linked list.
 #[derive(Debug)]
-pub struct ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey> {
+pub struct ListAccessorCell<
+    'a,
+    HeadCell,
+    Pool,
+    MapLink,
+    CellKey,
+    InconsistencyHandler = HandleInconsistencyByReturningError,
+> {
     head: HeadCell,
     pool: &'a Pool,
     map_link: MapLink,
     /// `Key` used to read or write cells.
     cell_key: CellKey,
+    inconsistency_handler: InconsistencyHandler,
 }
 
 impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell, CellKey>
-    ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey>
+    ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey, HandleInconsistencyByReturningError>
 where
     HeadCell: CellLike<CellKey, Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
@@ -202,9 +247,40 @@ where
             pool,
             map_link,
             cell_key,
+            inconsistency_handler: HandleInconsistencyByReturningError,
         }
     }
 
+    /// Unsafely assume the list is structurally sound.
+    ///
+    /// # Safety
+    ///
+    /// The underlying list structure must be consistent. Any operations and
+    /// states that would cause [`InconsistentError`] will now cause an
+    /// undefined behavior.
+    pub unsafe fn unchecked(
+        self,
+    ) -> ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey, HandleInconsistencyUnchecked> {
+        ListAccessorCell {
+            head: self.head,
+            pool: self.pool,
+            map_link: self.map_link,
+            cell_key: self.cell_key,
+            inconsistency_handler: HandleInconsistencyUnchecked { _private_ctor: () },
+        }
+    }
+}
+
+impl<'a, HeadCell, Index, Pool, MapLink, Element, LinkCell, CellKey, InconsistencyHandler>
+    ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey, InconsistencyHandler>
+where
+    HeadCell: CellLike<CellKey, Target = ListHead<Index>>,
+    Pool: ops::Index<Index, Output = Element>,
+    MapLink: Fn(&Element) -> &LinkCell,
+    LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
+    Index: PartialEq + Clone,
+    InconsistencyHandler: HandleInconsistency,
+{
     pub fn head_cell(&self) -> &HeadCell {
         &self.head
     }
@@ -230,25 +306,25 @@ where
     }
 
     #[inline]
-    pub fn front(&self) -> Result<Option<Index>, InconsistentError> {
+    pub fn front(&self) -> Result<Option<Index>, InconsistencyHandler::Output> {
         Ok(self.head().first)
     }
 
     #[inline]
-    pub fn back(&self) -> Result<Option<Index>, InconsistentError> {
+    pub fn back(&self) -> Result<Option<Index>, InconsistencyHandler::Output> {
         self.head()
             .first
             .map(|p| {
                 Ok((self.map_link)(&self.pool[p])
                     .get(&self.cell_key)
-                    .ok_or(InconsistentError)?
+                    .ok_or_else(|| self.inconsistency_handler.on_inconsistency())?
                     .prev)
             })
             .transpose()
     }
 
     #[inline]
-    pub fn front_data(&self) -> Result<Option<&Element>, InconsistentError> {
+    pub fn front_data(&self) -> Result<Option<&Element>, InconsistencyHandler::Output> {
         Ok(if let Some(p) = self.front()? {
             Some(&self.pool[p])
         } else {
@@ -257,7 +333,7 @@ where
     }
 
     #[inline]
-    pub fn back_data(&self) -> Result<Option<&Element>, InconsistentError> {
+    pub fn back_data(&self) -> Result<Option<&Element>, InconsistencyHandler::Output> {
         Ok(if let Some(p) = self.back()? {
             Some(&self.pool[p])
         } else {
@@ -268,13 +344,20 @@ where
     /// Insert `item` before the position `p` (if `at` is `Some(p)`) or to the
     /// the list's back (if `at` is `None`).
     #[inline]
-    pub fn insert(&mut self, item: Index, at: Option<Index>) -> Result<(), InsertError> {
+    pub fn insert(
+        &mut self,
+        item: Index,
+        at: Option<Index>,
+    ) -> Result<(), InsertError<InconsistencyHandler::Output>> {
         if (self.map_link)(&self.pool[item.clone()])
             .get(&self.cell_key)
             .is_some()
         {
             return Err(InsertError::AlreadyLinked);
         }
+
+        let inconsistency_handler = &self.inconsistency_handler;
+        let on_inconsistency = || inconsistency_handler.on_inconsistency();
 
         let mut head = self.head();
 
@@ -288,15 +371,15 @@ where
 
             let prev = (self.map_link)(&self.pool[next.clone()])
                 .get(&self.cell_key)
-                .ok_or(InconsistentError)?
+                .ok_or_else(on_inconsistency)?
                 .prev;
             (self.map_link)(&self.pool[prev.clone()]).modify(&mut self.cell_key, |l| {
-                l.as_mut().ok_or(InconsistentError)?.next = item.clone();
-                Ok::<(), InconsistentError>(())
+                l.as_mut().ok_or_else(on_inconsistency)?.next = item.clone();
+                Ok::<(), InconsistencyHandler::Output>(())
             })?;
             (self.map_link)(&self.pool[next.clone()]).modify(&mut self.cell_key, |l| {
-                l.as_mut().ok_or(InconsistentError)?.prev = item.clone();
-                Ok::<(), InconsistentError>(())
+                l.as_mut().ok_or_else(on_inconsistency)?.prev = item.clone();
+                Ok::<(), InconsistencyHandler::Output>(())
             })?;
             (self.map_link)(&self.pool[item.clone()])
                 .set(&mut self.cell_key, Some(Link { prev, next }));
@@ -325,19 +408,28 @@ where
     }
 
     #[inline]
-    pub fn push_back(&mut self, item: Index) -> Result<(), InsertError> {
+    pub fn push_back(
+        &mut self,
+        item: Index,
+    ) -> Result<(), InsertError<InconsistencyHandler::Output>> {
         self.insert(item, None)
     }
 
     #[inline]
-    pub fn push_front(&mut self, item: Index) -> Result<(), InsertError> {
+    pub fn push_front(
+        &mut self,
+        item: Index,
+    ) -> Result<(), InsertError<InconsistencyHandler::Output>> {
         let at = self.front()?;
         self.insert(item, at)
     }
 
     /// Remove `item` from the list. Returns `item`.
     #[inline]
-    pub fn remove(&mut self, item: Index) -> Result<Index, ItemError> {
+    pub fn remove(
+        &mut self,
+        item: Index,
+    ) -> Result<Index, ItemError<InconsistencyHandler::Output>> {
         if (self.map_link)(&self.pool[item.clone()])
             .get(&self.cell_key)
             .is_none()
@@ -345,11 +437,25 @@ where
             return Err(ItemError::NotLinked);
         }
 
+        macro on_inconsistency() {{
+            // If the closure body refers to `self`, the closure would capture
+            // the whole `self` by reference, which conflicts with mutable
+            // borrows of `self` (i.e., `&mut self.cell_key`). To capture only
+            // `&self.inconsistency_handler`, we should create a reference
+            // outside the closure.
+            let inconsistency_handler = &self.inconsistency_handler;
+            move || inconsistency_handler.on_inconsistency()
+        }}
+
         let link: Link<Index> = {
             let link_ref = (self.map_link)(&self.pool[item.clone()]);
             let mut head = self.head();
             if head.first.as_ref() == Some(&item) {
-                let next = link_ref.get(&self.cell_key).ok_or(InconsistentError)?.next;
+                let next = link_ref
+                    .get(&self.cell_key)
+                    .ok_or_else(on_inconsistency!())?
+                    .next;
+
                 if next == item {
                     // The list just became empty
                     head.first = None;
@@ -364,16 +470,20 @@ where
                 self.set_head(head);
             }
 
-            link_ref.get(&self.cell_key).ok_or(InconsistentError)?
+            link_ref
+                .get(&self.cell_key)
+                .ok_or_else(on_inconsistency!())?
         };
 
+        let on_inconsistency = on_inconsistency!();
+
         (self.map_link)(&self.pool[link.prev.clone()]).modify(&mut self.cell_key, |l| {
-            l.as_mut().ok_or(InconsistentError)?.next = link.next.clone();
-            Ok::<(), InconsistentError>(())
+            l.as_mut().ok_or_else(on_inconsistency)?.next = link.next.clone();
+            Ok::<(), InconsistencyHandler::Output>(())
         })?;
         (self.map_link)(&self.pool[link.next.clone()]).modify(&mut self.cell_key, |l| {
-            l.as_mut().ok_or(InconsistentError)?.prev = link.prev.clone();
-            Ok::<(), InconsistentError>(())
+            l.as_mut().ok_or_else(on_inconsistency)?.prev = link.prev.clone();
+            Ok::<(), InconsistencyHandler::Output>(())
         })?;
         (self.map_link)(&self.pool[item.clone()]).set(&mut self.cell_key, None);
 
@@ -381,30 +491,32 @@ where
     }
 
     #[inline]
-    pub fn pop_back(&mut self) -> Result<Option<Index>, InconsistentError> {
+    pub fn pop_back(&mut self) -> Result<Option<Index>, InconsistencyHandler::Output> {
         self.back()?
             .map(|item| {
                 // `ItemError::NotLinked` would be unexpected here, so convert
                 // it to `InconsistentError`
-                self.remove(item).map_err(|_| InconsistentError)
+                self.remove(item)
+                    .map_err(|_| self.inconsistency_handler.on_inconsistency())
             })
             .transpose()
     }
 
     #[inline]
-    pub fn pop_front(&mut self) -> Result<Option<Index>, InconsistentError> {
+    pub fn pop_front(&mut self) -> Result<Option<Index>, InconsistencyHandler::Output> {
         self.front()?
             .map(|item| {
                 // `ItemError::NotLinked` would be unexpected here, so convert
                 // it to `InconsistentError`
-                self.remove(item).map_err(|_| InconsistentError)
+                self.remove(item)
+                    .map_err(|_| self.inconsistency_handler.on_inconsistency())
             })
             .transpose()
     }
 
     /// Get the next element of the specified element.
     #[inline]
-    pub fn next(&self, i: Index) -> Result<Option<Index>, ItemError> {
+    pub fn next(&self, i: Index) -> Result<Option<Index>, ItemError<InconsistencyHandler::Output>> {
         let next = (self.map_link)(&self.pool[i])
             .get(&self.cell_key)
             .ok_or(ItemError::NotLinked)?
@@ -418,7 +530,7 @@ where
 
     /// Get the previous element of the specified element.
     #[inline]
-    pub fn prev(&self, i: Index) -> Result<Option<Index>, ItemError> {
+    pub fn prev(&self, i: Index) -> Result<Option<Index>, ItemError<InconsistencyHandler::Output>> {
         Ok(if Some(&i) == self.head().first.as_ref() {
             None
         } else {
@@ -439,8 +551,8 @@ where
     }
 }
 
-impl<'a, HeadCell, Pool, MapLink, CellKey> ops::Deref
-    for ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey>
+impl<'a, HeadCell, Pool, MapLink, CellKey, InconsistencyHandler> ops::Deref
+    for ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey, InconsistencyHandler>
 {
     type Target = Pool;
 
@@ -456,8 +568,12 @@ pub struct Iter<Element, Index> {
     next: Option<Index>,
 }
 
-impl<'a, 'b, HeadCell, Index, Pool, MapLink, Element, LinkCell, CellKey> Iterator
-    for Iter<&'b ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey>, Index>
+impl<'a, 'b, HeadCell, Index, Pool, MapLink, Element, LinkCell, CellKey, InconsistencyHandler>
+    Iterator
+    for Iter<
+        &'b ListAccessorCell<'a, HeadCell, Pool, MapLink, CellKey, InconsistencyHandler>,
+        Index,
+    >
 where
     HeadCell: CellLike<CellKey, Target = ListHead<Index>>,
     Pool: ops::Index<Index, Output = Element>,
@@ -465,14 +581,15 @@ where
     Element: 'a + 'b,
     LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
     Index: PartialEq + Clone,
+    InconsistencyHandler: HandleInconsistency,
 {
-    type Item = Result<(Index, &'a Element), InconsistentError>;
+    type Item = Result<(Index, &'a Element), InconsistencyHandler::Output>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.next.take() {
             self.next = match self.accessor.next(next.clone()) {
                 Ok(x) => x,
-                Err(_) => return Some(Err(InconsistentError)),
+                Err(_) => return Some(Err(self.accessor.inconsistency_handler.on_inconsistency())),
             };
             Some(Ok((next.clone(), &self.accessor.pool[next])))
         } else {
