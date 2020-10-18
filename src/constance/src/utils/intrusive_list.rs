@@ -380,14 +380,37 @@ where
                 .get(&self.cell_key)
                 .ok_or_else(on_inconsistency)?
                 .prev;
-            (self.map_link)(&self.pool[prev.clone()]).modify(&mut self.cell_key, |l| {
-                l.as_mut().ok_or_else(on_inconsistency)?.next = item.clone();
-                Ok::<(), InconsistencyHandler::Output>(())
+
+            // prev.next = item
+            (self.map_link)(&self.pool[prev.clone()]).modify(&mut self.cell_key, |l| match l {
+                // Don't replace this part with the following code:
+                //
+                //    l.as_mut().ok_or_else(on_inconsistency)?.next = item.clone();
+                //
+                // When `HandleInconsistencyUnchecked` is in use, the above code
+                // can be "optimized" to the following code, which is very
+                // inefficient:
+                //
+                //    l.as_mut().unwrap_or(0).next = item.clone();
+                //
+                Some(l) => {
+                    l.next = item.clone();
+                    Ok::<(), InconsistencyHandler::Output>(())
+                }
+                None => Err(on_inconsistency()),
             })?;
-            (self.map_link)(&self.pool[next.clone()]).modify(&mut self.cell_key, |l| {
-                l.as_mut().ok_or_else(on_inconsistency)?.prev = item.clone();
-                Ok::<(), InconsistencyHandler::Output>(())
+
+            // next.prev = item
+            (self.map_link)(&self.pool[next.clone()]).modify(&mut self.cell_key, |l| match l {
+                Some(l) => {
+                    l.prev = item.clone();
+                    Ok::<(), InconsistencyHandler::Output>(())
+                }
+                None => Err(on_inconsistency()),
             })?;
+
+            // item.prev = prev
+            // item.next = next
             (self.map_link)(&self.pool[item.clone()])
                 .set(&mut self.cell_key, Some(Link { prev, next }));
 
@@ -484,14 +507,26 @@ where
 
         let on_inconsistency = on_inconsistency!();
 
-        (self.map_link)(&self.pool[link.prev.clone()]).modify(&mut self.cell_key, |l| {
-            l.as_mut().ok_or_else(on_inconsistency)?.next = link.next.clone();
-            Ok::<(), InconsistencyHandler::Output>(())
+        // link.prev.next = link.next
+        (self.map_link)(&self.pool[link.prev.clone()]).modify(&mut self.cell_key, |l| match l {
+            Some(l) => {
+                l.next = link.next.clone();
+                Ok::<(), InconsistencyHandler::Output>(())
+            }
+            None => Err(on_inconsistency()),
         })?;
-        (self.map_link)(&self.pool[link.next.clone()]).modify(&mut self.cell_key, |l| {
-            l.as_mut().ok_or_else(on_inconsistency)?.prev = link.prev.clone();
-            Ok::<(), InconsistencyHandler::Output>(())
+
+        // link.next.prev = link.prev
+        (self.map_link)(&self.pool[link.next.clone()]).modify(&mut self.cell_key, |l| match l {
+            Some(l) => {
+                l.prev = link.prev.clone();
+                Ok::<(), InconsistencyHandler::Output>(())
+            }
+            None => Err(on_inconsistency()),
         })?;
+
+        // item.prev = null
+        // item.next = null
         (self.map_link)(&self.pool[item.clone()]).set(&mut self.cell_key, None);
 
         Ok(item)
