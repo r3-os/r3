@@ -57,7 +57,13 @@ impl CfgBuilderMutex {
             ceiling: match self.protocol {
                 mutex::MutexProtocol::None => None,
                 mutex::MutexProtocol::Ceiling(ceiling) => {
-                    Some(System::TASK_PRIORITY_LEVELS[ceiling])
+                    if ceiling < System::NUM_TASK_PRIORITY_LEVELS {
+                        Some(System::TASK_PRIORITY_LEVELS[ceiling])
+                    } else {
+                        panic!(
+                            "mutex's priority ceiling must be less than `num_task_priority_levels`"
+                        );
+                    }
                 }
             },
             inconsistent: CpuLockCell::new(false),
