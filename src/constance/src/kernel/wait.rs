@@ -130,7 +130,38 @@ pub(super) enum WaitPayload<System: PortThreading> {
     Mutex(&'static mutex::MutexCb<System>),
     Park,
     Sleep,
-    __Nonexhaustive(System),
+    __Nonexhaustive,
+}
+
+impl<T: PortThreading> WaitPayload<T> {
+    /// Return `self`.
+    ///
+    /// This might look redundant but is actually very important to maximize
+    /// performance of moving `WaitPayload`. Without this, the compiler would
+    /// try very hard to preserve the bit pattern of the unused space within
+    /// `payload` by using `memcpy`, which is extremely slow. I've seen a 30%
+    /// decrease in the execution time in the `semaphore` benchmark as a result
+    /// of using this method.
+    #[inline]
+    fn r#move(self) -> Self {
+        match self {
+            Self::EventGroupBits {
+                bits,
+                flags,
+                orig_bits,
+            } => Self::EventGroupBits {
+                bits,
+                flags,
+                orig_bits,
+
+            },
+            Self::Semaphore => Self::Semaphore,
+            Self::Mutex(x) => Self::Mutex(x),
+            Self::Park => Self::Park,
+            Self::Sleep => Self::Sleep,
+            Self::__Nonexhaustive => Self::__Nonexhaustive,
+        }
+    }
 }
 
 /// A queue of wait objects ([`Wait`]) waiting on a particular waitable object.
@@ -237,7 +268,7 @@ impl<System: Kernel> WaitQueue<System> {
             task,
             link: CpuLockCell::new(None),
             wait_queue: Some(self),
-            payload,
+            payload: payload.r#move(),
         };
 
         self.wait_inner(lock, &wait)
@@ -266,7 +297,7 @@ impl<System: Kernel> WaitQueue<System> {
             task,
             link: CpuLockCell::new(None),
             wait_queue: Some(self),
-            payload,
+            payload: payload.r#move(),
         };
 
         // Configure a timeout
@@ -529,7 +560,7 @@ impl<System: Kernel> fmt::Debug for WaitPayload<System> {
             Self::Mutex(mutex) => write!(f, "Mutex({:p})", mutex),
             Self::Park => f.write_str("Park"),
             Self::Sleep => f.write_str("Sleep"),
-            Self::__Nonexhaustive(_) => unreachable!(),
+            Self::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -637,7 +668,7 @@ pub(super) fn wait_no_queue<System: Kernel>(
         task,
         link: CpuLockCell::new(None),
         wait_queue: None,
-        payload,
+        payload: payload.r#move(),
     };
 
     wait_no_queue_inner(lock, &wait).map_err(WaitTimeoutError::expect_not_timeout)?;
@@ -667,7 +698,7 @@ pub(super) fn wait_no_queue_timeout<System: Kernel>(
         task,
         link: CpuLockCell::new(None),
         wait_queue: None,
-        payload,
+        payload: payload.r#move(),
     };
 
     // Configure a timeout
