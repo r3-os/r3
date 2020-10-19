@@ -155,7 +155,7 @@ impl<'a, Element: Clone, System: Kernel> CellLike<&'a mut CpuLockGuard<System>>
     type Target = Element;
 
     fn get(&self, key: &&'a mut CpuLockGuard<System>) -> Self::Target {
-        (**self).get(&***key).clone()
+        (**self).get(&***key)
     }
     fn set(&self, key: &mut &'a mut CpuLockGuard<System>, value: Self::Target) {
         (**self).set(&mut &mut ***key, value);
@@ -175,7 +175,7 @@ impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockGuardBorrowMut<'a, Syst
     type Target = Element;
 
     fn get(&self, key: &CpuLockGuardBorrowMut<'a, System>) -> Self::Target {
-        (**self).get(&**key).clone()
+        (**self).get(&**key)
     }
     fn set(&self, key: &mut CpuLockGuardBorrowMut<'a, System>, value: Self::Target) {
         (**self).set(&mut &mut **key, value);
