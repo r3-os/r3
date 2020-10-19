@@ -9,6 +9,7 @@ use crate::{
     },
     utils::{
         intrusive_list::{Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
+        unwrap::UnwrapUnchecked,
         Init, PrioBitmap,
     },
 };
@@ -34,7 +35,12 @@ pub trait Queue<System>: Send + Sync + fmt::Debug + Init + 'static + private::Se
     /// violating the priority ordering. I.e., if there are one or more tasks
     /// having effective priorities identical to that of `task_cb`, `task_cb`
     /// will be inserted after such tasks.
-    fn push_back_task(&self, ctx: Ctx<'_, System>, task_cb: &'static TaskCb<System>)
+    ///
+    /// # Safety
+    ///
+    /// This method will cause an undefined behavior if `task_cb` is already
+    /// included in the queue.
+    unsafe fn push_back_task(&self, ctx: Ctx<'_, System>, task_cb: &'static TaskCb<System>)
     where
         System: Kernel;
 
@@ -44,6 +50,9 @@ pub trait Queue<System>: Send + Sync + fmt::Debug + Init + 'static + private::Se
     /// this decision). If there's no such current task, `prev_task_priority`
     /// should be `usize::MAX`, in which case this method will return
     /// `SwitchTo(_)`.
+    ///
+    /// If this method returns `SwitchTo(Some(task))`, `task` is removed from
+    /// the queue.
     ///
     /// This method performs the following abstract steps:
     ///
@@ -100,7 +109,13 @@ pub trait Queue<System>: Send + Sync + fmt::Debug + Init + 'static + private::Se
     ///
     /// The caller should ensure `old_effective_priority` is not identical to
     /// `effective_priority`.
-    fn reorder_task(
+    ///
+    /// # Safety
+    ///
+    /// This method will cause an undefined behavior if `task_cb` is not
+    /// included in the queue or was lastly inserted to the queue with an
+    /// effective priority that is not identical to `old_effective_priority`.
+    unsafe fn reorder_task(
         &self,
         ctx: Ctx<'_, System>,
         task_cb: &'static TaskCb<System>,
@@ -213,14 +228,20 @@ impl<System: Kernel, PortTaskState: 'static, TaskPriority: 'static> fmt::Debug
 
 /// Get a `ListAccessorCell` used to access a task ready queue.
 macro_rules! list_accessor {
-    ($head:expr, $key:expr) => {
-        ListAccessorCell::new(
+    ($head:expr, $key:expr) => {{
+        let accessor = ListAccessorCell::new(
             $head,
             &Static,
             |task_cb| &task_cb.ready_queue_data.link,
             $key,
-        )
-    };
+        );
+
+        // Safety: This linked list is structurally sound.
+        #[allow(unused_unsafe)]
+        unsafe {
+            accessor.unchecked()
+        }
+    }};
 }
 
 impl<System: Kernel, Bitmap: PrioBitmap, const LEN: usize> Queue<System>
@@ -251,10 +272,21 @@ where
     }
 
     #[inline]
-    fn push_back_task(&self, Ctx { mut lock }: Ctx<'_, System>, task_cb: &'static TaskCb<System>) {
+    unsafe fn push_back_task(
+        &self,
+        Ctx { mut lock }: Ctx<'_, System>,
+        task_cb: &'static TaskCb<System>,
+    ) {
         // Insert the task to a ready queue
+        //
+        // Safety: `task_cb` is unlinked, so it shouldn't return
+        //         `InsertError::AlreadyLinked`.
         let pri = task_cb.effective_priority.read(&*lock).to_usize().unwrap();
-        list_accessor!(&self.queues[pri], lock.borrow_mut()).push_back(Ident(task_cb));
+        unsafe {
+            list_accessor!(&self.queues[pri], lock.borrow_mut())
+                .push_back(Ident(task_cb))
+                .unwrap_unchecked();
+        }
 
         // Update `bitmap` accordingly
         self.bitmap.write(&mut *lock).set(pri);
@@ -296,7 +328,10 @@ where
             // Take the first task from the ready queue corresponding to
             // `next_task_priority`
             let mut accessor = list_accessor!(&self.queues[next_task_priority], lock.borrow_mut());
-            let task = accessor.pop_front().unwrap().0;
+            let Ok(task) = accessor.pop_front();
+            // There must be at least one element, because the bitmap
+            // indicated so
+            let task = task.unwrap().0;
 
             // Update `bitmap` accordingly
             if accessor.is_empty() {
@@ -310,7 +345,7 @@ where
     }
 
     #[inline]
-    fn reorder_task(
+    unsafe fn reorder_task(
         &self,
         Ctx { mut lock }: Ctx<'_, System>,
         task_cb: &'static TaskCb<System>,
@@ -323,12 +358,19 @@ where
         let old_pri_empty = {
             let mut accessor =
                 list_accessor!(&self.queues[old_effective_priority], lock.borrow_mut());
-            accessor.remove(Ident(task_cb));
+            // Safety:  `task_cb` is definitely linked to this list, so `remove`
+            //          shouldn't return `ItemError::NotLinked`.
+            unsafe { accessor.remove(Ident(task_cb)).unwrap_unchecked() };
             accessor.is_empty()
         };
 
-        list_accessor!(&self.queues[effective_priority], lock.borrow_mut())
-            .push_back(Ident(task_cb));
+        // Safety: `task_cb` is not affiliated to any of `self.queues[..]` at
+        //         this point, so `push_back` shouldn't return `AlreadyLinked`.
+        unsafe {
+            list_accessor!(&self.queues[effective_priority], lock.borrow_mut())
+                .push_back(Ident(task_cb))
+                .unwrap_unchecked();
+        }
 
         // Update `bitmap` accordingly
         // (This code assumes `effective_priority != old_effective_priority`.)
@@ -371,7 +413,7 @@ impl<
                             let mut lock = lock.borrow_mut();
                             let accessor = list_accessor!(head_cell, lock.borrow_mut());
                             f.debug_list()
-                                .entries(accessor.iter().map(|x| x.0))
+                                .entries(accessor.iter().map(|x| x.unwrap().0))
                                 .finish()
                         }),
                     )
