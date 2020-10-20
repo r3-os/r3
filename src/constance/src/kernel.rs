@@ -278,6 +278,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
 }
 
 impl<T: Port + KernelCfg2 + 'static> Kernel for T {
+    #[inline]
     fn acquire_cpu_lock() -> Result<(), CpuLockError> {
         // Safety: `try_enter_cpu_lock` is only meant to be called by
         //         the kernel
@@ -288,6 +289,7 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
         }
     }
 
+    #[inline]
     unsafe fn release_cpu_lock() -> Result<(), CpuLockError> {
         if !Self::is_cpu_lock_active() {
             Err(CpuLockError::BadContext)
@@ -298,44 +300,55 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
         }
     }
 
+    #[inline]
     fn has_cpu_lock() -> bool {
         Self::is_cpu_lock_active()
     }
 
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     fn boost_priority() -> Result<(), BoostPriorityError> {
         state::boost_priority::<Self>()
     }
 
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     unsafe fn unboost_priority() -> Result<(), BoostPriorityError> {
         state::unboost_priority::<Self>()
     }
 
+    #[inline]
     fn is_priority_boost_active() -> bool {
         Self::state().priority_boost.load(Ordering::Relaxed)
     }
 
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     fn time() -> Result<Time, TimeError> {
         timeout::system_time::<Self>()
     }
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     fn set_time(time: Time) -> Result<(), TimeError> {
         timeout::set_system_time::<Self>(time)
     }
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError> {
         timeout::adjust_system_and_event_time::<Self>(delta)
     }
 
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
         // Safety: Just forwarding the function call
         unsafe { exit_current_task::<Self>() }
     }
 
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     fn park() -> Result<(), ParkError> {
         task::park_current_task::<Self>()
     }
 
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError> {
         task::park_current_task_timeout::<Self>(timeout)
     }
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     fn sleep(timeout: Duration) -> Result<(), SleepError> {
         task::put_current_task_on_sleep_timeout::<Self>(timeout)
     }
@@ -347,6 +360,7 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     ///
     /// Note that printing this object might consume a large amount of stack
     /// space.
+    #[inline]
     fn debug() -> Self::DebugPrinter {
         KernelDebugPrinter(PhantomData)
     }

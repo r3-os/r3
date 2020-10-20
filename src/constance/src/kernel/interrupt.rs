@@ -72,6 +72,7 @@ impl<System: Kernel> InterruptLine<System> {
     /// if the operation is unsafe.
     ///
     /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn set_priority(
         self,
         value: InterruptPriority,
@@ -109,6 +110,7 @@ impl<System: Kernel> InterruptLine<System> {
     /// interrupt handler.
     ///
     /// [unmanaged-safe]: crate::kernel::cfg::CfgInterruptHandlerBuilder::unmanaged
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub unsafe fn set_priority_unchecked(
         self,
         value: InterruptPriority,
@@ -132,6 +134,7 @@ impl<System: Kernel> InterruptLine<System> {
     /// # Safety
     ///
     /// In addition to `set_priority_unchecked`,
+    #[inline]
     unsafe fn set_priority_unchecked_inner(
         self,
         value: InterruptPriority,
@@ -143,30 +146,35 @@ impl<System: Kernel> InterruptLine<System> {
     }
 
     /// Enable the interrupt line.
+    #[inline]
     pub fn enable(self) -> Result<(), EnableInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { System::enable_interrupt_line(self.0) }
     }
 
     /// Disable the interrupt line.
+    #[inline]
     pub fn disable(self) -> Result<(), EnableInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { System::disable_interrupt_line(self.0) }
     }
 
     /// Set the pending flag of the interrupt line.
+    #[inline]
     pub fn pend(self) -> Result<(), PendInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { System::pend_interrupt_line(self.0) }
     }
 
     /// Clear the pending flag of the interrupt line.
+    #[inline]
     pub fn clear(self) -> Result<(), ClearInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { System::clear_interrupt_line(self.0) }
     }
 
     /// Read the pending flag of the interrupt line.
+    #[inline]
     pub fn is_pending(self) -> Result<bool, QueryInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { System::is_interrupt_line_pending(self.0) }

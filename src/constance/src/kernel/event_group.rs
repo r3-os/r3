@@ -104,6 +104,7 @@ impl<System: Kernel> EventGroup<System> {
     }
 
     /// Set the specified bits.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn set(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
         let lock = utils::lock_cpu::<System>()?;
         let event_group_cb = self.event_group_cb()?;
@@ -112,6 +113,7 @@ impl<System: Kernel> EventGroup<System> {
     }
 
     /// Clear the specified bits.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn clear(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let event_group_cb = self.event_group_cb()?;
@@ -120,6 +122,7 @@ impl<System: Kernel> EventGroup<System> {
     }
 
     /// Get the currently set bits.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn get(self) -> Result<EventGroupBits, GetEventGroupError> {
         let lock = utils::lock_cpu::<System>()?;
         let event_group_cb = self.event_group_cb()?;
@@ -136,6 +139,7 @@ impl<System: Kernel> EventGroup<System> {
     /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
     ///
     /// [a non-waitable context]: crate#contexts
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn wait(
         self,
         bits: EventGroupBits,
@@ -149,6 +153,7 @@ impl<System: Kernel> EventGroup<System> {
     }
 
     /// [`wait`](Self::wait) with timeout.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn wait_timeout(
         self,
         bits: EventGroupBits,
@@ -166,6 +171,7 @@ impl<System: Kernel> EventGroup<System> {
     /// Non-blocking version of [`wait`](Self::wait). Returns immediately with
     /// [`PollEventGroupError::Timeout`] if the unblocking condition is not
     /// satisfied.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn poll(
         self,
         bits: EventGroupBits,

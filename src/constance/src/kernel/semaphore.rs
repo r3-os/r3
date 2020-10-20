@@ -99,6 +99,7 @@ impl<System: Kernel> Semaphore<System> {
     }
 
     /// Remove all permits held by the semaphore.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn drain(self) -> Result<(), DrainSemaphoreError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let semaphore_cb = self.semaphore_cb()?;
@@ -107,6 +108,7 @@ impl<System: Kernel> Semaphore<System> {
     }
 
     /// Get the number of permits currently held by the semaphore.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn get(self) -> Result<SemaphoreValue, GetSemaphoreError> {
         let lock = utils::lock_cpu::<System>()?;
         let semaphore_cb = self.semaphore_cb()?;
@@ -114,6 +116,7 @@ impl<System: Kernel> Semaphore<System> {
     }
 
     /// Release `count` permits, returning them to the semaphore.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn signal(self, count: SemaphoreValue) -> Result<(), SignalSemaphoreError> {
         let lock = utils::lock_cpu::<System>()?;
         let semaphore_cb = self.semaphore_cb()?;
@@ -143,6 +146,7 @@ impl<System: Kernel> Semaphore<System> {
     /// > The support for multi-wait is relatively rare among operating systems.
     /// > It's not supported by POSIX, RTEMS, TOPPERS, VxWorks, nor Win32. The
     /// > rare exception is μT-Kernel.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn wait_one(self) -> Result<(), WaitSemaphoreError> {
         let lock = utils::lock_cpu::<System>()?;
         state::expect_waitable_context::<System>()?;
@@ -152,6 +156,7 @@ impl<System: Kernel> Semaphore<System> {
     }
 
     /// [`wait_one`](Self::wait_one) with timeout.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn wait_one_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
         let time32 = timeout::time32_from_duration(timeout)?;
         let lock = utils::lock_cpu::<System>()?;
@@ -164,6 +169,7 @@ impl<System: Kernel> Semaphore<System> {
     /// Non-blocking version of [`wait_one`](Self::wait_one). Returns
     /// immediately with [`PollSemaphoreError::Timeout`] if the unblocking
     /// condition is not satisfied.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn poll_one(self) -> Result<(), PollSemaphoreError> {
         let lock = utils::lock_cpu::<System>()?;
         let semaphore_cb = self.semaphore_cb()?;

@@ -10,6 +10,10 @@ categories = ["embedded", "no-std"]
 keywords = ["constance", "rtos"]
 repository = "https://github.com/yvt/Constance"
 
+[features]
+default = []
+inline-syscall = []
+
 [dependencies]
 assert_matches = { version = "1.4.0" }
 num-integer = { version = "0.1.42", default-features = false }

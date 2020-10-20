@@ -103,6 +103,7 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
     //        unresolved
 
     /// Get a raw pointer to the raw bytes of the hunk.
+    #[inline]
     pub fn as_bytes_ptr(this: Self) -> *const [u8] {
         slice_from_raw_parts(
             unsafe { System::HUNK_ATTR.hunk_pool_ptr().add(this.start) },
@@ -116,6 +117,7 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
     ///
     /// The result might include uninitialized bytes and/or interior mutability,
     /// so it might be unsafe to access.
+    #[inline]
     pub unsafe fn as_bytes(this: Self) -> &'static [u8] {
         // Safety: The caller is responsible for making sure interpreting the
         // contents as `[u8]` is safe
@@ -125,6 +127,7 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
 
 impl<System: Kernel, T: 'static> Hunk<System, T> {
     /// Get a raw pointer to the hunk's contents.
+    #[inline]
     pub fn as_ptr(this: Self) -> *const T {
         Self::as_bytes_ptr(this) as *const T
     }
@@ -139,6 +142,7 @@ impl<System: Kernel, T: 'static> AsRef<T> for Hunk<System, T> {
 impl<System: Kernel, T: 'static> Deref for Hunk<System, T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.as_ref()
     }
@@ -146,6 +150,7 @@ impl<System: Kernel, T: 'static> Deref for Hunk<System, T> {
 
 impl<System: Kernel, T: 'static> Hunk<System, [T]> {
     /// Get a raw pointer to the hunk's contents.
+    #[inline]
     pub fn as_ptr(this: Self) -> *const [T] {
         slice_from_raw_parts(
             Self::as_bytes_ptr(this) as *const T,
@@ -155,6 +160,7 @@ impl<System: Kernel, T: 'static> Hunk<System, [T]> {
 }
 
 impl<System: Kernel, T: 'static> AsRef<[T]> for Hunk<System, [T]> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         unsafe { &*Self::as_ptr(*self) }
     }
@@ -163,6 +169,7 @@ impl<System: Kernel, T: 'static> AsRef<[T]> for Hunk<System, [T]> {
 impl<System: Kernel, T: 'static> Deref for Hunk<System, [T]> {
     type Target = [T];
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.as_ref()
     }

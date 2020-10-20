@@ -340,6 +340,7 @@ impl<System: Kernel> Mutex<System> {
     }
 
     /// Get a flag indicating whether the mutex is currently locked.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn is_locked(self) -> Result<bool, QueryMutexError> {
         let lock = utils::lock_cpu::<System>()?;
         let mutex_cb = self.mutex_cb()?;
@@ -350,6 +351,7 @@ impl<System: Kernel> Mutex<System> {
     ///
     /// Mutexes must be unlocked in a lock-reverse order, or this method will
     /// return [`UnlockMutexError::BadObjectState`].
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn unlock(self) -> Result<(), UnlockMutexError> {
         let lock = utils::lock_cpu::<System>()?;
         state::expect_waitable_context::<System>()?;
@@ -371,6 +373,7 @@ impl<System: Kernel> Mutex<System> {
     /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
     ///
     /// [a non-waitable context]: crate#contexts
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn lock(self) -> Result<(), LockMutexError> {
         let lock = utils::lock_cpu::<System>()?;
         state::expect_waitable_context::<System>()?;
@@ -380,6 +383,7 @@ impl<System: Kernel> Mutex<System> {
     }
 
     /// [`lock`](Self::lock) with timeout.
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn lock_timeout(self, timeout: Duration) -> Result<(), LockMutexTimeoutError> {
         let time32 = timeout::time32_from_duration(timeout)?;
         let lock = utils::lock_cpu::<System>()?;
@@ -397,6 +401,7 @@ impl<System: Kernel> Mutex<System> {
     /// in a non-task context because a mutex lock needs an owning task.
     ///
     /// [`Semaphore::poll_one`]: crate::kernel::Semaphore::poll_one
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn try_lock(self) -> Result<(), TryLockMutexError> {
         let lock = utils::lock_cpu::<System>()?;
         state::expect_task_context::<System>()?;
@@ -412,6 +417,7 @@ impl<System: Kernel> Mutex<System> {
     /// > **Relation to Other Specifications:** Equivalent to
     /// > `pthread_mutex_consistent` from POSIX.1-2008.
     ///
+    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
     pub fn mark_consistent(self) -> Result<(), MarkConsistentMutexError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let mutex_cb = self.mutex_cb()?;
