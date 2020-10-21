@@ -132,7 +132,7 @@ impl<System: Kernel> Task<System> {
     /// deferred until the control returns to a task, but the current interrupt
     /// handler could be interrupted by another interrrupt, which might do
     /// scheduling on return (whether this happens or not is unspecified).
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let task_cb = if let Some(cb) = System::state().running_task(lock.borrow_mut()) {
@@ -157,7 +157,7 @@ impl<System: Kernel> Task<System> {
     }
 
     /// Start the execution of the task.
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn activate(self) -> Result<(), ActivateTaskError> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
@@ -172,7 +172,7 @@ impl<System: Kernel> Task<System> {
     ///
     /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
     /// [`WaitTimeoutError::Interrupted`]: crate::kernel::WaitTimeoutError::Interrupted
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
         let mut lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
@@ -198,7 +198,7 @@ impl<System: Kernel> Task<System> {
     /// If the task is currently being blocked by `Kernel::park`, the token will
     /// be immediately consumed. Otherwise, it will be consumed on a next call
     /// to `Kernel::park`.
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn unpark(self) -> Result<(), UnparkError> {
         match self.unpark_exact() {
             Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
@@ -218,7 +218,7 @@ impl<System: Kernel> Task<System> {
     /// If the task is currently being blocked by `Kernel::park`, the token will
     /// be immediately consumed. Otherwise, it will be consumed on a next call
     /// to `Kernel::park`.
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
@@ -242,7 +242,7 @@ impl<System: Kernel> Task<System> {
     /// return [`SetTaskPriorityError::BadObjectState`].
     ///
     /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
@@ -253,7 +253,7 @@ impl<System: Kernel> Task<System> {
     ///
     /// The task shouldn't be in the Dormant state. Otherwise, this method will
     /// return [`GetTaskPriorityError::BadObjectState`].
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn priority(self) -> Result<usize, GetTaskPriorityError> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;
@@ -275,7 +275,7 @@ impl<System: Kernel> Task<System> {
     ///
     /// The task shouldn't be in the Dormant state. Otherwise, this method will
     /// return [`GetTaskPriorityError::BadObjectState`].
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn effective_priority(self) -> Result<usize, GetTaskPriorityError> {
         let lock = utils::lock_cpu::<System>()?;
         let task_cb = self.task_cb()?;

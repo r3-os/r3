@@ -652,7 +652,7 @@ Kernel {
 # Cargo Features
 
  - **`chrono`**: Enables conversion between our [duration] and [timetamp] types and `::chrono`'s types.
-- **`inline-syscall`**: Allows (but does not force) inlining for all application-facing methods. Enabling this feature might lower the latency of system calls but there are the following downsides: (1) The decision of inlining is driven by the compiler's built-in heuristics, which takes many factors into consideration. Therefore, the performance improvement (or deterioration) varies unpredictably depending on the global structure of your application and the compiler version used, making it harder to design the system to meet real-time requirements. (2) Inlining increases the code working set size and can make the code run even slower. This is especially likely to happen on an execute-in-place (XIP) system with low-speed code memory such as an SPI flash.
+- **`inline_syscall`**: Allows (but does not force) inlining for all application-facing methods. Enabling this feature might lower the latency of system calls but there are the following downsides: (1) The decision of inlining is driven by the compiler's built-in heuristics, which takes many factors into consideration. Therefore, the performance improvement (or deterioration) varies unpredictably depending on the global structure of your application and the compiler version used, making it harder to design the system to meet real-time requirements. (2) Inlining increases the code working set size and can make the code run even slower. This is especially likely to happen on an execute-in-place (XIP) system with low-speed code memory such as an SPI flash.
 
 
 [duration]: crate::time::Duration

@@ -12,7 +12,7 @@ repository = "https://github.com/yvt/Constance"
 
 [features]
 default = []
-inline-syscall = []
+inline_syscall = []
 
 [dependencies]
 assert_matches = { version = "1.4.0" }

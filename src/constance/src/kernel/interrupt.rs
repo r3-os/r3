@@ -72,7 +72,7 @@ impl<System: Kernel> InterruptLine<System> {
     /// if the operation is unsafe.
     ///
     /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub fn set_priority(
         self,
         value: InterruptPriority,
@@ -110,7 +110,7 @@ impl<System: Kernel> InterruptLine<System> {
     /// interrupt handler.
     ///
     /// [unmanaged-safe]: crate::kernel::cfg::CfgInterruptHandlerBuilder::unmanaged
-    #[cfg_attr(not(feature = "inline-syscall"), inline(never))]
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub unsafe fn set_priority_unchecked(
         self,
         value: InterruptPriority,
