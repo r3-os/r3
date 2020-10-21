@@ -317,11 +317,10 @@ use crate::{
 ///
 /// [Reset the delay]: Timer::set_delay
 ///
+#[doc(include = "../common.md")]
 #[repr(transparent)]
 pub struct Timer<System>(Id, PhantomData<System>);
 
-// FIXME: `svgbobdoc` doesn't like `#[doc(include = ...)]`
-#[doc(include = "../common.md")]
 impl<System> Clone for Timer<System> {
     fn clone(&self) -> Self {
         Self(self.0, self.1)

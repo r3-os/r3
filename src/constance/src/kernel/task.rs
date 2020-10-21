@@ -64,11 +64,10 @@ use self::readyqueue::Queue as _;
 ///
 /// [thread]: crate#threads
 /// [activated]: Task::activate
+#[doc(include = "../common.md")]
 #[repr(transparent)]
 pub struct Task<System>(Id, PhantomData<System>);
 
-// FIXME: `svgbobdoc` doesn't like `#[doc(include = ...)]`
-#[doc(include = "../common.md")]
 impl<System> Clone for Task<System> {
     fn clone(&self) -> Self {
         Self(self.0, self.1)

@@ -372,6 +372,8 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 ///                                                                     (max_tick_count + 1)
 /// ```
 /// </center>
+///
+#[doc(include = "../../constance/src/common.md")]
 #[derive(Debug, Copy, Clone)]
 pub struct TicklessStatelessCore;
 
@@ -600,8 +602,6 @@ pub struct Measurement {
     pub hw_ticks: u32,
 }
 
-// FIXME: `svgbobdoc` doesn't like `#[doc(include = ...)]`
-#[doc(include = "../../constance/src/common.md")]
 impl Init for TicklessStatelessCore {
     const INIT: Self = Self;
 }
