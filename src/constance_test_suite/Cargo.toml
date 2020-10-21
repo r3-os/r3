@@ -15,7 +15,7 @@ tests_all = []
 tests_selective = []
 
 [dependencies]
-constance = { path = "../constance" }
+constance = { path = "../constance", features = ["system_time"] }
 
 assert_matches = { version = "1.4.0" }
 staticvec = { version = "0.10.5", default-features = false }

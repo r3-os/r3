@@ -8,8 +8,10 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
+#[cfg(feature = "system_time")]
+use crate::time::Time;
 use crate::{
-    time::{Duration, Time},
+    time::Duration,
     utils::{binary_heap::VecLike, BinUInteger, Init},
 };
 
@@ -119,6 +121,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > **Rationale:** This restriction originates from μITRON4.0. It's
     /// > actually unnecessary in the current implementation, but allows
     /// > headroom for potential changes in the implementation.
+    #[cfg(feature = "system_time")]
     fn time() -> Result<Time, TimeError>;
 
     /// Set the current [system time].
@@ -138,6 +141,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > **Rationale:** This restriction originates from μITRON4.0. It's
     /// > actually unnecessary in the current implementation, but allows
     /// > headroom for potential changes in the implementation.
+    #[cfg(feature = "system_time")]
     fn set_time(time: Time) -> Result<(), TimeError>;
 
     #[cfg_attr(doc, svgbobdoc::transform)]
@@ -234,6 +238,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > Also, the gap between the current time and the frontier is completely
     /// > in control of the code that calls `adjust_time`, making the behavior
     /// > more predictable.
+    #[cfg(feature = "system_time")]
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>;
 
     // TODO: get time resolution?
@@ -321,14 +326,17 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[cfg(feature = "system_time")]
     fn time() -> Result<Time, TimeError> {
         timeout::system_time::<Self>()
     }
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[cfg(feature = "system_time")]
     fn set_time(time: Time) -> Result<(), TimeError> {
         timeout::set_system_time::<Self>(time)
     }
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[cfg(feature = "system_time")]
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError> {
         timeout::adjust_system_and_event_time::<Self>(delta)
     }

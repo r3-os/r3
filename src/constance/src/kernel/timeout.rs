@@ -133,14 +133,17 @@ use core::{
     sync::atomic::{AtomicU32, AtomicUsize, Ordering},
 };
 
+#[cfg(feature = "system_time")]
+use super::{state::expect_task_context, AdjustTimeError, TimeError};
 use super::{
-    state::expect_task_context,
     task,
     utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
-    AdjustTimeError, BadParamError, Kernel, TimeError, UTicks,
+    BadParamError, Kernel, UTicks,
 };
+#[cfg(feature = "system_time")]
+use crate::time::Time;
 use crate::{
-    time::{Duration, Time},
+    time::Duration,
     utils::{
         binary_heap::{BinaryHeap, BinaryHeapCtx},
         Init,
@@ -164,6 +167,7 @@ pub(super) struct TimeoutGlobals<System, TimeoutHeap: 'static> {
     ///
     /// The current system time is always greater than or equal to
     /// `last_tick_sys_time`.
+    #[cfg(feature = "system_time")]
     last_tick_sys_time: CpuLockCell<System, Time64>,
 
     /// The gap between the frontier and the previous tick.
@@ -184,6 +188,7 @@ impl<System, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<System, Timeou
     const INIT: Self = Self {
         last_tick_count: Init::INIT,
         last_tick_time: Init::INIT,
+        #[cfg(feature = "system_time")]
         last_tick_sys_time: Init::INIT,
         frontier_gap: Init::INIT,
         heap: Init::INIT,
@@ -196,7 +201,15 @@ impl<System: Kernel, TimeoutHeap: fmt::Debug> fmt::Debug for TimeoutGlobals<Syst
         f.debug_struct("TimeoutGlobals")
             .field("last_tick_count", &self.last_tick_count)
             .field("last_tick_time", &self.last_tick_time)
-            .field("last_tick_sys_time", &self.last_tick_sys_time)
+            .field(
+                "last_tick_sys_time",
+                match () {
+                    #[cfg(feature = "system_time")]
+                    () => &self.last_tick_sys_time,
+                    #[cfg(not(feature = "system_time"))]
+                    () => &(),
+                },
+            )
             .field("frontier_gap", &self.frontier_gap)
             .field("heap", &self.heap)
             .field("handle_tick_in_progress", &self.handle_tick_in_progress)
@@ -223,6 +236,7 @@ impl<T: Kernel> KernelTimeoutGlobalsExt for T {
 // ---------------------------------------------------------------------------
 
 /// Represents an absolute time.
+#[cfg(feature = "system_time")]
 type Time64 = u64;
 
 /// Represents an absolute time with a reduced range. This is also used to
@@ -238,11 +252,13 @@ type AtomicTime32 = AtomicU32;
 pub(super) const BAD_DURATION32: Time32 = u32::MAX;
 
 #[inline]
+#[cfg(feature = "system_time")]
 fn time64_from_sys_time(sys_time: Time) -> Time64 {
     sys_time.as_micros()
 }
 
 #[inline]
+#[cfg(feature = "system_time")]
 fn sys_time_from_time64(sys_time: Time64) -> Time {
     Time::from_micros(sys_time)
 }
@@ -265,6 +281,7 @@ pub(super) const fn time32_from_duration(duration: Duration) -> Result<Time32, B
 
 /// Convert the negation of `duration` to `Time32`.
 #[inline]
+#[cfg(feature = "system_time")]
 pub(super) fn time32_from_neg_duration(duration: Duration) -> Result<Time32, BadParamError> {
     // Unlike `time32_from_duration`, there's no nice way to do this
     let duration = duration.as_micros();
@@ -277,12 +294,14 @@ pub(super) fn time32_from_neg_duration(duration: Duration) -> Result<Time32, Bad
 
 /// Convert `duration` to `Time32`. Negative values are wrapped around.
 #[inline]
+#[cfg(feature = "system_time")]
 pub(super) fn wrapping_time32_from_duration(duration: Duration) -> Time32 {
     duration.as_micros() as Time32
 }
 
 /// Convert `duration` to `Time64`. Negative values are wrapped around.
 #[inline]
+#[cfg(feature = "system_time")]
 pub(super) fn wrapping_time64_from_duration(duration: Duration) -> Time64 {
     duration.as_micros() as i64 as Time64
 }
@@ -572,6 +591,7 @@ impl<System: Kernel, TimeoutHeap> TimeoutGlobals<System, TimeoutHeap> {
 // ---------------------------------------------------------------------------
 
 /// Implements [`Kernel::time`].
+#[cfg(feature = "system_time")]
 pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
     expect_task_context::<System>()?;
     let mut lock = lock_cpu::<System>()?;
@@ -587,6 +607,7 @@ pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
 }
 
 /// Implements [`Kernel::set_time`].
+#[cfg(feature = "system_time")]
 pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), TimeError> {
     expect_task_context::<System>()?;
     let mut lock = lock_cpu::<System>()?;
@@ -606,6 +627,7 @@ pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), 
 }
 
 /// Implements [`Kernel::adjust_time`].
+#[cfg(feature = "system_time")]
 pub(super) fn adjust_system_and_event_time<System: Kernel>(
     delta: Duration,
 ) -> Result<(), AdjustTimeError> {
@@ -736,6 +758,7 @@ fn mark_tick<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>) {
         .replace_with(&mut *lock, |old_value| {
             old_value.wrapping_add(duration_since_last_tick)
         });
+    #[cfg(feature = "system_time")]
     g_timeout
         .last_tick_sys_time
         .replace_with(&mut *lock, |old_value| {
@@ -878,6 +901,7 @@ fn saturating_duration_until_timeout<System: Kernel>(
 
 /// Calculate the duration before the specified timeout surpasses the user
 /// headroom zone (and enters the hard headroom zone).
+#[cfg(feature = "system_time")]
 fn saturating_duration_before_timeout_exhausting_user_headroom<System: Kernel>(
     timeout: &Timeout<System>,
     current_time: Time32,
