@@ -17,6 +17,7 @@
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
+#![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]
 #![feature(int_bits_const)]
 #![feature(arbitrary_enum_discriminant)]

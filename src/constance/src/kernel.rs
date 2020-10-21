@@ -122,6 +122,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > actually unnecessary in the current implementation, but allows
     /// > headroom for potential changes in the implementation.
     #[cfg(feature = "system_time")]
+    #[doc(cfg(feature = "system_time"))]
     fn time() -> Result<Time, TimeError>;
 
     /// Set the current [system time].
@@ -142,6 +143,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > actually unnecessary in the current implementation, but allows
     /// > headroom for potential changes in the implementation.
     #[cfg(feature = "system_time")]
+    #[doc(cfg(feature = "system_time"))]
     fn set_time(time: Time) -> Result<(), TimeError>;
 
     #[cfg_attr(doc, svgbobdoc::transform)]
@@ -239,6 +241,7 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > in control of the code that calls `adjust_time`, making the behavior
     /// > more predictable.
     #[cfg(feature = "system_time")]
+    #[doc(cfg(feature = "system_time"))]
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>;
 
     // TODO: get time resolution?
