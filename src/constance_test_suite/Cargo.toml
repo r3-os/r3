@@ -10,12 +10,18 @@ keywords = ["constance"]
 repository = "https://github.com/yvt/Constance"
 
 [features]
-default = ["tests_all"]
+default = ["tests_all", "full"]
 tests_all = []
 tests_selective = []
 
+# Constance's optional features
+full = [
+    "system_time",
+]
+system_time = ["constance/system_time"]
+
 [dependencies]
-constance = { path = "../constance", features = ["system_time"] }
+constance = { path = "../constance" }
 
 assert_matches = { version = "1.4.0" }
 staticvec = { version = "0.10.5", default-features = false }
