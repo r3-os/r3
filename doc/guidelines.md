@@ -57,6 +57,23 @@ Exceptions:
 - The `T` parameter of a container type or anything in which the semantics of the parameter is clear (e.g., `Mutex<System, T>`.
 - `F: FnOnce`
 
+## Documentation
+
+### Optional features should be documented properly (CC-DOC-OPT-FEATURES)
+
+All optional features of `constance` must be listed and explained in the crate-level documentation.
+
+In addition, every public item gated by such features must have [`#[doc(cfg(feature = ...))]` attribute](https://github.com/rust-lang/rust/issues/43781), which displays the required feature on the generated documentation.
+
+```rust
+/// Get the current [system time].
+///
+/// [system time]: crate#kernel-timing
+#[cfg(feature = "system_time")]
+#[doc(cfg(feature = "system_time"))]
+fn time() -> Result<Time, TimeError>;
+```
+
 ## Performance
 
 ### Unused features should not incur a runtime overhead (CC-PERF-UNUSED)
