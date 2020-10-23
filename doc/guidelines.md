@@ -56,3 +56,29 @@ Exceptions:
 
 - The `T` parameter of a container type or anything in which the semantics of the parameter is clear (e.g., `Mutex<System, T>`.
 - `F: FnOnce`
+
+## Performance
+
+### Unused features should not incur a runtime overhead (CC-PERF-UNUSED)
+
+The runtime overhead caused by unused features should be minimized or eliminated in one of the following ways:
+
+- In many cases, the compiler can simply optimize out unused code.
+
+  Example: If no startup hooks are defined, the compiler will simply remove the startup hook initialization loop because it can figure out that `STARTUP_HOOKS` has no elements.
+
+- If the usage of such features can be detected statically in a configuration macro (e.g., `constance::build!`), the macro should control the type choices based on that.
+
+  Examples:
+
+  - `constance_portkit::tickful::TickfulState` (used by timer drivers) chooses the optimal algorithm based on parameters.
+
+  - Kernel objects are defined statically and their control blocks are stored in static arrays.
+
+- If the above options are infeasible, expose either a `CfgBuilder` method or a Cargo feature to let downstream crates and application developers specify whether a feature should be compiled in.
+
+  Examples:
+
+  - The system clock is controlled by `system_time` feature. The system time is tracked by an internal variable that is updated on timer interrupts, and there's no hope of the compiler optimizing this out. It's impossible for `build!` to detect the usage of `System::time()`. The system clock is not tied to any particular kernel objects, so the software components dependent on the system clock might not have a configuration function. On the other hand, Cargo features are designed exactly for this use case.
+
+  - Application code can change task priorities at runtime. The maximum (lowest) priority affects the size of internal kernel structures, but it's impossible for `build!` to figure that out. Therefore, `CfgBuilder` exposes `num_task_priority_levels` method.
