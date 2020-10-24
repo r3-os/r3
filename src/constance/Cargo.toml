@@ -16,6 +16,11 @@ inline_syscall = []
 priority_boost = []
 system_time = []
 
+# Displays a "some features are disabled" warning in the documentation
+# when disabled so that the user can know some items are missing because of
+# that.
+_full = []
+
 [dependencies]
 assert_matches = { version = "1.4.0" }
 num-integer = { version = "0.1.42", default-features = false }

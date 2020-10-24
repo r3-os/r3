@@ -26,6 +26,10 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
 #![doc(include = "./common.md")]
+#![cfg_attr(
+    feature = "_full",
+    doc = r#"<style type="text/css">.disabled-feature-warning { display: none; }</style>"#
+)]
 #![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)
 
 // `array_item_from_fn!` requires `MaybeUninit`.

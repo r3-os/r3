@@ -15,6 +15,10 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 - The kernel is written in a target-independent way. The target-specific portion (called *a port*) is provided as a separate crate, which an application chooses and **combines with the kernel using the trait system**.
 - Leverages Rust's type safety for access control of kernel objects. Safe code can't access an object that it doesn't own.
 
+<!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
+<div class="admonition-follows"></div>
+<blockquote class="disabled-feature-warning"><p><span></span><code></code></p></blockquote>
+
 <div class="toc-header"></div>
 
 - [Note to Application Developers](#note-to-application-developers)
