@@ -228,7 +228,7 @@ pub mod kernel_tests {
         (mod task_take_interrupt_at_return {}, "task_take_interrupt_at_return"),
         #[cfg(feature = "system_time")]
         (mod time_adjust_event {}, "time_adjust_event"),
-        #[cfg(all(feature = "system_time", feature = "priority_boost"))]
+        #[cfg(feature = "priority_boost")]
         (mod time_adjust_limits {}, "time_adjust_limits"),
         (mod time_misc {}, "time_misc"),
         #[cfg(feature = "system_time")]

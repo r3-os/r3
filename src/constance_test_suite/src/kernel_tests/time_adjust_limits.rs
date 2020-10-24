@@ -35,7 +35,6 @@ impl<System: Kernel> App<System> {
 
 fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
-    System::set_time(Time::from_millis(0)).unwrap();
     D::app().task2.activate().unwrap();
     D::app().seq.expect_and_replace(2, 3);
 

@@ -44,11 +44,11 @@ fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
             System::set_time(Time::from_micros(0)),
             Err(constance::kernel::TimeError::BadContext)
         );
-        assert_eq!(
-            System::adjust_time(Duration::ZERO),
-            Err(constance::kernel::AdjustTimeError::BadContext)
-        );
     }
+    assert_eq!(
+        System::adjust_time(Duration::ZERO),
+        Err(constance::kernel::AdjustTimeError::BadContext)
+    );
     assert_eq!(
         System::sleep(Duration::from_micros(0)),
         Err(constance::kernel::SleepError::BadContext)
@@ -93,11 +93,11 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
             System::set_time(now),
             Err(constance::kernel::TimeError::BadContext)
         );
-        assert_eq!(
-            System::adjust_time(Duration::ZERO),
-            Err(constance::kernel::AdjustTimeError::BadContext)
-        );
     }
+    assert_eq!(
+        System::adjust_time(Duration::ZERO),
+        Err(constance::kernel::AdjustTimeError::BadContext)
+    );
     assert_eq!(
         System::sleep(Duration::from_micros(0)),
         Err(constance::kernel::SleepError::BadContext)
@@ -123,11 +123,11 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         now4_got
     };
 
+    // `adjust_time(0)` is no-op
+    System::adjust_time(Duration::ZERO).unwrap();
+
     #[cfg(feature = "system_time")]
     {
-        // `adjust_time(0)` is no-op
-        System::adjust_time(Duration::ZERO).unwrap();
-
         let now5 = now4_got;
         let now5_got = System::time().unwrap();
         log::trace!("time = {:?} (expected {:?})", now5_got, now5);

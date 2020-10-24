@@ -134,11 +134,11 @@ use core::{
 };
 
 #[cfg(feature = "system_time")]
-use super::{state::expect_task_context, AdjustTimeError, TimeError};
+use super::{state::expect_task_context, TimeError};
 use super::{
     task,
     utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
-    BadParamError, Kernel, UTicks,
+    AdjustTimeError, BadParamError, Kernel, UTicks,
 };
 #[cfg(feature = "system_time")]
 use crate::time::Time;
@@ -281,7 +281,6 @@ pub(super) const fn time32_from_duration(duration: Duration) -> Result<Time32, B
 
 /// Convert the negation of `duration` to `Time32`.
 #[inline]
-#[cfg(feature = "system_time")]
 pub(super) fn time32_from_neg_duration(duration: Duration) -> Result<Time32, BadParamError> {
     // Unlike `time32_from_duration`, there's no nice way to do this
     let duration = duration.as_micros();
@@ -294,7 +293,6 @@ pub(super) fn time32_from_neg_duration(duration: Duration) -> Result<Time32, Bad
 
 /// Convert `duration` to `Time32`. Negative values are wrapped around.
 #[inline]
-#[cfg(feature = "system_time")]
 pub(super) fn wrapping_time32_from_duration(duration: Duration) -> Time32 {
     duration.as_micros() as Time32
 }
@@ -627,7 +625,6 @@ pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), 
 }
 
 /// Implements [`Kernel::adjust_time`].
-#[cfg(feature = "system_time")]
 pub(super) fn adjust_system_and_event_time<System: Kernel>(
     delta: Duration,
 ) -> Result<(), AdjustTimeError> {
@@ -689,13 +686,17 @@ pub(super) fn adjust_system_and_event_time<System: Kernel>(
 
     // Update the current system time and the current event time
     let delta32 = wrapping_time32_from_duration(delta);
-    let delta64 = wrapping_time64_from_duration(delta);
     g_timeout
         .last_tick_time
         .replace_with(&mut *lock, |old_value| old_value.wrapping_add(delta32));
-    g_timeout
-        .last_tick_sys_time
-        .replace_with(&mut *lock, |old_value| old_value.wrapping_add(delta64));
+
+    #[cfg(feature = "system_time")]
+    {
+        let delta64 = wrapping_time64_from_duration(delta);
+        g_timeout
+            .last_tick_sys_time
+            .replace_with(&mut *lock, |old_value| old_value.wrapping_add(delta64));
+    }
 
     // Schedule the next tick
     let current_time = g_timeout.last_tick_time.get(&*lock);
@@ -901,7 +902,6 @@ fn saturating_duration_until_timeout<System: Kernel>(
 
 /// Calculate the duration before the specified timeout surpasses the user
 /// headroom zone (and enters the hard headroom zone).
-#[cfg(feature = "system_time")]
 fn saturating_duration_before_timeout_exhausting_user_headroom<System: Kernel>(
     timeout: &Timeout<System>,
     current_time: Time32,

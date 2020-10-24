@@ -237,8 +237,6 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > Also, the gap between the current time and the frontier is completely
     /// > in control of the code that calls `adjust_time`, making the behavior
     /// > more predictable.
-    #[cfg(feature = "system_time")]
-    #[doc(cfg(feature = "system_time"))]
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>;
 
     // TODO: get time resolution?
@@ -344,7 +342,6 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
         timeout::set_system_time::<Self>(time)
     }
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    #[cfg(feature = "system_time")]
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError> {
         timeout::adjust_system_and_event_time::<Self>(delta)
     }
