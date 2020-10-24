@@ -74,6 +74,12 @@ In addition, every public item gated by such features must have [`#[doc(cfg(feat
 fn time() -> Result<Time, TimeError>;
 ```
 
+## Testing
+
+### The CI configuration should cover a variety of combinations of optional features (CC-CI-OPT-FEATURES)
+
+We want to ensure the kernel can be built successfully under any combination of optional features (e.g., `system_time`). To this end, the CI configuration must run the test suite should run the test suite with various combinations of such features. At least, the test suite should run with each feature singled out (i.e., with other features disabled).
+
 ## Performance
 
 ### Unused features should not incur a runtime overhead (CC-PERF-UNUSED)
