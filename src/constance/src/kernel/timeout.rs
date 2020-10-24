@@ -133,17 +133,14 @@ use core::{
     sync::atomic::{AtomicU32, AtomicUsize, Ordering},
 };
 
-#[cfg(feature = "system_time")]
-use super::{state::expect_task_context, TimeError};
 use super::{
+    state::expect_task_context,
     task,
     utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
-    AdjustTimeError, BadParamError, Kernel, UTicks,
+    AdjustTimeError, BadParamError, Kernel, TimeError, UTicks,
 };
-#[cfg(feature = "system_time")]
-use crate::time::Time;
 use crate::{
-    time::Duration,
+    time::{Duration, Time},
     utils::{
         binary_heap::{BinaryHeap, BinaryHeapCtx},
         Init,
@@ -605,21 +602,34 @@ pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
 }
 
 /// Implements [`Kernel::set_time`].
-#[cfg(feature = "system_time")]
 pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), TimeError> {
     expect_task_context::<System>()?;
-    let mut lock = lock_cpu::<System>()?;
 
-    let (duration_since_last_tick, _) = duration_since_last_tick(lock.borrow_mut());
+    match () {
+        #[cfg(feature = "system_time")]
+        () => {
+            let mut lock = lock_cpu::<System>()?;
+            let (duration_since_last_tick, _) = duration_since_last_tick(lock.borrow_mut());
 
-    // Adjust `last_tick_sys_time` so that `system_time` will return the value
-    // equal to `new_sys_time`
-    let new_last_tick_sys_time =
-        time64_from_sys_time(new_sys_time).wrapping_sub(duration_since_last_tick as Time64);
+            // Adjust `last_tick_sys_time` so that `system_time` will return the value
+            // equal to `new_sys_time`
+            let new_last_tick_sys_time =
+                time64_from_sys_time(new_sys_time).wrapping_sub(duration_since_last_tick as Time64);
 
-    System::g_timeout()
-        .last_tick_sys_time
-        .replace(&mut *lock.borrow_mut(), new_last_tick_sys_time);
+            System::g_timeout()
+                .last_tick_sys_time
+                .replace(&mut *lock.borrow_mut(), new_last_tick_sys_time);
+        }
+
+        #[cfg(not(feature = "system_time"))]
+        () => {
+            // If `system_time` feature is disabled, the system time is not
+            // observable, so this function is no-op. It still needs to validate
+            // the current context and return an error as needed.
+            let _ = new_sys_time; // suppress "unused parameter"
+            lock_cpu::<System>()?;
+        }
+    }
 
     Ok(())
 }

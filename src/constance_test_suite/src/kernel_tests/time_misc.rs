@@ -1,11 +1,9 @@
 //! Validates error codes returned by time-related methods. Also, checks
 //! miscellaneous properties of such methods.
-#[cfg(feature = "system_time")]
-use constance::time::Time;
 use constance::{
     kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
-    time::Duration,
+    time::{Duration, Time},
 };
 use core::marker::PhantomData;
 
@@ -35,16 +33,15 @@ impl<System: Kernel> App<System> {
 fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Not a task context
     #[cfg(feature = "system_time")]
-    {
-        assert_eq!(
-            System::time(),
-            Err(constance::kernel::TimeError::BadContext)
-        );
-        assert_eq!(
-            System::set_time(Time::from_micros(0)),
-            Err(constance::kernel::TimeError::BadContext)
-        );
-    }
+    assert_eq!(
+        System::time(),
+        Err(constance::kernel::TimeError::BadContext)
+    );
+
+    assert_eq!(
+        System::set_time(Time::from_micros(0)),
+        Err(constance::kernel::TimeError::BadContext)
+    );
     assert_eq!(
         System::adjust_time(Duration::ZERO),
         Err(constance::kernel::AdjustTimeError::BadContext)
@@ -84,16 +81,15 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
     #[cfg(feature = "system_time")]
-    {
-        assert_eq!(
-            System::time(),
-            Err(constance::kernel::TimeError::BadContext)
-        );
-        assert_eq!(
-            System::set_time(now),
-            Err(constance::kernel::TimeError::BadContext)
-        );
-    }
+    assert_eq!(
+        System::time(),
+        Err(constance::kernel::TimeError::BadContext)
+    );
+
+    assert_eq!(
+        System::set_time(Time::from_millis(0)),
+        Err(constance::kernel::TimeError::BadContext)
+    );
     assert_eq!(
         System::adjust_time(Duration::ZERO),
         Err(constance::kernel::AdjustTimeError::BadContext)

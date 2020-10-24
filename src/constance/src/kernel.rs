@@ -3,10 +3,8 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::{fmt, marker::PhantomData, mem::forget, num::NonZeroUsize, ops::Range};
 
-#[cfg(feature = "system_time")]
-use crate::time::Time;
 use crate::{
-    time::Duration,
+    time::{Duration, Time},
     utils::{binary_heap::VecLike, BinUInteger, Init},
 };
 
@@ -139,8 +137,6 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > **Rationale:** This restriction originates from μITRON4.0. It's
     /// > actually unnecessary in the current implementation, but allows
     /// > headroom for potential changes in the implementation.
-    #[cfg(feature = "system_time")]
-    #[doc(cfg(feature = "system_time"))]
     fn set_time(time: Time) -> Result<(), TimeError>;
 
     #[cfg_attr(doc, svgbobdoc::transform)]
@@ -337,7 +333,6 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
         timeout::system_time::<Self>()
     }
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    #[cfg(feature = "system_time")]
     fn set_time(time: Time) -> Result<(), TimeError> {
         timeout::set_system_time::<Self>(time)
     }
