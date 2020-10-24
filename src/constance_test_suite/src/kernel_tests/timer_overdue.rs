@@ -19,11 +19,11 @@
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Task, Timer},
     prelude::*,
-    time::{Duration, Time},
+    time::Duration,
 };
 
 use super::Driver;
-use crate::utils::SeqTracker;
+use crate::utils::{time::KernelTimeExt, SeqTracker};
 
 pub struct App<System> {
     timer: Timer<System>,
@@ -69,21 +69,13 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     System::park().unwrap();
     seq.expect_and_replace(4, 5);
 
-    let now = Time::from_millis(1300);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected {:?})", now_got, now);
-    assert!(now_got.as_micros() >= now.as_micros());
-    assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    System::assert_time_ms_range(1300..1400);
 
     // The final tick, which takes place on time
     System::park().unwrap();
     seq.expect_and_replace(6, 7);
 
-    let now = Time::from_millis(1600);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected {:?})", now_got, now);
-    assert!(now_got.as_micros() >= now.as_micros());
-    assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    System::assert_time_ms_range(1600..1700);
 
     timer.stop().unwrap();
 

@@ -1,6 +1,9 @@
+#[cfg(feature = "priority_boost")]
 use core::sync::atomic::Ordering;
 
-use super::{task, utils, BadContextError, BoostPriorityError, Kernel};
+#[cfg(feature = "priority_boost")]
+use super::{task, utils};
+use super::{BadContextError, BoostPriorityError, Kernel};
 
 /// If the current context is not a task context, return `Err(BadContext)`.
 pub(super) fn expect_task_context<System: Kernel>() -> Result<(), BadContextError> {
@@ -21,6 +24,7 @@ pub(super) fn expect_waitable_context<System: Kernel>() -> Result<(), BadContext
 }
 
 /// Implements `Kernel::boost_priority`.
+#[cfg(feature = "priority_boost")]
 pub(super) fn boost_priority<System: Kernel>() -> Result<(), BoostPriorityError> {
     if System::is_cpu_lock_active()
         || !System::is_task_context()
@@ -36,6 +40,7 @@ pub(super) fn boost_priority<System: Kernel>() -> Result<(), BoostPriorityError>
 }
 
 /// Implements `Kernel::unboost_priority`.
+#[cfg(feature = "priority_boost")]
 pub(super) fn unboost_priority<System: Kernel>() -> Result<(), BoostPriorityError> {
     if !System::is_task_context() || !System::is_priority_boost_active() {
         Err(BoostPriorityError::BadContext)
@@ -51,4 +56,12 @@ pub(super) fn unboost_priority<System: Kernel>() -> Result<(), BoostPriorityErro
         task::unlock_cpu_and_check_preemption::<System>(lock);
         Ok(())
     }
+}
+
+/// Implements `Kernel::unboost_priority`.
+#[cfg(not(feature = "priority_boost"))]
+pub(super) fn unboost_priority<System: Kernel>() -> Result<(), BoostPriorityError> {
+    // Priority Boost is disabled statically, so this function will always
+    // return `BadContext`
+    Err(BoostPriorityError::BadContext)
 }

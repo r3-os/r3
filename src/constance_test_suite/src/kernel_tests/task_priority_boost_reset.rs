@@ -36,5 +36,6 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Activate Priority Boost. This should succeed in both runs because
     // it's automatically deactivated on each run.
+    #[cfg(feature = "priority_boost")]
     System::boost_priority().unwrap();
 }

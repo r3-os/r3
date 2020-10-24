@@ -15,6 +15,10 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 - The kernel is written in a target-independent way. The target-specific portion (called *a port*) is provided as a separate crate, which an application chooses and **combines with the kernel using the trait system**.
 - Leverages Rust's type safety for access control of kernel objects. Safe code can't access an object that it doesn't own.
 
+<!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
+<div class="admonition-follows"></div>
+<blockquote class="disabled-feature-warning"><p><span></span><code></code></p></blockquote>
+
 <div class="toc-header"></div>
 
 - [Note to Application Developers](#note-to-application-developers)
@@ -651,12 +655,19 @@ Kernel {
 
 # Cargo Features
 
- - **`chrono`**: Enables conversion between our [duration] and [timetamp] types and `::chrono`'s types.
+- **`chrono`**: Enables conversion between our [duration] and [timetamp] types and `::chrono`'s types.
 - **`inline_syscall`**: Allows (but does not force) inlining for all application-facing methods. Enabling this feature might lower the latency of system calls but there are the following downsides: (1) The decision of inlining is driven by the compiler's built-in heuristics, which takes many factors into consideration. Therefore, the performance improvement (or deterioration) varies unpredictably depending on the global structure of your application and the compiler version used, making it harder to design the system to meet real-time requirements. (2) Inlining increases the code working set size and can make the code run even slower. This is especially likely to happen on an execute-in-place (XIP) system with low-speed code memory such as an SPI flash.
 
+## Kernel Features
+
+Enabling the following features might affect the kernel's runtime peformance and memory usage.
+
+- **`priority_boost`**: Enables [Priority Boost].
+- **`system_time`**: Enables the tracking of a global system time.
 
 [duration]: crate::time::Duration
 [timetamp]: crate::time::Time
+[Priority Boost]: #system-states
 
 <!--
 FIXME: Work-around for `svgbobdoc` not supporting `#[doc(include = ...)]`

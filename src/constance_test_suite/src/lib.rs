@@ -100,6 +100,7 @@ pub mod kernel_tests {
             [$dollar:tt] // get a `$` token
             $(
                 // Test case definition
+                $(#[cfg( $($cfg:tt)* )])*
                 (mod $name_ident:ident {}, $name_str:literal)
             ),*$(,)*
         ) => {
@@ -109,6 +110,16 @@ pub mod kernel_tests {
                     feature = "tests_all",
                     all(feature = "tests_selective", kernel_test = $name_str)
                 ))]
+                #[cfg(all( $($( $cfg )*),* ))]
+                pub mod $name_ident;
+
+                /// This test case is not supported under the current feature set.
+                #[cfg(any(
+                    feature = "tests_all",
+                    all(feature = "tests_selective", kernel_test = $name_str)
+                ))]
+                #[cfg(not(all( $($( $cfg )*),* )))]
+                #[path = "disabled.rs"]
                 pub mod $name_ident;
             )*
 
@@ -207,6 +218,7 @@ pub mod kernel_tests {
         (mod task_cpu_lock_reset {}, "task_cpu_lock_reset"),
         (mod task_misc {}, "task_misc"),
         (mod task_park {}, "task_park"),
+        #[cfg(feature = "priority_boost")]
         (mod task_park_priority_boost {}, "task_park_priority_boost"),
         (mod task_park_reset {}, "task_park_reset"),
         (mod task_priority_boost_reset {}, "task_priority_boost_reset"),
@@ -215,9 +227,11 @@ pub mod kernel_tests {
         (mod task_set_priority {}, "task_set_priority"),
         (mod task_take_interrupt_at_return {}, "task_take_interrupt_at_return"),
         (mod time_adjust_event {}, "time_adjust_event"),
+        #[cfg(feature = "priority_boost")]
         (mod time_adjust_limits {}, "time_adjust_limits"),
         (mod time_misc {}, "time_misc"),
         (mod time_set_event {}, "time_set_event"),
+        #[cfg(feature = "system_time")]
         (mod time_stress {}, "time_stress"),
         (mod timer_misc {}, "timer_misc"),
         (mod timer_overdue {}, "timer_overdue"),

@@ -10,9 +10,17 @@ keywords = ["constance"]
 repository = "https://github.com/yvt/Constance"
 
 [features]
-default = ["tests_all"]
+default = ["tests_all", "full"]
 tests_all = []
 tests_selective = []
+
+# Constance's optional features
+full = [
+    "priority_boost",
+    "system_time",
+]
+priority_boost = ["constance/priority_boost"]
+system_time = ["constance/system_time"]
 
 [dependencies]
 constance = { path = "../constance" }

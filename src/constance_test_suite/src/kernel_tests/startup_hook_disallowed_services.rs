@@ -25,6 +25,7 @@ fn hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     assert!(System::has_cpu_lock());
 
     // Disallowed in a non-task context
+    #[cfg(feature = "priority_boost")]
     assert_eq!(
         System::boost_priority(),
         Err(kernel::BoostPriorityError::BadContext),

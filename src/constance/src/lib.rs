@@ -17,6 +17,7 @@
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
+#![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]
 #![feature(int_bits_const)]
 #![feature(arbitrary_enum_discriminant)]
@@ -25,6 +26,10 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]
 #![doc(include = "./common.md")]
+#![cfg_attr(
+    feature = "_full",
+    doc = r#"<style type="text/css">.disabled-feature-warning { display: none; }</style>"#
+)]
 #![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)
 
 // `array_item_from_fn!` requires `MaybeUninit`.

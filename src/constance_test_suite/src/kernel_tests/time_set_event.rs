@@ -17,11 +17,10 @@
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Task},
     prelude::*,
-    time::{Duration, Time},
 };
 
 use super::Driver;
-use crate::utils::SeqTracker;
+use crate::utils::{time::KernelTimeExt, SeqTracker};
 
 pub struct App<System> {
     task2: Task<System>,
@@ -53,13 +52,13 @@ impl<System: Kernel> App<System> {
 
 fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
-    System::set_time(Time::from_millis(0)).unwrap();
+    System::set_time_ms(0);
     D::app().task2.activate().unwrap();
     D::app().task3.activate().unwrap();
     D::app().seq.expect_and_replace(3, 4);
 
     // Adjust the system time while `task2` and `task3` are sleeping.
-    System::set_time(Time::from_millis(300)).unwrap();
+    System::set_time_ms(300);
 
     D::app().seq.expect_and_replace(4, 5);
 }
@@ -68,23 +67,12 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
     // Start sleeping at system time 0ms
-    System::sleep(Duration::from_millis(300)).unwrap();
+    System::sleep_ms(300);
 
     D::app().seq.expect_and_replace(6, 7);
 
     // Sleeping should conclude at system time 600ms
-    let now = Time::from_millis(600);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected = {:?})", now_got, now);
-    assert!(
-        now_got
-            .duration_since(now)
-            .unwrap()
-            .checked_abs()
-            .unwrap()
-            .as_millis()
-            < 50
-    );
+    System::assert_time_ms_range(550..700);
 
     D::success();
 }
@@ -93,21 +81,10 @@ fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
 
     // Start sleeping at system time 0ms
-    System::sleep(Duration::from_millis(100)).unwrap();
+    System::sleep_ms(100);
 
     D::app().seq.expect_and_replace(5, 6);
 
     // Sleeping should conclude at system time 400ms
-    let now = Time::from_millis(400);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected = {:?})", now_got, now);
-    assert!(
-        now_got
-            .duration_since(now)
-            .unwrap()
-            .checked_abs()
-            .unwrap()
-            .as_millis()
-            < 50
-    );
+    System::assert_time_ms_range(350..500);
 }

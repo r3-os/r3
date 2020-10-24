@@ -8,6 +8,15 @@ description = "Simulation environment for running Constance on a hosted environm
 keywords = ["constance", "simulator"]
 repository = "https://github.com/yvt/Constance"
 
+[features]
+# When testing, all optional features of Constance are enabled by default.
+# To test a specific combination of features, do this:
+#
+#     cargo test -p constance_port_std -Zpackage-features \
+#         --no-default-features --features constance_test_suite/system_time,...
+#
+default = ["constance_test_suite/full"]
+
 [dependencies]
 constance = { path = "../constance" }
 
@@ -30,8 +39,10 @@ features = ["nightly"]
 git = "https://github.com/yvt/try-lock.git"
 rev = "cf06bc26a49d511bec22aa36fb68a882e8713d3b"
 
-[dev-dependencies]
-constance_test_suite = { path = "../constance_test_suite" }
+[dev-dependencies.constance_test_suite]
+path = "../constance_test_suite"
+default-features = false
+features = ["tests_all"]
 
 [target."cfg(unix)".dependencies]
 libc = "0.2.71"

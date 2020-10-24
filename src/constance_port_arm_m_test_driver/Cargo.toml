@@ -44,6 +44,8 @@ path = "../constance_test_suite"
 default-features = false
 features = [
     # compile the test case specified by `CONSTANCE_TEST`
-    "tests_selective"
+    "tests_selective",
+    # enable all of Constance's optional features
+    "full",
 ]
 optional = true

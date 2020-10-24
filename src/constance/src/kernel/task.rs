@@ -1,7 +1,7 @@
 //! Tasks
-use core::{
-    cell::UnsafeCell, convert::TryFrom, fmt, hash, marker::PhantomData, mem, sync::atomic::Ordering,
-};
+#[cfg(feature = "priority_boost")]
+use core::sync::atomic::Ordering;
+use core::{cell::UnsafeCell, convert::TryFrom, fmt, hash, marker::PhantomData, mem};
 use num_traits::ToPrimitive;
 
 use super::{
@@ -64,11 +64,10 @@ use self::readyqueue::Queue as _;
 ///
 /// [thread]: crate#threads
 /// [activated]: Task::activate
+#[doc(include = "../common.md")]
 #[repr(transparent)]
 pub struct Task<System>(Id, PhantomData<System>);
 
-// FIXME: `svgbobdoc` doesn't like `#[doc(include = ...)]`
-#[doc(include = "../common.md")]
 impl<System> Clone for Task<System> {
     fn clone(&self) -> Self {
         Self(self.0, self.1)
@@ -515,10 +514,13 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
         utils::assume_cpu_lock::<System>()
     };
 
-    // If Priority Boost is active, deactivate it.
-    System::state()
-        .priority_boost
-        .store(false, Ordering::Release);
+    #[cfg(feature = "priority_boost")]
+    {
+        // If Priority Boost is active, deactivate it.
+        System::state()
+            .priority_boost
+            .store(false, Ordering::Release);
+    }
 
     let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
 

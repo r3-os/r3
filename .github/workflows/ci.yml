@@ -46,6 +46,7 @@ jobs:
         # TODO: Add `macos-10.15` after addressing the time inaccuracy that
         #       causes some tests to fail
         os: [ubuntu-20.04, windows-2019]
+        features: [all-features]
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -74,6 +75,50 @@ jobs:
           args: --workspace
         env:
           RUST_LOG: debug
+
+  # Run tests on the host system with a subset of optional features enabled
+  test-hosted-subset:
+    name: Test
+    needs: check
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+        features:
+          - ""
+          - priority_boost
+          - system_time
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Install Dependencies (Linux)
+        run: sudo apt-get install libusb-1.0-0-dev libudev-dev
+
+      - name: Convert Feature List to Cargo Parameter
+        run: |
+          features='${{ matrix.features }}'
+          if [ "$features" ]; then
+            features="--features constance_test_suite/$features"
+          fi
+          echo "features_param=$features" >> $GITHUB_ENV
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          # `-Zpackage-features` is an unstable option that allows specifying a
+          # `--features` + `-p` combination.
+          # <https://github.com/rust-lang/cargo/issues/5364>
+          args: -Zpackage-features -p constance_port_std --no-default-features ${{ env.features_param }}
+        env:
+          RUST_LOG: debug
+
 
   # Run tests on freestanding targets
   test-freestanding-arm:

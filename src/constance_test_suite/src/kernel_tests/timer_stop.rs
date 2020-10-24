@@ -17,11 +17,11 @@
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Task, Timer},
     prelude::*,
-    time::{Duration, Time},
+    time::Duration,
 };
 
 use super::Driver;
-use crate::utils::SeqTracker;
+use crate::utils::{time::KernelTimeExt, SeqTracker};
 
 pub struct App<System> {
     timer: Timer<System>,
@@ -53,20 +53,16 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     let App { seq, timer, .. } = D::app();
 
     // Expected current time
-    let mut now = Time::from_millis(0);
+    let mut now = 0;
 
     seq.expect_and_replace(0, 1);
 
-    let t = Duration::from_millis(400);
-    System::sleep(t).unwrap();
-    now += t;
+    System::sleep_ms(400);
+    now += 400;
 
     macro_rules! check_time {
         () => {
-            let now_got = System::time().unwrap();
-            log::debug!("time = {:?} (expected {:?})", now_got, now);
-            assert!(now_got.as_micros() >= now.as_micros());
-            assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+            System::assert_time_ms_range(now..now + 100);
         };
     }
 
@@ -75,18 +71,16 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     seq.expect_and_replace(1, 2);
     timer.set_delay(Some(Duration::from_millis(500))).unwrap();
 
-    let t = Duration::from_millis(200);
-    System::sleep(t).unwrap();
-    now += t;
+    System::sleep_ms(200);
+    now += 200;
 
     // Suspend the timer
     seq.expect_and_replace(2, 3);
     timer.stop().unwrap();
     check_time!();
 
-    let t = Duration::from_millis(400);
-    System::sleep(t).unwrap();
-    now += t;
+    System::sleep_ms(400);
+    now += 400;
 
     // Resume the timer
     seq.expect_and_replace(3, 4);
@@ -96,7 +90,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Tick
     System::park().unwrap();
     seq.expect_and_replace(5, 6);
-    now += Duration::from_millis(300);
+    now += 300;
     check_time!();
 
     D::success();

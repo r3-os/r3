@@ -25,6 +25,22 @@ Cargo features `tests_all` and `tests_selective` and an environment variable `CO
 - `tests_all` (enabled by default) enables all test cases.
 - `tests_selective` enables the test cases specified by `CONSTANCE_TEST`. `CONSTANCE_TEST` should contain a value like `kernel_tests::basic`.
 
+Constance exposes some optional features through Cargo features (e.g., `system_time`). They are all disabled by default. This crate provides Cargo features of the same names, which enable the respective features of Constance as well as corresponding test cases. `full` Cargo feature enables all of such features (*enabled by default*).
+
+<div class="admonition-follows"></div>
+
+> **Warning:** When building test cases, you should not directly enable the optional features of `constance` (unless they are needed by your test driver or something else) because they will not affect the set of enabled test cases.
+>
+> ```shell
+> # good: enables the test cases dependent on a system time
+> cargo test -p constance_port_std --no-default-features \
+>   --features constance_test_suite/system_time
+>
+> # bad: doesn't enable any additional test cases
+> cargo test -p constance_port_std --no-default-features \
+>   --features constance/system_time
+> ```
+
 ## Kernel Tests
 
 [`kernel_tests`] contains a set of test cases, each of which is contained in its own module such as [`basic`]. Each module contains a struct named `App<System>` and its constructor `App::new`, which is [a configuration function]. `App::new` takes exactly one generic parameter `D` taking a type implementing [`Driver`]`<App>`, which must be supplied by a test driver.

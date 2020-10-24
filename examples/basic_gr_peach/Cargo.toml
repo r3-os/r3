@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 constance_support_rza1 = { path = "../../src/constance_support_rza1", features = ["semver-exempt"] }
 constance_port_arm = { path = "../../src/constance_port_arm" }
-constance = { path = "../../src/constance" }
+constance = { path = "../../src/constance", features = ["system_time"] }
 
 rtt-target = { version = "0.2.0" }
 rza1 = { version = "0.2.0", features = ["cpg", "gpio", "scif"] }

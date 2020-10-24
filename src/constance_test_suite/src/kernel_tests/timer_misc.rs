@@ -1,8 +1,10 @@
 //! Checks miscellaneous properties of `Timer`.
+#[cfg(feature = "system_time")]
+use constance::time::Time;
 use constance::{
     kernel::{self, cfg::CfgBuilder, Hunk, Task, Timer},
     prelude::*,
-    time::{Duration, Time},
+    time::Duration,
 };
 use core::num::NonZeroUsize;
 use wyhash::WyHash;
@@ -89,21 +91,27 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     System::park().unwrap();
     seq.expect_and_replace(1, 2);
 
-    let now = Time::from_millis(100);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected {:?})", now_got, now);
-    assert!(now_got.as_micros() >= now.as_micros());
-    assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    #[cfg(feature = "system_time")]
+    {
+        let now = Time::from_millis(100);
+        let now_got = System::time().unwrap();
+        log::trace!("time = {:?} (expected {:?})", now_got, now);
+        assert!(now_got.as_micros() >= now.as_micros());
+        assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    }
 
     // `timer1` wake-up time
     System::park().unwrap();
     seq.expect_and_replace(3, 4);
 
-    let now = Time::from_millis(200);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected {:?})", now_got, now);
-    assert!(now_got.as_micros() >= now.as_micros());
-    assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    #[cfg(feature = "system_time")]
+    {
+        let now = Time::from_millis(200);
+        let now_got = System::time().unwrap();
+        log::trace!("time = {:?} (expected {:?})", now_got, now);
+        assert!(now_got.as_micros() >= now.as_micros());
+        assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    }
 
     D::success();
 }
@@ -142,6 +150,7 @@ fn timer1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     assert_eq!(hash(timer2), hash(timer2));
 
     // Disallowed in a non-task context
+    #[cfg(feature = "priority_boost")]
     assert_eq!(
         System::boost_priority(),
         Err(kernel::BoostPriorityError::BadContext),

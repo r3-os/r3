@@ -64,6 +64,7 @@ fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
         unsafe { D::app().int.unwrap().set_priority_unchecked(1) },
         Err(kernel::SetInterruptLinePriorityError::BadContext),
     );
+    #[cfg(feature = "priority_boost")]
     assert_eq!(
         System::boost_priority(),
         Err(kernel::BoostPriorityError::BadContext),

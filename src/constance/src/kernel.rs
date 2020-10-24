@@ -1,12 +1,7 @@
 //! The RTOS kernel
-use core::{
-    fmt,
-    marker::PhantomData,
-    mem::forget,
-    num::NonZeroUsize,
-    ops::Range,
-    sync::atomic::{AtomicBool, Ordering},
-};
+#[cfg(feature = "priority_boost")]
+use core::sync::atomic::{AtomicBool, Ordering};
+use core::{fmt, marker::PhantomData, mem::forget, num::NonZeroUsize, ops::Range};
 
 use crate::{
     time::{Duration, Time},
@@ -85,6 +80,8 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     ///
     /// [Priority Boost]: crate#system-states
     /// [`BadContext`]: CpuLockError::BadContext
+    #[cfg(feature = "priority_boost")]
+    #[doc(cfg(feature = "priority_boost"))]
     fn boost_priority() -> Result<(), BoostPriorityError>;
 
     /// Deactivate [Priority Boost].
@@ -119,6 +116,8 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > **Rationale:** This restriction originates from μITRON4.0. It's
     /// > actually unnecessary in the current implementation, but allows
     /// > headroom for potential changes in the implementation.
+    #[cfg(feature = "system_time")]
+    #[doc(cfg(feature = "system_time"))]
     fn time() -> Result<Time, TimeError>;
 
     /// Set the current [system time].
@@ -306,6 +305,7 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[cfg(feature = "priority_boost")]
     fn boost_priority() -> Result<(), BoostPriorityError> {
         state::boost_priority::<Self>()
     }
@@ -316,11 +316,19 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     }
 
     #[inline]
+    #[cfg(feature = "priority_boost")]
     fn is_priority_boost_active() -> bool {
         Self::state().priority_boost.load(Ordering::Relaxed)
     }
 
+    #[inline]
+    #[cfg(not(feature = "priority_boost"))]
+    fn is_priority_boost_active() -> bool {
+        false
+    }
+
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[cfg(feature = "system_time")]
     fn time() -> Result<Time, TimeError> {
         timeout::system_time::<Self>()
     }
@@ -918,6 +926,7 @@ pub struct State<
     /// The task ready queue.
     task_ready_queue: TaskReadyQueue,
 
+    #[cfg(feature = "priority_boost")]
     /// `true` if Priority Boost is active.
     priority_boost: AtomicBool,
 
@@ -936,6 +945,7 @@ impl<
     const INIT: Self = Self {
         running_task: utils::CpuLockCell::new(None),
         task_ready_queue: Init::INIT,
+        #[cfg(feature = "priority_boost")]
         priority_boost: AtomicBool::new(false),
         timeout: Init::INIT,
     };
@@ -953,7 +963,15 @@ impl<
         f.debug_struct("State")
             .field("running_task", &self.running_task.get_and_debug_fmt())
             .field("task_ready_queue", &self.task_ready_queue)
-            .field("priority_boost", &self.priority_boost)
+            .field(
+                "priority_boost",
+                match () {
+                    #[cfg(feature = "priority_boost")]
+                    () => &self.priority_boost,
+                    #[cfg(not(feature = "priority_boost"))]
+                    () => &(),
+                },
+            )
             .field("timeout", &self.timeout)
             .finish()
     }
