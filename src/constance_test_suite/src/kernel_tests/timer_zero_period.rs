@@ -36,11 +36,11 @@
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Task, Timer},
     prelude::*,
-    time::{Duration, Time},
+    time::Duration,
 };
 
 use super::Driver;
-use crate::utils::SeqTracker;
+use crate::utils::{time::KernelTimeExt, SeqTracker};
 
 pub struct App<System> {
     timer: Timer<System>,
@@ -77,21 +77,13 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     System::park().unwrap();
     seq.expect_and_replace(3, 4);
 
-    let now = Time::from_millis(0);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected {:?})", now_got, now);
-    assert!(now_got.as_micros() >= now.as_micros());
-    assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    System::assert_time_ms_range(0..100);
 
     // The next tick
     System::park().unwrap();
     seq.expect_and_replace(5, 6);
 
-    let now = Time::from_millis(400);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected {:?})", now_got, now);
-    assert!(now_got.as_micros() >= now.as_micros());
-    assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    System::assert_time_ms_range(400..500);
 
     // Set the period to zero again
     timer.set_period(Some(Duration::ZERO)).unwrap();
@@ -101,14 +93,10 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     System::park().unwrap();
     seq.expect_and_replace(9, 10);
 
-    let now = Time::from_millis(400);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected {:?})", now_got, now);
-    assert!(now_got.as_micros() >= now.as_micros());
-    assert!(now_got.as_micros() <= now.as_micros() + 100_000);
+    System::assert_time_ms_range(400..500);
 
     // Make sure that was the last tick
-    System::sleep(Duration::from_millis(500)).unwrap();
+    System::sleep_ms(500);
 
     D::success();
 }

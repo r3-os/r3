@@ -226,23 +226,17 @@ pub mod kernel_tests {
         (mod task_queue_fifo {}, "task_queue_fifo"),
         (mod task_set_priority {}, "task_set_priority"),
         (mod task_take_interrupt_at_return {}, "task_take_interrupt_at_return"),
-        #[cfg(feature = "system_time")]
         (mod time_adjust_event {}, "time_adjust_event"),
         #[cfg(feature = "priority_boost")]
         (mod time_adjust_limits {}, "time_adjust_limits"),
         (mod time_misc {}, "time_misc"),
-        #[cfg(feature = "system_time")]
         (mod time_set_event {}, "time_set_event"),
         #[cfg(feature = "system_time")]
         (mod time_stress {}, "time_stress"),
         (mod timer_misc {}, "timer_misc"),
-        #[cfg(feature = "system_time")]
         (mod timer_overdue {}, "timer_overdue"),
-        #[cfg(feature = "system_time")]
         (mod timer_periodic {}, "timer_periodic"),
-        #[cfg(feature = "system_time")]
         (mod timer_stop {}, "timer_stop"),
-        #[cfg(feature = "system_time")]
         (mod timer_zero_period {}, "timer_zero_period"),
     }
 

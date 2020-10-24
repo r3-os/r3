@@ -16,11 +16,11 @@
 use constance::{
     kernel::{cfg::CfgBuilder, Hunk, Task},
     prelude::*,
-    time::{Duration, Time},
+    time::Duration,
 };
 
 use super::Driver;
-use crate::utils::SeqTracker;
+use crate::utils::{time::KernelTimeExt, SeqTracker};
 
 pub struct App<System> {
     task2: Task<System>,
@@ -52,7 +52,7 @@ impl<System: Kernel> App<System> {
 
 fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
-    System::set_time(Time::from_millis(0)).unwrap();
+    System::set_time_ms(0);
     D::app().task2.activate().unwrap();
     D::app().task3.activate().unwrap();
     D::app().seq.expect_and_replace(3, 4);
@@ -68,19 +68,12 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
     // Start sleeping at system time 0ms
-    System::sleep(Duration::from_millis(600)).unwrap();
+    System::sleep_ms(600);
 
     D::app().seq.expect_and_replace(5, 6);
 
     // Sleeping should conclude at system time 600ms
-    let now = Time::from_millis(600);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected = {:?})", now_got, now);
-
-    // `now <= now_got < now + timing_error`
-    let delta = now_got.duration_since(now);
-    assert!(!delta.unwrap().is_negative());
-    assert!(delta.unwrap().as_millis() < 100);
+    System::assert_time_ms_range(600..700);
 
     D::success();
 }
@@ -89,18 +82,11 @@ fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
 
     // Start sleeping at system time 0ms
-    System::sleep(Duration::from_millis(100)).unwrap();
+    System::sleep_ms(100);
 
     D::app().seq.expect_and_replace(4, 5);
 
     // Sleeping should conclude at system time 300ms (late by 200ms)
     // because it jumped to 300ms
-    let now = Time::from_millis(300);
-    let now_got = System::time().unwrap();
-    log::trace!("time = {:?} (expected = {:?})", now_got, now);
-
-    // `now <= now_got < now + timing_error`
-    let delta = now_got.duration_since(now);
-    assert!(!delta.unwrap().is_negative());
-    assert!(delta.unwrap().as_millis() < 100);
+    System::assert_time_ms_range(300..400);
 }

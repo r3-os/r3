@@ -4,11 +4,11 @@
 use constance::{
     kernel::{cfg::CfgBuilder, AdjustTimeError, Hunk, Task, TIME_USER_HEADROOM},
     prelude::*,
-    time::{Duration, Time},
+    time::Duration,
 };
 
 use super::Driver;
-use crate::utils::SeqTracker;
+use crate::utils::{time::KernelTimeExt, SeqTracker};
 
 pub struct App<System> {
     task2: Task<System>,
@@ -85,7 +85,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
     // Create a timeout scheduled at 1000ms
-    System::sleep(Duration::from_millis(1000)).unwrap();
+    System::sleep_ms(1000);
 
     D::app().seq.expect_and_replace(4, 5);
 

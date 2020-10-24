@@ -5,6 +5,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 pub(crate) mod benchmark;
 pub(crate) mod compute;
 mod sort;
+pub(crate) mod time;
 mod trig;
 
 /// An atomic counter for checking an execution sequence.
