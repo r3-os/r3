@@ -86,6 +86,7 @@ jobs:
         os: [ubuntu-20.04]
         features:
           - ""
+          - priority_boost
           - system_time
     steps:
       - name: Checkout

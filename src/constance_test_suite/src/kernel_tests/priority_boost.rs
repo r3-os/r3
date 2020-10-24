@@ -25,6 +25,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
+#[cfg(feature = "priority_boost")]
 fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     assert!(!System::is_priority_boost_active());
 
@@ -76,6 +77,20 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     unsafe { System::release_cpu_lock() }.unwrap();
 
     assert!(!System::is_priority_boost_active());
+
+    D::success();
+}
+
+#[cfg(not(feature = "priority_boost"))]
+fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+    // Priority Boost is always inactive when it's statically disabled
+    assert!(!System::is_priority_boost_active());
+
+    // Can't deactivate Priority Boost because it's already deactivated
+    assert_eq!(
+        unsafe { System::unboost_priority() },
+        Err(constance::kernel::BoostPriorityError::BadContext),
+    );
 
     D::success();
 }

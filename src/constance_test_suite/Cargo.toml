@@ -16,8 +16,10 @@ tests_selective = []
 
 # Constance's optional features
 full = [
+    "priority_boost",
     "system_time",
 ]
+priority_boost = ["constance/priority_boost"]
 system_time = ["constance/system_time"]
 
 [dependencies]

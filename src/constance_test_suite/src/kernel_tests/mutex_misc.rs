@@ -141,31 +141,34 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     );
     unsafe { System::release_cpu_lock().unwrap() };
 
-    // Disallowed in a task, non-waitable context
-    System::boost_priority().unwrap();
-    assert_eq!(
-        m1.unlock(),
-        Err(constance::kernel::UnlockMutexError::BadContext)
-    );
-    assert_eq!(
-        m1.lock(),
-        Err(constance::kernel::LockMutexError::BadContext)
-    );
-    assert_eq!(
-        m1.lock_timeout(Duration::ZERO),
-        Err(constance::kernel::LockMutexTimeoutError::BadContext)
-    );
+    #[cfg(feature = "priority_boost")]
+    {
+        // Disallowed in a task, non-waitable context
+        System::boost_priority().unwrap();
+        assert_eq!(
+            m1.unlock(),
+            Err(constance::kernel::UnlockMutexError::BadContext)
+        );
+        assert_eq!(
+            m1.lock(),
+            Err(constance::kernel::LockMutexError::BadContext)
+        );
+        assert_eq!(
+            m1.lock_timeout(Duration::ZERO),
+            Err(constance::kernel::LockMutexTimeoutError::BadContext)
+        );
 
-    // Allowed in a task, non-waitable context
-    m1.try_lock().unwrap();
-    assert_eq!(m1.is_locked(), Ok(true));
-    assert_eq!(
-        m1.mark_consistent(),
-        Err(constance::kernel::MarkConsistentMutexError::BadObjectState)
-    );
-    unsafe { System::unboost_priority().unwrap() };
+        // Allowed in a task, non-waitable context
+        m1.try_lock().unwrap();
+        assert_eq!(m1.is_locked(), Ok(true));
+        assert_eq!(
+            m1.mark_consistent(),
+            Err(constance::kernel::MarkConsistentMutexError::BadObjectState)
+        );
+        unsafe { System::unboost_priority().unwrap() };
 
-    m1.unlock().unwrap();
+        m1.unlock().unwrap();
+    }
 
     // Not locked
     assert_eq!(

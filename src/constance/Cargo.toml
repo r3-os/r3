@@ -13,6 +13,7 @@ repository = "https://github.com/yvt/Constance"
 [features]
 default = []
 inline_syscall = []
+priority_boost = []
 system_time = []
 
 [dependencies]

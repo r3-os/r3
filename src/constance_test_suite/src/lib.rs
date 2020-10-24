@@ -218,6 +218,7 @@ pub mod kernel_tests {
         (mod task_cpu_lock_reset {}, "task_cpu_lock_reset"),
         (mod task_misc {}, "task_misc"),
         (mod task_park {}, "task_park"),
+        #[cfg(feature = "priority_boost")]
         (mod task_park_priority_boost {}, "task_park_priority_boost"),
         (mod task_park_reset {}, "task_park_reset"),
         (mod task_priority_boost_reset {}, "task_priority_boost_reset"),
@@ -227,7 +228,7 @@ pub mod kernel_tests {
         (mod task_take_interrupt_at_return {}, "task_take_interrupt_at_return"),
         #[cfg(feature = "system_time")]
         (mod time_adjust_event {}, "time_adjust_event"),
-        #[cfg(feature = "system_time")]
+        #[cfg(all(feature = "system_time", feature = "priority_boost"))]
         (mod time_adjust_limits {}, "time_adjust_limits"),
         (mod time_misc {}, "time_misc"),
         #[cfg(feature = "system_time")]

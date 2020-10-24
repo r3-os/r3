@@ -150,6 +150,7 @@ fn timer1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     assert_eq!(hash(timer2), hash(timer2));
 
     // Disallowed in a non-task context
+    #[cfg(feature = "priority_boost")]
     assert_eq!(
         System::boost_priority(),
         Err(kernel::BoostPriorityError::BadContext),
