@@ -13,6 +13,7 @@
 #![feature(const_option)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
+#![feature(raw_ref_macros)]
 #![feature(or_patterns)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
@@ -20,6 +21,7 @@
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]
 #![feature(int_bits_const)]
+#![feature(cell_update)]
 #![feature(arbitrary_enum_discriminant)]
 #![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![cfg_attr(test, feature(is_sorted))]

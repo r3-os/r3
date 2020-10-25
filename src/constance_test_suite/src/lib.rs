@@ -7,6 +7,7 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(decl_macro)]
 #![feature(is_sorted)]
+#![feature(cell_update)]
 #![feature(cfg_target_has_atomic)]
 #![feature(array_windows)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
@@ -213,6 +214,8 @@ pub mod kernel_tests {
         (mod startup_hook_priority {}, "startup_hook_priority"),
         (mod sync_mutex_lock_and_dispatch {}, "sync_mutex_lock_and_dispatch"),
         (mod sync_mutex_misc {}, "sync_mutex_misc"),
+        (mod sync_recursive_mutex_lock_and_dispatch {}, "sync_recursive_mutex_lock_and_dispatch"),
+        (mod sync_recursive_mutex_misc {}, "sync_recursive_mutex_misc"),
         (mod task_activate_and_dispatch {}, "task_activate_and_dispatch"),
         (mod task_activate_and_do_not_dispatch {}, "task_activate_and_do_not_dispatch"),
         (mod task_cpu_lock_reset {}, "task_cpu_lock_reset"),
