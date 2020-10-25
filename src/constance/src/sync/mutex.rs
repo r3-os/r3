@@ -51,8 +51,9 @@ unsafe impl<System: Kernel, T: 'static + Send> Sync for Mutex<System, T> {}
 /// [`try_lock`]: Mutex::try_lock
 #[must_use = "if unused the Mutex will immediately unlock"]
 pub struct MutexGuard<'a, System: Kernel, T: 'static> {
-    mutex: &'a Mutex<System, T>,
-    _no_send_sync: PhantomData<*mut ()>,
+    mutex: kernel::Mutex<System>,
+    data: *mut T,
+    _phantom_lifetime: PhantomData<&'a ()>,
 }
 
 unsafe impl<System: Kernel, T: 'static + Sync> Sync for MutexGuard<'_, System, T> {}
@@ -180,52 +181,141 @@ impl<System: Kernel, T: 'static, InitTag: HunkIniter<UnsafeCell<T>>>
 }
 
 impl<System: Kernel, T: 'static> Mutex<System, T> {
+    //  These methods have `#[inline]` because we want to optimize out `Mutex`
+    //  objects from a final binary whenever possible, as well as to minimize
+    //  the runtime overhead.
+    //
+    //  Take the following code as example:
+    //
+    //      const M: sync::Mutex<System, u32> = /* ... */;
+    //      fn hoge() -> u32 { *M.lock().unwrap() }
+    //
+    //  If `sync::Mutex::lock` weren't inlined, the caller would have to pass a
+    //  reference to a `sync::Mutex` object, which must be stored in a read-only
+    //  data section. Furthermore, `sync::Mutex::lock` method would have to read
+    //  `sync::Mutex::mutex` (the inner mutex object). The compiled code would
+    //  look like the following:
+    //
+    //      static M_REALIZED: sync::Mutex<System, u32> = sync::Mutex {
+    //          mutex: kernel::Mutex(42),
+    //          hunk: kernel::Hunk {
+    //              start: 4,
+    //              len: 4,
+    //          },
+    //      };
+    //
+    //      fn hoge() -> u32 {
+    //          // (1) Load the address of `M_REALIZED` into a register and
+    //          // (2) perform a subroutine call to `sync_mutex_lock`
+    //          let guard = sync_mutex_lock(&M_REALIZED).unwrap();
+    //
+    //          // (5) Load the hunk's offset, (6) calculate the hunk's address,
+    //          // and (7) load the contained value
+    //          *((HUNK_POOL + guard.mutex.hunk.start) as *const u32)
+    //      }
+    //
+    //      fn sync_mutex_lock(this: &sync::Mutex<System, u32>) -> LockResult</* ... */> {
+    //          // (3) Load `this.mutex` and (4) perform a subroutine call to
+    //          // `kernel::Mutex::lock`
+    //          match this.mutex.lock() {
+    //              /* ... */
+    //          }
+    //      }
+    //
+    //  With inlining:
+    //
+    //      fn hoge() -> u32 {
+    //          // (1) Load `42` and (2) the hunk's address into registers and
+    //          // (3) perform a subroutine call to `sync_mutex_lock_inner`
+    //          let guard = sync_mutex_lock_inner(
+    //              kernel::Mutex(42),
+    //              *((HUNK_POOL + 4) as *const u32),
+    //          ).unwrap();
+    //
+    //          // (5) Load the contained value
+    //          *guard.data
+    //      }
+    //
+    //      fn sync_mutex_lock_inner(mutex: kernel::Mutex<System, u32>, data: *mut u32) -> LockResult</* ... */> {
+    //          // (4) Perform a subroutine call to `kernel::Mutex::lock`
+    //          match mutex.lock() {
+    //              /* ... */
+    //          }
+    //      }
+    //
+
     /// Acquire the mutex, blocking the current thread until it is able to do
     /// so.
+    #[inline]
     pub fn lock(&self) -> LockResult<MutexGuard<'_, System, T>> {
-        match self.mutex.lock() {
-            Ok(()) => Ok(MutexGuard {
-                mutex: self,
-                _no_send_sync: PhantomData,
-            }),
-            Err(LockMutexError::BadId) => unreachable!(),
-            Err(LockMutexError::BadContext) => Err(LockError::BadContext),
-            Err(LockMutexError::Interrupted) => Err(LockError::Interrupted),
-            Err(LockMutexError::WouldDeadlock) => Err(LockError::WouldDeadlock),
-            Err(LockMutexError::BadParam) => Err(LockError::BadParam),
-            Err(LockMutexError::Abandoned) => Err(LockError::Abandoned(MutexGuard {
-                mutex: self,
-                _no_send_sync: PhantomData,
-            })),
+        fn lock_inner<'a, System: Kernel, T: 'static>(
+            mutex: kernel::Mutex<System>,
+            data: *mut T,
+        ) -> LockResult<MutexGuard<'a, System, T>> {
+            match mutex.lock() {
+                Ok(()) => Ok(MutexGuard {
+                    mutex,
+                    data,
+                    _phantom_lifetime: PhantomData,
+                }),
+                Err(LockMutexError::BadId) => unreachable!(),
+                Err(LockMutexError::BadContext) => Err(LockError::BadContext),
+                Err(LockMutexError::Interrupted) => Err(LockError::Interrupted),
+                Err(LockMutexError::WouldDeadlock) => Err(LockError::WouldDeadlock),
+                Err(LockMutexError::BadParam) => Err(LockError::BadParam),
+                Err(LockMutexError::Abandoned) => Err(LockError::Abandoned(MutexGuard {
+                    mutex,
+                    data,
+                    _phantom_lifetime: PhantomData,
+                })),
+            }
         }
+
+        lock_inner(self.mutex, self.get_ptr())
     }
 
     /// Attempt to acquire the mutex.
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, System, T>> {
-        match self.mutex.try_lock() {
-            Ok(()) => Ok(MutexGuard {
-                mutex: self,
-                _no_send_sync: PhantomData,
-            }),
-            Err(TryLockMutexError::BadId) => unreachable!(),
-            Err(TryLockMutexError::BadContext) => Err(TryLockError::BadContext),
-            Err(TryLockMutexError::WouldDeadlock) => Err(TryLockError::WouldDeadlock),
-            Err(TryLockMutexError::Timeout) => Err(TryLockError::WouldBlock),
-            Err(TryLockMutexError::BadParam) => Err(TryLockError::BadParam),
-            Err(TryLockMutexError::Abandoned) => Err(TryLockError::Abandoned(MutexGuard {
-                mutex: self,
-                _no_send_sync: PhantomData,
-            })),
+        fn try_lock_inner<'a, System: Kernel, T: 'static>(
+            mutex: kernel::Mutex<System>,
+            data: *mut T,
+        ) -> TryLockResult<MutexGuard<'a, System, T>> {
+            match mutex.try_lock() {
+                Ok(()) => Ok(MutexGuard {
+                    mutex,
+                    data,
+                    _phantom_lifetime: PhantomData,
+                }),
+                Err(TryLockMutexError::BadId) => unreachable!(),
+                Err(TryLockMutexError::BadContext) => Err(TryLockError::BadContext),
+                Err(TryLockMutexError::WouldDeadlock) => Err(TryLockError::WouldDeadlock),
+                Err(TryLockMutexError::Timeout) => Err(TryLockError::WouldBlock),
+                Err(TryLockMutexError::BadParam) => Err(TryLockError::BadParam),
+                Err(TryLockMutexError::Abandoned) => Err(TryLockError::Abandoned(MutexGuard {
+                    mutex,
+                    data,
+                    _phantom_lifetime: PhantomData,
+                })),
+            }
         }
+
+        try_lock_inner(self.mutex, self.get_ptr())
     }
 
     /// Mark the state protected by the mutex as consistent.
+    #[inline]
     pub fn mark_consistent(&self) -> Result<(), MarkConsistentError> {
-        self.mutex.mark_consistent().map_err(|e| match e {
-            MarkConsistentMutexError::BadId => unreachable!(),
-            MarkConsistentMutexError::BadContext => MarkConsistentError::BadContext,
-            MarkConsistentMutexError::BadObjectState => MarkConsistentError::Consistent,
-        })
+        fn mark_consistent_inner<System: Kernel>(
+            this: kernel::Mutex<System>,
+        ) -> Result<(), MarkConsistentError> {
+            this.mark_consistent().map_err(|e| match e {
+                MarkConsistentMutexError::BadId => unreachable!(),
+                MarkConsistentMutexError::BadContext => MarkConsistentError::BadContext,
+                MarkConsistentMutexError::BadObjectState => MarkConsistentError::Consistent,
+            })
+        }
+
+        mark_consistent_inner(self.mutex)
     }
 
     /// Get a raw pointer to the contained data.
@@ -308,7 +398,7 @@ impl<System: Kernel, T: fmt::Display + 'static> fmt::Display for MutexGuard<'_, 
 impl<System: Kernel, T: 'static> Drop for MutexGuard<'_, System, T> {
     #[inline]
     fn drop(&mut self) {
-        self.mutex.mutex.unlock().unwrap();
+        self.mutex.unlock().unwrap();
     }
 }
 
@@ -319,7 +409,7 @@ impl<System: Kernel, T: 'static> core::ops::Deref for MutexGuard<'_, System, T> 
         // Safety: `MutexGuard` represents a permit acquired from the semaphore,
         //         which grants the bearer an exclusive access to the underlying
         //         data
-        unsafe { &*self.mutex.hunk.get() }
+        unsafe { &*self.data }
     }
 }
 
@@ -329,6 +419,6 @@ impl<System: Kernel, T: 'static> core::ops::DerefMut for MutexGuard<'_, System, 
         // Safety: `MutexGuard` represents a permit acquired from the semaphore,
         //         which grants the bearer an exclusive access to the underlying
         //         data
-        unsafe { &mut *self.mutex.hunk.get() }
+        unsafe { &mut *self.data }
     }
 }
