@@ -19,7 +19,7 @@
 //!
 //!  1. The timer is configured with `(period, delay) = (0, 0)`. The system
 //!     starts calling the callback function repeatedly. This wouldn't stop if
-//!     it goes uninterrupted.
+//!     it had gone uninterrupted.
 //!
 //!  2. Our callback function, when called for the third time, stops this
 //!     by changing `period` and `delay` of the timer. The timer interrupt
