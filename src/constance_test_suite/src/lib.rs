@@ -520,6 +520,7 @@ pub mod kernel_benchmarks {
         [$]
         (mod mutex_ceiling {}, "mutex_ceiling"),
         (mod mutex_none {}, "mutex_none"),
+        (mod port {}, "port"),
         (mod semaphore {}, "semaphore"),
         (mod task_lifecycle {}, "task_lifecycle"),
     }
