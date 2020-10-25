@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Configuration builder type for [`Mutex`].
-pub struct MutexBuilder<System, T, InitTag> {
+pub struct Builder<System, T, InitTag> {
     mutex: CfgMutexBuilder<System>,
     hunk: CfgHunkBuilder<System, UnsafeCell<T>, InitTag>,
 }
@@ -147,17 +147,17 @@ pub enum MarkConsistentError {
 }
 
 impl<System: Kernel, T: 'static> Mutex<System, T> {
-    /// Construct a `MutexBuilder` to define a mutex in [a configuration
+    /// Construct a `Builder` to define a mutex in [a configuration
     /// function](crate#static-configuration).
-    pub const fn build() -> MutexBuilder<System, T, DefaultInitTag> {
-        MutexBuilder {
+    pub const fn build() -> Builder<System, T, DefaultInitTag> {
+        Builder {
             mutex: kernel::Mutex::build(),
             hunk: kernel::Hunk::build(),
         }
     }
 }
 
-impl<System: Kernel, T: 'static, InitTag> MutexBuilder<System, T, InitTag> {
+impl<System: Kernel, T: 'static, InitTag> Builder<System, T, InitTag> {
     /// Specify the mutex's protocol. Defaults to `None` when unspecified.
     pub const fn protocol(self, protocol: MutexProtocol) -> Self {
         Self {
@@ -167,9 +167,7 @@ impl<System: Kernel, T: 'static, InitTag> MutexBuilder<System, T, InitTag> {
     }
 }
 
-impl<System: Kernel, T: 'static, InitTag: HunkIniter<UnsafeCell<T>>>
-    MutexBuilder<System, T, InitTag>
-{
+impl<System: Kernel, T: 'static, InitTag: HunkIniter<UnsafeCell<T>>> Builder<System, T, InitTag> {
     /// Complete the definition of a mutex, returning a reference to the mutex.
     pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> Mutex<System, T> {
         Mutex {
