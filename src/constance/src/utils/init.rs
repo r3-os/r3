@@ -1,5 +1,9 @@
 #![allow(clippy::declare_interior_mutable_const)]
-use core::{cell::UnsafeCell, mem, sync::atomic};
+use core::{
+    cell::{Cell, RefCell, UnsafeCell},
+    mem,
+    sync::atomic,
+};
 
 use super::RawCell;
 
@@ -48,6 +52,14 @@ impl<T> Init for atomic::AtomicPtr<T> {
 
 impl<T: Init> Init for UnsafeCell<T> {
     const INIT: Self = UnsafeCell::new(T::INIT);
+}
+
+impl<T: Init> Init for Cell<T> {
+    const INIT: Self = Cell::new(T::INIT);
+}
+
+impl<T: Init> Init for RefCell<T> {
+    const INIT: Self = RefCell::new(T::INIT);
 }
 
 impl<T: Init> Init for RawCell<T> {
