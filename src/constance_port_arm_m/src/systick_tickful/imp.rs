@@ -8,7 +8,7 @@ use constance::{
 use constance_portkit::tickful::{TickfulCfg, TickfulOptions, TickfulState, TickfulStateTrait};
 use core::cell::UnsafeCell;
 
-use super::{SysTickOptions, INTERRUPT_SYSTICK};
+use crate::{SysTickOptions, INTERRUPT_SYSTICK};
 
 /// Implemented on a system type by [`use_systick_tickful!`].
 ///

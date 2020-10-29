@@ -10,7 +10,7 @@ use constance::{
 use constance_portkit::pptext::pp_llvm_asm;
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
-use super::{
+use crate::{
     ThreadingOptions, INTERRUPT_EXTERNAL0, INTERRUPT_NUM_RANGE, INTERRUPT_PRIORITY_RANGE,
     INTERRUPT_SYSTICK,
 };
