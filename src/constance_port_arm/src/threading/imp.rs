@@ -5,7 +5,7 @@ use constance::{
 };
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
-use super::{InterruptController, ThreadingOptions, Timer};
+use super::cfg::{InterruptController, ThreadingOptions, Timer};
 
 /// Implemented on a system type by [`use_port!`].
 ///
