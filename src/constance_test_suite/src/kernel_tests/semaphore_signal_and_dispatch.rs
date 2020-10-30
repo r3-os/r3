@@ -1,6 +1,7 @@
 //! Signals a semaphore, waking up a task.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Semaphore, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Semaphore, Task},
     prelude::*,
 };
 

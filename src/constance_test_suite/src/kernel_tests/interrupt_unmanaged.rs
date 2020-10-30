@@ -1,6 +1,7 @@
 //! Makes sure that CPU Lock doesn't mask unmanaged interrupts.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 

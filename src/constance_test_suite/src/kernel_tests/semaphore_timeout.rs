@@ -13,7 +13,8 @@
 //! 7. (`seq`: 6 → 7, 300ms) `task0` starts running.
 //!
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Semaphore, Task, WaitSemaphoreTimeoutError},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Semaphore, Task, WaitSemaphoreTimeoutError},
     prelude::*,
     time::Duration,
 };

@@ -88,7 +88,8 @@
 //! > CLREX instruction as part of a context switch is not required in most
 //! > situations.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task, Timer},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task, Timer},
     prelude::*,
     time::Duration,
     utils::Init,

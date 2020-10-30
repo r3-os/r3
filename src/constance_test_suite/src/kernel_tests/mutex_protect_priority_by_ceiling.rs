@@ -1,7 +1,8 @@
 //! A text-book example where a mutex adhereing to the priority ceiling protocol
 //! successfully prevents unbounded priority inversion.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Mutex, MutexProtocol, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Mutex, MutexProtocol, Task},
     prelude::*,
     time::Duration,
 };

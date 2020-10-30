@@ -1,6 +1,7 @@
 //! Checks that the task priority is reset whenever a task is activated.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
 

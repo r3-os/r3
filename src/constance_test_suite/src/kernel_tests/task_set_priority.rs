@@ -1,6 +1,7 @@
 //! Sequence the execution of tasks by dynamically changing their priorities.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
 

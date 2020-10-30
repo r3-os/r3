@@ -1,7 +1,8 @@
 //! Validates error codes returned by mutex manipulation methods. Also,
 //! checks miscellaneous properties of [`constance::kernel::Mutex`].
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task},
     prelude::*,
     time::Duration,
 };

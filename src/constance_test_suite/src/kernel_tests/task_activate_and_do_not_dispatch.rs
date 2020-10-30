@@ -1,6 +1,7 @@
 //! Activates a same-priority task.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
 

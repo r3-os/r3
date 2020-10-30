@@ -2,7 +2,8 @@
 #[cfg(feature = "system_time")]
 use constance::time::Time;
 use constance::{
-    kernel::{self, cfg::CfgBuilder, Hunk, Task, Timer},
+    hunk::Hunk,
+    kernel::{self, cfg::CfgBuilder, Task, Timer},
     prelude::*,
     time::Duration,
 };

@@ -1,6 +1,7 @@
 //! Asserts that tasks in the same ready queue are processed in a FIFO order.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
 

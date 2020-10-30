@@ -1,7 +1,8 @@
 //! Makes sure that interrupt priorities affect the order in which interrupt
 //! handlers are called.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 

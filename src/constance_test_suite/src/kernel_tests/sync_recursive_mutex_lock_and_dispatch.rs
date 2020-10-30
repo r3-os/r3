@@ -1,7 +1,8 @@
 //! Checks miscellaneous properties of [`constance::sync::RecursiveMutex`].
 use assert_matches::assert_matches;
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task},
     prelude::*,
     sync::recursive_mutex::{self, RecursiveMutex},
 };

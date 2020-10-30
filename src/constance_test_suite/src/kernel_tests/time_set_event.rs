@@ -15,7 +15,8 @@
 //! 7. (`seq`: 6 → 7, 600ms) `tsak2` wakes up.
 //!
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
 

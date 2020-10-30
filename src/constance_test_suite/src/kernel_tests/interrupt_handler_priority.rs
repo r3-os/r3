@@ -1,6 +1,7 @@
 //! Make sure interrupt handlers are called in the ascending order of priority.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 

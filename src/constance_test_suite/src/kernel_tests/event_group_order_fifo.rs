@@ -6,7 +6,8 @@
 //!    should be unblocked in the same order.
 //!
 use constance::{
-    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Hunk, QueueOrder, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, QueueOrder, Task},
     prelude::*,
 };
 

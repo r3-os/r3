@@ -1,6 +1,7 @@
 //! Sets an event group, waking up a task.
 use constance::{
-    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Task},
     prelude::*,
 };
 

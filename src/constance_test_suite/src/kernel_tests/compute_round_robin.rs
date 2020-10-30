@@ -5,7 +5,8 @@
 //! registers during a context switch. To this end, the task is designed to
 //! utilize as many floating-point registers as possible.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, StartupHook, Task, Timer},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, StartupHook, Task, Timer},
     prelude::*,
     time::Duration,
     utils::Init,
