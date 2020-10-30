@@ -14,7 +14,8 @@
 //!                             period ← 500ms
 //! ```
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task, Timer},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task, Timer},
     prelude::*,
     time::Duration,
 };

@@ -13,6 +13,7 @@
 #![feature(const_option)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
+#![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
 #![feature(raw_ref_macros)]
 #![feature(or_patterns)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
@@ -46,6 +47,7 @@ pub extern crate staticvec;
 pub mod utils;
 #[macro_use]
 pub mod kernel;
+pub mod hunk;
 pub mod sync;
 pub mod time;
 

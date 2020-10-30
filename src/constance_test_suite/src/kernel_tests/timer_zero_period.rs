@@ -34,7 +34,8 @@
 //!     handler can now return and the task is given a change to execute.
 //!
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task, Timer},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task, Timer},
     prelude::*,
     time::Duration,
 };

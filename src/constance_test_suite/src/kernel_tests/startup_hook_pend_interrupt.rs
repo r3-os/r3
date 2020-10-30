@@ -60,7 +60,8 @@
 //! pointer is not assigned to `PSP` (Process Stack Pointer) at this point yet
 //! (2).
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, StartupHook, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, StartupHook, Task},
     prelude::*,
 };
 

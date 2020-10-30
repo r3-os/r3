@@ -2,7 +2,8 @@
 //!
 //! [`adjust_time`]: constance::kernel::Kernel::adjust_time
 use constance::{
-    kernel::{cfg::CfgBuilder, AdjustTimeError, Hunk, Task, TIME_USER_HEADROOM},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, AdjustTimeError, Task, TIME_USER_HEADROOM},
     prelude::*,
     time::Duration,
 };

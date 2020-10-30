@@ -1,6 +1,7 @@
 //! Unlocks a mutex, waking up a task.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Mutex, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Mutex, Task},
     prelude::*,
 };
 

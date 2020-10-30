@@ -32,7 +32,7 @@ macro_rules! build {
                     CfgBuilder, CfgBuilderInner, CfgBuilderInterruptHandler, InterruptHandlerFn,
                     InterruptHandlerTable,
                 },
-                EventGroupCb, HunkAttr, HunkInitAttr, InterruptAttr, InterruptLineInit, KernelCfg1,
+                EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
                 KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
                 TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
             },
@@ -135,7 +135,6 @@ macro_rules! build {
         // Instantiate hunks
         static HUNK_POOL: RawCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>> =
             Init::INIT;
-        const HUNK_INITS: [HunkInitAttr; { CFG.hunks.len() }] = CFG.hunks.to_array();
 
         // Instantiate the global state
         type KernelState = State<$sys>;
@@ -194,11 +193,6 @@ macro_rules! build {
                 &KERNEL_STATE
             }
 
-            const HUNK_ATTR: HunkAttr = HunkAttr {
-                hunk_pool: || HUNK_POOL.get() as *const u8,
-                inits: &HUNK_INITS,
-            };
-
             const INTERRUPT_HANDLERS: &'static InterruptHandlerTable = &INTERRUPT_HANDLERS_SIZED;
 
             const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
@@ -206,6 +200,11 @@ macro_rules! build {
             };
 
             const STARTUP_HOOKS: &'static [StartupHookAttr] = &STARTUP_HOOKS;
+
+            #[inline(always)]
+            fn hunk_pool_ptr() -> *mut u8 {
+                HUNK_POOL.get() as *mut u8
+            }
 
             #[inline(always)]
             fn task_cb_pool() -> &'static [TaskCb<$sys>] {
@@ -275,7 +274,6 @@ pub struct CfgBuilder<System> {
 #[doc(hidden)]
 pub struct CfgBuilderInner<System> {
     _phantom: PhantomData<System>,
-    pub hunks: ComptimeVec<super::HunkInitAttr>,
     pub hunk_pool_len: usize,
     pub hunk_pool_align: usize,
     pub tasks: ComptimeVec<CfgBuilderTask<System>>,
@@ -304,7 +302,6 @@ impl<System> CfgBuilder<System> {
         Self {
             inner: CfgBuilderInner {
                 _phantom: PhantomData,
-                hunks: ComptimeVec::new(),
                 hunk_pool_len: 0,
                 hunk_pool_align: 1,
                 tasks: ComptimeVec::new(),

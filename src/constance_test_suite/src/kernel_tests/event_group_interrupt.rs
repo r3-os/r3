@@ -8,9 +8,10 @@
 //! 5. (`seq`: 4 → 5) `task1` completes.
 //!
 use constance::{
+    hunk::Hunk,
     kernel::{
-        cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Hunk, QueueOrder, Task,
-        WaitEventGroupError, WaitEventGroupTimeoutError,
+        cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, QueueOrder, Task, WaitEventGroupError,
+        WaitEventGroupTimeoutError,
     },
     prelude::*,
     time::Duration,

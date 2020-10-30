@@ -19,7 +19,8 @@
 //!    been abandoned by `task1`.
 //!
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, LockMutexTimeoutError, Mutex, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, LockMutexTimeoutError, Mutex, Task},
     prelude::*,
     time::Duration,
 };

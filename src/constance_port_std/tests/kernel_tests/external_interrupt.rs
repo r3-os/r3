@@ -1,6 +1,7 @@
 //! Pends an interrupt from an external thread.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
     prelude::*,
 };
 use constance_test_suite::kernel_tests::Driver;

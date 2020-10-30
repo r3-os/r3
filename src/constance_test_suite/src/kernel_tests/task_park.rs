@@ -1,6 +1,7 @@
 //! Sequence the execution of tasks using the parking mechanism.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
 

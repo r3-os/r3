@@ -759,13 +759,6 @@ impl<System: Kernel> PortToKernel for System {
     unsafe fn boot() -> ! {
         let mut lock = unsafe { utils::assume_cpu_lock::<Self>() };
 
-        // Safety: (1) User code hasn't executed yet at this point. (2) The
-        // creator of this `HunkAttr` is responsible for creating a valid
-        // instance of `HunkAttr`.
-        unsafe {
-            System::HUNK_ATTR.init_hunks();
-        }
-
         // Initialize all tasks
         for cb in Self::task_cb_pool() {
             task::init_task(lock.borrow_mut(), cb);
@@ -828,9 +821,6 @@ pub unsafe trait KernelCfg2: Port + Sized {
     // Most associated items are hidden because they have no use outside the
     // kernel. The rest is not hidden because it's meant to be accessed by port
     // code.
-    #[doc(hidden)]
-    const HUNK_ATTR: HunkAttr;
-
     #[doc(hiddden)]
     type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + Init + fmt::Debug + 'static;
 
@@ -847,6 +837,9 @@ pub unsafe trait KernelCfg2: Port + Sized {
 
     /// Access the kernel's global state.
     fn state() -> &'static State<Self>;
+
+    #[doc(hidden)]
+    fn hunk_pool_ptr() -> *mut u8;
 
     // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
     //        to be resolved because `TaskCb` includes interior mutability

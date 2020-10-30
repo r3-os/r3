@@ -1,6 +1,7 @@
 //! Make sure startup hooks are called in the ascending order of priority.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, StartupHook},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, StartupHook},
     prelude::*,
 };
 

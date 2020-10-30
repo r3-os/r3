@@ -1,6 +1,7 @@
 //! Signals a semaphore in an interrupt handler, waking up a task.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, Semaphore, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Semaphore, Task},
     prelude::*,
 };
 

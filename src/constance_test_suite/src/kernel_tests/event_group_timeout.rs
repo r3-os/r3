@@ -13,8 +13,9 @@
 //! 7. (`seq`: 6 → 7, 300ms) `task0` starts running.
 //!
 use constance::{
+    hunk::Hunk,
     kernel::{
-        cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Hunk, QueueOrder, Task,
+        cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, QueueOrder, Task,
         WaitEventGroupTimeoutError,
     },
     prelude::*,

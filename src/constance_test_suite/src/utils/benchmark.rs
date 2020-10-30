@@ -1,6 +1,7 @@
 //! The benchmark framework that runs on Constance.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, Kernel, Task},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, Kernel, Task},
     utils::Init,
 };
 use core::{cell::UnsafeCell, fmt};

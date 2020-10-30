@@ -1,6 +1,7 @@
 //! Checks that an interrupt cannot preempt the main thread.
 use constance::{
-    kernel::{cfg::CfgBuilder, Hunk, InterruptHandler, InterruptLine, StartupHook},
+    hunk::Hunk,
+    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, StartupHook},
     prelude::*,
 };
 
