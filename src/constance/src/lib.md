@@ -208,7 +208,7 @@ fn task_body(_: usize) {
 [`KernelCfg2`]: crate::kernel::KernelCfg2
 [`Task`]: crate::kernel::Task
 
-Configuration functions are highly composable as they can call other configuration functions in turn. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, making them behave in a meaningful way as a whole, and expose a whole new, higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`Mutex`]`<System>` (a low-level mutex object) and a [`Hunk`]`<System, UnsafeCell<T>>`.
+Configuration functions are highly composable as they can call other configuration functions in turn. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, making them behave in a meaningful way as a whole, and expose a whole new, higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`kernel::Mutex`]`<System>` (a low-level mutex object) and a [`hunk::Hunk`]`<System, UnsafeCell<T>>` (a typed hunk), which in turn is built on top of [`kernel::Hunk`]`<System>` (a low-level untyped hunk).
 
 ```rust
 # #![feature(const_fn)]
@@ -236,8 +236,9 @@ mod m {
 }
 ```
 
-[`Mutex`]: crate::kernel::Mutex
-[`Hunk`]: crate::kernel::Hunk
+[`kernel::Mutex`]: crate::kernel::Mutex
+[`kernel::Hunk`]: crate::kernel::Hunk
+[`hunk::Hunk`]: crate::hunk::Hunk
 [mutex object]: crate::sync::Mutex
 
 The constructors of kernel objects are configuration functions by themselves, but they are different from normal configuration functions in that they can actually mutate the contents of `CfgBuilder` (which `build!` will use to create kernel structures in the final form), ultimately shaping the outcome of the configuration process. Therefore, they are the smallest building blocks of configuration functions.

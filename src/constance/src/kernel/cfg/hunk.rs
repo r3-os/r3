@@ -16,8 +16,6 @@ impl<System: Port> hunk::Hunk<System> {
 
 /// Configuration builder type for [`Hunk`].
 ///
-/// `InitTag` is either [`DefaultInitTag`] or [`ZeroInitTag`].
-///
 /// [`Hunk`]: crate::kernel::Hunk
 #[must_use = "must call `finish()` to complete registration"]
 pub struct CfgHunkBuilder<System> {

@@ -30,6 +30,8 @@ pub const INIT_HOOK_PRIORITY: i32 = -0x7000_0000;
 ///
 /// This type is implemented on top of [`constance::kernel::Hunk`], the untyped
 /// hunk type.
+///
+/// [`constance::kernel::Hunk`]: crate::kernel::Hunk
 #[doc(include = "./common.md")]
 pub struct Hunk<System, T: ?Sized> {
     /// The offset of the hunk. `System::HUNK_ATTR.hunk_pool_ptr()` must be
