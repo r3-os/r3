@@ -1,5 +1,5 @@
 //! Hunks
-use core::{fmt, marker::PhantomData, mem::size_of, ops::Deref, ptr::slice_from_raw_parts};
+use core::{fmt, marker::PhantomData};
 
 use super::Kernel;
 use crate::utils::Init;
@@ -11,6 +11,11 @@ use crate::utils::Init;
 /// can be instantiated by a kernel configuration and wanting each instance to
 /// have its own separate state data.
 ///
+/// This `Hunk` is untyped and only contains a starting address. See
+/// [`constance::hunk::Hunk`] for a type-safe wrapper of `Hunk`.
+///
+/// [`constance::hunk::Hunk`]: crate::hunk::Hunk`
+///
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** None. The need for programmatically
@@ -21,203 +26,52 @@ use crate::utils::Init;
 ///
 /// [the TOPPERS kernels]: https://www.toppers.jp/index.html
 #[doc(include = "../common.md")]
-pub struct Hunk<System, T: ?Sized> {
+pub struct Hunk<System> {
     start: usize,
-    len: usize,
-    _phantom: PhantomData<(System, T)>,
+    _phantom: PhantomData<System>,
 }
 
-impl<System, T> Init for Hunk<System, [T]> {
-    // Safety: This is safe because it points to nothing
-    const INIT: Self = unsafe { Self::from_range(0, 0) };
+impl<System> Init for Hunk<System> {
+    const INIT: Self = Self::from_offset(0);
 }
 
-impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Hunk<System, T> {
+impl<System: Kernel> fmt::Debug for Hunk<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Hunk")
-            .field(&Self::as_ptr(*self))
-            .field(&**self)
-            .finish()
+        write!(f, "Hunk({:p})", self.as_ptr())
     }
 }
 
-impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Hunk<System, [T]> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Hunk")
-            .field(&Self::as_ptr(*self))
-            .field(&&**self)
-            .finish()
-    }
-}
-
-impl<System, T: ?Sized> Clone for Hunk<System, T> {
+impl<System> Clone for Hunk<System> {
     fn clone(&self) -> Self {
-        Self {
-            start: self.start,
-            len: self.len,
-            _phantom: PhantomData,
-        }
+        *self
     }
 }
 
-impl<System, T: ?Sized> Copy for Hunk<System, T> {}
+impl<System> Copy for Hunk<System> {}
 
-impl<System, T: ?Sized> Hunk<System, T> {
+impl<System> Hunk<System> {
     // I don't see any good reason to make this public, but the macro still
     // needs to access this
     #[doc(hidden)]
     /// Construct a `Hunk` from `start` (offset in the kernel configuration's
-    /// hunk pool) and `len`.
-    ///
-    /// # Safety
-    ///
-    /// This method can invade the privacy of other components who want to be
-    /// left alone.
-    pub const unsafe fn from_range(start: usize, len: usize) -> Self {
+    /// hunk pool).
+    pub const fn from_offset(start: usize) -> Self {
         Self {
             start,
-            len,
             _phantom: PhantomData,
         }
     }
 
-    /// Reinterpret the hunk as another type.
-    ///
-    /// # Safety
-    ///
-    ///  - Similarly to [`core::mem::transmute`], this is **incredibly** unsafe.
-    ///  - The byte offset and length must be valid for the destination type.
-    ///
-    pub const unsafe fn transmute<U: ?Sized>(self) -> Hunk<System, U> {
-        Hunk {
-            start: self.start,
-            len: self.len,
-            _phantom: PhantomData,
-        }
+    /// Get the offset of the hunk.
+    pub const fn offset(self) -> usize {
+        self.start
     }
 }
 
-impl<System: Kernel, T: ?Sized> Hunk<System, T> {
-    // FIXME: The following methods are not `const fn` on account of
-    //        <https://github.com/rust-lang/const-eval/issues/11> being
-    //        unresolved
-
-    /// Get a raw pointer to the raw bytes of the hunk.
-    #[inline]
-    pub fn as_bytes_ptr(this: Self) -> *const [u8] {
-        slice_from_raw_parts(
-            unsafe { System::HUNK_ATTR.hunk_pool_ptr().add(this.start) },
-            this.len,
-        )
-    }
-
-    /// Get a reference to the raw bytes of the hunk.
-    ///
-    /// # Safety
-    ///
-    /// The result might include uninitialized bytes and/or interior mutability,
-    /// so it might be unsafe to access.
-    #[inline]
-    pub unsafe fn as_bytes(this: Self) -> &'static [u8] {
-        // Safety: The caller is responsible for making sure interpreting the
-        // contents as `[u8]` is safe
-        unsafe { &*Self::as_bytes_ptr(this) }
-    }
-}
-
-impl<System: Kernel, T: 'static> Hunk<System, T> {
+impl<System: Kernel> Hunk<System> {
     /// Get a raw pointer to the hunk's contents.
     #[inline]
-    pub fn as_ptr(this: Self) -> *const T {
-        Self::as_bytes_ptr(this) as *const T
+    pub fn as_ptr(self) -> *mut u8 {
+        System::hunk_pool_ptr().wrapping_add(self.start)
     }
-}
-
-impl<System: Kernel, T: 'static> AsRef<T> for Hunk<System, T> {
-    fn as_ref(&self) -> &T {
-        unsafe { &*Self::as_ptr(*self) }
-    }
-}
-
-impl<System: Kernel, T: 'static> Deref for Hunk<System, T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
-    }
-}
-
-impl<System: Kernel, T: 'static> Hunk<System, [T]> {
-    /// Get a raw pointer to the hunk's contents.
-    #[inline]
-    pub fn as_ptr(this: Self) -> *const [T] {
-        slice_from_raw_parts(
-            Self::as_bytes_ptr(this) as *const T,
-            this.len / size_of::<T>(),
-        )
-    }
-}
-
-impl<System: Kernel, T: 'static> AsRef<[T]> for Hunk<System, [T]> {
-    #[inline]
-    fn as_ref(&self) -> &[T] {
-        unsafe { &*Self::as_ptr(*self) }
-    }
-}
-
-impl<System: Kernel, T: 'static> Deref for Hunk<System, [T]> {
-    type Target = [T];
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
-    }
-}
-
-/// The static properties of hunks.
-///
-/// This type isn't technically public but needs to be `pub` so that it can be
-/// referred to by a macro.
-#[doc(hidden)]
-pub struct HunkAttr {
-    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
-    //        to be resolved
-    pub hunk_pool: fn() -> *const u8,
-    pub inits: &'static [HunkInitAttr],
-}
-
-impl HunkAttr {
-    #[inline(always)]
-    fn hunk_pool_ptr(&self) -> *const u8 {
-        (self.hunk_pool)()
-    }
-
-    /// Initialize hunks.
-    ///
-    /// # Safety
-    ///
-    /// - Assumes `HunkInitAttr` points to memory regions within `hunk_pool`.
-    /// - Assumes `hunk_pool` is currently not in use by user code.
-    ///
-    pub(super) unsafe fn init_hunks(&self) {
-        for init in self.inits.iter() {
-            // Safety: The creator of `init` (`HunkInitAttr`) is responsible for
-            // making this safe
-            unsafe {
-                (init.init)(self.hunk_pool_ptr().add(init.offset) as *mut u8);
-            }
-        }
-    }
-}
-
-/// Hunk initializer.
-///
-/// This type isn't technically public but needs to be `pub` so that it can be
-/// referred to by a macro.
-#[doc(hidden)]
-#[derive(Clone, Copy)]
-pub struct HunkInitAttr {
-    pub(super) offset: usize,
-    pub(super) init: unsafe fn(*mut u8),
 }

@@ -116,15 +116,14 @@ impl<System: Port> CfgTaskBuilder<System> {
                 let size =
                     (size + System::STACK_ALIGN - 1) / System::STACK_ALIGN * System::STACK_ALIGN;
 
-                let hunk = hunk::Hunk::<_, [_]>::build()
+                let hunk = hunk::Hunk::build()
                     .len(size)
                     .align(System::STACK_ALIGN)
-                    .zeroed()
                     .finish(cfg);
 
                 // Safety: We just created a hunk just for this task, and we
                 // don't use this hunk for other purposes.
-                unsafe { task::StackHunk::from_hunk(hunk) }
+                unsafe { task::StackHunk::from_hunk(hunk, size) }
             }
             TaskStack::Hunk(hunk) => hunk,
         };

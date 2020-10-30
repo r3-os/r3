@@ -1,10 +1,11 @@
 use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 
 use crate::{
+    hunk::{CfgHunkBuilder, DefaultInitTag, Hunk, HunkIniter},
     kernel::{
         self,
-        cfg::{CfgBuilder, CfgHunkBuilder, CfgMutexBuilder, DefaultInitTag, HunkIniter},
-        Hunk, LockMutexError, MarkConsistentMutexError, MutexProtocol, TryLockMutexError,
+        cfg::{CfgBuilder, CfgMutexBuilder},
+        LockMutexError, MarkConsistentMutexError, MutexProtocol, TryLockMutexError,
     },
     prelude::*,
 };
@@ -152,7 +153,7 @@ impl<System: Kernel, T: 'static> Mutex<System, T> {
     pub const fn build() -> Builder<System, T, DefaultInitTag> {
         Builder {
             mutex: kernel::Mutex::build(),
-            hunk: kernel::Hunk::build(),
+            hunk: Hunk::build(),
         }
     }
 }

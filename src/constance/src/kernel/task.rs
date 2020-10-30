@@ -1,7 +1,7 @@
 //! Tasks
 #[cfg(feature = "priority_boost")]
 use core::sync::atomic::Ordering;
-use core::{cell::UnsafeCell, convert::TryFrom, fmt, hash, marker::PhantomData, mem};
+use core::{convert::TryFrom, fmt, hash, marker::PhantomData, mem};
 use num_traits::ToPrimitive;
 
 use super::{
@@ -288,8 +288,7 @@ impl<System: Kernel> Task<System> {
 }
 
 /// [`Hunk`] for a task stack.
-#[repr(transparent)]
-pub struct StackHunk<System>(Hunk<System, [UnsafeCell<u8>]>);
+pub struct StackHunk<System>(Hunk<System>, usize);
 
 // Safety: Safe code can't access the contents. Also, the port is responsible
 // for making sure `StackHunk` is used in the correct way.
@@ -305,14 +304,14 @@ impl<System: Kernel> fmt::Debug for StackHunk<System> {
 //       safety obligation of `StackHunk::from_hunk`.
 impl<System> Clone for StackHunk<System> {
     fn clone(&self) -> Self {
-        Self(self.0)
+        *self
     }
 }
 impl<System> Copy for StackHunk<System> {}
 
 // TODO: Should we allow zero-sized `StackHunk`?
 impl<System> Init for StackHunk<System> {
-    const INIT: Self = Self(Init::INIT);
+    const INIT: Self = Self(Init::INIT, 0);
 }
 
 impl<System> StackHunk<System> {
@@ -324,20 +323,20 @@ impl<System> StackHunk<System> {
     /// `hunk` is solely used for a single task's stack.
     ///
     /// Also, `hunk` must be properly aligned for a stack region.
-    pub const unsafe fn from_hunk(hunk: Hunk<System, [UnsafeCell<u8>]>) -> Self {
-        Self(hunk)
+    pub const unsafe fn from_hunk(hunk: Hunk<System>, len: usize) -> Self {
+        Self(hunk, len)
     }
 
-    /// Get the inner `Hunk`, consuming `self`.
-    pub fn into_inner(self) -> Hunk<System, [UnsafeCell<u8>]> {
-        self.0
+    /// Get the inner `Hunk` and the length, consuming `self`.
+    pub fn into_inner(self) -> (Hunk<System>, usize) {
+        (self.0, self.1)
     }
 }
 
 impl<System: Kernel> StackHunk<System> {
     /// Get a raw pointer to the hunk's contents.
     pub fn as_ptr(&self) -> *mut [u8] {
-        &*self.0 as *const _ as _
+        core::ptr::slice_from_raw_parts_mut(self.0.as_ptr(), self.1)
     }
 }
 

@@ -1,10 +1,11 @@
 use core::{cell::Cell, fmt, marker::PhantomData};
 
 use crate::{
+    hunk::{CfgHunkBuilder, DefaultInitTag, Hunk, HunkIniter},
     kernel::{
         self,
-        cfg::{CfgBuilder, CfgHunkBuilder, CfgMutexBuilder, DefaultInitTag, HunkIniter},
-        Hunk, LockMutexError, MarkConsistentMutexError, MutexProtocol, TryLockMutexError,
+        cfg::{CfgBuilder, CfgMutexBuilder},
+        LockMutexError, MarkConsistentMutexError, MutexProtocol, TryLockMutexError,
     },
     prelude::*,
     utils::Init,
@@ -182,7 +183,7 @@ impl<System: Kernel, T: 'static> RecursiveMutex<System, T> {
     pub const fn build() -> Builder<System, T, DefaultInitTag> {
         Builder {
             mutex: kernel::Mutex::build(),
-            hunk: kernel::Hunk::build(),
+            hunk: Hunk::build(),
         }
     }
 }
