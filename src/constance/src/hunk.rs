@@ -148,7 +148,7 @@ impl<System: Kernel, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, T, InitTa
     pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> Hunk<System, T> {
         let untyped_hunk = kernel::Hunk::<System>::build()
             .len(mem::size_of::<T>())
-            .align(mem::align_of::<T>()) // TODO
+            .align(max(mem::align_of::<T>(), self.align))
             .finish(cfg);
 
         assert!(self.len == 1, "Non-array hunk must have `len` of `1`");
@@ -185,7 +185,7 @@ impl<System: Port, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, [T], InitTa
 
         let untyped_hunk = kernel::Hunk::<System>::build()
             .len(mem::size_of::<T>() * self.len)
-            .align(mem::align_of::<T>()) // TODO
+            .align(max(mem::align_of::<T>(), self.align))
             .finish(cfg);
 
         let start = untyped_hunk.offset();
@@ -293,5 +293,14 @@ impl<System: Kernel, T: ?Sized> Deref for Hunk<System, T> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         self.as_ref()
+    }
+}
+
+/// FIXME: `Ord::max` is not available in `const fn`
+const fn max(x: usize, y: usize) -> usize {
+    if x > y {
+        x
+    } else {
+        y
     }
 }
