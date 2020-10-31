@@ -24,15 +24,6 @@ env_logger = "0.7.1"
 once_cell = "1.4.0"
 log = "0.4.8"
 
-[dependencies.atomic_ref]
-# - “Make the crate `no_std`”
-#   <https://github.com/mystor/atomic_ref/pull/1>
-# - “Make `AtomicRef::new` `const fn` (nightly-only)”
-#   <https://github.com/mystor/atomic_ref/pull/2>
-git = "https://github.com/yvt/atomic_ref.git"
-rev = "37523c17a2a535f4d04c204d65d2742647abed25"
-features = ["nightly"]
-
 [dependencies.try-lock]
 # - “Make `TryLock::new` `const fn`”
 #   <https://github.com/seanmonstar/try-lock/pull/2>

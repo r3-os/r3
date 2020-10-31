@@ -105,11 +105,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "695579f0f2520f3774bb40461e5adb066459d4e0af4d59d20175484fb8e9edf1"
 
 [[package]]
-name = "atomic_ref"
-version = "0.1.2"
-source = "git+https://github.com/yvt/atomic_ref.git?rev=37523c17a2a535f4d04c204d65d2742647abed25#37523c17a2a535f4d04c204d65d2742647abed25"
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -367,7 +362,6 @@ dependencies = [
 name = "constance_port_std"
 version = "0.0.1"
 dependencies = [
- "atomic_ref",
  "constance",
  "constance_test_suite",
  "env_logger",
