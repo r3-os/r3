@@ -36,6 +36,20 @@ jobs:
       # TODO: Add something like <https://github.com/mbrobbel/rustfmt-check>,
       #       except for pushing commits automatically
 
+  # Check crate metadata
+  workspace:
+    name: Check crate metadata
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies (Linux)
+        run: sudo snap install deno
+
+      - name: Check Crate Metadata
+        run: deno run --allow-read scripts/check-workspace.ts
+
   # Run tests on the host system
   test-hosted:
     name: Test
