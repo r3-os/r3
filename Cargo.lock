@@ -85,7 +85,7 @@ dependencies = [
 
 [[package]]
 name = "arm_semihosting"
-version = "0.3.5"
+version = "0.0.0"
 
 [[package]]
 name = "as-slice"
@@ -138,7 +138,7 @@ checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
 name = "basic_gr_peach"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "constance",
  "constance_port_arm",
@@ -240,7 +240,7 @@ dependencies = [
 
 [[package]]
 name = "constance"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "assert_matches",
  "bitflags",
@@ -259,7 +259,7 @@ dependencies = [
 
 [[package]]
 name = "constance_example_basic"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "constance",
  "constance_port_std",
@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "constance_example_basic_nucleo_f401re"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "constance",
  "constance_port_arm_m",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "constance_port_arm"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "constance",
  "constance_portkit",
@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "constance_port_arm_m"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "constance",
  "constance_portkit",
@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "constance_port_arm_m_test_driver"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "constance",
  "constance_port_arm_m",
@@ -316,7 +316,7 @@ dependencies = [
 
 [[package]]
 name = "constance_port_arm_test_driver"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "arm_semihosting",
  "constance",
@@ -331,7 +331,7 @@ dependencies = [
 
 [[package]]
 name = "constance_port_riscv"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "constance",
  "constance_portkit",
@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "constance_port_riscv_test_driver"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "constance",
  "constance_port_riscv",
@@ -360,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "constance_port_std"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "constance",
  "constance_test_suite",
@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "constance_portkit"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "constance",
  "env_logger",
@@ -390,7 +390,7 @@ dependencies = [
 
 [[package]]
 name = "constance_support_rza1"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "constance",
  "constance_port_arm",
@@ -402,7 +402,7 @@ dependencies = [
 
 [[package]]
 name = "constance_test_runner"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -430,7 +430,7 @@ dependencies = [
 
 [[package]]
 name = "constance_test_suite"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "assert_matches",
  "constance",

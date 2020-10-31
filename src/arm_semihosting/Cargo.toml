@@ -1,6 +1,6 @@
 [package]
 name = "arm_semihosting"
-version = "0.3.5"
+version = "0.0.0"
 authors = [
     "yvt <i@yvt.jp>",
 

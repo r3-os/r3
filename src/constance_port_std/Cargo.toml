@@ -1,6 +1,6 @@
 [package]
 name = "constance_port_std"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -18,7 +18,7 @@ repository = "https://github.com/yvt/Constance"
 default = ["constance_test_suite/full"]
 
 [dependencies]
-constance = { path = "../constance" }
+constance = { version = "0.1.0", path = "../constance" }
 
 env_logger = "0.7.1"
 once_cell = "1.4.0"

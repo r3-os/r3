@@ -1,6 +1,6 @@
 [package]
 name = "constance_port_arm"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -13,8 +13,8 @@ repository = "https://github.com/yvt/Constance"
 preload-registers = []
 
 [dependencies]
-constance_portkit = { path = "../constance_portkit" }
-constance = { path = "../constance" }
+constance_portkit = { version = "0.1.0", path = "../constance_portkit" }
+constance = { version = "0.1.0", path = "../constance" }
 
 register = "0.5.1"
 r0 = "0.2.2"

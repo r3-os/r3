@@ -1,6 +1,6 @@
 [package]
 name = "constance_port_riscv"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -15,8 +15,8 @@ maintain-pie = []
 preload-registers = []
 
 [dependencies]
-constance_portkit = { path = "../constance_portkit" }
-constance = { path = "../constance" }
+constance_portkit = { version = "0.1.0", path = "../constance_portkit" }
+constance = { version = "0.1.0", path = "../constance" }
 
 register = { version = "0.5.1" }
 riscv-rt = { version = "0.8.0" }

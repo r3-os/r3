@@ -1,6 +1,6 @@
 [package]
 name = "constance_test_suite"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -23,7 +23,7 @@ priority_boost = ["constance/priority_boost"]
 system_time = ["constance/system_time"]
 
 [dependencies]
-constance = { path = "../constance" }
+constance = { version = "0.1.0", path = "../constance" }
 
 assert_matches = { version = "1.4.0" }
 staticvec = { version = "0.10.5", default-features = false }
