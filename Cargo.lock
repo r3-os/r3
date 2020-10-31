@@ -369,7 +369,7 @@ dependencies = [
  "libc",
  "log",
  "once_cell",
- "try-lock",
+ "try-mutex",
  "winapi 0.3.9",
 ]
 
@@ -2052,9 +2052,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "try-lock"
-version = "0.2.3"
-source = "git+https://github.com/yvt/try-lock.git?rev=cf06bc26a49d511bec22aa36fb68a882e8713d3b#cf06bc26a49d511bec22aa36fb68a882e8713d3b"
+name = "try-mutex"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb39332d3aaf6a80f07eccdae85a577e66e223f56ae235f00b36836f1ab503d6"
 
 [[package]]
 name = "typenum"

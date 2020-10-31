@@ -56,8 +56,8 @@ pub trait LockConsuming {
     fn lock(self) -> Self::LockGuard;
 }
 
-impl<'a, T> LockConsuming for &'a try_lock::TryLock<T> {
-    type LockGuard = try_lock::Locked<'a, T>;
+impl<'a, T> LockConsuming for &'a try_mutex::TryMutex<T> {
+    type LockGuard = try_mutex::TryMutexGuard<'a, T>;
 
     #[inline]
     fn lock(self) -> Self::LockGuard {
