@@ -304,6 +304,8 @@ pub mod kernel_benchmarks {
         /// Get the unit of [`performance_time`] to be displayed following a
         /// measured value.
         ///
+        /// [`performance_time`]: Self::performance_time
+        ///
         /// # Examples
         ///
         /// ```rust,ignore
