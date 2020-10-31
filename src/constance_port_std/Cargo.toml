@@ -8,15 +8,6 @@ description = "Simulation environment for running Constance on a hosted environm
 keywords = ["constance", "simulator"]
 repository = "https://github.com/yvt/Constance"
 
-[features]
-# When testing, all optional features of Constance are enabled by default.
-# To test a specific combination of features, do this:
-#
-#     cargo test -p constance_port_std -Zpackage-features \
-#         --no-default-features --features constance_test_suite/system_time,...
-#
-default = ["constance_test_suite/full"]
-
 [dependencies]
 constance = { version = "0.1.0", path = "../constance" }
 
