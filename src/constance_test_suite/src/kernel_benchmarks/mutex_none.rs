@@ -28,7 +28,7 @@
 //!      │ │   │ │　 │ │                 ┊    ┊
 //!
 //!  pri: effective priority (assuming mtx uses the priority ceiling protocol)
-//! ```　
+//! ```
 //!
 use_benchmark_in_kernel_benchmark! {
     pub unsafe struct App<System> {

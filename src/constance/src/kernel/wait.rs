@@ -153,7 +153,6 @@ impl<T: PortThreading> WaitPayload<T> {
                 bits,
                 flags,
                 orig_bits,
-
             },
             Self::Semaphore => Self::Semaphore,
             Self::Mutex(x) => Self::Mutex(x),

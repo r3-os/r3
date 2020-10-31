@@ -788,7 +788,7 @@ define_error! {
     /// Error type for [`Mutex::lock_timeout`].
     ///
     /// [`Mutex::lock_timeout`]: super::Mutex::lock_timeout
-    pub enum LockMutexTimeoutError: BadContextError, BadIdError, WaitTimeoutError, 
+    pub enum LockMutexTimeoutError: BadContextError, BadIdError, WaitTimeoutError,
         BadParamError, LockMutexPrecheckError
     {
         /// The mutex ID is out of range.
