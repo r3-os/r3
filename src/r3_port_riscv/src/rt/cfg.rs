@@ -12,15 +12,8 @@ macro_rules! use_rt {
             #[$crate::riscv_rt::entry]
             fn start() -> ! {
                 unsafe {
-                    <$sys as $crate::EntryPoint>::start();
-                }
-            }
-
-            // Called by `riscv-rt`'s startup code
-            #[no_mangle]
-            fn _setup_interrupts() {
-                unsafe {
                     $crate::rt::imp::setup_interrupt_handler::<$sys>();
+                    <$sys as $crate::EntryPoint>::start();
                 }
             }
         };
