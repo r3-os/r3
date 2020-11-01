@@ -26,3 +26,6 @@ constance = { version = "0.1.0", path = "../constance" }
 embedded-hal = { version = "0.2.4", optional = true }
 rza1 = { version = "0.2.0", features = ["ostm"] }
 nb = { version = "0.1.2", optional = true }
+
+[package.metadata.docs.rs]
+targets = []

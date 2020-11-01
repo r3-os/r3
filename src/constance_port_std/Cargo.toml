@@ -32,3 +32,5 @@ winapi = { version = "0.3.8", features = ["processthreadsapi"] }
 name = "test_suite"
 harness = false
 
+[package.metadata.docs.rs]
+targets = []

@@ -21,3 +21,6 @@ constance = { version = "0.1.0", path = "../constance" }
 register = { version = "0.5.1" }
 riscv-rt = { version = "0.8.0" }
 riscv = { version = "0.6.0" }
+
+[package.metadata.docs.rs]
+targets = []
