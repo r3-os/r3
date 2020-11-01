@@ -2,7 +2,7 @@
 //! url(https://derpicdn.net/img/2019/6/30/2079083/medium.png);
 //! padding-bottom: 100%" href="http://derpibooru.org/2079083"
 //! title="Screwdriver"></a></div>
-#![doc(include = "../../constance/src/common.md")]
+#![doc(include = "./common.md")]
 #![feature(external_doc)] // `#[doc(include = ...)]`
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
