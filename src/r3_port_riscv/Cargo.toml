@@ -1,0 +1,26 @@
+[package]
+name = "r3_port_riscv"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "RISC-V port for R3"
+categories = ["embedded", "no-std"]
+keywords = ["r3", "riscv"]
+repository = "https://github.com/yvt/Constance"
+
+[features]
+emulate-lr-sc = []
+maintain-pie = []
+preload-registers = []
+
+[dependencies]
+r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
+r3 = { version = "0.1.0", path = "../r3" }
+
+register = { version = "0.5.1" }
+riscv-rt = { version = "0.8.0" }
+riscv = { version = "0.6.0" }
+
+[package.metadata.docs.rs]
+targets = []

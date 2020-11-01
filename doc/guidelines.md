@@ -61,7 +61,7 @@ Exceptions:
 
 ### Optional features should be documented properly (CC-DOC-OPT-FEATURES)
 
-All optional features of `constance` must be listed and explained in the crate-level documentation.
+All optional features of `r3` must be listed and explained in the crate-level documentation.
 
 In addition, every public item gated by such features must have [`#[doc(cfg(feature = ...))]` attribute](https://github.com/rust-lang/rust/issues/43781), which displays the required feature on the generated documentation.
 
@@ -107,11 +107,11 @@ The runtime overhead caused by unused features should be minimized or eliminated
 
   Example: If no startup hooks are defined, the compiler will simply remove the startup hook initialization loop because it can figure out that `STARTUP_HOOKS` has no elements.
 
-- If the usage of such features can be detected statically in a configuration macro (e.g., `constance::build!`), the macro should control the type choices based on that.
+- If the usage of such features can be detected statically in a configuration macro (e.g., `r3::build!`), the macro should control the type choices based on that.
 
   Examples:
 
-  - `constance_portkit::tickful::TickfulState` (used by timer drivers) chooses the optimal algorithm based on parameters.
+  - `r3_portkit::tickful::TickfulState` (used by timer drivers) chooses the optimal algorithm based on parameters.
 
   - Kernel objects are defined statically and their control blocks are stored in static arrays.
 

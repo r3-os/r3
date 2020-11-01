@@ -1,4 +1,4 @@
-This directory contains an example Constance application for [GR-PEACH].
+This directory contains an example R3 application for [GR-PEACH].
 
 [GR-PEACH]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html#overview
 

@@ -78,8 +78,8 @@ jobs:
         if: startsWith(matrix.os, 'windows-')
         shell: bash
         run: |
-          # `constance_port_std` doesn't support Windows yet
-          sed -E -i.bak 's/.*constance_port_std.*//' Cargo.toml
+          # `r3_port_std` doesn't support Windows yet
+          sed -E -i.bak 's/.*r3_port_std.*//' Cargo.toml
           sed -E -i.bak 's/.*basic.*//' Cargo.toml
 
       - name: Test
@@ -118,7 +118,7 @@ jobs:
         run: |
           features='${{ matrix.features }}'
           if [ "$features" ]; then
-            features="--features constance_test_suite/$features"
+            features="--features r3_test_suite/$features"
           fi
           echo "features_param=$features" >> $GITHUB_ENV
 
@@ -129,7 +129,7 @@ jobs:
           # `-Zpackage-features` is an unstable option that allows specifying a
           # `--features` + `-p` combination.
           # <https://github.com/rust-lang/cargo/issues/5364>
-          args: -Zpackage-features -p constance_port_std --no-default-features ${{ env.features_param }}
+          args: -Zpackage-features -p r3_port_std --no-default-features ${{ env.features_param }}
         env:
           RUST_LOG: debug
 
@@ -212,8 +212,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ./target/debug
-          key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/constance_test_runner/**', 'src/constance_test_suite/**') }}
+          key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/r3_test_runner/**', 'src/r3_test_suite/**') }}
 
       - name: Test
         run: |
-          cargo run --package constance_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --log-level debug
+          cargo run --package r3_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --log-level debug

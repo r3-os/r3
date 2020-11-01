@@ -1,16 +1,16 @@
 <h1 align="center">
-<img src="https://img.shields.io/badge/-𝖢𝖮𝖭𝖲𝖳𝖠𝖭𝖢𝖤-222?style=for-the-badge&labelColor=111111" width="40%" height="auto" alt="Constance"><img src="https://img.shields.io/badge/-𝖱𝖤𝖠𝖫--𝖳𝖨𝖬𝖤%20𝖮𝖯𝖤𝖱𝖠𝖳𝖨𝖭𝖦%20𝖲𝖸𝖲𝖳𝖤𝖬-666?style=for-the-badge&labelColor=333333" width="50%" height="auto" alt="Real-Time Operating System">
+<img src="https://img.shields.io/badge/-𝖱𝟥-222?style=for-the-badge&labelColor=111111" width="10%" height="auto" alt="R3"><img src="https://img.shields.io/badge/-𝖱𝖤𝖠𝖫--𝖳𝖨𝖬𝖤%20𝖮𝖯𝖤𝖱𝖠𝖳𝖨𝖭𝖦%20𝖲𝖸𝖲𝖳𝖤𝖬-666?style=for-the-badge&labelColor=333333" width="50%" height="auto" alt="Real-Time Operating System">
 </h1>
 
 <p align="center">
-<img src="https://img.shields.io/github/workflow/status/yvt/Constance/CI/%F0%9F%A6%86?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/crates.io-not%20yet-red?style=for-the-badge"> <a href="https://yvt.github.io/Constance/doc/constance/index.html"><img src="https://yvt.github.io/Constance/doc/badge.svg"></a>
+<img src="https://img.shields.io/github/workflow/status/yvt/Constance/CI/%F0%9F%A6%86?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/crates.io-not%20yet-red?style=for-the-badge"> <a href="https://yvt.github.io/Constance/doc/r3/index.html"><img src="https://yvt.github.io/Constance/doc/badge.svg"></a>
 </p>
 
 <p align="center">
 <a href="https://repl.it/@yvt/Constance-Hosted-Port#main.rs"><b>Try it on Repl.it</b></a>
 </p>
 
-Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
+R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
 
 - **All kernel objects are defined statically** for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.
 - The kernel and its configurator **don't require an external build tool or a specialized procedural macro**, maintaining transparency.
@@ -47,7 +47,7 @@ Constance is a proof-of-concept of a static RTOS that utilizes Rust's compile-ti
 // ----------------------------------------------------------------
 
 // Instantiate the Armv7-M port
-use constance_port_arm_m as port;
+use r3_port_arm_m as port;
 
 port::use_port!(unsafe struct System);
 port::use_systick_tickful!(unsafe impl PortTimer for System);
@@ -62,14 +62,14 @@ impl port::SysTickOptions for System {
 
 // ----------------------------------------------------------------
 
-use constance::kernel::{Task, cfg::CfgBuilder};
+use r3::kernel::{Task, cfg::CfgBuilder};
 
 struct Objects {
     task: Task<System>,
 }
 
 // Instantiate the kernel, allocate object IDs
-const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
 
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     System::configure_systick(b);
@@ -93,7 +93,7 @@ fn task_body(_: usize) {
 Start the `basic` example application using the simulator port:
 
 ```shell
-cargo run -p constance_example_basic
+cargo run -p r3_example_basic
 ```
 
 Start the `basic` example application using [the NUCLEO-F401RE board](https://www.st.com/en/evaluation-tools/nucleo-f401re.html) and [`cargo-embed`](https://crates.io/crates/cargo-embed) 0.9 for flashing:
@@ -127,7 +127,7 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 
  - [rustup], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
  - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M/-A port.
- - libusb 1.x and libudev to run `constance_test_runner` (used to test various ports).
+ - libusb 1.x and libudev to run `r3_test_runner` (used to test various ports).
  - [OpenOCD](http://openocd.org) to test the Arm-A port on GR-PEACH.
  - `JLinkExe`<sup>†</sup> from [J-Link Software] to test the RISC-V port on RED-V.
 
@@ -144,23 +144,23 @@ In this case, you need to run `rustup target add thumbv7m-none-eabi`.
 
 The following table shows how to run the kernel test suite for each target.
 
-| Architecture    |                  Board                   |                                Command                                                     |
-| --------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Host            | Host                                     | `cargo test -p constance_port_std -Zpackage-features --features constance_test_suite/full` |
-| Armv7-M+FPU+DSP | [NUCLEO-F401RE]                          | `cargo run -p constance_test_runner -- -t nucleo_f401re`                                   |
-| Armv8-MML+FPU   | [Arm MPS2+]​ [AN505]​ (QEMU)               | `cargo run -p constance_test_runner -- -t qemu_mps2_an505`                                 |
-| Armv8-MML       | Arm MPS2+ AN505 (QEMU)                   | `cargo run -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m33`                   |
-| Armv8-MBL       | Arm MPS2+ AN505 (QEMU)                   | `cargo run -p constance_test_runner -- -t qemu_mps2_an505 -a cortex_m23`                   |
-| Armv7-M         | Arm MPS2+ [AN385]​ (QEMU)                 | `cargo run -p constance_test_runner -- -t qemu_mps2_an385`                                 |
-| Armv6-M         | Arm MPS2+ AN385 (QEMU)                   | `cargo run -p constance_test_runner -- -t qemu_mps2_an385 -a cortex_m0`                    |
-| Armv7-A         | [GR-PEACH]                               | `cargo run -p constance_test_runner -- -t gr_peach`                                        |
-| Armv7-A         | [Arm RealView PBX for Cortex-A9]​ (QEMU)  | `cargo run -p constance_test_runner -- -t qemu_realview_pbx_a9`                            |
-| RV32IMAC        | [SiFive E]​ (QEMU)                        | `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv32`                              |
-| RV32GC          | [SiFive U]​ (QEMU)                        | `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv32`                              |
-| RV64IMAC        | SiFive E (QEMU)                          | `cargo run -p constance_test_runner -- -t qemu_sifive_e_rv64`                              |
-| RV64GC          | SiFive U (QEMU)                          | `cargo run -p constance_test_runner -- -t qemu_sifive_u_rv64`                              |
-| RV32IMAC        | [RED-V]​ (SPI flash XIP)                  | `cargo run -p constance_test_runner -- -t red_v`                                           |
-| RV64GC          | [Maix] boards (UART ISP)                 | `cargo run -p constance_test_runner -- -t maix`                                            |
+|   Architecture  |                  Board                   |                                   Command                                    |
+| --------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
+| Host            | Host                                     | `cargo test -p r3_port_std -Zpackage-features --features r3_test_suite/full` |
+| Armv7-M+FPU+DSP | [NUCLEO-F401RE]                          | `cargo run -p r3_test_runner -- -t nucleo_f401re`                            |
+| Armv8-MML+FPU   | [Arm MPS2+]​ [AN505]​ (QEMU)             | `cargo run -p r3_test_runner -- -t qemu_mps2_an505`                          |
+| Armv8-MML       | Arm MPS2+ AN505 (QEMU)                   | `cargo run -p r3_test_runner -- -t qemu_mps2_an505 -a cortex_m33`            |
+| Armv8-MBL       | Arm MPS2+ AN505 (QEMU)                   | `cargo run -p r3_test_runner -- -t qemu_mps2_an505 -a cortex_m23`            |
+| Armv7-M         | Arm MPS2+ [AN385]​ (QEMU)                | `cargo run -p r3_test_runner -- -t qemu_mps2_an385`                          |
+| Armv6-M         | Arm MPS2+ AN385 (QEMU)                   | `cargo run -p r3_test_runner -- -t qemu_mps2_an385 -a cortex_m0`             |
+| Armv7-A         | [GR-PEACH]                               | `cargo run -p r3_test_runner -- -t gr_peach`                                 |
+| Armv7-A         | [Arm RealView PBX for Cortex-A9]​ (QEMU) | `cargo run -p r3_test_runner -- -t qemu_realview_pbx_a9`                     |
+| RV32IMAC        | [SiFive E]​ (QEMU)                       | `cargo run -p r3_test_runner -- -t qemu_sifive_e_rv32`                       |
+| RV32GC          | [SiFive U]​ (QEMU)                       | `cargo run -p r3_test_runner -- -t qemu_sifive_u_rv32`                       |
+| RV64IMAC        | SiFive E (QEMU)                          | `cargo run -p r3_test_runner -- -t qemu_sifive_e_rv64`                       |
+| RV64GC          | SiFive U (QEMU)                          | `cargo run -p r3_test_runner -- -t qemu_sifive_u_rv64`                       |
+| RV32IMAC        | [RED-V]​ (SPI flash XIP)                 | `cargo run -p r3_test_runner -- -t red_v`                                    |
+| RV64GC          | [Maix] boards (UART ISP)                 | `cargo run -p r3_test_runner -- -t maix`                                     |
 
 [NUCLEO-F401RE]: https://www.st.com/en/evaluation-tools/nucleo-f401re.html
 [Arm MPS2+]: https://developer.arm.com/tools-and-software/development-boards/fpga-prototyping-boards/mps2
@@ -175,12 +175,12 @@ The following table shows how to run the kernel test suite for each target.
 
 ### How to Run Benchmarks
 
-The `-b` option instructs `constance_test_runner` to run benchmark tests. Note that some targets (notably QEMU Arm-M machines, which lack DWT) don't support benchmarking and the test code might crash, stall, or simply fail to compile on such targets.
+The `-b` option instructs `r3_test_runner` to run benchmark tests. Note that some targets (notably QEMU Arm-M machines, which lack DWT) don't support benchmarking and the test code might crash, stall, or simply fail to compile on such targets.
 
 | Architecture |         Board          |                           Command                           |
 | ------------ | ---------------------- | ----------------------------------------------------------- |
-| Host         | Host                   | `cargo bench -p constance_port_std`                         |
-| Armv7-M      | NUCLEO-F401RE          | `cargo run -p constance_test_runner -- -t nucleo_f401re -b` |
-| Armv7-A      | GR-PEACH               | `cargo run -p constance_test_runner -- -t gr_peach -b`      |
-| RV32IMAC     | RED-V (SPI flash XIP)  | `cargo run -p constance_test_runner -- -t red_v -b`         |
-| RV64GC       | Maix boards (UART ISP) | `cargo run -p constance_test_runner -- -t maix -b`          |
+| Host         | Host                   | `cargo bench -p r3_port_std`                         |
+| Armv7-M      | NUCLEO-F401RE          | `cargo run -p r3_test_runner -- -t nucleo_f401re -b` |
+| Armv7-A      | GR-PEACH               | `cargo run -p r3_test_runner -- -t gr_peach -b`      |
+| RV32IMAC     | RED-V (SPI flash XIP)  | `cargo run -p r3_test_runner -- -t red_v -b`         |
+| RV64GC       | Maix boards (UART ISP) | `cargo run -p r3_test_runner -- -t maix -b`          |

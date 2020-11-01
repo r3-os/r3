@@ -1,0 +1,23 @@
+[package]
+name = "r3_port_arm"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Arm-A port for R3"
+categories = ["embedded", "no-std"]
+keywords = ["r3", "arm"]
+repository = "https://github.com/yvt/Constance"
+
+[features]
+preload-registers = []
+
+[dependencies]
+r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
+r3 = { version = "0.1.0", path = "../r3" }
+
+register = "0.5.1"
+r0 = "0.2.2"
+
+[package.metadata.docs.rs]
+targets = []

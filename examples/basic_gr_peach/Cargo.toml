@@ -6,9 +6,9 @@ edition = "2018"
 publish = false
 
 [dependencies]
-constance_support_rza1 = { path = "../../src/constance_support_rza1", features = ["semver-exempt"] }
-constance_port_arm = { path = "../../src/constance_port_arm" }
-constance = { path = "../../src/constance", features = ["system_time"] }
+r3_support_rza1 = { path = "../../src/r3_support_rza1", features = ["semver-exempt"] }
+r3_port_arm = { path = "../../src/r3_port_arm" }
+r3 = { path = "../../src/r3", features = ["system_time"] }
 
 rtt-target = { version = "0.2.0" }
 rza1 = { version = "0.2.0", features = ["cpg", "gpio", "scif"] }

@@ -1,4 +1,4 @@
-use constance_support_rza1::sprintln;
+use r3_support_rza1::sprintln;
 use core::panic::PanicInfo;
 
 // Install a global panic handler that uses the serial port

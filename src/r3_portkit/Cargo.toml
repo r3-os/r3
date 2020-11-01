@@ -1,0 +1,26 @@
+[package]
+name = "r3_portkit"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Utilities for writing a port of R3"
+keywords = ["r3", "simulator"]
+repository = "https://github.com/yvt/Constance"
+
+[dependencies]
+r3 = { version = "0.1.0", path = "../r3" }
+
+num-rational = { version = "0.3.0", default-features = false }
+svgbobdoc = { version = "0.2.2" }
+
+[dev-dependencies]
+quickcheck_macros = { version = "0.9.1" }
+num-integer = { version = "0.1.43", default-features = false }
+env_logger = { version = "0.7.1" }
+quickcheck = { version = "0.9.2" }
+itertools = { version = "0.9.0" }
+log = { version = "0.4.8" }
+
+[package.metadata.docs.rs]
+targets = []
