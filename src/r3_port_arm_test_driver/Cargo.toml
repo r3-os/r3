@@ -1,0 +1,54 @@
+[package]
+name = "r3_port_arm_test_driver"
+version = "0.0.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[features]
+kernel_benchmarks = ["run"]
+kernel_tests = ["run"]
+run = [
+    "r3_test_suite",
+    "r3_port_arm",
+    "r3",
+    "register",
+    "log",
+]
+
+board-realview_pbx_a9 = [
+    "output-semihosting",
+]
+board-rza1 = [
+    "output-semihosting",
+    "r3_support_rza1",
+    "rza1",
+]
+
+output-semihosting = [
+    "arm_semihosting",
+    "staticvec",
+]
+
+[dependencies]
+r3_support_rza1 = { path = "../r3_support_rza1", optional = true, features = ["semver-exempt"] }
+r3_port_arm = { path = "../r3_port_arm", optional = true }
+arm_semihosting = { path = "../arm_semihosting", optional = true }
+r3 = { path = "../r3", optional = true }
+
+staticvec = { version = "0.10.5", optional = true, default-features = false }
+register = { version = "0.5.1", optional = true }
+rza1 = { version = "0.2.0", optional = true, features = ["cpg", "gpio", "scif"] }
+log = { version = "0.4.8", optional = true }
+
+[dependencies.r3_test_suite]
+path = "../r3_test_suite"
+default-features = false
+features = [
+    # compile the test case specified by `R3_TEST`
+    "tests_selective",
+    # enable all of the kernel optional features
+    "full",
+]
+optional = true

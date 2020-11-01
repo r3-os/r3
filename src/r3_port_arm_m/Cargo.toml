@@ -1,0 +1,27 @@
+[package]
+name = "r3_port_arm_m"
+version = "0.1.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Cortex-M port for R3"
+categories = ["embedded", "no-std"]
+keywords = ["r3", "arm"]
+repository = "https://github.com/yvt/r3"
+
+[features]
+preload-registers = []
+
+[dependencies]
+r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
+r3 = { version = "0.1.0", path = "../r3" }
+
+# `cortex-m-rt` doesn't build on a hosted target. We don't want
+# `cargo test --all` to fail because of this, so we put these in the
+# target-specific section.
+[target."cfg(target_os = \"none\")".dependencies]
+cortex-m-rt = "0.6.12"
+cortex-m = "0.6.2"
+
+[package.metadata.docs.rs]
+targets = []

@@ -1,4 +1,4 @@
-name: constance-install-qemu
+name: r3-install-qemu
 description: Install QEMU 5.1.0 from Source
 inputs:
   version:

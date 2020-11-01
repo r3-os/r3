@@ -12,8 +12,8 @@
 
 // -----------------------------------------------------------------------
 
-use constance_port_arm as port;
-use constance_support_rza1 as support_rza1;
+use r3_port_arm as port;
+use r3_support_rza1 as support_rza1;
 
 port::use_port!(unsafe struct System);
 port::use_startup!(unsafe System);
@@ -45,7 +45,7 @@ impl support_rza1::OsTimerOptions for System {
 
 // -----------------------------------------------------------------------
 
-use constance::{
+use r3::{
     kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
 };
@@ -59,7 +59,7 @@ struct Objects {
     task2: Task<System>,
 }
 
-const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
 
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     b.num_task_priority_levels(4);
@@ -105,6 +105,6 @@ fn task1_body(_: usize) {
 fn task2_body(_: usize) {
     loop {
         support_rza1::sprintln!("time = {:?}", System::time().unwrap());
-        System::sleep(constance::time::Duration::from_secs(1)).unwrap();
+        System::sleep(r3::time::Duration::from_secs(1)).unwrap();
     }
 }

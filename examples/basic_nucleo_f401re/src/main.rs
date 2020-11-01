@@ -6,12 +6,12 @@
 #![no_std]
 #![no_main]
 #![cfg(target_os = "none")]
-use constance::{
+use r3::{
     kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
     sync::Mutex,
 };
-use constance_port_arm_m as port;
+use r3_port_arm_m as port;
 
 // Install a global panic handler that uses RTT
 use panic_rtt_target as _;
@@ -36,7 +36,7 @@ struct Objects {
     mutex1: Mutex<System, u32>,
 }
 
-const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
 
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     b.num_task_priority_levels(4);
@@ -76,6 +76,6 @@ fn task1_body(_: usize) {
 fn task2_body(_: usize) {
     loop {
         rtt_target::rprintln!("time = {:?}", System::time().unwrap());
-        System::sleep(constance::time::Duration::from_secs(1)).unwrap();
+        System::sleep(r3::time::Duration::from_secs(1)).unwrap();
     }
 }

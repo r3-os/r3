@@ -3,13 +3,13 @@
 #![feature(const_mut_refs)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
-use constance::{
+use r3::{
     kernel::{cfg::CfgBuilder, Task},
     prelude::*,
     sync::Mutex,
 };
 
-constance_port_std::use_port!(unsafe struct System);
+r3_port_std::use_port!(unsafe struct System);
 
 #[derive(Debug)]
 struct Objects {
@@ -18,7 +18,7 @@ struct Objects {
     mutex1: Mutex<System, u32>,
 }
 
-const COTTAGE: Objects = constance::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
 
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     b.num_task_priority_levels(4);
@@ -49,6 +49,6 @@ fn task1_body(_: usize) {
 fn task2_body(_: usize) {
     loop {
         dbg!(System::time().unwrap());
-        System::sleep(constance::time::Duration::from_secs(1)).unwrap();
+        System::sleep(r3::time::Duration::from_secs(1)).unwrap();
     }
 }

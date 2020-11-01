@@ -140,9 +140,9 @@ checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 name = "basic_gr_peach"
 version = "0.0.0"
 dependencies = [
- "constance",
- "constance_port_arm",
- "constance_support_rza1",
+ "r3",
+ "r3_port_arm",
+ "r3_support_rza1",
  "rtt-target 0.2.0",
  "rza1",
 ]
@@ -152,12 +152,6 @@ name = "bit_field"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed8765909f9009617974ab6b7d332625b320b33c326b1e9321382ef1999b5d56"
-
-[[package]]
-name = "bit_field"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a165d606cf084741d4ac3a28fb6e9b1eb0bd31f6cd999098cfddb0b2ab381dc0"
 
 [[package]]
 name = "bitfield"
@@ -239,210 +233,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "constance"
-version = "0.1.0"
-dependencies = [
- "assert_matches",
- "bitflags",
- "chrono",
- "env_logger",
- "log",
- "num-integer",
- "num-traits",
- "pin-utils",
- "quickcheck",
- "quickcheck_macros",
- "staticvec",
- "svgbobdoc",
- "tokenlock",
-]
-
-[[package]]
-name = "constance_example_basic"
-version = "0.0.0"
-dependencies = [
- "constance",
- "constance_port_std",
- "log",
-]
-
-[[package]]
-name = "constance_example_basic_nucleo_f401re"
-version = "0.0.0"
-dependencies = [
- "constance",
- "constance_port_arm_m",
- "cortex-m-rt",
- "nucleo-f401re",
- "panic-rtt-target",
- "rtt-target 0.2.0",
-]
-
-[[package]]
-name = "constance_port_arm"
-version = "0.1.0"
-dependencies = [
- "constance",
- "constance_portkit",
- "r0 0.2.2",
- "register",
-]
-
-[[package]]
-name = "constance_port_arm_m"
-version = "0.1.0"
-dependencies = [
- "constance",
- "constance_portkit",
- "cortex-m",
- "cortex-m-rt",
-]
-
-[[package]]
-name = "constance_port_arm_m_test_driver"
-version = "0.0.0"
-dependencies = [
- "constance",
- "constance_port_arm_m",
- "constance_test_suite",
- "cortex-m",
- "cortex-m-rt",
- "cortex-m-semihosting",
- "log",
- "panic-rtt-target",
- "panic-semihosting",
- "rtt-target 0.2.0",
-]
-
-[[package]]
-name = "constance_port_arm_test_driver"
-version = "0.0.0"
-dependencies = [
- "arm_semihosting",
- "constance",
- "constance_port_arm",
- "constance_support_rza1",
- "constance_test_suite",
- "log",
- "register",
- "rza1",
- "staticvec",
-]
-
-[[package]]
-name = "constance_port_riscv"
-version = "0.1.0"
-dependencies = [
- "constance",
- "constance_portkit",
- "register",
- "riscv 0.6.0",
- "riscv-rt 0.8.0",
-]
-
-[[package]]
-name = "constance_port_riscv_test_driver"
-version = "0.0.0"
-dependencies = [
- "constance",
- "constance_port_riscv",
- "constance_portkit",
- "constance_test_suite",
- "e310x 0.8.1",
- "e310x-hal",
- "k210-hal",
- "log",
- "nb 0.1.3",
- "riscv 0.6.0",
- "riscv-rt 0.8.0",
- "rtt-target 0.2.0",
-]
-
-[[package]]
-name = "constance_port_std"
-version = "0.1.0"
-dependencies = [
- "constance",
- "constance_test_suite",
- "env_logger",
- "errno",
- "libc",
- "log",
- "once_cell",
- "try-mutex",
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "constance_portkit"
-version = "0.1.0"
-dependencies = [
- "constance",
- "env_logger",
- "itertools",
- "log",
- "num-integer",
- "num-rational",
- "quickcheck",
- "quickcheck_macros",
- "svgbobdoc",
-]
-
-[[package]]
-name = "constance_support_rza1"
-version = "0.1.0"
-dependencies = [
- "constance",
- "constance_port_arm",
- "constance_portkit",
- "embedded-hal",
- "nb 0.1.3",
- "rza1",
-]
-
-[[package]]
-name = "constance_test_runner"
-version = "0.0.0"
-dependencies = [
- "aho-corasick",
- "anyhow",
- "arg_enum_proc_macro",
- "constance_test_suite",
- "crc",
- "env_logger",
- "futures-core",
- "goblin",
- "itertools",
- "lazy_static",
- "log",
- "mio-serial",
- "probe-rs",
- "probe-rs-rtt",
- "serde",
- "serde_json",
- "structopt",
- "tempdir",
- "thiserror",
- "tokio",
- "tokio-serial",
- "toml",
-]
-
-[[package]]
-name = "constance_test_suite"
-version = "0.1.0"
-dependencies = [
- "assert_matches",
- "constance",
- "env_logger",
- "log",
- "quickcheck",
- "quickcheck_macros",
- "staticvec",
- "wyhash",
-]
-
-[[package]]
 name = "cortex-m"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -461,7 +251,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00d518da72bba39496024b62607c1d8e37bcece44b2536664f1132a73a499a28"
 dependencies = [
  "cortex-m-rt-macros",
- "r0 0.2.2",
+ "r0",
 ]
 
 [[package]]
@@ -515,8 +305,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "109a18d80af4c0d7c121e1c3896c9ac3cfcb1f7f334cef594fb4d5668da91a5f"
 dependencies = [
  "bare-metal",
- "riscv 0.5.4",
- "riscv-rt 0.6.2",
+ "riscv",
+ "riscv-rt",
  "vcell",
 ]
 
@@ -527,7 +317,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6e12cfa8b5bdc7c9ad706a4a16ea2a85f7eeeccd744c8a1b0ed19be4baf05f3"
 dependencies = [
  "bare-metal",
- "riscv 0.5.4",
+ "riscv",
  "vcell",
 ]
 
@@ -540,7 +330,7 @@ dependencies = [
  "e310x 0.6.0",
  "embedded-hal",
  "nb 0.1.3",
- "riscv 0.5.4",
+ "riscv",
 ]
 
 [[package]]
@@ -854,8 +644,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69b1cda20e843558e892373b1fd01a900232103f65fa4be8f18edcd130dde30e"
 dependencies = [
  "bare-metal",
- "riscv 0.5.4",
- "riscv-rt 0.6.2",
+ "riscv",
+ "riscv-rt",
  "vcell",
 ]
 
@@ -1379,10 +1169,208 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2a38df5b15c8d5c7e8654189744d8e396bddc18ad48041a500ce52d6948941f"
 
 [[package]]
-name = "r0"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd7a31eed1591dcbc95d92ad7161908e72f4677f8fabf2a32ca49b4237cbf211"
+name = "r3"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "bitflags",
+ "chrono",
+ "env_logger",
+ "log",
+ "num-integer",
+ "num-traits",
+ "pin-utils",
+ "quickcheck",
+ "quickcheck_macros",
+ "staticvec",
+ "svgbobdoc",
+ "tokenlock",
+]
+
+[[package]]
+name = "r3_example_basic"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "r3",
+ "r3_port_std",
+]
+
+[[package]]
+name = "r3_example_basic_nucleo_f401re"
+version = "0.0.0"
+dependencies = [
+ "cortex-m-rt",
+ "nucleo-f401re",
+ "panic-rtt-target",
+ "r3",
+ "r3_port_arm_m",
+ "rtt-target 0.2.0",
+]
+
+[[package]]
+name = "r3_port_arm"
+version = "0.1.0"
+dependencies = [
+ "r0",
+ "r3",
+ "r3_portkit",
+ "register",
+]
+
+[[package]]
+name = "r3_port_arm_m"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "r3",
+ "r3_portkit",
+]
+
+[[package]]
+name = "r3_port_arm_m_test_driver"
+version = "0.0.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "cortex-m-semihosting",
+ "log",
+ "panic-rtt-target",
+ "panic-semihosting",
+ "r3",
+ "r3_port_arm_m",
+ "r3_test_suite",
+ "rtt-target 0.2.0",
+]
+
+[[package]]
+name = "r3_port_arm_test_driver"
+version = "0.0.0"
+dependencies = [
+ "arm_semihosting",
+ "log",
+ "r3",
+ "r3_port_arm",
+ "r3_support_rza1",
+ "r3_test_suite",
+ "register",
+ "rza1",
+ "staticvec",
+]
+
+[[package]]
+name = "r3_port_riscv"
+version = "0.1.0"
+dependencies = [
+ "r3",
+ "r3_portkit",
+ "register",
+ "riscv",
+ "riscv-rt",
+]
+
+[[package]]
+name = "r3_port_riscv_test_driver"
+version = "0.0.0"
+dependencies = [
+ "e310x 0.8.1",
+ "e310x-hal",
+ "k210-hal",
+ "log",
+ "nb 0.1.3",
+ "r3",
+ "r3_port_riscv",
+ "r3_portkit",
+ "r3_test_suite",
+ "riscv",
+ "riscv-rt",
+ "rtt-target 0.2.0",
+]
+
+[[package]]
+name = "r3_port_std"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "errno",
+ "libc",
+ "log",
+ "once_cell",
+ "r3",
+ "r3_test_suite",
+ "try-mutex",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "r3_portkit"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "itertools",
+ "log",
+ "num-integer",
+ "num-rational",
+ "quickcheck",
+ "quickcheck_macros",
+ "r3",
+ "svgbobdoc",
+]
+
+[[package]]
+name = "r3_support_rza1"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal",
+ "nb 0.1.3",
+ "r3",
+ "r3_port_arm",
+ "r3_portkit",
+ "rza1",
+]
+
+[[package]]
+name = "r3_test_runner"
+version = "0.0.0"
+dependencies = [
+ "aho-corasick",
+ "anyhow",
+ "arg_enum_proc_macro",
+ "crc",
+ "env_logger",
+ "futures-core",
+ "goblin",
+ "itertools",
+ "lazy_static",
+ "log",
+ "mio-serial",
+ "probe-rs",
+ "probe-rs-rtt",
+ "r3_test_suite",
+ "serde",
+ "serde_json",
+ "structopt",
+ "tempdir",
+ "thiserror",
+ "tokio",
+ "tokio-serial",
+ "toml",
+]
+
+[[package]]
+name = "r3_test_suite"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "env_logger",
+ "log",
+ "quickcheck",
+ "quickcheck_macros",
+ "r3",
+ "staticvec",
+ "wyhash",
+]
 
 [[package]]
 name = "rand"
@@ -1520,18 +1508,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bb785ce81e0bd87b8d1d357266eeb03f081d9d5871a31e7f95b7e6fd67002eb"
 dependencies = [
  "bare-metal",
- "bit_field 0.9.0",
-]
-
-[[package]]
-name = "riscv"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f0b705d428e9d0f78e2bb73093887ee58a83c9688de3faedbb4c0631c4618e"
-dependencies = [
- "bare-metal",
- "bit_field 0.10.0",
- "riscv-target",
+ "bit_field",
 ]
 
 [[package]]
@@ -1540,21 +1517,9 @@ version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5b540024086582df97c2e52b0f586977b9a14f95d7f6055438b355e9842b319"
 dependencies = [
- "r0 0.2.2",
- "riscv 0.5.4",
+ "r0",
+ "riscv",
  "riscv-rt-macros",
-]
-
-[[package]]
-name = "riscv-rt"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7fe583b2216c75d6f35996919c09fd4011fbc8f6bf31e5fbc97483a6aaa8bdd"
-dependencies = [
- "r0 1.0.0",
- "riscv 0.6.0",
- "riscv-rt-macros",
- "riscv-target",
 ]
 
 [[package]]
@@ -1567,16 +1532,6 @@ dependencies = [
  "quote 0.6.13",
  "rand 0.5.6",
  "syn 0.15.44",
-]
-
-[[package]]
-name = "riscv-target"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88aa938cda42a0cf62a20cfe8d139ff1af20c2e681212b5b34adb5a58333f222"
-dependencies = [
- "lazy_static",
- "regex",
 ]
 
 [[package]]

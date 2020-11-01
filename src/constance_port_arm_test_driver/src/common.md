@@ -1,1 +1,0 @@
-../../constance/src/common.md

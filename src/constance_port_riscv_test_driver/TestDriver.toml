@@ -1,7 +1,0 @@
-# Define driver-defined tests here. They will be picked up by
-# `constance_test_runner` and each of them will be selected at one time by
-# `CONSTANCE_DRIVER_TEST` environment variable.
-[tests]
-kernel_tests = [
-    "execute_lr_sc",
-]
