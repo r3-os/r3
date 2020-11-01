@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 description = "RISC-V port for R3"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "riscv"]
-repository = "https://github.com/yvt/Constance"
+repository = "https://github.com/yvt/r3"
 
 [features]
 emulate-lr-sc = []

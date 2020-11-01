@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 categories = ["embedded", "no-std", "development-tools::testing"]
 description = "Test suite for R3"
 keywords = ["r3"]
-repository = "https://github.com/yvt/Constance"
+repository = "https://github.com/yvt/r3"
 
 [features]
 default = ["tests_all", "full"]

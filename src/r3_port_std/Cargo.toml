@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Simulation environment for running R3 on a hosted environment"
 keywords = ["r3", "simulator"]
-repository = "https://github.com/yvt/Constance"
+repository = "https://github.com/yvt/r3"
 
 [dependencies]
 r3 = { version = "0.1.0", path = "../r3" }

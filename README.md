@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-<img src="https://img.shields.io/github/workflow/status/yvt/Constance/CI/%F0%9F%A6%86?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/crates.io-not%20yet-red?style=for-the-badge"> <a href="https://yvt.github.io/Constance/doc/r3/index.html"><img src="https://yvt.github.io/Constance/doc/badge.svg"></a>
+<img src="https://img.shields.io/github/workflow/status/yvt/r3/CI/%F0%9F%A6%86?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/crates.io-not%20yet-red?style=for-the-badge"> <a href="https://yvt.github.io/r3/doc/r3/index.html"><img src="https://yvt.github.io/r3/doc/badge.svg"></a>
 </p>
 
 <p align="center">
