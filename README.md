@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-<a href="https://repl.it/@yvt/Constance-Hosted-Port#main.rs"><b>Try it on Repl.it</b></a>
+<a href="https://repl.it/@yvt/R3-Kernel-Hosted-Port#main.rs"><b>Try it on Repl.it</b></a>
 </p>
 
 R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
