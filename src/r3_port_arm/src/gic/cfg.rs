@@ -23,13 +23,13 @@ macro_rules! use_gic {
     (unsafe impl PortInterrupts for $sys:ty) => {
         const _: () = {
             use $crate::{
+                core::ops::Range,
+                gic::imp,
                 r3::kernel::{
                     ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
                     InterruptPriority, PendInterruptLineError, PortInterrupts,
                     QueryInterruptLineError, SetInterruptLinePriorityError,
                 },
-                core::ops::Range,
-                gic::imp,
                 Gic, InterruptController,
             };
 

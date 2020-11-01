@@ -1,11 +1,11 @@
 //! Validates error codes returned by time-related methods. Also, checks
 //! miscellaneous properties of such methods.
+use core::marker::PhantomData;
 use r3::{
     kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
     time::{Duration, Time},
 };
-use core::marker::PhantomData;
 
 use super::Driver;
 
@@ -33,10 +33,7 @@ impl<System: Kernel> App<System> {
 fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Not a task context
     #[cfg(feature = "system_time")]
-    assert_eq!(
-        System::time(),
-        Err(r3::kernel::TimeError::BadContext)
-    );
+    assert_eq!(System::time(), Err(r3::kernel::TimeError::BadContext));
 
     assert_eq!(
         System::set_time(Time::from_micros(0)),
@@ -81,10 +78,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
     #[cfg(feature = "system_time")]
-    assert_eq!(
-        System::time(),
-        Err(r3::kernel::TimeError::BadContext)
-    );
+    assert_eq!(System::time(), Err(r3::kernel::TimeError::BadContext));
 
     assert_eq!(
         System::set_time(Time::from_millis(0)),

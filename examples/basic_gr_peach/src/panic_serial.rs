@@ -1,5 +1,5 @@
-use r3_support_rza1::sprintln;
 use core::panic::PanicInfo;
+use r3_support_rza1::sprintln;
 
 // Install a global panic handler that uses the serial port
 #[inline(never)]

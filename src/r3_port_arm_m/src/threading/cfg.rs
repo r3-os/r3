@@ -1,5 +1,5 @@
-use r3::kernel::{InterruptNum, InterruptPriority};
 use core::ops::Range;
+use r3::kernel::{InterruptNum, InterruptPriority};
 
 pub const INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..256;
 

@@ -1,9 +1,9 @@
 //! Checks the return codes of disallowed system calls made in a boot context.
+use core::marker::PhantomData;
 use r3::{
     kernel::{self, cfg::CfgBuilder, StartupHook},
     prelude::*,
 };
-use core::marker::PhantomData;
 
 use super::Driver;
 

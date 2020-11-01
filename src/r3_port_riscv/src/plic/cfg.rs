@@ -40,13 +40,13 @@ macro_rules! use_plic {
     (unsafe impl InterruptController for $sys:ty) => {
         const _: () = {
             use $crate::{
+                core::ops::Range,
+                plic::{imp, plic_regs},
                 r3::kernel::{
                     cfg::CfgBuilder, ClearInterruptLineError, EnableInterruptLineError,
                     InterruptNum, InterruptPriority, PendInterruptLineError, PortInterrupts,
                     QueryInterruptLineError, SetInterruptLinePriorityError,
                 },
-                core::ops::Range,
-                plic::{imp, plic_regs},
                 InterruptController, Plic, PlicOptions,
             };
 

@@ -1,4 +1,5 @@
 //! The tickful `PortTimer` implementation based on SysTick.
+use core::cell::UnsafeCell;
 use r3::{
     kernel::{
         cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, StartupHook, UTicks,
@@ -6,7 +7,6 @@ use r3::{
     utils::Init,
 };
 use r3_portkit::tickful::{TickfulCfg, TickfulOptions, TickfulState, TickfulStateTrait};
-use core::cell::UnsafeCell;
 
 use crate::{SysTickOptions, INTERRUPT_SYSTICK};
 

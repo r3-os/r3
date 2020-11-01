@@ -4,16 +4,16 @@
 //! The intent of this test to detect bugs in the saving and restoring of
 //! registers during a context switch. To this end, the task is designed to
 //! utilize as many floating-point registers as possible.
+use core::{
+    cell::UnsafeCell,
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+};
 use r3::{
     hunk::Hunk,
     kernel::{cfg::CfgBuilder, StartupHook, Task, Timer},
     prelude::*,
     time::Duration,
     utils::Init,
-};
-use core::{
-    cell::UnsafeCell,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 use super::Driver;

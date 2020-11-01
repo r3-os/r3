@@ -1,6 +1,6 @@
 #![allow(dead_code)] // suppress warning when doing selective testing
-use r3::utils::Init;
 use core::sync::atomic::{AtomicUsize, Ordering};
+use r3::utils::Init;
 
 pub(crate) mod benchmark;
 pub(crate) mod compute;

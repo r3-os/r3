@@ -1,12 +1,12 @@
 //! Executes LR and SC instructions with various parameters. This test will
 //! exercise the emulation code (`emulate-lr-sc`) on some targets.
+use core::{marker::PhantomData, mem::MaybeUninit, ptr::raw_mut};
 use r3::{
     kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
 };
 use r3_portkit::pptext::pp_asm;
 use r3_test_suite::kernel_tests::Driver;
-use core::{marker::PhantomData, mem::MaybeUninit, ptr::raw_mut};
 
 pub struct App<System> {
     _phantom: PhantomData<System>,

@@ -1,3 +1,4 @@
+use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 use r3::{
     kernel::{
         ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
@@ -8,7 +9,6 @@ use r3::{
     utils::Init,
 };
 use r3_portkit::pptext::pp_llvm_asm;
-use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
 use crate::{
     ThreadingOptions, INTERRUPT_EXTERNAL0, INTERRUPT_NUM_RANGE, INTERRUPT_PRIORITY_RANGE,

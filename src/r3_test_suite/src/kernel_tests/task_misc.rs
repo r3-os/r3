@@ -1,10 +1,10 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
+use core::num::NonZeroUsize;
 use r3::{
     kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
 };
-use core::num::NonZeroUsize;
 use wyhash::WyHash;
 
 use super::Driver;
@@ -136,14 +136,8 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
         app.task1.interrupt(),
         Err(r3::kernel::InterruptTaskError::BadContext)
     );
-    assert_eq!(
-        app.task1.unpark(),
-        Err(r3::kernel::UnparkError::BadContext)
-    );
-    assert_eq!(
-        System::park(),
-        Err(r3::kernel::ParkError::BadContext)
-    );
+    assert_eq!(app.task1.unpark(), Err(r3::kernel::UnparkError::BadContext));
+    assert_eq!(System::park(), Err(r3::kernel::ParkError::BadContext));
     assert_eq!(
         app.task1.set_priority(2),
         Err(r3::kernel::SetTaskPriorityError::BadContext)

@@ -87,17 +87,17 @@
 //! > An exception return clears the local monitor. As a result, performing a
 //! > CLREX instruction as part of a context switch is not required in most
 //! > situations.
+use core::{
+    cell::UnsafeCell,
+    num::Wrapping,
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+};
 use r3::{
     hunk::Hunk,
     kernel::{cfg::CfgBuilder, Task, Timer},
     prelude::*,
     time::Duration,
     utils::Init,
-};
-use core::{
-    cell::UnsafeCell,
-    num::Wrapping,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 use super::Driver;

@@ -1,12 +1,12 @@
 //! Checks miscellaneous properties of [`r3::sync::RecursiveMutex`].
 use assert_matches::assert_matches;
+use core::cell::Cell;
 use r3::{
     hunk::Hunk,
     kernel::{cfg::CfgBuilder, Task},
     prelude::*,
     sync::recursive_mutex::{self, RecursiveMutex},
 };
-use core::cell::Cell;
 
 use super::Driver;
 use crate::utils::SeqTracker;

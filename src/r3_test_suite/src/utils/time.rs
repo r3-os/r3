@@ -1,8 +1,8 @@
+use core::ops::Range;
 use r3::{
     kernel::Kernel,
     time::{Duration, Time},
 };
-use core::ops::Range;
 
 /// Extension methods for [`Kernel`].
 pub trait KernelTimeExt: Kernel {

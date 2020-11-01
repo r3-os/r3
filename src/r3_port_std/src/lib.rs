@@ -7,6 +7,7 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![doc(include = "./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
+use once_cell::sync::OnceCell;
 use r3::{
     kernel::{
         ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
@@ -15,7 +16,6 @@ use r3::{
     },
     prelude::*,
 };
-use once_cell::sync::OnceCell;
 use std::{
     cell::Cell,
     sync::mpsc,

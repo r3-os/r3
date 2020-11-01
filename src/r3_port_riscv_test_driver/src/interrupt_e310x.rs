@@ -3,16 +3,17 @@
 //! toggling GPIO ports.
 //!
 //! GPIO pins 0 and 1 must not be driven externally.
+use core::sync::atomic::Ordering;
 use r3::kernel::{
     cfg::CfgBuilder, ClearInterruptLineError, InterruptHandler, InterruptNum, Kernel,
     PendInterruptLineError,
 };
-use core::sync::atomic::Ordering;
 
 #[macro_export]
 macro_rules! use_interrupt_e310x {
     (unsafe impl InterruptController for $sys:ty) => {
         const _: () = {
+            use core::ops::Range;
             use r3::kernel::{
                 cfg::CfgBuilder, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
                 InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
@@ -22,7 +23,6 @@ macro_rules! use_interrupt_e310x {
                 plic::{imp, plic_regs},
                 InterruptController, Plic, PlicOptions,
             };
-            use core::ops::Range;
 
             unsafe impl Plic for $sys {
                 fn plic_regs() -> &'static plic_regs::Plic {

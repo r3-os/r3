@@ -1,11 +1,11 @@
 //! Checks that [`InterruptHandlerTable::get`] returns `None` for interrupt
 //! lines that have no registered interrupt handlers.
+use core::marker::PhantomData;
 use r3::{
     kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, StartupHook},
     prelude::*,
 };
 use r3_test_suite::kernel_tests::Driver;
-use core::marker::PhantomData;
 
 pub struct App<System> {
     _phantom: PhantomData<System>,

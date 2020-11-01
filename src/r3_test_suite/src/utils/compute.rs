@@ -2,8 +2,8 @@
 //!
 //! This is designed to be register-hungry to increase the likelihood of
 //! discovering a bug in context switching.
-use r3::utils::Init;
 use core::ops;
+use r3::utils::Init;
 
 use super::trig::sincos;
 

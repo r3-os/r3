@@ -1,10 +1,10 @@
 //! Validates error codes returned by event group manipulation methods. Also,
 //! checks miscellaneous properties of `EventGroup`.
+use core::num::NonZeroUsize;
 use r3::{
     kernel::{cfg::CfgBuilder, EventGroup, Task},
     prelude::*,
 };
-use core::num::NonZeroUsize;
 use wyhash::WyHash;
 
 use super::Driver;
@@ -47,10 +47,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // Invalid event group ID
     let bad_eg: EventGroup<System> = unsafe { EventGroup::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(
-        bad_eg.get(),
-        Err(r3::kernel::GetEventGroupError::BadId)
-    );
+    assert_eq!(bad_eg.get(), Err(r3::kernel::GetEventGroupError::BadId));
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
@@ -67,8 +64,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         Err(r3::kernel::UpdateEventGroupError::BadContext)
     );
     assert_eq!(
-        app.eg1
-            .wait(0, r3::kernel::EventGroupWaitFlags::empty()),
+        app.eg1.wait(0, r3::kernel::EventGroupWaitFlags::empty()),
         Err(r3::kernel::WaitEventGroupError::BadContext)
     );
     unsafe { System::release_cpu_lock().unwrap() };

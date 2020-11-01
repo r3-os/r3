@@ -84,10 +84,7 @@ fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     D::app().seq.expect_and_replace(2, 3);
 
-    assert_eq!(
-        sem.poll_one(),
-        Err(r3::kernel::PollSemaphoreError::Timeout)
-    );
+    assert_eq!(sem.poll_one(), Err(r3::kernel::PollSemaphoreError::Timeout));
     assert_eq!(
         sem.wait_one(),
         Err(r3::kernel::WaitSemaphoreError::BadContext)

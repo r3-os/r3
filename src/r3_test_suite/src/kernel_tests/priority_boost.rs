@@ -1,9 +1,9 @@
 //! Activates and deactivates Priority Boost.
+use core::marker::PhantomData;
 use r3::{
     kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
-use core::marker::PhantomData;
 
 use super::Driver;
 
@@ -48,10 +48,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     unsafe { System::release_cpu_lock() }.unwrap();
 
     // Blocking operations are disallowed
-    assert_eq!(
-        System::park(),
-        Err(r3::kernel::ParkError::BadContext),
-    );
+    assert_eq!(System::park(), Err(r3::kernel::ParkError::BadContext),);
 
     // -------------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 //! Measures the execution times of port operations.
-use r3::kernel::{cfg::CfgBuilder, Kernel};
 use core::marker::PhantomData;
+use r3::kernel::{cfg::CfgBuilder, Kernel};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;

@@ -1,9 +1,9 @@
 //! Activates and deactivates CPU Lock.
+use core::marker::PhantomData;
 use r3::{
     kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
-use core::marker::PhantomData;
 
 use super::Driver;
 

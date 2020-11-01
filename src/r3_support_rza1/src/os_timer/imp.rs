@@ -1,7 +1,5 @@
 //! The implementation of the RZ/A1 OS Timer driver.
-use r3::kernel::{
-    cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, UTicks,
-};
+use r3::kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, UTicks};
 use r3_port_arm::Gic;
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use rza1::ostm0 as ostm;

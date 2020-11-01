@@ -1,10 +1,10 @@
 //! Validates error codes returned by semaphore manipulation methods. Also,
 //! checks miscellaneous properties of `Semaphore`.
+use core::num::NonZeroUsize;
 use r3::{
     kernel::{cfg::CfgBuilder, Semaphore, Task},
     prelude::*,
 };
-use core::num::NonZeroUsize;
 use wyhash::WyHash;
 
 use super::Driver;
@@ -47,10 +47,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // Invalid semaphore ID
     let bad_eg: Semaphore<System> = unsafe { Semaphore::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(
-        bad_eg.get(),
-        Err(r3::kernel::GetSemaphoreError::BadId)
-    );
+    assert_eq!(bad_eg.get(), Err(r3::kernel::GetSemaphoreError::BadId));
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();

@@ -14,11 +14,11 @@
 #![doc(include = "./lib.md")]
 #![doc(include = "./common.md")]
 #![no_std]
+use core::ops::Range;
 use r3::kernel::{
     ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
     PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
 };
-use core::ops::Range;
 
 /// Used by macros
 #[doc(hidden)]

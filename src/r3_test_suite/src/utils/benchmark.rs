@@ -1,10 +1,10 @@
 //! The benchmark framework that runs on R3.
+use core::{cell::UnsafeCell, fmt};
 use r3::{
     hunk::Hunk,
     kernel::{cfg::CfgBuilder, Kernel, Task},
     utils::Init,
 };
-use core::{cell::UnsafeCell, fmt};
 use staticvec::StaticVec;
 
 use crate::utils::sort::insertion_sort;

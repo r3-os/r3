@@ -12,10 +12,8 @@ mod utils;
 
 #[tokio::main]
 async fn main() {
-    env_logger::from_env(
-        env_logger::Env::default().default_filter_or("r3_test_runner=info"),
-    )
-    .init();
+    env_logger::from_env(env_logger::Env::default().default_filter_or("r3_test_runner=info"))
+        .init();
 
     if let Err(e) = main_inner().await {
         log::error!("Command failed.\n{:?}", e);

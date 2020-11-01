@@ -106,9 +106,7 @@ impl TestDriver {
                 "r3_port_arm_test_driver",
                 "-C link-arg=-Tlink_ram_harvard.x",
             ),
-            targets::Arch::ArmM { .. } => {
-                ("r3_port_arm_m_test_driver", "-C link-arg=-Tlink.x")
-            }
+            targets::Arch::ArmM { .. } => ("r3_port_arm_m_test_driver", "-C link-arg=-Tlink.x"),
             targets::Arch::Riscv { .. } => (
                 "r3_port_riscv_test_driver",
                 "-C link-arg=-Tmemory.x -C link-arg=-Tlink.x",
@@ -196,8 +194,8 @@ impl TestDriver {
         log::debug!("exe_path = '{}'", exe_path.display());
 
         // Put the linker script in a directory
-        let link_dir = tempdir::TempDir::new("r3_test_runner")
-            .map_err(TestDriverNewError::TempDirError)?;
+        let link_dir =
+            tempdir::TempDir::new("r3_test_runner").map_err(TestDriverNewError::TempDirError)?;
         {
             let memory_x_path = link_dir.path().join("memory.x");
             log::debug!("Writing '{}'", memory_x_path.display());

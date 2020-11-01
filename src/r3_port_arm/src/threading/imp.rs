@@ -1,9 +1,9 @@
+use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 use r3::{
     kernel::{Port, PortToKernel, TaskCb},
     prelude::*,
     utils::Init,
 };
-use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 
 use super::cfg::{InterruptController, ThreadingOptions, Timer};
 

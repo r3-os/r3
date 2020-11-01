@@ -1,12 +1,12 @@
 //! Validates error codes returned by mutex manipulation methods. Also,
 //! checks miscellaneous properties of [`r3::kernel::Mutex`].
+use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
     kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task},
     prelude::*,
     time::Duration,
 };
-use core::num::NonZeroUsize;
 use staticvec::StaticVec;
 use wyhash::WyHash;
 
@@ -109,25 +109,13 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
     // Invalid mutex ID
     let bad_m: Mutex<System> = unsafe { Mutex::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(
-        bad_m.is_locked(),
-        Err(r3::kernel::QueryMutexError::BadId)
-    );
+    assert_eq!(bad_m.is_locked(), Err(r3::kernel::QueryMutexError::BadId));
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
-    assert_eq!(
-        m1.is_locked(),
-        Err(r3::kernel::QueryMutexError::BadContext)
-    );
-    assert_eq!(
-        m1.unlock(),
-        Err(r3::kernel::UnlockMutexError::BadContext)
-    );
-    assert_eq!(
-        m1.lock(),
-        Err(r3::kernel::LockMutexError::BadContext)
-    );
+    assert_eq!(m1.is_locked(), Err(r3::kernel::QueryMutexError::BadContext));
+    assert_eq!(m1.unlock(), Err(r3::kernel::UnlockMutexError::BadContext));
+    assert_eq!(m1.lock(), Err(r3::kernel::LockMutexError::BadContext));
     assert_eq!(
         m1.try_lock(),
         Err(r3::kernel::TryLockMutexError::BadContext)
@@ -146,14 +134,8 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     {
         // Disallowed in a task, non-waitable context
         System::boost_priority().unwrap();
-        assert_eq!(
-            m1.unlock(),
-            Err(r3::kernel::UnlockMutexError::BadContext)
-        );
-        assert_eq!(
-            m1.lock(),
-            Err(r3::kernel::LockMutexError::BadContext)
-        );
+        assert_eq!(m1.unlock(), Err(r3::kernel::UnlockMutexError::BadContext));
+        assert_eq!(m1.lock(), Err(r3::kernel::LockMutexError::BadContext));
         assert_eq!(
             m1.lock_timeout(Duration::ZERO),
             Err(r3::kernel::LockMutexTimeoutError::BadContext)
@@ -172,17 +154,11 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     }
 
     // Not locked
-    assert_eq!(
-        m1.unlock(),
-        Err(r3::kernel::UnlockMutexError::NotOwner)
-    );
+    assert_eq!(m1.unlock(), Err(r3::kernel::UnlockMutexError::NotOwner));
 
     // Double lock
     m1.lock().unwrap();
-    assert_eq!(
-        m1.lock(),
-        Err(r3::kernel::LockMutexError::WouldDeadlock)
-    );
+    assert_eq!(m1.lock(), Err(r3::kernel::LockMutexError::WouldDeadlock));
     assert_eq!(
         m1.try_lock(),
         Err(r3::kernel::TryLockMutexError::WouldDeadlock)
@@ -290,10 +266,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
             // The current priority exceeds the priority ceiling. Locking
             // operations will fail.
             assert_eq!(m2.lock(), Err(r3::kernel::LockMutexError::BadParam));
-            assert_eq!(
-                m2.try_lock(),
-                Err(r3::kernel::TryLockMutexError::BadParam)
-            );
+            assert_eq!(m2.try_lock(), Err(r3::kernel::TryLockMutexError::BadParam));
             assert_eq!(
                 m2.lock_timeout(Duration::ZERO),
                 Err(r3::kernel::LockMutexTimeoutError::BadParam)
@@ -414,10 +387,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // The "abandoned" status lasts until it's explicitly cleared
     assert_eq!(m1.lock(), Err(r3::kernel::LockMutexError::Abandoned));
     m1.unlock().unwrap();
-    assert_eq!(
-        m1.try_lock(),
-        Err(r3::kernel::TryLockMutexError::Abandoned)
-    );
+    assert_eq!(m1.try_lock(), Err(r3::kernel::TryLockMutexError::Abandoned));
     m1.unlock().unwrap();
     assert_eq!(
         m1.lock_timeout(Duration::ZERO),
@@ -457,14 +427,8 @@ fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
     );
 
     // Disallowed in a non-task context
-    assert_eq!(
-        m1.unlock(),
-        Err(r3::kernel::UnlockMutexError::BadContext)
-    );
-    assert_eq!(
-        m1.lock(),
-        Err(r3::kernel::LockMutexError::BadContext)
-    );
+    assert_eq!(m1.unlock(), Err(r3::kernel::UnlockMutexError::BadContext));
+    assert_eq!(m1.lock(), Err(r3::kernel::LockMutexError::BadContext));
     assert_eq!(
         m1.try_lock(),
         Err(r3::kernel::TryLockMutexError::BadContext)

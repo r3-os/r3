@@ -1,9 +1,9 @@
 // Disabled test cases are replaced with this module.
+use core::marker::PhantomData;
 use r3::{
     kernel::{cfg::CfgBuilder, StartupHook},
     prelude::*,
 };
-use core::marker::PhantomData;
 
 use super::Driver;
 

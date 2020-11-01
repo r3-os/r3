@@ -32,11 +32,11 @@ pub use self::{systick_tickful::cfg::*, threading::cfg::*};
 
 /// Used by `use_port!`
 #[doc(hidden)]
-pub extern crate r3;
-/// Used by `use_port!`
-#[doc(hidden)]
 #[cfg(target_os = "none")]
 pub extern crate core;
+/// Used by `use_port!`
+#[doc(hidden)]
+pub extern crate r3;
 /// Used by `use_port!`
 #[doc(hidden)]
 #[cfg(target_os = "none")]

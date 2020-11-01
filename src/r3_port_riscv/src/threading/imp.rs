@@ -1,3 +1,4 @@
+use core::{cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice};
 use r3::{
     kernel::{
         cfg::InterruptHandlerFn, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
@@ -8,7 +9,6 @@ use r3::{
     utils::Init,
 };
 use r3_portkit::pptext::pp_asm;
-use core::{cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice};
 
 use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
 

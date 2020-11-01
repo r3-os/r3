@@ -1,11 +1,11 @@
 //! Checks that when a stack is automatically allocated, both ends of the
 //! stack region are aligned to a port-specific alignment.
+use core::marker::PhantomData;
 use r3::{
     kernel::{cfg::CfgBuilder, Task},
     prelude::*,
 };
 use r3_test_suite::kernel_tests::Driver;
-use core::marker::PhantomData;
 
 pub struct App<System> {
     _phantom: PhantomData<System>,

@@ -1,4 +1,5 @@
 //! Checks miscellaneous properties of `Timer`.
+use core::num::NonZeroUsize;
 #[cfg(feature = "system_time")]
 use r3::time::Time;
 use r3::{
@@ -7,7 +8,6 @@ use r3::{
     prelude::*,
     time::Duration,
 };
-use core::num::NonZeroUsize;
 use wyhash::WyHash;
 
 use super::Driver;
@@ -164,21 +164,12 @@ fn timer1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
 
     // Invalid ID
     let bad_timer: Timer<System> = unsafe { Timer::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(
-        bad_timer.start(),
-        Err(r3::kernel::StartTimerError::BadId)
-    );
+    assert_eq!(bad_timer.start(), Err(r3::kernel::StartTimerError::BadId));
 
     // Disallowed with CPU Lock acitve
     System::acquire_cpu_lock().unwrap();
-    assert_eq!(
-        timer1.start(),
-        Err(r3::kernel::StartTimerError::BadContext)
-    );
-    assert_eq!(
-        timer1.stop(),
-        Err(r3::kernel::StopTimerError::BadContext)
-    );
+    assert_eq!(timer1.start(), Err(r3::kernel::StartTimerError::BadContext));
+    assert_eq!(timer1.stop(), Err(r3::kernel::StopTimerError::BadContext));
     assert_eq!(
         timer1.set_delay(None),
         Err(r3::kernel::SetTimerDelayError::BadContext)
