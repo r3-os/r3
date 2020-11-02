@@ -105,6 +105,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "695579f0f2520f3774bb40461e5adb066459d4e0af4d59d20175484fb8e9edf1"
 
 [[package]]
+name = "atomic_ref"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d51506def4a79b2a2c4fcd3717fefce39939c13008561ea7e43518ac15d5a483"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1292,6 +1298,7 @@ dependencies = [
 name = "r3_port_std"
 version = "0.1.0"
 dependencies = [
+ "atomic_ref",
  "env_logger",
  "errno",
  "libc",

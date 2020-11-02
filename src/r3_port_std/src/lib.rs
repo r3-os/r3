@@ -7,6 +7,7 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![doc(include = "./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
+use atomic_ref::AtomicRef;
 use once_cell::sync::OnceCell;
 use r3::{
     kernel::{
@@ -22,8 +23,6 @@ use std::{
     time::{Duration, Instant},
 };
 use try_mutex::TryMutex;
-
-use crate::utils::atom2::SetOnceAtom;
 
 #[cfg(unix)]
 #[path = "threading_unix.rs"]
@@ -88,7 +87,7 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
 pub struct State {
     thread_group: OnceCell<ums::ThreadGroup<sched::SchedState>>,
     timer_cmd_send: TryMutex<Option<mpsc::Sender<TimerCmd>>>,
-    origin: SetOnceAtom<Box<Instant>>,
+    origin: AtomicRef<'static, Instant>,
 }
 
 #[derive(Debug)]
@@ -197,7 +196,7 @@ impl State {
         Self {
             thread_group: OnceCell::new(),
             timer_cmd_send: TryMutex::new(None),
-            origin: SetOnceAtom::empty(),
+            origin: AtomicRef::new(None),
         }
     }
 
@@ -569,12 +568,40 @@ impl State {
     pub fn tick_count<System: PortInstance>(&self) -> UTicks {
         expect_worker_thread::<System>();
 
-        // Get the origin point. If there isn't one, establish one now.
-        let (origin, _noncanonical_origin) = self
-            .origin
-            .get_or_racy_insert_with(|| Box::new(Instant::now()));
+        let origin = if let Some(x) = self.origin.load(Ordering::Acquire) {
+            x
+        } else {
+            // Establish an origin point.
+            let origin = Box::leak(Box::new(Instant::now()));
 
-        let micros = Instant::now().duration_since(**origin).as_micros();
+            // Store `origin` to `self.origin`.
+            //
+            // 1. If `self.origin` is already initialized at this point, discard
+            //    `origin`. Use `Acquire` to synchronize with the canonical
+            //    initializing thread.
+            //
+            // 2. Otherwise, `origin` is now the canonical origin. Use `Release`
+            //    to synchronize with other threads, ensuring the initialized
+            //    contents of `origin` is visible to them.
+            //
+            //    `compare_exchange` requires that the success ordering is
+            //    stronger than the failure ordering, so we actually have to use
+            //    `AcqRel` here.
+            //
+            // (Actually, this really doesn't matter because it's a kernel for
+            // a uniprocessor system, anyway.)
+            match self.origin.compare_exchange(
+                None,
+                Some(origin),
+                Ordering::AcqRel,  // case 2
+                Ordering::Acquire, // case 1
+            ) {
+                Ok(_) => origin,      // case 2
+                Err(x) => x.unwrap(), // case 1
+            }
+        };
+
+        let micros = Instant::now().duration_since(*origin).as_micros();
 
         /// Implementation of <https://xkcd.com/221/> with a different magic
         /// number
