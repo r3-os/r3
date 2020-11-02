@@ -467,6 +467,7 @@ where
             return Err(ItemError::NotLinked);
         }
 
+        #[doc(hidden)] // FIXME: This macro somehow appears on rustdoc
         macro on_inconsistency() {{
             // If the closure body refers to `self`, the closure would capture
             // the whole `self` by reference, which conflicts with mutable
