@@ -1,6 +1,8 @@
 // This [Deno] program checks the conformance of this workspace's Cargo
 // metadata to the coding guidelines.
 //
+// This script also lists crates to be published.
+//
 // [Deno]: https://deno.land/
 //
 // Usage: deno run --allow-read scripts/check-workspace.ts
@@ -36,7 +38,7 @@ await log.setup({
 
     loggers: {
         default: {
-            level: "DEBUG",
+            level: "INFO",
             handlers: ["console"],
         },
     },
@@ -88,6 +90,11 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
         } else if (publish && pkg.version === '0.0.0') {
             logger.error(`${crateRelPath}: '.package.version' must not be '0.0.0' for a published crate.`);
             hasError = true;
+        }
+
+        // Log published crates
+        if (publish) {
+            logger.info(`${crateRelPath}: version ${pkg.version}`);
         }
 
         // Published crates must have versioned dependencies
