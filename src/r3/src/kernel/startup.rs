@@ -15,7 +15,7 @@ use crate::utils::Init;
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** `StartupHook` (AUTOSAR OS,
-/// > OSEK/VDX), initialization routine (μITRON4.0), last function (TI-RTOS).
+/// > OSEK/VDX), last function (TI-RTOS), initialization routine (μITRON4.0).
 ///
 #[doc(include = "../common.md")]
 pub struct StartupHook<System>(PhantomData<System>);
