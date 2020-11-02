@@ -30,10 +30,23 @@
  *
  * # Usage
  *
+ * ## Normal
+ *
  *     <div class="admonition-follows"></div>
  *
  *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
  *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
  */
 .admonition-follows + blockquote {
     background: rgba(128, 128, 128, 0.1) !important;
@@ -42,6 +55,20 @@
 }
 .admonition-follows + blockquote::after { /* collapsible padding */
     content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
 }
 
 /* Display a warning if some Cargo features are disabled. */
@@ -87,7 +114,7 @@ body.theme-ayu span.center img, body.theme-ayu center img {
 <script type="application/javascript">
 <!--
 // Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
-(function () {
+function initThemeMonitor() {
     if (typeof getCurrentValue !== 'function' ||
         typeof switchTheme !== 'function' ||
         typeof getSystemValue !== 'function' ||
@@ -114,6 +141,12 @@ body.theme-ayu span.center img, body.theme-ayu center img {
         onApplyTheme(newTheme);
         originalSwitchTheme.apply(this, arguments);
     };
-})();
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
 -->
 </script>

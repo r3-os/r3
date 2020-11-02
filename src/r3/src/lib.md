@@ -261,7 +261,7 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
 <div class="admonition-follows"></div>
 
-> **Relation to Other Specifications:** Inspired from [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html). CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the R3 RTOS. This means phrases like “when the CPU is locked” are not allowed.
+> **Relation to Other Specifications:** Inspired from the μITRON4.0 specification. CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the R3 RTOS. This means phrases like “when the CPU is locked” are not allowed.
 >
 > CPU Lock corresponds to `SuspendOSInterrupts` and `ResumeOSInterrupts` from the OSEK/VDX specification.
 
@@ -294,7 +294,7 @@ A **task** ([`Task`]) is the kernel object that can create a thread whose execut
 
 <div class="admonition-follows"></div>
 
-> **Relation to Other Specifications:** Not many kernel designs use the word “thread” to describe the concept that applies to both of interrupts and tasks (one notable exception being [TI-RTOS]), most likely because threads are used to refer to a specific concept in general-purpose operating systems, or they are simply considered synonymous with tasks. For example, the closest concept in [the μITRON4.0 specification](http://www.ertl.jp/ITRON/SPEC/mitron4-e.html) is *processing units*. Despite that, it was decided that “thread” was an appropriate term to refer to this concept. The primary factors that drove this decision include: (1) the need for a conceptual entity that can “own” locks, and (2) that this concept is important for discussing thread safety without substituting every mention of “thread” with “task or interrupt handler”.
+> **Relation to Other Specifications:** Not many kernel designs use the word “thread” to describe the concept that applies to both of interrupts and tasks (one notable exception being [TI-RTOS]), most likely because threads are used to refer to a specific concept in general-purpose operating systems, or they are simply considered synonymous with tasks. For example, the closest concept in the μITRON4.0 specification is *processing units*. Despite that, it was decided that “thread” was an appropriate term to refer to this concept. The primary factors that drove this decision include: (1) the need for a conceptual entity that can “own” locks, and (2) that this concept is important for discussing thread safety without substituting every mention of “thread” with “task or interrupt handler”.
 
 [TI-RTOS]: http://software-dl.ti.com/lprf/simplelink_cc13x0_sdk/1_30_00_06/exports/docs/ti154stack/ti154stack-sdg/ti154stack-sdg/tirtos/rtos-overview.html
 
@@ -388,7 +388,10 @@ The kernel expects that timer interrupts are handled in a timely manner. The res
 
 <div class="admonition-follows"></div>
 
-> **Relation to Other Specifications:** There are many major design choices when it comes to kernel timing and timed APIs, and they are quite diverse between operating system or kernel specifications. The following list shows some of them:
+> <details>
+> <summary>Relation to Other Specifications</summary>
+>
+> There are many major design choices when it comes to kernel timing and timed APIs, and they are quite diverse between operating system or kernel specifications. The following list shows some of them:
 >
 >  1. *What time unit does the application-facing API use?* In embedded operating systems, it's very common to expose internal ticks and provide C macros to convert real time values into ticks. The conversion is prone to unexpected rounding and integer overflow, and this sort of error is easy to go unnoticed. (For instance, `pdMS_TO_TICKS` from FreeRTOS uses `uint32_t` for intermediate value calculation, and `gcc` won't report overflow even with `-Wall` because `uint32_t` is defined to exhibit a wrap-around behavior. `z_tmcvt` from Zephyr doesn't detect overflow.) Even if it could be detected statically (which is never true for dynamically calculated values), the range of real time values that doesn't cause overflow varies between target systems, harming the portability of software components written for the operating system (how often this cause a problem is debatable).
 >
@@ -432,6 +435,8 @@ The kernel expects that timer interrupts are handled in a timely manner. The res
 > | [μITRON4.0]        | unspecified             | N/A                 | no    | no  | unspecified bits | N/A           |
 > | μT-Kernel 3.0      | milli- or micro-seconds | ?                   | no    | no  | 32 or 64 bits    | ?             |
 > | **R3**             | microseconds            | fixed, microseconds | yes   | no  | 31 bits          | 32 bits       |
+>
+> </details>
 
 [μITRON4.0]: http://www.ertl.jp/ITRON/SPEC/mitron4-e.html
 [AUTOSAR OS 4.3.1]: https://www.autosar.org/fileadmin/user_upload/standards/classic/4-3/AUTOSAR_SWS_OS.pdf

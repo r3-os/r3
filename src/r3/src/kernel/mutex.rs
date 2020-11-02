@@ -122,8 +122,11 @@ pub enum MutexProtocol {
 ///
 /// <div class="admonition-follows"></div>
 ///
-/// > **Relation to Other Specifications:** This behavior is based on robust
-/// > mutexes from POSIX.1-2008 (`PTHREAD_MUTEX_ROBUST`) with one difference:
+/// > <details>
+/// > <summary>Relation to Other Specifications</summary>
+/// >
+/// > This behavior is based on robust mutexes from POSIX.1-2008
+/// > (`PTHREAD_MUTEX_ROBUST`) with one difference:
 /// > A mutex never falls into an irrecoverable state — [`Mutex::lock`] would
 /// > repeatedly return `Err(Abandoned)` until [`Mutex::mark_consistent`] is
 /// > called. This change reduces the internal state bits and the complexity of
@@ -141,12 +144,17 @@ pub enum MutexProtocol {
 /// > All of the other operating systems' behavior described above can be
 /// > emulated by having a per-mutex flag and performing additional tasks in the
 /// > API translation layer.
+/// >
+/// > </details>
 ///
 /// [Win32 mutex]: https://docs.microsoft.com/en-us/windows/win32/sync/mutex-objects
 ///
 /// <div class="admonition-follows"></div>
 ///
-/// > **Rationale:** Every customization option brings an additional overhead.
+/// > <details>
+/// > <summary>Rationale</summary>
+/// >
+/// > Every customization option brings an additional overhead.
 /// > The overhead introduced by the robustness is likely to outweigh the
 /// > overhead to provide choices. Therefore, we decided not to add an attribute
 /// > to control the robustness.
@@ -162,6 +170,8 @@ pub enum MutexProtocol {
 /// > accessed again. To ensure this recommendation is followed correctly
 /// > (unless explicitly opted out), we decided to make the robustness the
 /// > default behavior.
+/// >
+/// > </details>
 ///
 /// # Locking Protocols
 ///
@@ -177,7 +187,9 @@ pub enum MutexProtocol {
 ///
 /// <div class="admonition-follows"></div>
 ///
-/// > **Relation to Other Specifications:**
+/// > <details>
+/// > <summary>Relation to Other Specifications</summary>
+/// >
 /// > POSIX supports specifying a locking protocol by
 /// > `pthread_mutexattr_setprotocol`. The following protocols are supported:
 /// > `PTHREAD_PRIO_NONE` (none), `PTHREAD_PRIO_INHERIT`
@@ -228,12 +240,16 @@ pub enum MutexProtocol {
 /// >  - The **Lower Priority** column indicates whether an owning task's
 /// >    priority may be lowered whenever it unlocks a mutex or only when it
 /// >    unlocks the last mutex held.
+/// >
+/// > </details>
 ///
 /// [the priority inheritance protocol]: https://en.wikipedia.org/wiki/Priority_inheritance
 ///
 /// <div class="admonition-follows"></div>
 ///
-/// > **Rationale:**
+/// > <details>
+/// > <summary>Rationale</summary>
+/// >
 /// > There are numerous reasons that led to the decision not to implement the
 /// > priority inheritance protocol.
 /// >
@@ -278,6 +294,8 @@ pub enum MutexProtocol {
 /// >
 /// > We decided to restrict the unlocking order to a lock-reverse order to
 /// > minimize the cost of maintaining the list of mutexes held by a task.
+/// >
+/// > </details>
 ///
 #[doc(include = "../common.md")]
 #[repr(transparent)]
