@@ -10,7 +10,7 @@ pub use r3::utils::Init;
 /// Conditional type
 macro_rules! If {
     ( if ($cond:expr) { $t:ty } else { $f:ty } ) => {
-        <crate::utils::Conditional<$t, $f, $cond> as crate::utils::TypeFn>::Output
+        <crate::utils::Conditional<$t, $f, {$cond}> as crate::utils::TypeFn>::Output
     };
     ( if ($cond:expr) { $t:ty } else if $($rest:tt)* ) => {
         If! { if ($cond) { $t } else { If!{ if $($rest)* } } }
