@@ -61,7 +61,6 @@ macro_rules! use_port {
                     unsafe { PORT_STATE.port_boot::<Self>() };
                 }
 
-                #[naked]
                 #[inline(always)]
                 unsafe fn exception_handler() -> ! {
                     unsafe { State::exception_handler::<Self>() };
