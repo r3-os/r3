@@ -1,1 +1,2 @@
-nightly-2020-10-01
+[toolchain]
+channel = "nightly-2020-12-06"

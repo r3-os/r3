@@ -8,21 +8,21 @@ use crate::utils::Init;
 ///
 /// This type alias tries to choose the most efficient data type to do the job.
 pub type Wrapping<const MAX: u64> = If! {
-    if (MAX == 0) {
+    if ({MAX == 0}) {
         ()
-    } else if (MAX < u8::MAX as u64) {
+    } else if ({MAX < u8::MAX as u64}) {
         FractionalWrapping<u8, MAX>
-    } else if (MAX == u8::MAX as u64) {
+    } else if ({MAX == u8::MAX as u64}) {
         u8
-    } else if (MAX < u16::MAX as u64) {
+    } else if ({MAX < u16::MAX as u64}) {
         FractionalWrapping<u16, MAX>
-    } else if (MAX == u16::MAX as u64) {
+    } else if ({MAX == u16::MAX as u64}) {
         u16
-    } else if (MAX < u32::MAX as u64) {
+    } else if ({MAX < u32::MAX as u64}) {
         FractionalWrapping<u32, MAX>
-    } else if (MAX == u32::MAX as u64) {
+    } else if ({MAX == u32::MAX as u64}) {
         u32
-    } else if (MAX < u64::MAX) {
+    } else if ({MAX < u64::MAX}) {
         FractionalWrapping<u64, MAX>
     } else {
         u64

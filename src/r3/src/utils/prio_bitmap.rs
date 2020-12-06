@@ -11,14 +11,14 @@ pub const FIXED_PRIO_BITMAP_MAX_LEN: usize = WORD_LEN * WORD_LEN * WORD_LEN;
 ///
 /// All valid instantiations implement [`PrioBitmap`].
 pub type FixedPrioBitmap<const LEN: usize> = If! {
-    if (LEN <= WORD_LEN) {
+    if ({LEN <= WORD_LEN}) {
         OneLevelPrioBitmap<LEN>
-    } else if (LEN <= WORD_LEN * WORD_LEN) {
+    } else if ({LEN <= WORD_LEN * WORD_LEN}) {
         TwoLevelPrioBitmapImpl<
             OneLevelPrioBitmap<{(LEN + WORD_LEN - 1) / WORD_LEN}>,
             {(LEN + WORD_LEN - 1) / WORD_LEN}
         >
-    } else if (LEN <= WORD_LEN * WORD_LEN * WORD_LEN) {
+    } else if ({LEN <= WORD_LEN * WORD_LEN * WORD_LEN}) {
         TwoLevelPrioBitmapImpl<
             TwoLevelPrioBitmapImpl<
                 OneLevelPrioBitmap<{(LEN + WORD_LEN * WORD_LEN - 1) / (WORD_LEN * WORD_LEN)}>,
@@ -35,17 +35,17 @@ pub type FixedPrioBitmap<const LEN: usize> = If! {
 /// entries.
 #[doc(hidden)]
 pub type OneLevelPrioBitmap<const LEN: usize> = If! {
-    if (LEN == 0) {
+    if ({LEN == 0}) {
         ()
-    } else if (LEN <= 8 && LEN <= WORD_LEN) {
+    } else if ({LEN <= 8 && LEN <= WORD_LEN}) {
         OneLevelPrioBitmapImpl<u8, LEN>
-    } else if (LEN <= 16 && LEN <= WORD_LEN) {
+    } else if ({LEN <= 16 && LEN <= WORD_LEN}) {
         OneLevelPrioBitmapImpl<u16, LEN>
-    } else if (LEN <= 32 && LEN <= WORD_LEN) {
+    } else if ({LEN <= 32 && LEN <= WORD_LEN}) {
         OneLevelPrioBitmapImpl<u32, LEN>
-    } else if (LEN <= 64 && LEN <= WORD_LEN) {
+    } else if ({LEN <= 64 && LEN <= WORD_LEN}) {
         OneLevelPrioBitmapImpl<u64, LEN>
-    } else if (LEN <= 128 && LEN <= WORD_LEN) {
+    } else if ({LEN <= 128 && LEN <= WORD_LEN}) {
         OneLevelPrioBitmapImpl<u128, LEN>
     } else {
         TooManyLevels

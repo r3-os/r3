@@ -33,14 +33,14 @@ impl<U: Nat> Nat for UInt<U, B1> {
 }
 
 /// Convert a value to a bit type.
-type Bn<const I: usize> = If! { if (I == 0) { B0 } else { B1 } };
+type Bn<const I: usize> = If! { if ({I == 0}) { B0 } else { B1 } };
 
 /// Convert a value to a binary integer type.
 ///
 /// `I` should be less than or equal to [`U_MAX`]. If it's larger than `U_MAX`,
 /// this type alias will “evaluate” to [`Overflow`].
 pub type U<const I: usize> = If! {
-    if (I <= U_MAX) { WrappingU<I> } else { Overflow }
+    if ({I <= U_MAX}) { WrappingU<I> } else { Overflow }
 };
 
 /// Returned by [`U`] if the given value is larger than [`U_MAX`].

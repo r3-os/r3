@@ -6,13 +6,13 @@ use super::{Init, ZeroInit};
 /// Get the smallest unsigned integer type capable of representing the specified
 /// value.
 pub type UIntegerWithBound<const MAX: u128> = If! {
-    if (MAX <= u8::MAX as u128) {
+    if ({MAX <= u8::MAX as u128}) {
         u8
-    } else if (MAX <= u16::MAX as u128) {
+    } else if ({MAX <= u16::MAX as u128}) {
         u16
-    } else if (MAX <= u32::MAX as u128) {
+    } else if ({MAX <= u32::MAX as u128}) {
         u32
-    } else if (MAX <= u64::MAX as u128) {
+    } else if ({MAX <= u64::MAX as u128}) {
         u64
     } else {
         u128

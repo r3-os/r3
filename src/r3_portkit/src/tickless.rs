@@ -345,7 +345,7 @@ impl TicklessCfg {
 /// Instantiates the optimal version of [`TicklessStateCore`] using a
 /// given [`TicklessCfg`]. All instances implement [`TicklessStateTrait`].
 pub type TicklessState<const CFG: TicklessCfg> = If! {
-    if (matches!(CFG.algorithm, TicklessAlgorithm::Stateful)) {
+    if ({matches!(CFG.algorithm, TicklessAlgorithm::Stateful)}) {
         TicklessStateCore<Wrapping<{ CFG.division() - 1 }>>
     } else {
         TicklessStatelessCore
