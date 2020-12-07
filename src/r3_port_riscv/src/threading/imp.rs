@@ -1113,7 +1113,6 @@ impl State {
     }
 
     /// Implements [`crate::EntryPoint::exception_handler`].
-    #[naked]
     #[inline(always)]
     pub unsafe fn exception_handler<System: PortInstance>() -> ! {
         const FRAME_SIZE: usize = if cfg!(target_feature = "f") {

@@ -30,7 +30,6 @@ impl VectorTable {
     }
 }
 
-#[naked]
 #[inline(always)]
 pub fn start<System: EntryPoint + StartupOptions>() {
     unsafe {
