@@ -57,7 +57,7 @@ where
     T2: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.0.0, self.0.1)
+        write!(f, "{}{}", self.0 .0, self.0 .1)
     }
 }
 

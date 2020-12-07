@@ -28,7 +28,7 @@ pub type AtomicEventGroupBits = AtomicU32;
 ///
 /// <div class="admonition-follows"></div>
 ///
-/// > **Relation to Other Specifications:** 
+/// > **Relation to Other Specifications:**
 /// > event group (FreeRTOS), event group (Freescale MQX), `EventFlags` (Mbed
 /// > OS), events (OSEK/VDX, assigned to each extended task), event (RT-Thread),
 /// > event set (RTEMS, assigned to each task), Eventflag (μITRON4.0)
