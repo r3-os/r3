@@ -2015,9 +2015,9 @@ dependencies = [
 
 [[package]]
 name = "try-mutex"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb39332d3aaf6a80f07eccdae85a577e66e223f56ae235f00b36836f1ab503d6"
+checksum = "ba43aa2f412b2fd1dac4bcb3d7803f3531f89d68a5a5b4f622b8a0bcf8666c4c"
 
 [[package]]
 name = "typenum"
