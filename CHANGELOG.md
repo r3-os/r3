@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- `r3_port_std`'s POSIX backend now supports AArch64.
+
 ### Fixed
 
 - Fixed: Wrap const generic arguments in braces, fixing builds on the latest compiler version

@@ -376,6 +376,53 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
                         lateout("r15") _,
                     );
                 }
+
+                #[cfg(target_arch = "aarch64")]
+                () => {
+                    asm!(
+                        "
+                            # push context
+                            adr x2, 0f
+                            str x2, [sp, #-32]!
+                            stp x29, x30, [sp, #16]
+
+                            # do f(ctx, jmp_buf)
+                            # [rdi = ctx, rsp = jmp_buf]
+                            mov x1, sp
+                            blr {f}
+
+                            b 1f
+                        0:
+                            # longjmp called. restore context
+                            ldp x29, x30, [sp, #16]
+
+                        1:
+                            # discard context
+                            add sp, sp, #32
+                        ",
+                        f = inlateout(reg) f => _,
+                        inlateout("x0") ctx => _,
+                        // AArch64 callee-saved registers
+                        lateout("x19") _,
+                        lateout("x20") _,
+                        lateout("x21") _,
+                        lateout("x22") _,
+                        lateout("x23") _,
+                        lateout("x24") _,
+                        lateout("x25") _,
+                        lateout("x26") _,
+                        lateout("x27") _,
+                        lateout("x28") _,
+                        lateout("d8") _,
+                        lateout("d9") _,
+                        lateout("d10") _,
+                        lateout("d11") _,
+                        lateout("d12") _,
+                        lateout("d13") _,
+                        lateout("d14") _,
+                        lateout("d15") _,
+                    );
+                }
             }
         }
     }
@@ -412,6 +459,19 @@ unsafe fn longjmp(jmp_buf: JmpBuf) -> ! {
                     "
                         mov rsp, {}
                         jmp [rsp]
+                    ",
+                    in(reg) jmp_buf.sp.as_ptr(),
+                    options(noreturn),
+                );
+            }
+
+            #[cfg(target_arch = "aarch64")]
+            () => {
+                asm!(
+                    "
+                        mov sp, {}
+                        ldr x0, [sp, #0]
+                        br x0
                     ",
                     in(reg) jmp_buf.sp.as_ptr(),
                     options(noreturn),
