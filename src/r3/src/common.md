@@ -115,9 +115,8 @@ body.theme-ayu span.center img, body.theme-ayu center img {
 <!--
 // Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
 function initThemeMonitor() {
-    if (typeof getCurrentValue !== 'function' ||
-        typeof switchTheme !== 'function' ||
-        typeof getSystemValue !== 'function' ||
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
         typeof document.body.classList === 'undefined')
     {
         // Something is wrong, don't do anything
@@ -133,7 +132,9 @@ function initThemeMonitor() {
         document.body.classList.add(currentClassName);
     }
 
-    onApplyTheme(getCurrentValue("rustdoc-theme") || getSystemValue() || "light");
+    var match = themeStyle.href.match(/([a-z]+)\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
 
     // Intercept calls to `switchTheme`
     var originalSwitchTheme = switchTheme;
