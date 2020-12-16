@@ -381,22 +381,20 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
                 () => {
                     asm!(
                         "
-                            # push context
+                            # push context. jump to 0 if longjmp is called
                             adr x2, 0f
                             str x2, [sp, #-32]!
                             stp x29, x30, [sp, #16]
 
                             # do f(ctx, jmp_buf)
-                            # [rdi = ctx, rsp = jmp_buf]
+                            # [x0 = ctx, x1 = jmp_buf]
                             mov x1, sp
                             blr {f}
 
-                            b 1f
                         0:
-                            # longjmp called. restore context
+                            # restore lr and fp
                             ldp x29, x30, [sp, #16]
 
-                        1:
                             # discard context
                             add sp, sp, #32
                         ",
