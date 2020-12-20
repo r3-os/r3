@@ -1280,7 +1280,7 @@ dependencies = [
  "e310x-hal",
  "k210-hal",
  "log",
- "nb 0.1.3",
+ "nb 1.0.0",
  "r3",
  "r3_port_riscv",
  "r3_portkit",
@@ -1326,7 +1326,7 @@ name = "r3_support_rza1"
 version = "0.1.0"
 dependencies = [
  "embedded-hal",
- "nb 0.1.3",
+ "nb 1.0.0",
  "r3",
  "r3_port_arm",
  "r3_portkit",
