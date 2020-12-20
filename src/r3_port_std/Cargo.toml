@@ -1,6 +1,6 @@
 [package]
 name = "r3_port_std"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -9,7 +9,7 @@ keywords = ["r3", "simulator"]
 repository = "https://github.com/yvt/r3"
 
 [dependencies]
-r3 = { version = "0.1.0", path = "../r3" }
+r3 = { version = "0.1.1", path = "../r3" }
 
 atomic_ref = "0.2.0"
 env_logger = "0.7.1"
