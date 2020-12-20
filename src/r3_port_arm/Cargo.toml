@@ -16,7 +16,7 @@ preload-registers = []
 r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
 r3 = { version = "0.1.0", path = "../r3" }
 
-register = "0.5.1"
+register = ">= 0.5.1, < 2.0.0"
 r0 = "0.2.2"
 
 [package.metadata.docs.rs]
