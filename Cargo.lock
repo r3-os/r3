@@ -310,37 +310,25 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 
 [[package]]
 name = "e310x"
-version = "0.6.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "109a18d80af4c0d7c121e1c3896c9ac3cfcb1f7f334cef594fb4d5668da91a5f"
+checksum = "2b4f6d3e0a8850b1143b2c3058a190c71346a84caef6c2e1d55320e337d4a839"
 dependencies = [
  "bare-metal",
- "riscv 0.5.4",
- "riscv-rt 0.6.2",
- "vcell",
-]
-
-[[package]]
-name = "e310x"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e12cfa8b5bdc7c9ad706a4a16ea2a85f7eeeccd744c8a1b0ed19be4baf05f3"
-dependencies = [
- "bare-metal",
- "riscv 0.5.4",
+ "riscv 0.6.0",
  "vcell",
 ]
 
 [[package]]
 name = "e310x-hal"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1d6685b83d2119511e64641a9611e643dc0bcc5a0bcbed2b5a9f993d1b6a5bb"
+checksum = "370b1fdc8482bc45a85842be82afefec5da6426f8e1f08326e027d5ae7931575"
 dependencies = [
- "e310x 0.6.0",
+ "e310x",
  "embedded-hal",
  "nb 0.1.3",
- "riscv 0.5.4",
+ "riscv 0.6.0",
 ]
 
 [[package]]
@@ -1288,7 +1276,7 @@ dependencies = [
 name = "r3_port_riscv_test_driver"
 version = "0.0.0"
 dependencies = [
- "e310x 0.8.1",
+ "e310x",
  "e310x-hal",
  "k210-hal",
  "log",
