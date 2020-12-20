@@ -310,37 +310,25 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 
 [[package]]
 name = "e310x"
-version = "0.6.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "109a18d80af4c0d7c121e1c3896c9ac3cfcb1f7f334cef594fb4d5668da91a5f"
+checksum = "2b4f6d3e0a8850b1143b2c3058a190c71346a84caef6c2e1d55320e337d4a839"
 dependencies = [
  "bare-metal",
- "riscv 0.5.4",
- "riscv-rt 0.6.2",
- "vcell",
-]
-
-[[package]]
-name = "e310x"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e12cfa8b5bdc7c9ad706a4a16ea2a85f7eeeccd744c8a1b0ed19be4baf05f3"
-dependencies = [
- "bare-metal",
- "riscv 0.5.4",
+ "riscv 0.6.0",
  "vcell",
 ]
 
 [[package]]
 name = "e310x-hal"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1d6685b83d2119511e64641a9611e643dc0bcc5a0bcbed2b5a9f993d1b6a5bb"
+checksum = "370b1fdc8482bc45a85842be82afefec5da6426f8e1f08326e027d5ae7931575"
 dependencies = [
- "e310x 0.6.0",
+ "e310x",
  "embedded-hal",
  "nb 0.1.3",
- "riscv 0.5.4",
+ "riscv 0.6.0",
 ]
 
 [[package]]
@@ -1226,7 +1214,7 @@ dependencies = [
 name = "r3_port_arm"
 version = "0.1.0"
 dependencies = [
- "r0 0.2.2",
+ "r0 1.0.0",
  "r3",
  "r3_portkit",
  "register",
@@ -1288,11 +1276,11 @@ dependencies = [
 name = "r3_port_riscv_test_driver"
 version = "0.0.0"
 dependencies = [
- "e310x 0.8.1",
+ "e310x",
  "e310x-hal",
  "k210-hal",
  "log",
- "nb 0.1.3",
+ "nb 1.0.0",
  "r3",
  "r3_port_riscv",
  "r3_portkit",
@@ -1338,7 +1326,7 @@ name = "r3_support_rza1"
 version = "0.1.0"
 dependencies = [
  "embedded-hal",
- "nb 0.1.3",
+ "nb 1.0.0",
  "r3",
  "r3_port_arm",
  "r3_portkit",
@@ -1457,6 +1445,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_core"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8b34ba8cfb21243bd8df91854c830ff0d785fff2e82ebd4434c2644cb9ada18"
+
+[[package]]
 name = "rand_hc"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1500,9 +1494,9 @@ checksum = "3b181ba2dcf07aaccad5448e8ead58db5b742cf85dfe035e2227f137a539a189"
 
 [[package]]
 name = "register"
-version = "0.5.1"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deaba5b0e477d21f61a57504bb5cef4a1e86de30300b457d38971c1cfc98b815"
+checksum = "faf386c0c48fea132b7fbbf71c32d1b1d62e7c59043bbabdd15c9ed9f254517e"
 dependencies = [
  "tock-registers",
 ]
@@ -1957,9 +1951,9 @@ dependencies = [
 
 [[package]]
 name = "tock-registers"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70323afdb8082186c0986da0e10f6e4ed103d681c921c00597e98d9806dac20f"
+checksum = "f521a79accce68c417c9c77ce22108056b626126da1932f7e2e9b5bbffee0cea"
 
 [[package]]
 name = "tokenlock"
@@ -2166,11 +2160,11 @@ dependencies = [
 
 [[package]]
 name = "wyhash"
-version = "0.3.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "782a50f48ac4336916227cd199c61c7b42f38d0ad705421b49eb12c74c53ae00"
+checksum = "baf6e163c25e3fac820b4b453185ea2dea3b6a3e0a721d4d23d75bd33734c295"
 dependencies = [
- "rand_core 0.4.2",
+ "rand_core 0.6.0",
 ]
 
 [[package]]
