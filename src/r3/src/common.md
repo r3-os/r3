@@ -110,6 +110,15 @@ body.theme-dark span.center img, body.theme-dark center img {
 body.theme-ayu span.center img, body.theme-ayu center img {
     filter: invert(89%) sepia(90%) hue-rotate(180deg);
 }
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
 </style>
 <script type="application/javascript">
 <!--
