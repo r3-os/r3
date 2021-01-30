@@ -40,7 +40,7 @@ impl<System: Port> CfgInterruptLineBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the interrupt line to confiigure.
+    /// \[**Required**\] Specify the interrupt line to confiigure.
     pub const fn line(self, line: interrupt::InterruptNum) -> Self {
         assert!(self.line.is_none(), "`line` is specified twice");
         Self {
@@ -179,7 +179,7 @@ impl<System: Port> CfgInterruptHandlerBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the entry point.
+    /// \[**Required**\] Specify the entry point.
     pub const fn start(self, start: fn(usize)) -> Self {
         Self {
             start: Some(start),
@@ -192,7 +192,7 @@ impl<System: Port> CfgInterruptHandlerBuilder<System> {
         Self { param, ..self }
     }
 
-    /// [**Required**] Specify the interrupt line to attach the interrupt
+    /// \[**Required**\] Specify the interrupt line to attach the interrupt
     /// handler to.
     pub const fn line(self, line: interrupt::InterruptNum) -> Self {
         assert!(self.line.is_none(), "`line` is specified twice");

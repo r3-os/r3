@@ -38,7 +38,7 @@ impl<System: Port> CfgTimerBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the timer's entry point. It will be called
+    /// \[**Required**\] Specify the timer's entry point. It will be called
     /// in an interrupt context.
     pub const fn start(self, start: fn(usize)) -> Self {
         Self {

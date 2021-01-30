@@ -31,7 +31,7 @@ impl<System: Port> CfgSemaphoreBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the initial semaphore value.
+    /// \[**Required**\] Specify the initial semaphore value.
     ///
     /// Must be less than or equal to [`maximum`](Self::maximum).
     pub const fn initial(self, initial: semaphore::SemaphoreValue) -> Self {
@@ -46,7 +46,7 @@ impl<System: Port> CfgSemaphoreBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the maximum semaphore value.
+    /// \[**Required**\] Specify the maximum semaphore value.
     pub const fn maximum(self, maximum: semaphore::SemaphoreValue) -> Self {
         assert!(
             self.maximum_value.is_none(),

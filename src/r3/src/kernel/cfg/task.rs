@@ -45,7 +45,7 @@ impl<System: Port> CfgTaskBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the task's entry point.
+    /// \[**Required**\] Specify the task's entry point.
     pub const fn start(self, start: fn(usize)) -> Self {
         Self {
             start: Some(start),
@@ -84,7 +84,7 @@ impl<System: Port> CfgTaskBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the task's initial base priority. Tasks with
+    /// \[**Required**\] Specify the task's initial base priority. Tasks with
     /// lower priority values execute first. The value must be in range
     /// `0..`[`num_task_priority_levels`].
     ///
