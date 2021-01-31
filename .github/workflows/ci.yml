@@ -126,10 +126,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          # `-Zpackage-features` is an unstable option that allows specifying a
-          # `--features` + `-p` combination.
-          # <https://github.com/rust-lang/cargo/issues/5364>
-          args: -Zpackage-features -p r3_port_std --no-default-features ${{ env.features_param }}
+          args: -p r3_port_std --no-default-features ${{ env.features_param }}
         env:
           RUST_LOG: debug
 
