@@ -9,7 +9,6 @@ use crate::{
     },
     utils::{
         intrusive_list::{Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
-        unwrap::UnwrapUnchecked,
         Init, PrioBitmap,
     },
 };

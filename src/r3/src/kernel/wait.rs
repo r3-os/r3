@@ -10,7 +10,6 @@ use super::{
 
 use crate::utils::{
     intrusive_list::{self, HandleInconsistencyUnchecked, ListAccessorCell},
-    unwrap::UnwrapUnchecked,
     Init,
 };
 

@@ -36,7 +36,7 @@ impl<System: Port> CfgStartupHookBuilder<System> {
         }
     }
 
-    /// [**Required**] Specify the entry point.
+    /// \[**Required**\] Specify the entry point.
     pub const fn start(self, start: fn(usize)) -> Self {
         Self {
             start: Some(start),
