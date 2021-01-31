@@ -1957,9 +1957,9 @@ checksum = "f521a79accce68c417c9c77ce22108056b626126da1932f7e2e9b5bbffee0cea"
 
 [[package]]
 name = "tokenlock"
-version = "0.3.1"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61354f8f3e745454af8071c246e351c382c15792e59989c83b72692a7352e9be"
+checksum = "b6f427499498b0519ed7503f237e58f96e2e589a6d1cc9062be6014c72482b89"
 
 [[package]]
 name = "tokio"
