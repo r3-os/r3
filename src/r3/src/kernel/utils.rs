@@ -1,47 +1,26 @@
-use core::{fmt, marker::PhantomData, ops};
-use tokenlock::{Token, TokenLock};
+use core::{fmt, ops};
+use tokenlock::UnsyncTokenLock;
 
 use super::{error::BadContextError, Kernel};
 use crate::utils::{intrusive_list::CellLike, Init};
 
-#[non_exhaustive]
-pub(super) struct CpuLockToken<System> {
-    _phantom: PhantomData<System>,
-}
+pub(super) struct CpuLockTag<System>(System);
 
-#[derive(Clone, Copy)]
-pub(super) struct CpuLockKeyhole<System> {
-    _phantom: PhantomData<System>,
-}
+/// The key that "unlocks" [`CpuLockCell`].
+pub(super) type CpuLockToken<System> = tokenlock::UnsyncSingletonToken<CpuLockTag<System>>;
 
-impl<System> fmt::Debug for CpuLockKeyhole<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("CpuLockKeyhole").finish()
-    }
-}
-
-// This is safe because `CpuLockToken` only can be borrowed from `CpuLockGuard`,
-// and there is only one instance of `CpuLockGuard` at any point of time
-unsafe impl<System> Token<CpuLockKeyhole<System>> for CpuLockToken<System> {
-    fn eq_id(&self, _: &CpuLockKeyhole<System>) -> bool {
-        true
-    }
-}
-
-impl<System> Init for CpuLockKeyhole<System> {
-    const INIT: Self = Self {
-        _phantom: PhantomData,
-    };
-}
+/// The keyhole type for [`UnsyncTokenLock`] that can be "unlocked" by
+/// [`CpuLockToken`].
+pub(super) type CpuLockKeyhole<System> = tokenlock::SingletonTokenId<CpuLockTag<System>>;
 
 /// Cell type that can be accessed by [`CpuLockToken`] (which can be obtained
 /// by [`lock_cpu`]).
-pub(super) struct CpuLockCell<System, T: ?Sized>(TokenLock<T, CpuLockKeyhole<System>>);
+pub(super) struct CpuLockCell<System, T: ?Sized>(UnsyncTokenLock<T, CpuLockKeyhole<System>>);
 
 impl<System, T> CpuLockCell<System, T> {
     #[allow(dead_code)]
     pub(super) const fn new(x: T) -> Self {
-        Self(TokenLock::new(CpuLockKeyhole::INIT, x))
+        Self(UnsyncTokenLock::new(CpuLockKeyhole::INIT, x))
     }
 }
 
@@ -137,7 +116,7 @@ impl<System, T: Init> Init for CpuLockCell<System, T> {
 }
 
 impl<System, T> ops::Deref for CpuLockCell<System, T> {
-    type Target = TokenLock<T, CpuLockKeyhole<System>>;
+    type Target = UnsyncTokenLock<T, CpuLockKeyhole<System>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -169,20 +148,20 @@ impl<'a, Element: Clone, System: Kernel> CellLike<&'a mut CpuLockGuard<System>>
     }
 }
 
-impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockGuardBorrowMut<'a, System>>
+impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockTokenRefMut<'a, System>>
     for CpuLockCell<System, Element>
 {
     type Target = Element;
 
-    fn get(&self, key: &CpuLockGuardBorrowMut<'a, System>) -> Self::Target {
+    fn get(&self, key: &CpuLockTokenRefMut<'a, System>) -> Self::Target {
         (**self).get(&**key)
     }
-    fn set(&self, key: &mut CpuLockGuardBorrowMut<'a, System>, value: Self::Target) {
+    fn set(&self, key: &mut CpuLockTokenRefMut<'a, System>, value: Self::Target) {
         (**self).set(&mut &mut **key, value);
     }
     fn modify<T>(
         &self,
-        key: &mut CpuLockGuardBorrowMut<'a, System>,
+        key: &mut CpuLockTokenRefMut<'a, System>,
         f: impl FnOnce(&mut Self::Target) -> T,
     ) -> T {
         (**self).modify(&mut &mut **key, f)
@@ -194,7 +173,8 @@ impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockGuardBorrowMut<'a, Syst
 pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadContextError> {
     // Safety: `try_enter_cpu_lock` is only meant to be called by the kernel
     if unsafe { System::try_enter_cpu_lock() } {
-        // Safety: We just entered a CPU Lock state
+        // Safety: We just entered a CPU Lock state. This also means there are
+        //         no instances of `CpuLockGuard` existing at this point.
         Ok(unsafe { assume_cpu_lock() })
     } else {
         Err(BadContextError::BadContext)
@@ -205,14 +185,15 @@ pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadCont
 ///
 /// # Safety
 ///
-/// The system must be really in a CPU Lock state.
+/// The system must be really in a CPU Lock state. There must be no instances of
+/// `CpuLockGuard` existing at the point of the call.
 pub(super) unsafe fn assume_cpu_lock<System: Kernel>() -> CpuLockGuard<System> {
     debug_assert!(System::is_cpu_lock_active());
 
     CpuLockGuard {
-        token: CpuLockToken {
-            _phantom: PhantomData,
-        },
+        // Safety: There are no other instances of `CpuLockToken`; this is
+        //         upheld by the caller.
+        token: unsafe { CpuLockToken::new_unchecked() },
     }
 }
 
@@ -224,14 +205,9 @@ pub(super) struct CpuLockGuard<System: Kernel> {
 }
 
 impl<System: Kernel> CpuLockGuard<System> {
-    /// Construct a [`CpuLockGuardBorrowMut`] by borrowing `self`.
-    pub(super) fn borrow_mut(&mut self) -> CpuLockGuardBorrowMut<'_, System> {
-        CpuLockGuardBorrowMut {
-            // Safety: The original `token` is inaccessible while
-            // `CpuLockGuardBorrowMut` exists, so this is safe
-            token: unsafe { core::mem::transmute_copy(&self.token) },
-            _phantom: PhantomData,
-        }
+    /// Construct a [`CpuLockTokenRefMut`] by borrowing `self`.
+    pub(super) fn borrow_mut(&mut self) -> CpuLockTokenRefMut<'_, System> {
+        self.token.borrow_mut()
     }
 }
 
@@ -265,35 +241,18 @@ impl<System: Kernel> ops::DerefMut for CpuLockGuard<System> {
 ///  - When you pass `&'a mut _` to a function, the compiler automatically
 ///    reborrows it as `&'b mut _` so that the original `&'a mut _` remains
 ///    accessible after the function call. This does not happen with
-///    `CpuLockGuardBorrowMut`. You have to call [`borrow_mut`] manually.
+///    `CpuLockTokenRefMut`. You have to call [`borrow_mut`] manually.
 ///
-/// [`borrow_mut`]: CpuLockGuardBorrowMut::borrow_mut
-pub(super) struct CpuLockGuardBorrowMut<'a, System: Kernel> {
-    token: CpuLockToken<System>,
-    _phantom: PhantomData<&'a mut CpuLockGuard<System>>,
-}
+/// [`borrow_mut`]: tokenlock::UnsyncSingletonTokenRefMut::borrow_mut
+pub(super) type CpuLockTokenRefMut<'a, System> =
+    tokenlock::UnsyncSingletonTokenRefMut<'a, CpuLockTag<System>>;
 
-impl<System: Kernel> CpuLockGuardBorrowMut<'_, System> {
-    /// Construct a `CpuLockGuardBorrowMut` by reborrowing `self`.
-    pub(super) fn borrow_mut(&mut self) -> CpuLockGuardBorrowMut<'_, System> {
-        CpuLockGuardBorrowMut {
-            // Safety: The original `token` is inaccessible while
-            // the new `CpuLockGuardBorrowMut` exists, so this is safe
-            token: unsafe { core::mem::transmute_copy(&self.token) },
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<System: Kernel> ops::Deref for CpuLockGuardBorrowMut<'_, System> {
-    type Target = CpuLockToken<System>;
-    fn deref(&self) -> &Self::Target {
-        &self.token
-    }
-}
-
-impl<System: Kernel> ops::DerefMut for CpuLockGuardBorrowMut<'_, System> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.token
-    }
-}
+/// Borrowed version of [`CpuLockGuard`]. This is equivalent to
+/// `&'a CpuLockGuard` but does not consume memory.
+///
+/// Compared to [`CpuLockTokenRefMut`], this is only used in very limited
+/// circumstances, such as allowing a callback function to mutate the contents
+/// of `CpuLockCell<System, Cell<_>>` cells belonging to its implementor but not
+/// to reenter its caller.
+pub(super) type CpuLockTokenRef<'a, System> =
+    tokenlock::UnsyncSingletonTokenRef<'a, CpuLockTag<System>>;

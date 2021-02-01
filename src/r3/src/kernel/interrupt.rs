@@ -138,7 +138,7 @@ impl<System: Kernel> InterruptLine<System> {
     unsafe fn set_priority_unchecked_inner(
         self,
         value: InterruptPriority,
-        _lock: utils::CpuLockGuardBorrowMut<System>,
+        _lock: utils::CpuLockTokenRefMut<System>,
     ) -> Result<(), SetInterruptLinePriorityError> {
         // Safety: (1) We are the kernel, so it's okay to call `Port`'s methods.
         //         (2) CPU Lock active
@@ -237,7 +237,7 @@ impl<System: Kernel> InterruptAttr<System> {
     /// is responsible for ensuring *unmanaged safety*.
     ///
     /// Can be called only during a boot phase.
-    pub(super) unsafe fn init(&self, mut lock: utils::CpuLockGuardBorrowMut<System>) {
+    pub(super) unsafe fn init(&self, mut lock: utils::CpuLockTokenRefMut<System>) {
         for line_init in self.line_inits {
             if line_init
                 .flags

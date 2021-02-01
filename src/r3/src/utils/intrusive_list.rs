@@ -122,9 +122,10 @@ impl<Element: Copy> CellLike<()> for core::cell::Cell<Element> {
     }
 }
 
-impl<'a, Element: Clone, Token, Key> CellLike<&'a mut Key> for tokenlock::TokenLock<Element, Token>
+impl<'a, Element: Clone, Token, Key> CellLike<&'a mut Key>
+    for tokenlock::UnsyncTokenLock<Element, Token>
 where
-    Key: tokenlock::Token<Token>,
+    Key: tokenlock::Token<Token> + tokenlock::Unsync,
 {
     type Target = Element;
 

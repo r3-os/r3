@@ -70,6 +70,14 @@ impl<T: Init, I: Init> Init for tokenlock::TokenLock<T, I> {
     const INIT: Self = Self::new(I::INIT, T::INIT);
 }
 
+impl<T: Init, I: Init> Init for tokenlock::UnsyncTokenLock<T, I> {
+    const INIT: Self = Self::new(I::INIT, T::INIT);
+}
+
+impl<Tag: ?Sized> Init for tokenlock::SingletonTokenId<Tag> {
+    const INIT: Self = Self::new();
+}
+
 impl<T> Init for mem::MaybeUninit<T> {
     const INIT: Self = mem::MaybeUninit::uninit();
 }

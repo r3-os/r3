@@ -1,9 +1,5 @@
 //! Event groups
-use core::{
-    fmt, hash,
-    marker::PhantomData,
-    sync::atomic::{AtomicU32, Ordering},
-};
+use core::{fmt, hash, marker::PhantomData};
 
 use super::{
     state, task, timeout, utils,
@@ -16,8 +12,6 @@ use crate::{time::Duration, utils::Init};
 // TODO: Support changing `EventGroupBits`?
 /// Unsigned integer type backing event groups.
 pub type EventGroupBits = u32;
-
-pub type AtomicEventGroupBits = AtomicU32;
 
 /// Represents a single event group in a system.
 ///
@@ -246,7 +240,7 @@ fn wait<System: Kernel>(
 
         // The original value will be copied to `orig_bits`
         if let WaitPayload::EventGroupBits { orig_bits, .. } = result {
-            Ok(orig_bits.load(Ordering::Relaxed))
+            Ok(orig_bits.read(&*lock).get())
         } else {
             unreachable!()
         }
@@ -277,7 +271,7 @@ fn wait_timeout<System: Kernel>(
 
         // The original value will be copied to `orig_bits`
         if let WaitPayload::EventGroupBits { orig_bits, .. } = result {
-            Ok(orig_bits.load(Ordering::Relaxed))
+            Ok(orig_bits.read(&*lock).get())
         } else {
             unreachable!()
         }
@@ -334,7 +328,7 @@ fn set<System: Kernel>(
 
     event_group_cb
         .wait_queue
-        .wake_up_all_conditional(lock.borrow_mut(), |wait_payload| match wait_payload {
+        .wake_up_all_conditional(lock.borrow_mut(), |wait_payload, lock| match wait_payload {
             WaitPayload::EventGroupBits {
                 bits,
                 flags,
@@ -342,7 +336,7 @@ fn set<System: Kernel>(
             } => {
                 if let Some(orig) = poll_core(&mut event_group_bits, *bits, *flags) {
                     woke_up_any = true;
-                    orig_bits.store(orig, Ordering::Relaxed);
+                    orig_bits.read(&*lock).set(orig);
                     true
                 } else {
                     false

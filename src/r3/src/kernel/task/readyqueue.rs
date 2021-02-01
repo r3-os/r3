@@ -4,7 +4,7 @@
 use crate::{
     kernel::{
         task::TaskCb,
-        utils::{CpuLockCell, CpuLockGuardBorrowMut},
+        utils::{CpuLockCell, CpuLockTokenRefMut},
         Kernel, KernelCfg1, PortThreading,
     },
     utils::{
@@ -143,12 +143,12 @@ pub enum ScheduleDecision<T> {
 
 /// The context type for [`Queue`].
 pub struct Ctx<'a, System: Kernel> {
-    pub(super) lock: CpuLockGuardBorrowMut<'a, System>,
+    pub(super) lock: CpuLockTokenRefMut<'a, System>,
 }
 
-impl<'a, System: Kernel> From<CpuLockGuardBorrowMut<'a, System>> for Ctx<'a, System> {
+impl<'a, System: Kernel> From<CpuLockTokenRefMut<'a, System>> for Ctx<'a, System> {
     #[inline]
-    fn from(lock: CpuLockGuardBorrowMut<'a, System>) -> Self {
+    fn from(lock: CpuLockTokenRefMut<'a, System>) -> Self {
         Self { lock }
     }
 }
