@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Upgrade `register` to `>= 0.5.1, < 2.0.0`
 - Upgrade `r0` to `^1.0.0`
+- Upgrade `tokenlock` to `0.3.4`
+- Using the new version of `tokenlock`, some atomics-based hacks were removed. This might marginally improve the runtime performance as the compiler is given more leeway to optimize memory accesses.
 
 ## [0.1.1] - 2020-12-20
 
