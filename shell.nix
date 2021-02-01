@@ -5,9 +5,9 @@ runCommand "dummy" rec {
   buildInputs = [
     pkgconfig
     libusb1
-    # openocd
-    # rustup
+    openocd
+    rustup
     qemu
-    # gcc
+    gcc
   ];
 } ""
