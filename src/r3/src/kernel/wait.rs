@@ -1,10 +1,10 @@
-use core::{fmt, ops, ptr::NonNull};
+use core::{cell::Cell, fmt, ops, ptr::NonNull};
 
 use super::{
     event_group, mutex, task,
     task::{TaskCb, TaskSt},
     timeout,
-    utils::{CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
+    utils::{CpuLockCell, CpuLockGuard, CpuLockTokenRef, CpuLockTokenRefMut},
     BadObjectStateError, Kernel, Port, PortThreading, WaitError, WaitTimeoutError,
 };
 
@@ -123,7 +123,7 @@ pub(super) enum WaitPayload<System: PortThreading> {
     EventGroupBits {
         bits: event_group::EventGroupBits,
         flags: event_group::EventGroupWaitFlags,
-        orig_bits: event_group::AtomicEventGroupBits,
+        orig_bits: CpuLockCell<System, Cell<event_group::EventGroupBits>>,
     },
     Semaphore,
     Mutex(&'static mutex::MutexCb<System>),
@@ -487,7 +487,7 @@ impl<System: Kernel> WaitQueue<System> {
     pub(super) fn wake_up_all_conditional(
         &self,
         mut lock: CpuLockTokenRefMut<'_, System>,
-        mut cond: impl FnMut(&WaitPayload<System>) -> bool,
+        mut cond: impl FnMut(&WaitPayload<System>, CpuLockTokenRef<'_, System>) -> bool,
     ) {
         let Ok(mut cur) = {
             let accessor = wait_queue_accessor!(&self.waits, lock.borrow_mut());
@@ -512,7 +512,13 @@ impl<System: Kernel> WaitQueue<System> {
             assert!(core::ptr::eq(wait.wait_queue.unwrap(), self));
 
             // Should this task be woken up?
-            if !cond(&wait.payload) {
+            //
+            // We give `CpuLockTokenRef` to the callback function. This can be
+            // used to update `WaitPayload::EventGroupBits::orig_bits` but
+            // insufficient to do any other things. Especially we want to
+            // prevent the callback function from invalidating the assumption
+            // that `wait_ref` is still linked after the call.
+            if !cond(&wait.payload, lock.borrow()) {
                 continue;
             }
 

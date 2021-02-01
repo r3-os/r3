@@ -246,3 +246,13 @@ impl<System: Kernel> ops::DerefMut for CpuLockGuard<System> {
 /// [`borrow_mut`]: tokenlock::UnsyncSingletonTokenRefMut::borrow_mut
 pub(super) type CpuLockTokenRefMut<'a, System> =
     tokenlock::UnsyncSingletonTokenRefMut<'a, CpuLockTag<System>>;
+
+/// Borrowed version of [`CpuLockGuard`]. This is equivalent to
+/// `&'a CpuLockGuard` but does not consume memory.
+///
+/// Compared to [`CpuLockTokenRefMut`], this is only used in very limited
+/// circumstances, such as allowing a callback function to mutate the contents
+/// of `CpuLockCell<System, Cell<_>>` cells belonging to its implementor but not
+/// to reenter its caller.
+pub(super) type CpuLockTokenRef<'a, System> =
+    tokenlock::UnsyncSingletonTokenRef<'a, CpuLockTag<System>>;
