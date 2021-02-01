@@ -4,7 +4,7 @@ use super::{
     event_group, mutex, task,
     task::{TaskCb, TaskSt},
     timeout,
-    utils::{CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
+    utils::{CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     BadObjectStateError, Kernel, Port, PortThreading, WaitError, WaitTimeoutError,
 };
 
@@ -258,7 +258,7 @@ impl<System: Kernel> WaitQueue<System> {
     #[inline]
     pub(super) fn wait(
         &'static self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
         payload: WaitPayload<System>,
     ) -> Result<WaitPayload<System>, WaitError> {
         let task = System::state().running_task(lock.borrow_mut()).unwrap();
@@ -286,7 +286,7 @@ impl<System: Kernel> WaitQueue<System> {
     #[inline]
     pub(super) fn wait_timeout(
         &'static self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
         payload: WaitPayload<System>,
         duration_time32: timeout::Time32,
     ) -> Result<WaitPayload<System>, WaitTimeoutError> {
@@ -313,7 +313,7 @@ impl<System: Kernel> WaitQueue<System> {
     /// `#[inline]`.
     fn wait_inner(
         &'static self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
         wait: &Wait<System>,
     ) -> Result<(), WaitTimeoutError> {
         let task = wait.task;
@@ -371,7 +371,7 @@ impl<System: Kernel> WaitQueue<System> {
             &CpuLockCell<System, intrusive_list::ListHead<WaitRef<System>>>,
             UnsafeStatic,
             MapLink,
-            CpuLockGuardBorrowMut<'_, System>,
+            CpuLockTokenRefMut<'_, System>,
             HandleInconsistencyUnchecked,
         >,
     ) -> Option<WaitRef<System>>
@@ -406,11 +406,7 @@ impl<System: Kernel> WaitQueue<System> {
 
     /// Reposition `wait` in the wait queue. This is necessary after
     /// changing the waiting task's priority.
-    fn reorder_wait(
-        &'static self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
-        wait: &Wait<System>,
-    ) {
+    fn reorder_wait(&'static self, mut lock: CpuLockTokenRefMut<'_, System>, wait: &Wait<System>) {
         match self.order {
             QueueOrder::Fifo => return,
             QueueOrder::TaskPriority => {}
@@ -446,7 +442,7 @@ impl<System: Kernel> WaitQueue<System> {
     /// Get the next waiting task to be woken up.
     pub(super) fn first_waiting_task(
         &self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
     ) -> Option<&'static TaskCb<System>> {
         // Get the waiting task of the first wait object
         // Safety: This linked list is structurally sound, so it shouldn't
@@ -460,7 +456,7 @@ impl<System: Kernel> WaitQueue<System> {
     ///
     /// This method may make a task Ready, but doesn't yield the processor.
     /// Call `unlock_cpu_and_check_preemption` as needed.
-    pub(super) fn wake_up_one(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
+    pub(super) fn wake_up_one(&self, mut lock: CpuLockTokenRefMut<'_, System>) -> bool {
         // Get the first wait object
         // Safety: This linked list is structurally sound, so it shouldn't
         //         return `Err(InconsistentError)`
@@ -490,7 +486,7 @@ impl<System: Kernel> WaitQueue<System> {
     /// Call `unlock_cpu_and_check_preemption` as needed.
     pub(super) fn wake_up_all_conditional(
         &self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
         mut cond: impl FnMut(&WaitPayload<System>) -> bool,
     ) {
         let Ok(mut cur) = {
@@ -613,7 +609,7 @@ impl<System: Kernel> fmt::Debug for TaskWait<System> {
 /// function allows access to the wait object while ensuring the reference to
 /// the wait object doesn't escape from the scope.
 pub(super) fn with_current_wait_payload<System: Kernel, R>(
-    lock: CpuLockGuardBorrowMut<'_, System>,
+    lock: CpuLockTokenRefMut<'_, System>,
     task_cb: &TaskCb<System>,
     f: impl FnOnce(Option<&WaitPayload<System>>) -> R,
 ) -> R {
@@ -633,7 +629,7 @@ pub(super) fn with_current_wait_payload<System: Kernel, R>(
 /// This function does nothing if the task is currently not in the Waiting state
 /// or the wait object is not associated with any wait queue.
 pub(super) fn reorder_wait_of_task<System: Kernel>(
-    lock: CpuLockGuardBorrowMut<'_, System>,
+    lock: CpuLockTokenRefMut<'_, System>,
     task_cb: &TaskCb<System>,
 ) {
     if let Some(wait_ref) = task_cb.wait.current_wait.get(&*lock) {
@@ -658,7 +654,7 @@ pub(super) fn reorder_wait_of_task<System: Kernel>(
 /// [waitable]: crate#contexts
 #[inline]
 pub(super) fn wait_no_queue<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     payload: WaitPayload<System>,
 ) -> Result<WaitPayload<System>, WaitError> {
     let task = System::state().running_task(lock.borrow_mut()).unwrap();
@@ -687,7 +683,7 @@ pub(super) fn wait_no_queue<System: Kernel>(
 /// [waitable]: crate#contexts
 #[inline]
 pub(super) fn wait_no_queue_timeout<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     payload: WaitPayload<System>,
     duration_time32: timeout::Time32,
 ) -> Result<WaitPayload<System>, WaitTimeoutError> {
@@ -713,7 +709,7 @@ pub(super) fn wait_no_queue_timeout<System: Kernel>(
 /// into and out of `Wait` is done in the outer function `Self::wait` with
 /// `#[inline]`.
 fn wait_no_queue_inner<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     wait: &Wait<System>,
 ) -> Result<(), WaitTimeoutError> {
     let task = wait.task;
@@ -750,7 +746,7 @@ fn wait_no_queue_inner<System: Kernel>(
 /// This method may make a task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` as needed.
 fn complete_wait<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     wait: &Wait<System>,
     wait_result: Result<(), WaitTimeoutError>,
 ) {
@@ -790,7 +786,7 @@ fn complete_wait<System: Kernel>(
 /// outside this module should not pass `WaitTimeoutError::Timeout` to this
 /// method.
 pub(super) fn interrupt_task<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     task_cb: &'static TaskCb<System>,
     wait_result: Result<(), WaitTimeoutError>,
 ) -> Result<(), BadObjectStateError> {
@@ -825,7 +821,7 @@ pub(super) fn interrupt_task<System: Kernel>(
 /// Construct [`timeout::Timeout`] to interrupt the specified task with
 /// [`WaitTimeoutError::Timeout`] after a certain period of time.
 fn new_timeout_object_for_task<System: Kernel>(
-    lock: CpuLockGuardBorrowMut<'_, System>,
+    lock: CpuLockTokenRefMut<'_, System>,
     task_cb: &'static TaskCb<System>,
     duration_time32: timeout::Time32,
 ) -> timeout::Timeout<System> {

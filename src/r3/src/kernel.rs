@@ -975,7 +975,7 @@ impl<System: KernelCfg2> State<System> {
     #[inline]
     fn running_task(
         &self,
-        lock: utils::CpuLockGuardBorrowMut<System>,
+        lock: utils::CpuLockTokenRefMut<System>,
     ) -> Option<&'static TaskCb<System>> {
         *self.running_task.read(&*lock)
     }

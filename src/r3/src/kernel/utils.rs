@@ -148,20 +148,20 @@ impl<'a, Element: Clone, System: Kernel> CellLike<&'a mut CpuLockGuard<System>>
     }
 }
 
-impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockGuardBorrowMut<'a, System>>
+impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockTokenRefMut<'a, System>>
     for CpuLockCell<System, Element>
 {
     type Target = Element;
 
-    fn get(&self, key: &CpuLockGuardBorrowMut<'a, System>) -> Self::Target {
+    fn get(&self, key: &CpuLockTokenRefMut<'a, System>) -> Self::Target {
         (**self).get(&**key)
     }
-    fn set(&self, key: &mut CpuLockGuardBorrowMut<'a, System>, value: Self::Target) {
+    fn set(&self, key: &mut CpuLockTokenRefMut<'a, System>, value: Self::Target) {
         (**self).set(&mut &mut **key, value);
     }
     fn modify<T>(
         &self,
-        key: &mut CpuLockGuardBorrowMut<'a, System>,
+        key: &mut CpuLockTokenRefMut<'a, System>,
         f: impl FnOnce(&mut Self::Target) -> T,
     ) -> T {
         (**self).modify(&mut &mut **key, f)
@@ -205,8 +205,8 @@ pub(super) struct CpuLockGuard<System: Kernel> {
 }
 
 impl<System: Kernel> CpuLockGuard<System> {
-    /// Construct a [`CpuLockGuardBorrowMut`] by borrowing `self`.
-    pub(super) fn borrow_mut(&mut self) -> CpuLockGuardBorrowMut<'_, System> {
+    /// Construct a [`CpuLockTokenRefMut`] by borrowing `self`.
+    pub(super) fn borrow_mut(&mut self) -> CpuLockTokenRefMut<'_, System> {
         self.token.borrow_mut()
     }
 }
@@ -241,8 +241,8 @@ impl<System: Kernel> ops::DerefMut for CpuLockGuard<System> {
 ///  - When you pass `&'a mut _` to a function, the compiler automatically
 ///    reborrows it as `&'b mut _` so that the original `&'a mut _` remains
 ///    accessible after the function call. This does not happen with
-///    `CpuLockGuardBorrowMut`. You have to call [`borrow_mut`] manually.
+///    `CpuLockTokenRefMut`. You have to call [`borrow_mut`] manually.
 ///
 /// [`borrow_mut`]: tokenlock::UnsyncSingletonTokenRefMut::borrow_mut
-pub(super) type CpuLockGuardBorrowMut<'a, System> =
+pub(super) type CpuLockTokenRefMut<'a, System> =
     tokenlock::UnsyncSingletonTokenRefMut<'a, CpuLockTag<System>>;

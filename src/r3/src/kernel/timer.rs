@@ -3,7 +3,7 @@ use core::{fmt, hash, marker::PhantomData, mem::ManuallyDrop};
 
 use super::{
     timeout,
-    utils::{assume_cpu_lock, lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
+    utils::{assume_cpu_lock, lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     BadIdError, Id, Kernel, SetTimerDelayError, SetTimerPeriodError, StartTimerError,
     StopTimerError,
 };
@@ -532,7 +532,7 @@ impl<System: Kernel> fmt::Debug for TimerAttr<System> {
 
 /// Initialize a timer at boot time.
 pub(super) fn init_timer<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timer_cb: &'static TimerCb<System>,
 ) {
     if timer_cb.attr.init_active {
@@ -550,7 +550,7 @@ pub(super) fn init_timer<System: Kernel>(
 
 /// The core portion of [`Timer::start`].
 fn start_timer<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timer_cb: &'static TimerCb<System>,
 ) {
     if timer_cb.active.get(&*lock) {
@@ -573,7 +573,7 @@ fn start_timer<System: Kernel>(
 
 /// The core portion of [`Timer::stop`].
 fn stop_timer<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timer_cb: &TimerCb<System>,
 ) {
     if timer_cb.timeout.is_linked(lock.borrow_mut()) {
@@ -596,7 +596,7 @@ fn stop_timer<System: Kernel>(
 
 /// The core portion of [`Timer::set_delay`].
 fn set_timer_delay<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timer_cb: &'static TimerCb<System>,
     delay: timeout::Time32,
 ) {
@@ -618,7 +618,7 @@ fn set_timer_delay<System: Kernel>(
 
 /// The core portion of [`Timer::set_period`].
 fn set_timer_period<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timer: &TimerCb<System>,
     period: timeout::Time32,
 ) {

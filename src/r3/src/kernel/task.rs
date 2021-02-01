@@ -546,7 +546,7 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
 
 /// Initialize a task at boot time.
 pub(super) fn init_task<System: Kernel>(
-    lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    lock: utils::CpuLockTokenRefMut<'_, System>,
     task_cb: &'static TaskCb<System>,
 ) {
     if let TaskSt::PendingActivation = task_cb.st.read(&*lock) {
@@ -600,7 +600,7 @@ fn activate<System: Kernel>(
 /// caller must initialize the task state first by calling
 /// `initialize_task_state`.
 pub(super) unsafe fn make_ready<System: Kernel>(
-    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mut lock: utils::CpuLockTokenRefMut<'_, System>,
     task_cb: &'static TaskCb<System>,
 ) {
     // Make the task Ready
@@ -669,7 +669,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
 /// Implements `PortToKernel::choose_running_task`.
 #[inline]
 pub(super) fn choose_next_running_task<System: Kernel>(
-    mut lock: utils::CpuLockGuardBorrowMut<System>,
+    mut lock: utils::CpuLockTokenRefMut<System>,
 ) {
     // If Priority Boost is active, treat the currently running task as the
     // highest-priority task.
@@ -781,9 +781,7 @@ fn ptr_from_option_ref<T>(x: Option<&T>) -> *const T {
 /// that). The caller should use `expect_waitable_context` to do that.
 ///
 /// [waitable]: crate#contets
-pub(super) fn wait_until_woken_up<System: Kernel>(
-    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
-) {
+pub(super) fn wait_until_woken_up<System: Kernel>(mut lock: utils::CpuLockTokenRefMut<'_, System>) {
     debug_assert_eq!(state::expect_waitable_context::<System>(), Ok(()));
 
     // Transition the current task to Waiting

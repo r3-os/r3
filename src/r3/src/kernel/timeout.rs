@@ -130,7 +130,7 @@ use core::{fmt, marker::PhantomPinned, pin::Pin, ptr::NonNull};
 use super::{
     state::expect_task_context,
     task,
-    utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockGuardBorrowMut},
+    utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     AdjustTimeError, BadParamError, Kernel, TimeError, UTicks,
 };
 use crate::{
@@ -375,7 +375,7 @@ pub(super) struct Timeout<System: Kernel> {
     ///
     /// This is wrapped by `TimeoutPropCell` because [`TimeoutHeapCtx`]'s
     /// methods need to access this. [`TimeoutHeapCtx`] doesn't have full access
-    /// to `CpuLockGuardBorrowMut` because it's currently in use to write
+    /// to `CpuLockTokenRefMut` because it's currently in use to write
     /// `TimeoutHeap`. Otherwise, this would have been [`CpuLockCell`]`<System,
     /// _>`.
     at: TimeoutPropCell<u32>,
@@ -473,7 +473,7 @@ impl<System: Kernel> Timeout<System> {
     }
 
     /// Get a flag indicating whether the `Timeout` is currently in the heap.
-    pub(super) fn is_linked(&self, lock: CpuLockGuardBorrowMut<'_, System>) -> bool {
+    pub(super) fn is_linked(&self, lock: CpuLockTokenRefMut<'_, System>) -> bool {
         let prop_token = &System::g_timeout()
             .heap_and_prop_token
             .read(&*lock)
@@ -485,7 +485,7 @@ impl<System: Kernel> Timeout<System> {
     /// Configure the `Timeout` to expire in the specified duration.
     pub(super) fn set_expiration_after(
         &self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
         duration_time32: Time32,
     ) {
         debug_assert_ne!(duration_time32, BAD_DURATION32);
@@ -507,7 +507,7 @@ impl<System: Kernel> Timeout<System> {
     /// `Timeout`.
     pub(super) fn adjust_expiration(
         &self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
         duration_time32: Time32,
     ) {
         debug_assert_ne!(duration_time32, BAD_DURATION32);
@@ -524,7 +524,7 @@ impl<System: Kernel> Timeout<System> {
     #[inline]
     pub(super) fn saturating_duration_until_timeout(
         &self,
-        mut lock: CpuLockGuardBorrowMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, System>,
     ) -> Time32 {
         let current_time = current_time(lock.borrow_mut());
 
@@ -537,7 +537,7 @@ impl<System: Kernel> Timeout<System> {
     }
 
     /// Get the raw expiration time.
-    pub(super) fn at_raw(&self, lock: CpuLockGuardBorrowMut<'_, System>) -> Time32 {
+    pub(super) fn at_raw(&self, lock: CpuLockTokenRefMut<'_, System>) -> Time32 {
         let prop_token = &System::g_timeout()
             .heap_and_prop_token
             .read(&*lock)
@@ -549,7 +549,7 @@ impl<System: Kernel> Timeout<System> {
     /// Set the raw expiration time.
     ///
     /// This might be useful for storing arbitrary data in an unlinked `Timeout`.
-    pub(super) fn set_at_raw(&self, mut lock: CpuLockGuardBorrowMut<'_, System>, value: Time32) {
+    pub(super) fn set_at_raw(&self, mut lock: CpuLockTokenRefMut<'_, System>, value: Time32) {
         let prop_token = &mut System::g_timeout()
             .heap_and_prop_token
             .write(&mut *lock)
@@ -632,7 +632,7 @@ impl<System: Kernel> BinaryHeapCtx<TimeoutRef<System>> for TimeoutHeapCtx<'_> {
 
 impl<System: Kernel, TimeoutHeap> TimeoutGlobals<System, TimeoutHeap> {
     /// Initialize the timekeeping system.
-    pub(super) fn init(&self, mut lock: CpuLockGuardBorrowMut<'_, System>) {
+    pub(super) fn init(&self, mut lock: CpuLockTokenRefMut<'_, System>) {
         // Mark the first “tick”
         // Safety: CPU Lock active
         self.last_tick_count
@@ -794,7 +794,7 @@ pub(super) fn adjust_system_and_event_time<System: Kernel>(
 ///
 #[inline]
 fn duration_since_last_tick<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
 ) -> (Time32, Time32) {
     // Safety: CPU Lock active
     let tick_count = unsafe { System::tick_count() };
@@ -828,7 +828,7 @@ fn duration_since_last_tick<System: Kernel>(
 }
 
 /// Create a tick now.
-fn mark_tick<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>) {
+fn mark_tick<System: Kernel>(mut lock: CpuLockTokenRefMut<'_, System>) {
     let (duration_since_last_tick, tick_count) =
         duration_since_last_tick::<System>(lock.borrow_mut());
 
@@ -928,7 +928,7 @@ pub(super) fn handle_tick<System: Kernel>() {
 }
 
 /// Get the current event time.
-fn current_time<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>) -> Time32 {
+fn current_time<System: Kernel>(mut lock: CpuLockTokenRefMut<'_, System>) -> Time32 {
     let (duration_since_last_tick, _) = duration_since_last_tick::<System>(lock.borrow_mut());
 
     let g_timeout = System::g_timeout();
@@ -939,7 +939,7 @@ fn current_time<System: Kernel>(mut lock: CpuLockGuardBorrowMut<'_, System>) -> 
 }
 
 /// Schedule the next tick.
-fn pend_next_tick<System: Kernel>(lock: CpuLockGuardBorrowMut<'_, System>, current_time: Time32) {
+fn pend_next_tick<System: Kernel>(lock: CpuLockTokenRefMut<'_, System>, current_time: Time32) {
     let mut delay = System::MAX_TIMEOUT;
 
     let TimeoutHeapAndPropToken { heap, prop_token } =
@@ -1009,7 +1009,7 @@ fn saturating_duration_before_timeout_exhausting_user_headroom<System: Kernel>(
 
 /// Register the specified timeout.
 pub(super) fn insert_timeout<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timeout: Pin<&Timeout<System>>,
 ) {
     // This check is important for memory safety. For each `Timeout`, there can
@@ -1064,7 +1064,7 @@ pub(super) fn insert_timeout<System: Kernel>(
 /// Unregister the specified `Timeout`. Does nothing if it's not registered.
 #[inline]
 pub(super) fn remove_timeout<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timeout: &Timeout<System>,
 ) {
     remove_timeout_inner(lock.borrow_mut(), timeout);
@@ -1090,7 +1090,7 @@ pub(super) fn remove_timeout<System: Kernel>(
 }
 
 fn remove_timeout_inner<System: Kernel>(
-    mut lock: CpuLockGuardBorrowMut<'_, System>,
+    mut lock: CpuLockTokenRefMut<'_, System>,
     timeout: &Timeout<System>,
 ) {
     let current_time = current_time(lock.borrow_mut());
@@ -1138,7 +1138,7 @@ fn remove_timeout_inner<System: Kernel>(
 /// RAII guard that automatically unregisters `Timeout` when dropped.
 pub(super) struct TimeoutGuard<'a, 'b, System: Kernel> {
     pub(super) timeout: Pin<&'a Timeout<System>>,
-    pub(super) lock: CpuLockGuardBorrowMut<'b, System>,
+    pub(super) lock: CpuLockTokenRefMut<'b, System>,
 }
 
 impl<'a, 'b, System: Kernel> Drop for TimeoutGuard<'a, 'b, System> {

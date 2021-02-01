@@ -516,7 +516,7 @@ impl<System: Kernel> fmt::Debug for MutexCb<System> {
 /// Returns the currently running task for convenience of the caller.
 #[inline]
 fn precheck_and_get_running_task<System: Kernel>(
-    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mut lock: utils::CpuLockTokenRefMut<'_, System>,
     mutex_cb: &'static MutexCb<System>,
 ) -> Result<&'static task::TaskCb<System>, LockMutexPrecheckError> {
     let task = System::state().running_task(lock.borrow_mut()).unwrap();
@@ -541,7 +541,7 @@ fn precheck_and_get_running_task<System: Kernel>(
 /// The check is only needed when raising the priority.
 #[inline]
 pub(super) fn does_held_mutex_allow_new_task_base_priority<System: Kernel>(
-    _lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    _lock: utils::CpuLockTokenRefMut<'_, System>,
     mutex_cb: &'static MutexCb<System>,
     new_base_priority: System::TaskPriority,
 ) -> bool {
@@ -560,7 +560,7 @@ pub(super) fn does_held_mutex_allow_new_task_base_priority<System: Kernel>(
 /// The check is only needed when raising the priority.
 #[inline]
 pub(super) fn do_held_mutexes_allow_new_task_base_priority<System: Kernel>(
-    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mut lock: utils::CpuLockTokenRefMut<'_, System>,
     task: &'static task::TaskCb<System>,
     new_base_priority: System::TaskPriority,
 ) -> bool {
@@ -583,7 +583,7 @@ pub(super) fn do_held_mutexes_allow_new_task_base_priority<System: Kernel>(
 /// (This method doesn't update [`task::TaskCb::effective_priority`]).
 /// The base priority is assumed to be `base_priority`.
 pub(super) fn evaluate_task_effective_priority<System: Kernel>(
-    lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    lock: utils::CpuLockTokenRefMut<'_, System>,
     task: &'static task::TaskCb<System>,
     base_priority: System::TaskPriority,
 ) -> System::TaskPriority {
@@ -611,7 +611,7 @@ pub(super) fn evaluate_task_effective_priority<System: Kernel>(
 fn poll_core<System: Kernel>(
     mutex_cb: &'static MutexCb<System>,
     running_task: &'static task::TaskCb<System>,
-    lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    lock: utils::CpuLockTokenRefMut<'_, System>,
 ) -> bool {
     if mutex_cb.owning_task.get(&*lock).is_some() {
         false
@@ -631,7 +631,7 @@ fn poll_core<System: Kernel>(
 fn lock_core<System: Kernel>(
     mutex_cb: &'static MutexCb<System>,
     task: &'static task::TaskCb<System>,
-    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mut lock: utils::CpuLockTokenRefMut<'_, System>,
 ) {
     debug_assert_matches!(
         task.st.read(&*lock),
@@ -758,7 +758,7 @@ fn unlock_mutex<System: Kernel>(
 /// This method may make a task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` (or something similar) as needed.
 pub(super) fn abandon_held_mutexes<System: Kernel>(
-    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mut lock: utils::CpuLockTokenRefMut<'_, System>,
     task: &'static task::TaskCb<System>,
 ) {
     let mut maybe_mutex_cb = task.last_mutex_held.replace(&mut *lock, None);
@@ -778,7 +778,7 @@ pub(super) fn abandon_held_mutexes<System: Kernel>(
 /// `true`.
 fn unlock_mutex_unchecked<System: Kernel>(
     mutex_cb: &'static MutexCb<System>,
-    mut lock: utils::CpuLockGuardBorrowMut<'_, System>,
+    mut lock: utils::CpuLockTokenRefMut<'_, System>,
 ) {
     // Check if there's any other tasks waiting on the mutex
     if let Some(next_task) = mutex_cb.wait_queue.first_waiting_task(lock.borrow_mut()) {
