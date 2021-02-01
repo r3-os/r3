@@ -5,6 +5,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
+#![feature(const_fn_transmute)]
 #![feature(decl_macro)]
 #![feature(is_sorted)]
 #![feature(cell_update)]
@@ -529,6 +530,7 @@ pub mod kernel_benchmarks {
         (mod port {}, "port"),
         (mod semaphore {}, "semaphore"),
         (mod task_lifecycle {}, "task_lifecycle"),
+        (mod timer_start {}, "timer_start"),
     }
 
     #[cfg(any(
