@@ -143,7 +143,7 @@ fn ctz3_lut_nonzero(x: usize) -> u32 {
     debug_assert!(x != 0);
 
     //  2  3  4  5  6  7
-    (0b01_00_10_00_01_00_0000000000000000 << (x as u32 * 2)) >> 30
+    (0b01_00_10_00_01_00_0000_0000_0000_0000 << (x as u32 * 2)) >> 30
 
     // On RISC-V, the above code generates one fewer instruction compared to
     // the following one because a constant value whose bit[11:0] is zero

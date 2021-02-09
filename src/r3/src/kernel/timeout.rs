@@ -793,6 +793,8 @@ pub(super) fn adjust_system_and_event_time<System: Kernel>(
 ///  2. The value of `System::tick_count()` used for calculation.
 ///
 #[inline]
+// I didn't mean `System::MAX_TICK_COUNT == UTicks::MAX_TICK_COUNT`
+#[allow(clippy::suspicious_operation_groupings)]
 fn duration_since_last_tick<System: Kernel>(
     mut lock: CpuLockTokenRefMut<'_, System>,
 ) -> (Time32, Time32) {
