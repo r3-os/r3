@@ -116,6 +116,10 @@ pub trait InterruptController {
     /// [`PortToKernel::boot`].
     ///
     /// [`PortToKernel::boot`]: r3::kernel::PortToKernel::boot
+    ///
+    /// # Safety
+    ///
+    /// See this trait's documentation.
     unsafe fn init() {}
 
     /// The range of interrupt priority values considered [managed].
@@ -133,6 +137,10 @@ pub trait InterruptController {
     /// [`INTERRUPT_PLATFORM_START`].
     ///
     /// [`PortInterrupts::set_interrupt_line_priority`]: r3::kernel::PortInterrupts::set_interrupt_line_priority
+    ///
+    /// # Safety
+    ///
+    /// See this trait's documentation.
     unsafe fn set_interrupt_line_priority(
         _line: InterruptNum,
         _priority: InterruptPriority,
@@ -147,6 +155,10 @@ pub trait InterruptController {
     /// [`INTERRUPT_PLATFORM_START`].
     ///
     /// [`PortInterrupts::enable_interrupt_line`]: r3::kernel::PortInterrupts::enable_interrupt_line
+    ///
+    /// # Safety
+    ///
+    /// See this trait's documentation.
     unsafe fn enable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
         Err(EnableInterruptLineError::BadParam)
     }
@@ -158,6 +170,10 @@ pub trait InterruptController {
     /// [`INTERRUPT_PLATFORM_START`].
     ///
     /// [`PortInterrupts::disable_interrupt_line`]: r3::kernel::PortInterrupts::disable_interrupt_line
+    ///
+    /// # Safety
+    ///
+    /// See this trait's documentation.
     unsafe fn disable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
         Err(EnableInterruptLineError::BadParam)
     }
@@ -169,6 +185,10 @@ pub trait InterruptController {
     /// [`INTERRUPT_PLATFORM_START`].
     ///
     /// [`PortInterrupts::pend_interrupt_line`]: r3::kernel::PortInterrupts::pend_interrupt_line
+    ///
+    /// # Safety
+    ///
+    /// See this trait's documentation.
     unsafe fn pend_interrupt_line(_line: InterruptNum) -> Result<(), PendInterruptLineError> {
         Err(PendInterruptLineError::BadParam)
     }
@@ -180,6 +200,10 @@ pub trait InterruptController {
     /// [`INTERRUPT_PLATFORM_START`].
     ///
     /// [`PortInterrupts::clear_interrupt_line`]: r3::kernel::PortInterrupts::clear_interrupt_line
+    ///
+    /// # Safety
+    ///
+    /// See this trait's documentation.
     unsafe fn clear_interrupt_line(_line: InterruptNum) -> Result<(), ClearInterruptLineError> {
         Err(ClearInterruptLineError::BadParam)
     }
@@ -191,6 +215,10 @@ pub trait InterruptController {
     /// [`INTERRUPT_PLATFORM_START`].
     ///
     /// [`PortInterrupts::is_interrupt_line_pending`]: r3::kernel::PortInterrupts::is_interrupt_line_pending
+    ///
+    /// # Safety
+    ///
+    /// See this trait's documentation.
     unsafe fn is_interrupt_line_pending(
         _line: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
