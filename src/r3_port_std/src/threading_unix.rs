@@ -221,10 +221,6 @@ fn park_inner(data: &ThreadData) {
 }
 
 impl Thread {
-    pub fn id(&self) -> ThreadId {
-        self.std_thread.id()
-    }
-
     /// Make a new park token available for the thread.
     ///
     /// Unlike [`std::thread::Thread::unpark`], **a thread can have multiple
