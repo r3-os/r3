@@ -3,6 +3,7 @@ members = [
     "examples/basic",
     "examples/basic_gr_peach",
     "examples/basic_nucleo_f401re",
+    "examples/basic_rp_pico",
     "src/arm_semihosting",
     "src/r3",
     "src/r3_port_arm",
