@@ -14,6 +14,7 @@ members = [
     "src/r3_port_riscv_test_driver",
     "src/r3_port_std",
     "src/r3_portkit",
+    "src/r3_support_rp2040",
     "src/r3_support_rza1",
     "src/r3_test_runner",
     "src/r3_test_suite",

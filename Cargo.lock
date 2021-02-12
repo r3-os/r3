@@ -1245,6 +1245,7 @@ dependencies = [
  "cortex-m-rt",
  "r3",
  "r3_port_arm_m",
+ "r3_support_rp2040",
  "rp2040",
  "rp2040-boot2",
 ]
@@ -1358,6 +1359,17 @@ dependencies = [
  "quickcheck_macros",
  "r3",
  "svgbobdoc",
+]
+
+[[package]]
+name = "r3_support_rp2040"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal",
+ "nb 1.0.0",
+ "r3",
+ "r3_portkit",
+ "rp2040",
 ]
 
 [[package]]

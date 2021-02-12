@@ -32,6 +32,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3_port_riscv }
 
+      - name: Build Documentation for “r3_support_rp2040”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p r3_support_rp2040 }
+
       - name: Build Documentation for “r3_support_rza1”
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3_support_rza1 }
