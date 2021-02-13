@@ -8,11 +8,12 @@
 #![no_main]
 #![cfg(target_os = "none")]
 use r3::{
-    kernel::{cfg::CfgBuilder, Task},
+    kernel::{cfg::CfgBuilder, StartupHook, Task},
     prelude::*,
     sync::Mutex,
 };
 use r3_port_arm_m as port;
+use r3_support_rp2040 as support_rp2040;
 
 // --------------------------------------------------------------------------
 // Target-specific configuration
@@ -32,8 +33,7 @@ impl port::ThreadingOptions for System {}
 
 impl port::SysTickOptions for System {
     // "The timer uses a one microsecond reference that is generated in the
-    // Watchdog (see Section 4.7.2) which comes from clk_ref." It's unclear
-    // whether this applies to SysTick with CLKSOURCE = 0.
+    // Watchdog (see Section 4.7.2) which comes from clk_ref."
     const FREQUENCY: u64 = 1_000_000;
 }
 
@@ -51,7 +51,20 @@ const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     b.num_task_priority_levels(4);
 
-    // TODO: Configure XOSC
+    StartupHook::build()
+        .start(|_| {
+            // Configure peripherals
+            let p = unsafe { rp2040::Peripherals::steal() };
+            support_rp2040::clock::init_clock(
+                &p.CLOCKS,
+                &p.XOSC,
+                &p.PLL_SYS,
+                &p.PLL_USB,
+                &p.RESETS,
+                &p.WATCHDOG,
+            );
+        })
+        .finish(b);
     // TODO: Configure USB serial
 
     System::configure_systick(b);
