@@ -2,36 +2,36 @@
 // This module is only intended to be used internally, hence the semver
 // exemption. It probably should be in a HAL crate.
 #![cfg(feature = "semver-exempt")]
-use core::fmt;
+use core::{cell::RefCell, convert::Infallible, fmt};
 use cortex_m::interrupt;
+use inline_dyn::{inline_dyn, InlineDyn};
 use nb::block;
 
-use crate::serial::{NbWriter, UartExt};
-
-pub fn set_stdout<T: UartExt>(_writer: NbWriter<T>) {
-    use core::fmt::Write;
-    // We want to erase the type of `T`, but `static` can't store an unsized
-    // owned value. `T: UartExt` is guaranteed to be zero-sized, so we
-    // conjure it up again out of thin air by calling `T::global()`.
-    interrupt::free(|_| unsafe {
-        STDOUT = Some((
-            |s| {
-                let _ = Stdout(&mut T::global().into_nb_writer()).write_str(s);
-            },
-            |args| {
-                let _ = Stdout(&mut T::global().into_nb_writer()).write_fmt(args);
-            },
-        ));
-    })
+pub fn set_stdout(writer: impl SerialWrite) {
+    interrupt::free(|cs| {
+        *STDOUT.borrow(cs).borrow_mut() = Some(inline_dyn![SerialWrite; writer].ok().unwrap());
+    });
 }
 
-static mut STDOUT: Option<(fn(&str), fn(fmt::Arguments<'_>))> = None;
+pub trait SerialWrite:
+    embedded_hal::serial::Write<u8, Error = Infallible> + Send + Sync + 'static
+{
+}
+impl<T> SerialWrite for T where
+    T: embedded_hal::serial::Write<u8, Error = Infallible> + Send + Sync + 'static
+{
+}
 
-/// `Stdout` implements the [`core::fmt::Write`] trait for
+type InlineDynWrite = InlineDyn<'static, dyn SerialWrite>;
+
+static STDOUT: interrupt::Mutex<RefCell<Option<InlineDynWrite>>> =
+    interrupt::Mutex::new(RefCell::new(None));
+
+/// `WrapSerialWrite` implements the [`core::fmt::Write`] trait for
 /// [`embedded_hal::serial::Write`] implementations.
-struct Stdout<'p, T>(&'p mut T);
+struct WrapSerialWrite<'p, T: ?Sized>(&'p mut T);
 
-impl<'p, T> core::fmt::Write for Stdout<'p, T>
+impl<'p, T: ?Sized> core::fmt::Write for WrapSerialWrite<'p, T>
 where
     T: embedded_hal::serial::Write<u8>,
 {
@@ -57,18 +57,20 @@ where
 
 #[doc(hidden)]
 pub fn write_str(s: &str) {
-    interrupt::free(|_| unsafe {
-        if let Some(stdout) = STDOUT.as_ref() {
-            (stdout.0)(s);
+    interrupt::free(|cs| {
+        let mut stdout = STDOUT.borrow(cs).borrow_mut();
+        if let Some(stdout) = &mut *stdout {
+            let _ = fmt::Write::write_str(&mut WrapSerialWrite(&mut **stdout), s);
         }
     })
 }
 
 #[doc(hidden)]
 pub fn write_fmt(args: fmt::Arguments<'_>) {
-    interrupt::free(|_| unsafe {
-        if let Some(stdout) = STDOUT.as_ref() {
-            (stdout.1)(args);
+    interrupt::free(|cs| {
+        let mut stdout = STDOUT.borrow(cs).borrow_mut();
+        if let Some(stdout) = &mut *stdout {
+            let _ = fmt::Write::write_fmt(&mut WrapSerialWrite(&mut **stdout), args);
         }
     })
 }

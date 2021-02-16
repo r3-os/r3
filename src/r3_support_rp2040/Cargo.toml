@@ -13,6 +13,7 @@ repository = "https://github.com/yvt/r3"
 semver-exempt = [
     "embedded-hal",
     "usbd-serial",
+    "inline_dyn",
     "usb-device",
     "cortex-m",
     "vcell",
@@ -26,6 +27,7 @@ r3 = { version = "0.1.0", path = "../r3" }
 
 embedded-hal = { version = "0.2.4", optional = true }
 usbd-serial = { version = "0.1.1", optional = true }
+inline_dyn = { version = "0.1.1", optional = true }
 usb-device = { version = "0.2.7", optional = true }
 cortex-m = { version = "0.6.3", optional = true, features = ["inline-asm"] }
 rp2040 = { version = "0.1.0" }

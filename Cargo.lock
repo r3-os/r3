@@ -612,6 +612,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "inline_dyn"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "929271c05bf5679f7c76df53efabf88661b445e337314e2205841ed0b5661d73"
+dependencies = [
+ "cfg-if 1.0.0",
+ "static_assertions",
+ "typenum",
+]
+
+[[package]]
 name = "iovec"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1367,6 +1378,7 @@ version = "0.1.0"
 dependencies = [
  "cortex-m 0.6.7",
  "embedded-hal",
+ "inline_dyn",
  "nb 1.0.0",
  "r3",
  "r3_port_arm_m",
@@ -1828,6 +1840,12 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "staticvec"
