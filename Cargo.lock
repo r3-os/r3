@@ -1365,6 +1365,7 @@ dependencies = [
 name = "r3_support_rp2040"
 version = "0.1.0"
 dependencies = [
+ "cortex-m 0.6.7",
  "embedded-hal",
  "nb 1.0.0",
  "r3",

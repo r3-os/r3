@@ -10,13 +10,18 @@ keywords = ["r3", "arm"]
 repository = "https://github.com/yvt/r3"
 
 [features]
-semver-exempt = []
+semver-exempt = [
+    "cortex-m",
+    "embedded-hal",
+    "nb",
+]
 
 [dependencies]
 r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
 r3 = { version = "0.1.0", path = "../r3" }
 
 embedded-hal = { version = "0.2.4", optional = true }
+cortex-m = { version = "0.6.3", optional = true, features = ["inline-asm"] }
 rp2040 = { version = "0.1.0" }
 nb = { version = "1.0.0", optional = true }
 

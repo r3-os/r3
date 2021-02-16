@@ -5,6 +5,9 @@
 //! [Raspberry Pi Pico]: https://pico.raspberrypi.org
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
+#![feature(asm)]
 #![no_std]
 
 pub mod clock;
+pub mod serial;
+pub mod stdout;

@@ -63,8 +63,28 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
                 &p.RESETS,
                 &p.WATCHDOG,
             );
+
+            // Reset and enable IO bank 0
+            p.RESETS
+                .reset
+                .modify(|_, w| w.pads_bank0().set_bit().io_bank0().set_bit());
+            p.RESETS
+                .reset
+                .modify(|_, w| w.pads_bank0().clear_bit().io_bank0().clear_bit());
+            while p.RESETS.reset_done.read().pads_bank0().bit_is_clear() {}
+            while p.RESETS.reset_done.read().io_bank0().bit_is_clear() {}
+
+            // Confiugre UART0
+            use support_rp2040::serial::UartExt;
+            let uart0 = p.UART0;
+            uart0.reset(&p.RESETS);
+            uart0.configure_pins(&p.IO_BANK0);
+            uart0.configure_uart(115_200);
+
+            support_rp2040::stdout::set_stdout(uart0.into_nb_writer());
         })
         .finish(b);
+
     // TODO: Configure USB serial
 
     System::configure_systick(b);
@@ -86,7 +106,7 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
 }
 
 fn task1_body(_: usize) {
-    // TODO: rtt_target::rprintln!("COTTAGE = {:?}", COTTAGE);
+    support_rp2040::sprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();
 }
@@ -97,20 +117,6 @@ fn task2_body(_: usize) {
     // <https://github.com/jannic/rp-microcontroller-rs/blob/master/boards/rp-pico/examples/blink/main.rs>
     // TODO: Documentate what this code does
     let pin = 25;
-    p.RESETS.reset.modify(|r, w| {
-        unsafe { w.bits(r.bits()) }
-            .pads_bank0()
-            .clear_bit()
-            .io_bank0()
-            .clear_bit()
-    });
-
-    loop {
-        let r = p.RESETS.reset_done.read();
-        if r.pads_bank0().bit() && r.io_bank0().bit() {
-            break;
-        }
-    }
 
     p.SIO.gpio_oe_clr.write(|w| unsafe { w.bits(1 << pin) });
     p.SIO.gpio_out_clr.write(|w| unsafe { w.bits(1 << pin) });
@@ -130,7 +136,7 @@ fn task2_body(_: usize) {
         System::sleep(r3::time::Duration::from_millis(100)).unwrap();
         p.SIO.gpio_out_clr.write(|w| unsafe { w.bits(1 << pin) });
 
-        // TODO: rtt_target::rprintln!("time = {:?}", System::time().unwrap());
+        support_rp2040::sprintln!("time = {:?}", System::time().unwrap());
         System::sleep(r3::time::Duration::from_millis(900)).unwrap();
     }
 }
