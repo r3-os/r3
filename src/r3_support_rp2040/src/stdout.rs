@@ -1,4 +1,8 @@
 //! Standard output
+//!
+//! Warning: It can block the calling thread by polling. It will use
+//! [`cortex_m::interrupt:free`] to enter a critical section, which can be cut
+//! short if the destination gets stuck.
 // This module is only intended to be used internally, hence the semver
 // exemption. It probably should be in a HAL crate.
 #![cfg(feature = "semver-exempt")]
@@ -27,29 +31,55 @@ type InlineDynWrite = InlineDyn<'static, dyn SerialWrite>;
 static STDOUT: interrupt::Mutex<RefCell<Option<InlineDynWrite>>> =
     interrupt::Mutex::new(RefCell::new(None));
 
-/// `WrapSerialWrite` implements the [`core::fmt::Write`] trait for
-/// [`embedded_hal::serial::Write`] implementations.
-struct WrapSerialWrite<'p, T: ?Sized>(&'p mut T);
+struct WrapSerialWrite;
 
-impl<'p, T: ?Sized> core::fmt::Write for WrapSerialWrite<'p, T>
-where
-    T: embedded_hal::serial::Write<u8>,
-{
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for byte in s.as_bytes() {
-            if *byte == b'\n' {
-                let res = block!(self.0.write(b'\r'));
+impl WrapSerialWrite {
+    fn write_str_inner(mut s: &[u8]) -> core::fmt::Result {
+        loop {
+            if s.is_empty() {
+                break Ok(());
+            }
 
-                if res.is_err() {
-                    return Err(core::fmt::Error);
+            block!(interrupt::free(|cs| -> nb::Result<(), core::fmt::Error> {
+                let mut stdout = STDOUT.borrow(cs).borrow_mut();
+                if let Some(stdout) = &mut *stdout {
+                    loop {
+                        match s {
+                            [] => {
+                                break Ok(());
+                            }
+                            [head, tail @ ..] => {
+                                // Output the first byte. If this gets stuck,
+                                // break out of `interrupt::free`.
+                                s = tail;
+                                stdout
+                                    .write(*head)
+                                    .map_err(|e| e.map(|_| core::fmt::Error))?;
+                            }
+                        }
+                    }
+                } else {
+                    Ok(())
                 }
+            }))?;
+        }
+    }
+}
+
+impl core::fmt::Write for WrapSerialWrite {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let mut s = s.as_bytes();
+        while let Some(i) = s.iter().position(|&x| x == b'\n') {
+            if i > 0 {
+                Self::write_str_inner(&s[0..i])?;
             }
 
-            let res = block!(self.0.write(*byte));
+            Self::write_str_inner(b"\r\n")?;
 
-            if res.is_err() {
-                return Err(core::fmt::Error);
-            }
+            s = &s[i + 1..];
+        }
+        if s.len() > 0 {
+            Self::write_str_inner(s)?;
         }
         Ok(())
     }
@@ -57,22 +87,12 @@ where
 
 #[doc(hidden)]
 pub fn write_str(s: &str) {
-    interrupt::free(|cs| {
-        let mut stdout = STDOUT.borrow(cs).borrow_mut();
-        if let Some(stdout) = &mut *stdout {
-            let _ = fmt::Write::write_str(&mut WrapSerialWrite(&mut **stdout), s);
-        }
-    })
+    let _ = fmt::Write::write_str(&mut WrapSerialWrite, s);
 }
 
 #[doc(hidden)]
 pub fn write_fmt(args: fmt::Arguments<'_>) {
-    interrupt::free(|cs| {
-        let mut stdout = STDOUT.borrow(cs).borrow_mut();
-        if let Some(stdout) = &mut *stdout {
-            let _ = fmt::Write::write_fmt(&mut WrapSerialWrite(&mut **stdout), args);
-        }
-    })
+    let _ = fmt::Write::write_fmt(&mut WrapSerialWrite, args);
 }
 
 /// Macro for printing to the serial standard output
