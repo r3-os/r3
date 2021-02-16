@@ -111,6 +111,11 @@ pub fn init_clock(
         .clk_ref_ctrl
         .modify(|_, w| w.src().clksrc_clk_ref_aux());
 
+    // pll_usb → clk_usb
+    clocks
+        .clk_usb_ctrl
+        .write(|b| b.enable().set_bit().auxsrc().clksrc_pll_usb());
+
     // Supply clk_ref / 48 = 1MHz to SysTick and watchdog
     watchdog.tick.write(|b| unsafe { b.cycles().bits(48) });
 

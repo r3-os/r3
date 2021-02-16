@@ -85,7 +85,7 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         })
         .finish(b);
 
-    // TODO: Configure USB serial
+    support_rp2040::usbstdio::configure(b);
 
     System::configure_systick(b);
 
