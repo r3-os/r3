@@ -1,6 +1,7 @@
 //! Standard input/output, behaving as a USB serial device
 // This module is only intended to be used internally, hence the semver
 // exemption. It probably should be in a HAL or board crate.
+#![cfg(feature = "semver-exempt")]
 use crate::usb::UsbBus;
 use core::cell::RefCell;
 use cortex_m::{interrupt, singleton};
