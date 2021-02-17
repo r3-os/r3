@@ -44,6 +44,7 @@ impl UsbBus {
             ep_buffer_offset: {
                 let mut b = [0; 32];
                 b[0] = DPRAM_EP0_BUFFER_OFFSET as _;
+                b[1] = DPRAM_EP0_BUFFER_OFFSET as _;
                 b
             },
             ep_max_packet_size: [0; 16],
