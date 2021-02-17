@@ -96,7 +96,6 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
                 if let Ok(len) = g.serial.read(&mut buf) {
                     if len > 0 {
                         // TEST
-                        crate::sprintln!("{:?}", &buf[..len]);
                         if buf[..len] == b"\r"[..] || buf[..len] == b"\n"[..] {
                             let _ = g.serial.write(b"\r\n");
                             return;
