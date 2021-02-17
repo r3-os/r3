@@ -7,6 +7,7 @@ const USIZE_BITS: u32 = usize::BITS;
 const HAS_CTZ: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "riscv64") {
     cfg!(target_feature = "b") || cfg!(target_feature = "experimental-b")
 } else if cfg!(target_arch = "arm") {
+    // (It's actually CLZ + RBIT)
     // Thumb-2
     cfg!(target_feature = "v6t2")
         // Armv5T and later, only in Arm mode
@@ -42,6 +43,34 @@ const HAS_SHIFTER: bool = if cfg!(target_arch = "msp430") {
     true
 };
 
+/// Indicates whether an array-based look-up table would be faster than other
+/// techniques.
+///
+/// Some targets would use constant pools anyway. On such targets, bit
+/// manipulation tricks relying on an instruction-embedded LUT would actually
+/// read from a data bus anyway and therefore would never be faster than an
+/// array-based LUT.
+///
+/// Small microcontrollers usually have a low-latency memory system and a
+/// single-issue in-order pipeline. Bit manipulation tricks often require many
+/// bit manipulation instructions to move bits into a correct place, which
+/// sometimes over-weighs the cost of loading an LUT address and then loading
+/// one of its entries. Examples: <https://rust.godbolt.org/z/961Pej> (Armv6-M
+/// and Armv7-M), <https://cpp.godbolt.org/z/WPnxon> (MSP430 and AVR)
+///
+/// There are extreme cases that should be taken into consideration as well.
+/// For example, SiFive E31 (used in SiFive Freedom E310) does not have a data
+/// cache for XiP from an external SPI flash. Therefore, using an array-based
+/// LUT on such systems would lead to a catastrophic performance degradation and
+/// must be avoided at any cost.
+#[allow(clippy::needless_bool)]
+const HAS_FAST_LOAD: bool =
+    if cfg!(target_arch = "arm") || cfg!(target_arch = "msp430") || cfg!(target_arch = "avr") {
+        true
+    } else {
+        false
+    };
+
 /// Return the number of trailing zeros in `x` (`< 1 << BITS`). Returns
 /// `usize::BITS` if `x` is zero.
 #[inline]
@@ -56,6 +85,12 @@ pub fn trailing_zeros<const BITS: usize>(x: usize) -> u32 {
         }
     } else if HAS_CTZ {
         x.trailing_zeros()
+    } else if BITS == 2 && HAS_FAST_LOAD {
+        ctz_array_lut::<4>(x)
+    } else if BITS == 3 && HAS_FAST_LOAD {
+        ctz_array_lut::<8>(x)
+    } else if BITS == 4 && HAS_FAST_LOAD {
+        ctz_array_lut::<16>(x)
     } else if BITS <= 2 {
         ctz2(x)
     } else if BITS <= 3 && HAS_SHIFTER {
@@ -164,6 +199,30 @@ fn ctz2(x: usize) -> u32 {
     }
 }
 
+/// Implements [`trailing_zeros`] using an array-based look-up table.
+#[inline]
+fn ctz_array_lut<const LEN: usize>(x: usize) -> u32 {
+    struct Lut<const LEN: usize>;
+    trait LutTrait {
+        const LUT: &'static [u8];
+    }
+    impl<const LEN: usize> LutTrait for Lut<LEN> {
+        const LUT: &'static [u8] = &{
+            let mut array = [0u8; LEN];
+            // FIXME: Work-around for `for` being unsupported in `const fn`
+            let mut i = 0;
+            while i < array.len() {
+                array[i] = i.trailing_zeros() as u8;
+                i += 1;
+            }
+            array
+        };
+    }
+
+    let lut = Lut::<LEN>::LUT;
+    lut[x & (lut.len() - 1)] as u32
+}
+
 /// Implements [`trailing_zeros`] using linear search.
 #[inline]
 fn ctz_linear<const BITS: usize>(mut x: usize) -> u32 {
@@ -211,7 +270,11 @@ fn ctz_bsearch32<const BITS: usize>(x: usize) -> u32 {
         x &= 0xf;
     }
 
-    i += ctz4_lut_nonzero(x as usize);
+    if HAS_FAST_LOAD {
+        i += ctz_array_lut::<16>(x as usize);
+    } else {
+        i += ctz4_lut_nonzero(x as usize);
+    }
 
     i
 }
@@ -282,6 +345,11 @@ mod tests {
     gen_test!(ctz4_lut, super::ctz4_lut, 4);
     gen_test!(ctz3_lut, super::ctz3_lut, 3);
     gen_test!(ctz2, super::ctz2, 2);
+    gen_test!(ctz_array_lut_1, super::ctz_array_lut::<2>, 1);
+    gen_test!(ctz_array_lut_2, super::ctz_array_lut::<4>, 2);
+    gen_test!(ctz_array_lut_3, super::ctz_array_lut::<8>, 3);
+    gen_test!(ctz_array_lut_4, super::ctz_array_lut::<16>, 4);
+    gen_test!(ctz_array_lut_8, super::ctz_array_lut::<256>, 8);
     gen_test!(ctz_linear_0, super::ctz_linear::<0>, 0);
     gen_test!(ctz_linear_1, super::ctz_linear::<1>, 1);
     gen_test!(ctz_linear_2, super::ctz_linear::<2>, 2);
