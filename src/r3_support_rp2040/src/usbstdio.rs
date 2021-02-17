@@ -22,6 +22,19 @@ struct UsbStdioGlobal {
 static USB_STDIO_GLOBAL: interrupt::Mutex<RefCell<Option<UsbStdioGlobal>>> =
     interrupt::Mutex::new(RefCell::new(None));
 
+/// Start a no-interrupt section and get the global instance of
+/// `UsbStdioGlobal`. Will panic if the `UsbStdioGlobal` hasn't been initialized
+/// yet.
+fn with_usb_stdio_global<T>(f: impl FnOnce(&mut UsbStdioGlobal) -> T) -> T {
+    interrupt::free(|cs| {
+        let mut g = USB_STDIO_GLOBAL.borrow(cs).borrow_mut();
+        let g = g
+            .as_mut()
+            .expect("UsbStdioGlobal hasn't been initialized yet");
+        f(g)
+    })
+}
+
 /// Add a USB serial device to the system and register it as the destination of
 /// the standard output ([`crate::stdout`]).
 pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
@@ -56,6 +69,9 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
                 *USB_STDIO_GLOBAL.borrow(cs).borrow_mut() =
                     Some(UsbStdioGlobal { serial, usb_device })
             });
+
+            // Register the standard output
+            crate::stdout::set_stdout(NbWriter);
         })
         .finish(b);
 
@@ -71,12 +87,9 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
     InterruptHandler::build()
         .line(int_num)
         .start(|_| {
-            interrupt::free(|cs| {
-                // Get the global `UsbStdioGlobal` instance, which should
-                // have been created by the startup hook above
-                let mut g = USB_STDIO_GLOBAL.borrow(cs).borrow_mut();
-                let g = g.as_mut().unwrap();
-
+            // Get the global `UsbStdioGlobal` instance, which should
+            // have been created by the startup hook above
+            with_usb_stdio_global(|g| {
                 g.usb_device.poll(&mut [&mut g.serial]);
 
                 let mut buf = [0; 64];
@@ -98,7 +111,49 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
         .finish(b);
 }
 
-// TODO: Hook this up to `crate::stdout`.
+struct NbWriter;
+
+fn map_usb_error_to_nb_error(e: usb_device::UsbError) -> nb::Error<core::convert::Infallible> {
+    match e {
+        usb_device::UsbError::WouldBlock => nb::Error::WouldBlock,
+        usb_device::UsbError::BufferOverflow
+        | usb_device::UsbError::EndpointOverflow
+        | usb_device::UsbError::Unsupported
+        | usb_device::UsbError::InvalidEndpoint
+        | usb_device::UsbError::EndpointMemoryOverflow => unreachable!("{:?}", e),
+        // I think the following ones are protocol errors? I'm not sure
+        // if they can be returned by `write` and `flush`.
+        //
+        // It's really a bad idea to gather all error codes in a single `enum`
+        // without meticulously documenting how and when each of them will be
+        // returned.
+        usb_device::UsbError::ParseError | usb_device::UsbError::InvalidState => {
+            panic!("{:?} is probably unexpected, but I'm not sure", e)
+        }
+    }
+}
+
+impl embedded_hal::serial::Write<u8> for NbWriter {
+    type Error = core::convert::Infallible;
+
+    fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+        with_usb_stdio_global(|g| {
+            // It's really inefficient to output one byte at once...
+            let num_bytes_written = g.serial.write(&[word]).map_err(map_usb_error_to_nb_error)?;
+            if num_bytes_written == 0 {
+                Err(nb::Error::WouldBlock)
+            } else {
+                Ok(())
+            }
+        })
+    }
+
+    fn flush(&mut self) -> nb::Result<(), Self::Error> {
+        with_usb_stdio_global(|g| g.serial.flush().map_err(map_usb_error_to_nb_error))
+    }
+}
+
+// TODO:
 //
 //   - The USB controller needs to be periodically polled to work correctly.
 //     The panic handler should poll USB instead of doing nothing.

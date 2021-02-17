@@ -37,6 +37,8 @@ impl port::SysTickOptions for System {
     const FREQUENCY: u64 = 1_000_000;
 }
 
+const USE_USB_UART: bool = true;
+
 // --------------------------------------------------------------------------
 
 #[derive(Debug)]
@@ -74,18 +76,22 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
             while p.RESETS.reset_done.read().pads_bank0().bit_is_clear() {}
             while p.RESETS.reset_done.read().io_bank0().bit_is_clear() {}
 
-            // Confiugre UART0
-            use support_rp2040::serial::UartExt;
-            let uart0 = p.UART0;
-            uart0.reset(&p.RESETS);
-            uart0.configure_pins(&p.IO_BANK0);
-            uart0.configure_uart(115_200);
+            if !USE_USB_UART {
+                // Confiugre UART0
+                use support_rp2040::serial::UartExt;
+                let uart0 = p.UART0;
+                uart0.reset(&p.RESETS);
+                uart0.configure_pins(&p.IO_BANK0);
+                uart0.configure_uart(115_200);
 
-            support_rp2040::stdout::set_stdout(uart0.into_nb_writer());
+                support_rp2040::stdout::set_stdout(uart0.into_nb_writer());
+            }
         })
         .finish(b);
 
-    support_rp2040::usbstdio::configure(b);
+    if USE_USB_UART {
+        support_rp2040::usbstdio::configure(b);
+    }
 
     System::configure_systick(b);
 

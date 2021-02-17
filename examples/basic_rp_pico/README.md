@@ -8,8 +8,6 @@ You need the following software to run this example.
      - Try `nix-shell -p gcc-arm-embedded` if you use Nix(OS)
  - [`elf2uf2`](https://github.com/raspberrypi/pico-sdk/tree/master/tools/elf2uf2) or [`elf2uf2-rs`](https://github.com/jonil/elf2uf2-rs)
 
-You also need a UART adapter to observe the program's output. Connect its RX to the pinout 1 (GPIO 0, UART0 TX) of the board. Configure the adapter's baudrate to 115200.
-
 First, place your Pico into BOOTSEL mode by holding the BOOTSEL button down while connecting it to your computer. You should see a volume named `RPI-RP2`  being mounted if your Pico has successfully entered BOOTSEL mode.
 
 After that, run the following commands (assuming `elf2uf2-rs` is installed):
@@ -20,4 +18,4 @@ cargo build --release
 elf2uf2-rs -d ../../target/thumbv6m-none-eabi/release/r3_example_basic_rp_pico
 ```
 
-You should see the on-board LED blinking after doing this. You should also see some serial output.
+You should see the on-board LED blinking after doing this. This program presents your Pico as a USB serial device. If you open it by a serial monitor app, you should see some textual output.
