@@ -1293,6 +1293,7 @@ dependencies = [
  "panic-semihosting",
  "r3",
  "r3_port_arm_m",
+ "r3_support_rp2040",
  "r3_test_suite",
  "rtt-target",
 ]

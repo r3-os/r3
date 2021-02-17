@@ -1,3 +1,4 @@
+//! Raspberry Pi Pico testing support
 use super::{Arch, DebugProbe, Target};
 
 pub struct RaspberryPiPico;
@@ -8,7 +9,7 @@ impl Target for RaspberryPiPico {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-rtt"] // TODO
+        &["board-rp_pico"]
     }
 
     fn memory_layout_script(&self) -> String {
@@ -40,6 +41,21 @@ impl Target for RaspberryPiPico {
         &self,
     ) -> std::pin::Pin<Box<dyn futures_core::Future<Output = anyhow::Result<Box<dyn DebugProbe>>>>>
     {
+        Box::pin(std::future::ready(Ok(
+            Box::new(RaspberryPiPicoUsbDebugProbe) as _,
+        )))
+    }
+}
+
+struct RaspberryPiPicoUsbDebugProbe;
+
+impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
+    fn program_and_get_output(
+        &mut self,
+        _exe: &std::path::Path,
+    ) -> std::pin::Pin<
+        Box<dyn futures_core::Future<Output = anyhow::Result<super::DynAsyncRead<'_>>> + '_>,
+    > {
         todo!()
     }
 }

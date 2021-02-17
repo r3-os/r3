@@ -17,6 +17,14 @@ run = [
     "log",
     "r3_test_suite",
 ]
+
+# Only Raspberry Pico needs special support. `board-rp_pico` implies USB output,
+# so it doesn't require `output-*`.
+board-rp_pico = [
+    "r3_support_rp2040",
+]
+
+# Other targets specify a generic output mechanism
 output-rtt = [
     "panic-rtt-target",
     "rtt-target",
@@ -25,9 +33,11 @@ output-semihosting = [
     "cortex-m-semihosting",
     "panic-semihosting",
 ]
+
 cpu-lock-by-basepri = []
 
 [dependencies]
+r3_support_rp2040 = { path = "../r3_support_rp2040", optional = true, features = ["semver-exempt"] }
 r3_port_arm_m = { path = "../r3_port_arm_m", optional = true }
 r3 = { path = "../r3", optional = true }
 
