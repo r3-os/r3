@@ -152,7 +152,7 @@ impl usb_device::bus::UsbBus for UsbBus {
                 .set(EP_BUF_CTRL_AVAIL | max_packet_size as u32);
             self.ep_max_packet_size[ep.index()] = max_packet_size;
         } else {
-            self.ep_buf_ctrl(ep).set(0);
+            self.ep_buf_ctrl(ep).set(EP_BUF_CTRL_PID_DATA1);
         }
 
         self.ep_buffer_offset[address_to_index(ep)] = buffer_offset as _;
@@ -214,7 +214,19 @@ impl usb_device::bus::UsbBus for UsbBus {
 
         self.ep_in_ready.set(0xffff);
 
-        // TODO: reset other endpoints
+        for i in 1..16 {
+            if (self.ep_allocation[0] & (1 << i)) != 0 {
+                let ep = EndpointAddress::from_parts(i, UsbDirection::Out);
+                let max_packet_size = self.ep_max_packet_size[i];
+                self.ep_buf_ctrl(ep)
+                    .set(EP_BUF_CTRL_AVAIL | max_packet_size as u32);
+            }
+
+            if (self.ep_allocation[1] & (1 << i)) != 0 {
+                let ep = EndpointAddress::from_parts(i, UsbDirection::In);
+                self.ep_buf_ctrl(ep).set(EP_BUF_CTRL_PID_DATA1);
+            }
+        }
     }
 
     #[inline]
