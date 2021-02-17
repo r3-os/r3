@@ -40,9 +40,35 @@ impl log::Log for Logger {
 }
 
 pub const fn configure<System: Kernel + usbstdio::Options>(b: &mut CfgBuilder<System>) {
-    usbstdio::configure(b);
     StartupHook::build()
         .start(|_| {
+            // Set the correct vector table address
+            unsafe {
+                let p = cortex_m::Peripherals::steal();
+                p.SCB.vtor.write(0x20000000);
+            }
+
+            // Configure peripherals
+            let p = unsafe { rp2040::Peripherals::steal() };
+            r3_support_rp2040::clock::init_clock(
+                &p.CLOCKS,
+                &p.XOSC,
+                &p.PLL_SYS,
+                &p.PLL_USB,
+                &p.RESETS,
+                &p.WATCHDOG,
+            );
+
+            // Reset and enable IO bank 0
+            p.RESETS
+                .reset
+                .modify(|_, w| w.pads_bank0().set_bit().io_bank0().set_bit());
+            p.RESETS
+                .reset
+                .modify(|_, w| w.pads_bank0().clear_bit().io_bank0().clear_bit());
+            while p.RESETS.reset_done.read().pads_bank0().bit_is_clear() {}
+            while p.RESETS.reset_done.read().io_bank0().bit_is_clear() {}
+
             // Note: CM0 don't support CAS atomics. This is why we need to use
             //       `set_logger_racy` here.
             // Safety: There are no other threads calling `set_logger_racy` at the
@@ -51,6 +77,8 @@ pub const fn configure<System: Kernel + usbstdio::Options>(b: &mut CfgBuilder<Sy
             log::set_max_level(log::LevelFilter::Trace);
         })
         .finish(b);
+
+    usbstdio::configure(b);
 }
 
 /// Handle USB serial input data.
