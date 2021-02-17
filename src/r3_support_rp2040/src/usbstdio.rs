@@ -38,9 +38,13 @@ fn with_usb_stdio_global<T>(f: impl FnOnce(&mut UsbStdioGlobal) -> T) -> T {
     })
 }
 
+pub trait Options {
+    fn handle_input(_s: &[u8]) {}
+}
+
 /// Add a USB serial device to the system and register it as the destination of
 /// the standard output ([`crate::stdout`]).
-pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
+pub const fn configure<System: Kernel + Options>(b: &mut CfgBuilder<System>) {
     StartupHook::build()
         .start(|_| {
             let p = unsafe { rp2040::Peripherals::steal() };
@@ -93,27 +97,24 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
     InterruptHandler::build()
         .line(int_num)
         .start(|_| {
+            let mut buf = [0; 64];
+            let mut read_len = 0;
+
             // Get the global `UsbStdioGlobal` instance, which should
             // have been created by the startup hook above
             with_usb_stdio_global(|g| {
                 g.usb_device.poll(&mut [&mut g.serial]);
 
-                let mut buf = [0; 64];
                 if let Ok(len) = g.serial.read(&mut buf) {
-                    if len > 0 {
-                        // TEST
-                        if buf[..len] == b"\r"[..] || buf[..len] == b"\n"[..] {
-                            let _ = g.serial.write(b"\r\n");
-                            return;
-                        }
-                        let _ = g.serial.write(&[b'[']);
-                        let _ = g.serial.write(&buf[..len]);
-                        let _ = g.serial.write(&[b']']);
-                    }
+                    read_len = len;
                 }
 
                 g.try_flush();
             });
+
+            if read_len > 0 {
+                System::handle_input(&buf[..read_len]);
+            }
         })
         .finish(b);
 }

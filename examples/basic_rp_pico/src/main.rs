@@ -39,6 +39,22 @@ impl port::SysTickOptions for System {
 
 const USE_USB_UART: bool = true;
 
+impl support_rp2040::usbstdio::Options for System {
+    fn handle_input(s: &[u8]) {
+        if s == b"\r" || s == b"\n" {
+            support_rp2040::sprint!("\n");
+            return;
+        }
+
+        // echo the input with brackets
+        if let Ok(s) = core::str::from_utf8(s) {
+            support_rp2040::sprint!("[{}]", s);
+        } else {
+            support_rp2040::sprint!("[<not UTF-8>]");
+        }
+    }
+}
+
 // --------------------------------------------------------------------------
 
 #[derive(Debug)]
