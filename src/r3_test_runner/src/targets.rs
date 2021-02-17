@@ -8,6 +8,7 @@ mod kflash;
 mod openocd;
 mod probe_rs;
 mod qemu;
+mod rp_pico;
 mod serial;
 mod slip;
 
@@ -51,6 +52,7 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("qemu_sifive_u_rv64", &qemu::riscv::QemuSiFiveU(Xlen::_64)),
     ("red_v", &jlink::RedV),
     ("maix", &kflash::Maix),
+    ("rp_pico", &rp_pico::RaspberryPiPico),
 ];
 
 struct OverrideTargetArch<T>(Arch, T);
