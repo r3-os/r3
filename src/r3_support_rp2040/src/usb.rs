@@ -233,6 +233,7 @@ impl usb_device::bus::UsbBus for UsbBus {
             x.set(*y);
         }
 
+        // Set `buf_ctrl`, toggle PID
         buf_ctrl.set(
             buf_ctrl.get() & !EP_BUF_CTRL_AVAIL & !EP_BUF_CTRL_LEN_MASK ^ EP_BUF_CTRL_PID_DATA1
                 | buf.len() as u32
@@ -284,11 +285,13 @@ impl usb_device::bus::UsbBus for UsbBus {
                 .sie_status
                 .write(|b| b.setup_rec().set_bit());
 
-            // Reset EP0
-            self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::In))
-                .set(0);
-            self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::Out))
-                .set(EP_BUF_CTRL_PID_DATA1 | EP_BUF_CTRL_AVAIL);
+            // the first OUT data packet must be DATA1
+            let buf_ctrl = self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::Out));
+            buf_ctrl.set(buf_ctrl.get() | EP_BUF_CTRL_PID_DATA1);
+
+            // should respond by DATA1
+            let buf_ctrl = self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::In));
+            buf_ctrl.set(buf_ctrl.get() & !EP_BUF_CTRL_PID_DATA1);
 
             return Ok(8);
         }
