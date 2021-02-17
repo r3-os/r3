@@ -407,34 +407,48 @@ impl usb_device::bus::UsbBus for UsbBus {
         }
 
         if status.buff_status().bit() {
-            let mut buf_status = self.usbctrl_regs.buff_status.read().bits();
-            let mut buf_status_cleared_bits = 0;
-            let mut i = 31;
+            let buf_status = self.usbctrl_regs.buff_status.read().bits();
 
-            while let Some(i_r) = {
-                let i_r = buf_status.leading_zeros();
-                (i_r < 32).then(|| i_r)
-            } {
-                i -= i_r;
-                buf_status <<= i_r;
-                debug_assert_ne!(buf_status & 0x80000000, 0);
+            // IN EP (i / 2), i = 0, 2, 4, ..., 30
+            {
+                let mut buf_status = buf_status;
+                let mut b2 = 1; // 1 << (i / 2)
+                loop {
+                    if buf_status == 0 {
+                        break;
+                    }
 
-                if i % 2 == 0 {
-                    // IN EP (i / 2)
-                    ep_in_complete |= 1 << (i / 2);
+                    if (buf_status & 1) != 0 {
+                        // ep_in_complete |= 1 << (i / 2)
+                        ep_in_complete |= b2;
+                    }
 
-                    // Clear the status bit
-                    buf_status_cleared_bits |= 1 << i;
-
-                    self.ep_in_ready
-                        .set(self.ep_in_ready.get() | (1u16 << (i / 2)));
-                } else {
-                    // OUT endpoint ((i - 1) / 2)
-                    ep_out |= 1 << (i / 2);
+                    // i += 2;
+                    buf_status >>= 2;
+                    b2 <<= 1;
                 }
+                self.ep_in_ready
+                    .set(self.ep_in_ready.get() | ep_in_complete);
+            }
 
-                i -= 1;
-                buf_status <<= 1;
+            // OUT EP ((i - 1) / 2), i = 1, 3, 5, ..., 31
+            {
+                let mut buf_status = buf_status >> 1;
+                let mut b2 = 1; // 1 << ((i - 1) / 2)
+                loop {
+                    if buf_status == 0 {
+                        break;
+                    }
+
+                    if (buf_status & 1) != 0 {
+                        // ep_out |= 1 << ((i - 1) / 2)
+                        ep_out |= b2;
+                    }
+
+                    // i += 2;
+                    buf_status >>= 2;
+                    b2 <<= 1;
+                }
             }
 
             // Clear the status bits for IN endpoints
@@ -442,6 +456,7 @@ impl usb_device::bus::UsbBus for UsbBus {
             // FIXME: `buff_status` is RO in SVD and the RP2040 manual, but the
             // example code does write it:
             // <https://github.com/raspberrypi/tinyusb/blob/e0aa405d19e35dbf58cf502b8106455c1a3c2a5c/src/portable/raspberrypi/rp2040/dcd_rp2040.c#L225>
+            let buf_status_cleared_bits = buf_status & 0x55555555;
             unsafe {
                 (&raw const self.usbctrl_regs.buff_status as *mut u32)
                     .write_volatile(buf_status_cleared_bits);
