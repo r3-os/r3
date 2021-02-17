@@ -93,6 +93,10 @@ impl usb_device::bus::UsbBus for UsbBus {
             Some(ep) if ep.index() == 0 => {
                 self.ep_buf_ctrl(ep).set(0);
 
+                if ep_dir == UsbDirection::Out {
+                    self.ep_max_packet_size[0] = max_packet_size;
+                }
+
                 // EP0 is treated specially by the hardware
                 return Ok(ep);
             }
@@ -204,8 +208,9 @@ impl usb_device::bus::UsbBus for UsbBus {
         self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::In))
             .set(0);
 
+        // TODO: putting the correct value causes a protocol error. Why?
         self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::Out))
-            .set(EP_BUF_CTRL_PID_DATA1 | EP_BUF_CTRL_AVAIL);
+            .set(0);
 
         self.ep_in_ready.set(0xffff);
 
@@ -227,6 +232,15 @@ impl usb_device::bus::UsbBus for UsbBus {
 
         if (self.ep_in_ready.get() & (1 << ep_addr.index())) == 0 {
             return Err(usb_device::UsbError::WouldBlock);
+        }
+
+        if ep_i == 0 {
+            // When writing to EP0 IN, reset EP0 OUT's state. We could be too
+            // late if we tried to do this when a SETUP packet is received.
+            self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::Out))
+                .set(
+                    EP_BUF_CTRL_PID_DATA1 | EP_BUF_CTRL_AVAIL | (self.ep_max_packet_size[0] as u32),
+                );
         }
 
         let hw_buf = &self.usbctrl_dpram_u8()[self.ep_buffer_offset[ep_i] as _..];
@@ -285,14 +299,6 @@ impl usb_device::bus::UsbBus for UsbBus {
             self.usbctrl_regs
                 .sie_status
                 .write(|b| b.setup_rec().set_bit());
-
-            // the first OUT data packet must be DATA1
-            let buf_ctrl = self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::Out));
-            buf_ctrl.set(buf_ctrl.get() | EP_BUF_CTRL_PID_DATA1);
-
-            // should respond by DATA1
-            let buf_ctrl = self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::In));
-            buf_ctrl.set(buf_ctrl.get() & !EP_BUF_CTRL_PID_DATA1);
 
             return Ok(8);
         }
@@ -388,6 +394,16 @@ impl usb_device::bus::UsbBus for UsbBus {
 
         if status.setup_req().bit() {
             ep_setup |= 1;
+
+            // The first DATA packet to receive by EP0 OUT must be DATA1.
+            // However, we can't modify `ep_buf_ctrl((0, Out))` at this point
+            // because it may already have a valid PID (DATA0/DATA1) and the
+            // hardware may already be receiving the first packet. Therefore,
+            // we do this when writing to EP0 In.
+
+            // The first DATA packet to send to EP0 IN must be DATA1
+            self.ep_buf_ctrl(EndpointAddress::from_parts(0, UsbDirection::In))
+                .set(0 /* clear `EP_BUF_CTRL_PID_DATA1` */);
         }
 
         if status.buff_status().bit() {
