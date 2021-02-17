@@ -17,6 +17,9 @@ use usbd_serial::{SerialPort, USB_CLASS_CDC};
 struct UsbStdioGlobal {
     usb_device: UsbDevice<'static, UsbBus>,
     serial: SerialPort<'static, UsbBus>,
+    /// Yet another write buffer. We use this to withhold the data transmission
+    /// until DTR (Data Terminal Ready) is asserted on the host side.
+    write_buf: Deque<u8, 2048>,
 }
 
 static USB_STDIO_GLOBAL: interrupt::Mutex<RefCell<Option<UsbStdioGlobal>>> =
@@ -66,8 +69,11 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
                 .build();
 
             interrupt::free(|cs| {
-                *USB_STDIO_GLOBAL.borrow(cs).borrow_mut() =
-                    Some(UsbStdioGlobal { serial, usb_device })
+                *USB_STDIO_GLOBAL.borrow(cs).borrow_mut() = Some(UsbStdioGlobal {
+                    serial,
+                    usb_device,
+                    write_buf: Deque::new(),
+                })
             });
 
             // Register the standard output
@@ -105,6 +111,8 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
                         let _ = g.serial.write(&[b']']);
                     }
                 }
+
+                g.try_flush();
             });
         })
         .finish(b);
@@ -137,18 +145,48 @@ impl embedded_hal::serial::Write<u8> for NbWriter {
 
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         with_usb_stdio_global(|g| {
-            // It's really inefficient to output one byte at once...
-            let num_bytes_written = g.serial.write(&[word]).map_err(map_usb_error_to_nb_error)?;
-            if num_bytes_written == 0 {
-                Err(nb::Error::WouldBlock)
-            } else {
-                Ok(())
-            }
+            // Push the given byte to the write buffer. Return `WouldBlock` if
+            // the buffer is full.
+            g.write_buf.push(word).map_err(|_| nb::Error::WouldBlock)?;
+            g.try_flush();
+            Ok(())
         })
     }
 
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        with_usb_stdio_global(|g| g.serial.flush().map_err(map_usb_error_to_nb_error))
+        with_usb_stdio_global(|g| {
+            g.try_flush();
+            g.serial.flush().map_err(map_usb_error_to_nb_error)?;
+            if !g.write_buf.is_empty() {
+                return Err(nb::Error::WouldBlock);
+            }
+            Ok(())
+        })
+    }
+}
+
+impl UsbStdioGlobal {
+    fn try_flush(&mut self) {
+        // Withhold the data until DTR is asserted and RTS is cleared
+        if !self.serial.dtr() {
+            return;
+        }
+
+        let first_contiguous_bytes = self.write_buf.first_contiguous_slice();
+        if !first_contiguous_bytes.is_empty() {
+            match self
+                .serial
+                .write(first_contiguous_bytes)
+                .map_err(map_usb_error_to_nb_error)
+            {
+                Ok(num_bytes) => {
+                    self.write_buf.consume(num_bytes);
+                }
+                Err(nb::Error::WouldBlock) => {}
+                // FIXME: `Infallible` is uninhabited, so this arm is really unreachable
+                Err(nb::Error::Other(_)) => unreachable!(),
+            }
+        }
     }
 }
 
@@ -169,3 +207,80 @@ impl embedded_hal::serial::Write<u8> for NbWriter {
 //     interrupts. Of course, this can only be done for a few milliseconds, the
 //     upper bound defined by the USB specification.
 //
+
+struct Deque<T, const LEN: usize> {
+    buf: [T; LEN],
+    start: usize,
+    len: usize,
+}
+
+impl<T: r3::utils::Init + Copy, const LEN: usize> Deque<T, LEN> {
+    #[inline]
+    const fn new() -> Self {
+        Self {
+            buf: [T::INIT; LEN],
+            start: 0,
+            len: 0,
+        }
+    }
+
+    #[inline]
+    fn first_contiguous_slice(&self) -> &[T] {
+        let s = &self.buf[self.start..];
+        if s.len() >= self.len {
+            &s[..self.len]
+        } else {
+            s
+        }
+    }
+
+    /// Remove the specified number of elements from the beginning.
+    #[inline]
+    fn consume(&mut self, count: usize) {
+        debug_assert!(count <= self.len);
+        self.len -= count;
+        self.start = (self.start + count) % self.buf.len();
+    }
+
+    #[inline]
+    fn push(&mut self, x: T) -> Result<(), ()> {
+        if self.len >= self.buf.len() {
+            Err(())
+        } else {
+            self.buf[(self.start + self.len) % self.buf.len()] = x;
+            self.len += 1;
+            Ok(())
+        }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// Append the specified slice to the end of `self`. Returns the number of
+    /// added elements.
+    #[allow(dead_code)]
+    fn extend_from_slice(&mut self, mut src: &[T]) -> usize {
+        // Cap by the remaining capacity
+        src = &src[..src.len().min(self.buf.len() - self.len)];
+
+        // Copy the first part
+        let end = (self.start + self.len) % self.buf.len();
+        self.start = end;
+        let dst1 = &mut self.buf[end..];
+        if src.len() > dst1.len() {
+            dst1.copy_from_slice(&src[..dst1.len()]);
+            src = &src[dst1.len()..];
+        } else {
+            dst1[..src.len()].copy_from_slice(src);
+            return src.len();
+        }
+
+        // Copy the second part
+        let dst2 = &mut self.buf[..src.len()];
+        dst2.copy_from_slice(src);
+
+        src.len()
+    }
+}
