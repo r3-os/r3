@@ -51,10 +51,10 @@ impl WrapSerialWrite {
                             [head, tail @ ..] => {
                                 // Output the first byte. If this gets stuck,
                                 // break out of `interrupt::free`.
-                                s = tail;
                                 stdout
                                     .write(*head)
                                     .map_err(|e| e.map(|_| core::fmt::Error))?;
+                                s = tail;
                             }
                         }
                     }
