@@ -88,7 +88,7 @@ pub fn handle_input(s: &[u8]) {
             b'r' => {
                 // Restart RP2040 in BOOTSEL mode
                 let gpio_activity_pin_mask = 1 << 25; // Use GP25 as an "activity light"
-                let disable_interface_mask = 0; // enable all interfaces
+                let disable_interface_mask = 1; // enable only PICOBOOT (disable USB MSD)
                 BootromHdr::global()
                     .reset_to_usb_boot(gpio_activity_pin_mask, disable_interface_mask);
             }
