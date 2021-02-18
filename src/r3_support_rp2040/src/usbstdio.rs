@@ -221,24 +221,6 @@ impl UsbStdioGlobal {
     }
 }
 
-// TODO:
-//
-//   - The USB controller needs to be periodically polled to work correctly.
-//     The panic handler should poll USB instead of doing nothing.
-//
-//   - We also need to handle incoming data. The test driver will need this to
-//     hold off the test execution until requested and to prepare the target for
-//     a subsequent test run.
-//
-//   - If there's incoming data, the interrupt will not be deassserted until
-//     `SerialPort::read` is called. And `SerialPort::read` does not consume
-//     the incoming data if its internal buffer is full.
-//
-//     The only way to do flow control seems to be disabling or ignoring USB
-//     interrupts. Of course, this can only be done for a few milliseconds, the
-//     upper bound defined by the USB specification.
-//
-
 struct Deque<T, const LEN: usize> {
     buf: [T; LEN],
     start: usize,

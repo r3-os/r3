@@ -18,8 +18,15 @@ fn panic(info: &PanicInfo) -> ! {
 
     r3_support_rp2040::sprintln!("{}{}", mux::BEGIN_MAIN, info);
 
-    // TODO: keep polling
-    loop {}
+    enter_poll_loop();
+}
+
+/// Start polling USB so that we can deliver the test result and reset the
+/// device when requested.
+pub fn enter_poll_loop() -> ! {
+    loop {
+        usbstdio::poll::<Options>();
+    }
 }
 
 struct Logger;

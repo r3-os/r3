@@ -49,6 +49,9 @@ macro_rules! instantiate_test {
                 crate::board_rp2040::mux::BEGIN_MAIN,
             );
 
+            #[cfg(feature = "board-rp_pico")]
+            board_rp2040::enter_poll_loop();
+
             loop {}
         }
 
