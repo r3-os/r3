@@ -160,8 +160,20 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
 
             self.serial = Some(BufStream::new(serial));
 
+            // Tell the test driver that we are now listening for the output
+            log::debug!("Unblocking the test driver's output");
+            let serial = self.serial.as_mut().unwrap();
+            serial
+                .write_all(b"g")
+                .await
+                .with_context(|| "Failed to write to the test driver serial interface.")?;
+            serial
+                .flush()
+                .await
+                .with_context(|| "Failed to write to the test driver serial interface.")?;
+
             // Now, pass the channel to the caller
-            Ok(Box::pin(Demux::new(self.serial.as_mut().unwrap())) as _)
+            Ok(Box::pin(Demux::new(serial)) as _)
         })
     }
 }

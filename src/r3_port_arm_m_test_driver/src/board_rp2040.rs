@@ -1,4 +1,7 @@
-use core::panic::PanicInfo;
+use core::{
+    panic::PanicInfo,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use r3::kernel::{cfg::CfgBuilder, Kernel, StartupHook};
 use r3_support_rp2040::usbstdio;
 
@@ -81,11 +84,14 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
     usbstdio::configure::<_, Options>(b);
 }
 
+static SHOULD_PAUSE_OUTPUT: AtomicBool = AtomicBool::new(true);
+
 struct Options;
 
 impl usbstdio::Options for Options {
     /// Handle USB serial input data.
     fn handle_input(s: &[u8]) {
+        let mut should_unpause_output = false;
         for &b in s.iter() {
             match b {
                 b'r' => {
@@ -96,16 +102,26 @@ impl usbstdio::Options for Options {
                         .reset_to_usb_boot(gpio_activity_pin_mask, disable_interface_mask);
                 }
                 b'g' => {
-                    // TODO: unblock the output? check if this is really necessary.
-                    //       maybe we can get away with DTR
+                    should_unpause_output = true;
                 }
                 _ => {}
             }
+        }
+
+        if should_unpause_output && SHOULD_PAUSE_OUTPUT.load(Ordering::Relaxed) {
+            SHOULD_PAUSE_OUTPUT.store(false, Ordering::Relaxed);
+
+            // Flush the transmission buffer.
+            usbstdio::poll::<Options>();
         }
     }
 
     fn product_name() -> &'static str {
         "R3 Test Driver Port"
+    }
+
+    fn should_pause_output() -> bool {
+        SHOULD_PAUSE_OUTPUT.load(Ordering::Relaxed)
     }
 }
 

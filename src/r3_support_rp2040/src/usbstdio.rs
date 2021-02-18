@@ -49,7 +49,7 @@ fn with_usb_stdio_global<T>(f: impl FnOnce(&mut UsbStdioGlobal, &mut WriteBufDeq
 }
 
 /// The options for the USB serial device configured by [`configure`].
-pub trait Options {
+pub trait Options: 'static + Send + Sync {
     /// Handle incoming data.
     ///
     /// This method may be called with interrupts disabled. It's safe to write
@@ -59,6 +59,15 @@ pub trait Options {
     /// Get the product name to indicate in the USB device descriptor.
     fn product_name() -> &'static str {
         "R3 Example Application Port"
+    }
+
+    /// Return a flag indicating whether the output data should be withheld
+    /// from transmission.
+    ///
+    /// If this flag is changed to `false`, [`poll`] must be called to flush
+    /// the data in the transmission buffer.
+    fn should_pause_output() -> bool {
+        false
     }
 }
 
@@ -98,7 +107,7 @@ pub const fn configure<System: Kernel, TOptions: Options>(b: &mut CfgBuilder<Sys
             });
 
             // Register the standard output
-            crate::stdout::set_stdout(NbWriter);
+            crate::stdout::set_stdout(NbWriter::<TOptions>(core::marker::PhantomData));
         })
         .finish(b);
 
@@ -114,29 +123,33 @@ pub const fn configure<System: Kernel, TOptions: Options>(b: &mut CfgBuilder<Sys
     InterruptHandler::build()
         .line(int_num)
         .start(|_| {
-            let mut buf = [0; 64];
-            let mut read_len = 0;
-
-            // Get the global `UsbStdioGlobal` instance, which should
-            // have been created by the startup hook above
-            with_usb_stdio_global(|g, write_buf| {
-                g.usb_device.poll(&mut [&mut g.serial]);
-
-                if let Ok(len) = g.serial.read(&mut buf) {
-                    read_len = len;
-                }
-
-                g.try_flush(write_buf);
-            });
-
-            if read_len > 0 {
-                TOptions::handle_input(&buf[..read_len]);
-            }
+            poll::<TOptions>();
         })
         .finish(b);
 }
 
-struct NbWriter;
+pub fn poll<TOptions: Options>() {
+    let mut buf = [0; 64];
+    let mut read_len = 0;
+
+    // Get the global `UsbStdioGlobal` instance, which should
+    // have been created by the startup hook above
+    with_usb_stdio_global(|g, write_buf| {
+        g.usb_device.poll(&mut [&mut g.serial]);
+
+        if let Ok(len) = g.serial.read(&mut buf) {
+            read_len = len;
+        }
+
+        g.try_flush::<TOptions>(write_buf);
+    });
+
+    if read_len > 0 {
+        TOptions::handle_input(&buf[..read_len]);
+    }
+}
+
+struct NbWriter<TOptions>(core::marker::PhantomData<fn() -> TOptions>);
 
 fn map_usb_error_to_nb_error(e: usb_device::UsbError) -> nb::Error<core::convert::Infallible> {
     match e {
@@ -158,7 +171,7 @@ fn map_usb_error_to_nb_error(e: usb_device::UsbError) -> nb::Error<core::convert
     }
 }
 
-impl embedded_hal::serial::Write<u8> for NbWriter {
+impl<TOptions: Options> embedded_hal::serial::Write<u8> for NbWriter<TOptions> {
     type Error = core::convert::Infallible;
 
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
@@ -166,14 +179,14 @@ impl embedded_hal::serial::Write<u8> for NbWriter {
             // Push the given byte to the write buffer. Return `WouldBlock` if
             // the buffer is full.
             write_buf.push(word).map_err(|_| nb::Error::WouldBlock)?;
-            g.try_flush(write_buf);
+            g.try_flush::<TOptions>(write_buf);
             Ok(())
         })
     }
 
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
         with_usb_stdio_global(|g, write_buf| {
-            g.try_flush(write_buf);
+            g.try_flush::<TOptions>(write_buf);
             g.serial.flush().map_err(map_usb_error_to_nb_error)?;
             if !write_buf.is_empty() {
                 return Err(nb::Error::WouldBlock);
@@ -184,9 +197,9 @@ impl embedded_hal::serial::Write<u8> for NbWriter {
 }
 
 impl UsbStdioGlobal {
-    fn try_flush(&mut self, write_buf: &mut WriteBufDeque) {
-        // Withhold the data until DTR is asserted and RTS is cleared
-        if !self.serial.dtr() {
+    fn try_flush<TOptions: Options>(&mut self, write_buf: &mut WriteBufDeque) {
+        // Withhold the data until DTR is asserted
+        if !self.serial.dtr() || TOptions::should_pause_output() {
             return;
         }
 
