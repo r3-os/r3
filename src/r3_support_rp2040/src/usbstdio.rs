@@ -50,6 +50,9 @@ fn with_usb_stdio_global<T>(f: impl FnOnce(&mut UsbStdioGlobal, &mut WriteBufDeq
 
 pub trait Options {
     fn handle_input(_s: &[u8]) {}
+    fn product_name() -> &'static str {
+        "R3 Example Application Port"
+    }
 }
 
 /// Add a USB serial device to the system and register it as the destination of
@@ -77,7 +80,7 @@ pub const fn configure<System: Kernel, TOptions: Options>(b: &mut CfgBuilder<Sys
 
             // Construct a `UsbDeviceBuilder` associated with `usb_bus_allocator`
             let usb_device = UsbDeviceBuilder::new(usb_bus_allocator, UsbVidPid(0x16c0, 0x27dd))
-                .product("r3_support_rp2040 standard I/O")
+                .product(TOptions::product_name())
                 .device_class(USB_CLASS_CDC)
                 .max_packet_size_0(64)
                 .build();
