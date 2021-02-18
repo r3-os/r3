@@ -11,6 +11,8 @@ pub mod mux {
     pub const BEGIN_LOG: &str = "\x172";
 }
 
+pub const SYSTICK_FREQUENCY: u64 = 48_000_000;
+
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     // Disable IRQ
@@ -27,6 +29,12 @@ pub fn enter_poll_loop() -> ! {
     loop {
         usbstdio::poll::<Options>();
     }
+}
+
+/// Implements `kernel_benchmarks::Driver::performance_time`.
+pub fn performance_time() -> u32 {
+    let timerawl = unsafe { (0x40054028 as *const u32).read_volatile() };
+    timerawl.wrapping_mul(2) // scale by `tick.cycles`
 }
 
 struct Logger;
@@ -68,6 +76,22 @@ pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
                 &p.RESETS,
                 &p.WATCHDOG,
             );
+
+            // clk_ref → clk_sys = 48MHz
+            p.CLOCKS.clk_sys_ctrl.modify(|_, w| w.src().clk_ref());
+
+            // Supply clk_ref / 2 = 24MHz to SysTick, watchdog, and timer
+            // because we want to measure times at high precision in
+            // benchmarks. Setting `cycles = 1` would be ideal but doesn't work
+            // for some reason.
+            p.WATCHDOG
+                .tick
+                .write(|b| unsafe { b.cycles().bits(2).enable().set_bit() });
+
+            // Reset the timer used by `performance_time`
+            p.RESETS.reset.modify(|_, w| w.timer().set_bit());
+            p.RESETS.reset.modify(|_, w| w.timer().clear_bit());
+            while p.RESETS.reset_done.read().timer().bit_is_clear() {}
 
             // Reset and enable IO bank 0
             p.RESETS
