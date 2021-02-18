@@ -286,11 +286,6 @@ fn open_picoboot() -> Result<PicobootInterface> {
         .open()
         .with_context(|| format!("Failed to open the device '{:?}'.", device))?;
 
-    // Reset the device
-    device_handle
-        .reset()
-        .with_context(|| format!("Failed to reset the device '{:?}'.", device))?;
-
     // Claim the interface
     device_handle
         .claim_interface(interface_i)
@@ -298,6 +293,24 @@ fn open_picoboot() -> Result<PicobootInterface> {
             format!(
                 "Failed to claim the PICOBOOT interface (number {}).",
                 interface_i
+            )
+        })?;
+
+    // Reset the PICOBOOT interface
+    //
+    // This request is handled by this code:
+    // <https://github.com/raspberrypi/pico-bootrom/blob/00a4a19114/bootrom/usb_boot_device.c#L229>
+    //
+    // The RP2040 datasheet (release 1.2) says `bmRequestType` is `00100001b`,
+    // but it's actually `01000001b`.
+    // <https://github.com/raspberrypi/pico-feedback/issues/99>
+    log::debug!("Sending INTERFACE_RESET");
+    device_handle
+        .write_control(0x41, 0x41, 0x0000, interface_i as u16, &[], DEFAULE_TIMEOUT)
+        .with_context(|| {
+            format!(
+                "Failed to send INTERFACE_RESET to the device '{:?}'.",
+                device
             )
         })?;
 
