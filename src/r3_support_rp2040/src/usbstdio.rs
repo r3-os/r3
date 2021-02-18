@@ -48,8 +48,15 @@ fn with_usb_stdio_global<T>(f: impl FnOnce(&mut UsbStdioGlobal, &mut WriteBufDeq
     })
 }
 
+/// The options for the USB serial device configured by [`configure`].
 pub trait Options {
+    /// Handle incoming data.
+    ///
+    /// This method may be called with interrupts disabled. It's safe to write
+    /// bytes to the USB serial device here.
     fn handle_input(_s: &[u8]) {}
+
+    /// Get the product name to indicate in the USB device descriptor.
     fn product_name() -> &'static str {
         "R3 Example Application Port"
     }
