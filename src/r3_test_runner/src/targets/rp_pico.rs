@@ -18,10 +18,14 @@
 //! load a program.
 use anyhow::{anyhow, Context, Result};
 use std::future::Future;
-use tokio::{io::AsyncWriteExt, task::spawn_blocking, time::delay_for};
+use tokio::{
+    io::{AsyncWriteExt, BufStream},
+    task::spawn_blocking,
+    time::delay_for,
+};
 use tokio_serial::{Serial, SerialPortSettings};
 
-use super::{jlink::read_elf, Arch, DebugProbe, Target};
+use super::{demux::Demux, jlink::read_elf, Arch, DebugProbe, Target};
 use crate::utils::retry_on_fail_with_delay;
 
 pub struct RaspberryPiPico;
@@ -72,7 +76,7 @@ impl Target for RaspberryPiPico {
                         a PICOBOOT USB interface failed with the following error: {}",
                         e
                     );
-                    Some(serial)
+                    Some(BufStream::new(serial))
                 }
                 (Err(e), Ok(_picoboot_interface)) => {
                     log::debug!(
@@ -111,7 +115,7 @@ struct RaspberryPiPicoUsbDebugProbe {
     /// Even if this field is set, the test driver's current state is
     /// indeterminate in general, so the target must be rebooted before doing
     /// anything meaningful.
-    serial: Option<Serial>,
+    serial: Option<BufStream<Serial>>,
 }
 
 impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
@@ -121,7 +125,10 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
     ) -> std::pin::Pin<Box<dyn Future<Output = Result<super::DynAsyncRead<'_>>> + '_>> {
         let exe = exe.to_owned();
         Box::pin(async move {
-            if let Some(mut serial) = self.serial.take() {
+            if let Some(serial) = self.serial.take() {
+                // Discard any leftover data and unwrap `BufStream`
+                let mut serial = serial.into_inner();
+
                 // Reboot the target into BOOTSEL mode. This will sever the
                 // serial connection.
                 log::debug!(
@@ -146,16 +153,15 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
             // Wait until the host operating system recognizes the USB device...
             delay_for(DEFAULT_PAUSE).await;
 
-            self.serial = Some(
+            let serial =
                 retry_on_fail_with_delay(|| async { spawn_blocking(open_serial).await.unwrap() })
                     .await
-                    .with_context(|| "Failed to connect to the test driver serial interface.")?,
-            );
+                    .with_context(|| "Failed to connect to the test driver serial interface.")?;
 
-            // TODO: give a 'go' signal, grab the output,
-            //       and then issue a reboot request by sending `r`
+            self.serial = Some(BufStream::new(serial));
 
-            todo!()
+            // Now, pass the channel to the caller
+            Ok(Box::pin(Demux::new(self.serial.as_mut().unwrap())) as _)
         })
     }
 }
