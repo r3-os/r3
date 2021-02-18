@@ -132,6 +132,8 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
+const DEFAULE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
 async fn write_bulk_all(
     device_handle: rusb::DeviceHandle<rusb::GlobalContext>,
     endpoint: u8,
@@ -139,14 +141,13 @@ async fn write_bulk_all(
 ) -> (rusb::Result<usize>, rusb::DeviceHandle<rusb::GlobalContext>) {
     let buf = buf.to_owned(); // sigh
     spawn_blocking(move || {
-        let timeout = std::time::Duration::from_secs(5);
         let mut buf = &buf[..];
         let mut num_bytes_written = 0;
 
         log::trace!("write_bulk_all({})", endpoint);
 
         while buf.len() > 0 {
-            match device_handle.write_bulk(endpoint, buf, timeout) {
+            match device_handle.write_bulk(endpoint, buf, DEFAULE_TIMEOUT) {
                 Ok(0) => break,
                 Ok(num_bytes) => {
                     num_bytes_written += num_bytes;
@@ -167,11 +168,9 @@ async fn read_bulk_empty(
     endpoint: u8,
 ) -> (rusb::Result<()>, rusb::DeviceHandle<rusb::GlobalContext>) {
     spawn_blocking(move || {
-        let timeout = std::time::Duration::from_secs(5);
-
         log::trace!("read_bulk_empty({})", endpoint);
 
-        let result = match device_handle.read_bulk(endpoint, &mut [], timeout) {
+        let result = match device_handle.read_bulk(endpoint, &mut [], DEFAULE_TIMEOUT) {
             Ok(0) => Ok(()),
             Ok(_) => unreachable!(),
             Err(e) => Err(e),
