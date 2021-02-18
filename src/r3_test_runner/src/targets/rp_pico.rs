@@ -1,7 +1,25 @@
 //! Raspberry Pi Pico testing support
+//!
+//! This test runner target module communicates with the target through one USB
+//! connection. The target side is RP2040 bootrom's PICOBOOT interface if the
+//! target is in BOOTSEL mode or the test driver serial interface if the test
+//! driver is currently running. It uses the PICOBOOT interface to transfer the
+//! test driver to the target's on-chip RAM. After the test driver completes
+//! execution, the test runner requests the test driver to reset the target into
+//! BOOTSEL mode, preparing for the next test run.
+//!
+//! # Prerequisites
+//!
+//! One Raspberry Pi Pico board or any compatible board. The USB port must be
+//! connected to the host computer. This test runner only uses the USB port to
+//! simplify the usage.
+//!
+//! The Pico must first be placed into BOOTSEL mode so that the test runner can
+//! load a program.
 use anyhow::{anyhow, Context, Result};
 use std::future::Future;
-use tokio::task::spawn_blocking;
+use tokio::{io::AsyncWriteExt, task::spawn_blocking, time::delay_for};
+use tokio_serial::{Serial, SerialPortSettings};
 
 use super::{jlink::read_elf, Arch, DebugProbe, Target};
 use crate::utils::retry_on_fail_with_delay;
@@ -36,13 +54,65 @@ impl Target for RaspberryPiPico {
     }
 
     fn connect(&self) -> std::pin::Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
-        Box::pin(std::future::ready(Ok(
-            Box::new(RaspberryPiPicoUsbDebugProbe) as _,
-        )))
+        Box::pin(retry_on_fail_with_delay(|| async {
+            // Try connecting to the target. This is important if a test
+            // driver is currently running because we have to reboot the
+            // target before loading the new test driver.
+            log::debug!("Attempting to connect to the target by two methods simultaneously.");
+            let serial_async = spawn_blocking(open_serial);
+            let picoboot_interface_async = spawn_blocking(open_picoboot);
+            let (serial, picoboot_interface) = tokio::join!(serial_async, picoboot_interface_async);
+            // ignore `JoinError`
+            let (serial, picoboot_interface) = (serial.unwrap(), picoboot_interface.unwrap());
+
+            let serial = match (serial, picoboot_interface) {
+                (Ok(serial), Err(e)) => {
+                    log::debug!(
+                        "Connected to a test driver serial interface. Connecting to \
+                        a PICOBOOT USB interface failed with the following error: {}",
+                        e
+                    );
+                    Some(serial)
+                }
+                (Err(e), Ok(_picoboot_interface)) => {
+                    log::debug!(
+                        "Connected to a PICOBOOT USB interface. Connecting to \
+                        a test driver serial interface failed with the following \
+                        error: {}",
+                        e
+                    );
+                    None
+                }
+                (Err(e1), Err(e2)) => anyhow::bail!(
+                    "Could not connect to any of a test driver \
+                    serial interface and a PICOBOOT USB interface. \n\
+                    \n\
+                    Serial interface error: {}\n\n\
+                    PICOBOOT interface error: {}",
+                    e1,
+                    e2,
+                ),
+                (Ok(_), Ok(_)) => anyhow::bail!(
+                    "Connected to both of a test driver serial \
+                    interface and a PICOBOOT USB interface. \
+                    This is unexpected."
+                ),
+            };
+
+            Ok(Box::new(RaspberryPiPicoUsbDebugProbe { serial }) as _)
+        }))
     }
 }
 
-struct RaspberryPiPicoUsbDebugProbe;
+struct RaspberryPiPicoUsbDebugProbe {
+    /// Contains a handle to the serial port if the test driver is currently
+    /// running.
+    ///
+    /// Even if this field is set, the test driver's current state is
+    /// indeterminate in general, so the target must be rebooted before doing
+    /// anything meaningful.
+    serial: Option<Serial>,
+}
 
 impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
     fn program_and_get_output(
@@ -51,6 +121,21 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
     ) -> std::pin::Pin<Box<dyn Future<Output = Result<super::DynAsyncRead<'_>>> + '_>> {
         let exe = exe.to_owned();
         Box::pin(async move {
+            if let Some(mut serial) = self.serial.take() {
+                // Reboot the target into BOOTSEL mode. This will sever the
+                // serial connection.
+                log::debug!(
+                    "We know that a test driver is currently running on the target. \
+                    We will request a reboot first."
+                );
+                serial.write_all(b"r").await.with_context(|| {
+                    "Could not send a command to the test driver serial interface."
+                })?;
+
+                // Wait until the host operating system recognizes the USB device...
+                delay_for(DEFAULT_PAUSE).await;
+            }
+
             program_and_run_by_picoboot(&exe).await.with_context(|| {
                 format!(
                     "Failed to execute the ELF ƒile '{}' on the target.",
@@ -58,12 +143,66 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
                 )
             })?;
 
-            // TODO: Attach to the USB serial, give a 'go' signal, grab the output,
+            // Wait until the host operating system recognizes the USB device...
+            delay_for(DEFAULT_PAUSE).await;
+
+            self.serial = Some(
+                retry_on_fail_with_delay(|| async { spawn_blocking(open_serial).await.unwrap() })
+                    .await
+                    .with_context(|| "Failed to connect to the test driver serial interface.")?,
+            );
+
+            // TODO: give a 'go' signal, grab the output,
             //       and then issue a reboot request by sending `r`
 
             todo!()
         })
     }
+}
+
+/// Locate and open the test driver serial interface. A test driver must be
+/// running for this function to succeed.
+fn open_serial() -> Result<Serial> {
+    log::debug!("Looking for the test driver serial port");
+    let ports = serialport::available_ports()?;
+    let port = ports
+        .iter()
+        .find(|port_info| {
+            log::trace!(" ...{:?}", port_info);
+
+            use serialport::{SerialPortInfo, SerialPortType, UsbPortInfo};
+            matches!(
+                port_info,
+                SerialPortInfo {
+                    port_type: SerialPortType::UsbPort(UsbPortInfo {
+                        product: Some(product),
+                        ..
+                    }),
+                    ..
+                }
+                if product.contains("R3 Test Driver Port")
+            ) ||
+            // FIXME: Apple M1 work-around
+            //        (`available_ports` returns incorrect `SerialPortType`)
+            port_info.port_name.starts_with("/dev/tty.usbmodem")
+        })
+        .ok_or_else(|| anyhow!("Could not locate the test driver serial port."))?;
+    log::debug!("Test driver serial port = {:?}", port);
+
+    // Open the serial port
+    Serial::from_path(
+        &port.port_name,
+        &SerialPortSettings {
+            timeout: DEFAULE_TIMEOUT,
+            ..Default::default()
+        },
+    )
+    .with_context(|| {
+        format!(
+            "Could not open the test driver serial port at path '{}'.",
+            port.port_name
+        )
+    })
 }
 
 /// Program and execute the specified ELF file by PICOBOOT protocol.
@@ -134,6 +273,8 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
 
 const DEFAULE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
+const DEFAULT_PAUSE: std::time::Duration = std::time::Duration::from_secs(1);
+
 async fn write_bulk_all(
     device_handle: rusb::DeviceHandle<rusb::GlobalContext>,
     endpoint: u8,
@@ -187,7 +328,8 @@ struct PicobootInterface {
     in_endpoint_i: u8,
 }
 
-/// Locate the PICOBOOT interface.
+/// Locate and open the PICOBOOT interface. The device must be in BOOTSEL mode
+/// for this function to succeed.
 fn open_picoboot() -> Result<PicobootInterface> {
     // Locate the RP2040 bootrom device
     log::debug!("Looking for the RP2040 bootrom device");

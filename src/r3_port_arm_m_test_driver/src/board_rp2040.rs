@@ -103,6 +103,10 @@ impl usbstdio::Options for Options {
             }
         }
     }
+
+    fn product_name() -> &'static str {
+        "R3 Test Driver Port"
+    }
 }
 
 #[repr(C)]
