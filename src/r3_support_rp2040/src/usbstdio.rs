@@ -54,7 +54,7 @@ pub trait Options {
 
 /// Add a USB serial device to the system and register it as the destination of
 /// the standard output ([`crate::stdout`]).
-pub const fn configure<System: Kernel + Options>(b: &mut CfgBuilder<System>) {
+pub const fn configure<System: Kernel, TOptions: Options>(b: &mut CfgBuilder<System>) {
     StartupHook::build()
         .start(|_| {
             let p = unsafe { rp2040::Peripherals::steal() };
@@ -120,7 +120,7 @@ pub const fn configure<System: Kernel + Options>(b: &mut CfgBuilder<System>) {
             });
 
             if read_len > 0 {
-                System::handle_input(&buf[..read_len]);
+                TOptions::handle_input(&buf[..read_len]);
             }
         })
         .finish(b);

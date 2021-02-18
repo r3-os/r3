@@ -106,7 +106,7 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         .finish(b);
 
     if USE_USB_UART {
-        support_rp2040::usbstdio::configure(b);
+        support_rp2040::usbstdio::configure::<System, System>(b);
     }
 
     System::configure_systick(b);

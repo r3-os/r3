@@ -75,13 +75,6 @@ macro_rules! instantiate_test {
             const FREQUENCY: u64 = 2_000_000;
         }
 
-        #[cfg(feature = "board-rp_pico")]
-        impl r3_support_rp2040::usbstdio::Options for System {
-            fn handle_input(s: &[u8]) {
-                crate::board_rp2040::handle_input(s);
-            }
-        }
-
         struct Driver;
 
         #[cfg(feature = "kernel_benchmarks")]

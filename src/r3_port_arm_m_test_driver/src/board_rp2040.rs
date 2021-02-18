@@ -39,7 +39,7 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-pub const fn configure<System: Kernel + usbstdio::Options>(b: &mut CfgBuilder<System>) {
+pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
     StartupHook::build()
         .start(|_| {
             // Set the correct vector table address
@@ -78,25 +78,29 @@ pub const fn configure<System: Kernel + usbstdio::Options>(b: &mut CfgBuilder<Sy
         })
         .finish(b);
 
-    usbstdio::configure(b);
+    usbstdio::configure::<_, Options>(b);
 }
 
-/// Handle USB serial input data.
-pub fn handle_input(s: &[u8]) {
-    for &b in s.iter() {
-        match b {
-            b'r' => {
-                // Restart RP2040 in BOOTSEL mode
-                let gpio_activity_pin_mask = 1 << 25; // Use GP25 as an "activity light"
-                let disable_interface_mask = 1; // enable only PICOBOOT (disable USB MSD)
-                BootromHdr::global()
-                    .reset_to_usb_boot(gpio_activity_pin_mask, disable_interface_mask);
+struct Options;
+
+impl usbstdio::Options for Options {
+    /// Handle USB serial input data.
+    fn handle_input(s: &[u8]) {
+        for &b in s.iter() {
+            match b {
+                b'r' => {
+                    // Restart RP2040 in BOOTSEL mode
+                    let gpio_activity_pin_mask = 1 << 25; // Use GP25 as an "activity light"
+                    let disable_interface_mask = 1; // enable only PICOBOOT (disable USB MSD)
+                    BootromHdr::global()
+                        .reset_to_usb_boot(gpio_activity_pin_mask, disable_interface_mask);
+                }
+                b'g' => {
+                    // TODO: unblock the output? check if this is really necessary.
+                    //       maybe we can get away with DTR
+                }
+                _ => {}
             }
-            b'g' => {
-                // TODO: unblock the output? check if this is really necessary.
-                //       maybe we can get away with DTR
-            }
-            _ => {}
         }
     }
 }
