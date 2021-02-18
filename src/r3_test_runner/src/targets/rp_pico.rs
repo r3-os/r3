@@ -88,8 +88,9 @@ impl Target for RaspberryPiPico {
                     None
                 }
                 (Err(e1), Err(e2)) => anyhow::bail!(
-                    "Could not connect to any of a test driver \
-                    serial interface and a PICOBOOT USB interface. \n\
+                    "Could not connect to a test driver serial interface \
+                    nor a PICOBOOT USB interface. Please put your Pico into \
+                    BOOTSEL mode before executing this command.\n\
                     \n\
                     Serial interface error: {}\n\n\
                     PICOBOOT interface error: {}",
@@ -233,10 +234,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
         mut device_handle,
         out_endpoint_i,
         in_endpoint_i,
-    } = picoboot_interface.with_context(|| {
-        "Failed to locate the PICOBOOT interface. \
-        Make sure to place your Pico into BOOTSEL mode before executing this command."
-    })?;
+    } = picoboot_interface.with_context(|| "Failed to locate the PICOBOOT interface.")?;
     let loadable_code = loadable_code.with_context(|| "Failed to analyze the ELF file.")?;
 
     log::debug!("Transfering the image");
