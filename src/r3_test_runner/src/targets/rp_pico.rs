@@ -4,6 +4,7 @@ use std::future::Future;
 use tokio::task::spawn_blocking;
 
 use super::{jlink::read_elf, Arch, DebugProbe, Target};
+use crate::utils::retry_on_fail_with_delay;
 
 pub struct RaspberryPiPico;
 
@@ -67,9 +68,10 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
 
 /// Program and execute the specified ELF file by PICOBOOT protocol.
 async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
-    let (picoboot_interface, loadable_code) =
-        tokio::join!(spawn_blocking(open_picoboot), read_elf(exe));
-    let picoboot_interface = picoboot_interface.unwrap(); // ignore `JoinError`
+    let picoboot_interface_async = retry_on_fail_with_delay(|| async {
+        spawn_blocking(open_picoboot).await.unwrap() // ignore `JoinError`
+    });
+    let (picoboot_interface, loadable_code) = tokio::join!(picoboot_interface_async, read_elf(exe));
     let PicobootInterface {
         mut device_handle,
         out_endpoint_i,
