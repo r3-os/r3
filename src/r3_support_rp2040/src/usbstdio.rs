@@ -17,24 +17,34 @@ use usbd_serial::{SerialPort, USB_CLASS_CDC};
 struct UsbStdioGlobal {
     usb_device: UsbDevice<'static, UsbBus>,
     serial: SerialPort<'static, UsbBus>,
-    /// Yet another write buffer. We use this to withhold the data transmission
-    /// until DTR (Data Terminal Ready) is asserted on the host side.
-    write_buf: Deque<u8, 2048>,
 }
 
 static USB_STDIO_GLOBAL: interrupt::Mutex<RefCell<Option<UsbStdioGlobal>>> =
     interrupt::Mutex::new(RefCell::new(None));
 
+/// Yet another write buffer. We use this to withhold the data transmission
+/// until DTR (Data Terminal Ready) is asserted on the host side.
+///
+/// This is intentionally excluded from `UsbStdioGlobal` to avoid excessive
+/// stack consumption and runtime latency when initializing `USB_STDIO_GLOBAL`.
+static WRITE_BUF: interrupt::Mutex<RefCell<WriteBufDeque>> =
+    interrupt::Mutex::new(RefCell::new(Deque::new()));
+
+type WriteBufDeque = Deque<u8, 2048>;
+
 /// Start a no-interrupt section and get the global instance of
 /// `UsbStdioGlobal`. Will panic if the `UsbStdioGlobal` hasn't been initialized
 /// yet.
-fn with_usb_stdio_global<T>(f: impl FnOnce(&mut UsbStdioGlobal) -> T) -> T {
+fn with_usb_stdio_global<T>(f: impl FnOnce(&mut UsbStdioGlobal, &mut WriteBufDeque) -> T) -> T {
     interrupt::free(|cs| {
         let mut g = USB_STDIO_GLOBAL.borrow(cs).borrow_mut();
         let g = g
             .as_mut()
             .expect("UsbStdioGlobal hasn't been initialized yet");
-        f(g)
+
+        let mut write_buf = WRITE_BUF.borrow(cs).borrow_mut();
+
+        f(g, &mut write_buf)
     })
 }
 
@@ -73,11 +83,8 @@ pub const fn configure<System: Kernel + Options>(b: &mut CfgBuilder<System>) {
                 .build();
 
             interrupt::free(|cs| {
-                *USB_STDIO_GLOBAL.borrow(cs).borrow_mut() = Some(UsbStdioGlobal {
-                    serial,
-                    usb_device,
-                    write_buf: Deque::new(),
-                })
+                *USB_STDIO_GLOBAL.borrow(cs).borrow_mut() =
+                    Some(UsbStdioGlobal { serial, usb_device })
             });
 
             // Register the standard output
@@ -102,14 +109,14 @@ pub const fn configure<System: Kernel + Options>(b: &mut CfgBuilder<System>) {
 
             // Get the global `UsbStdioGlobal` instance, which should
             // have been created by the startup hook above
-            with_usb_stdio_global(|g| {
+            with_usb_stdio_global(|g, write_buf| {
                 g.usb_device.poll(&mut [&mut g.serial]);
 
                 if let Ok(len) = g.serial.read(&mut buf) {
                     read_len = len;
                 }
 
-                g.try_flush();
+                g.try_flush(write_buf);
             });
 
             if read_len > 0 {
@@ -145,20 +152,20 @@ impl embedded_hal::serial::Write<u8> for NbWriter {
     type Error = core::convert::Infallible;
 
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-        with_usb_stdio_global(|g| {
+        with_usb_stdio_global(|g, write_buf| {
             // Push the given byte to the write buffer. Return `WouldBlock` if
             // the buffer is full.
-            g.write_buf.push(word).map_err(|_| nb::Error::WouldBlock)?;
-            g.try_flush();
+            write_buf.push(word).map_err(|_| nb::Error::WouldBlock)?;
+            g.try_flush(write_buf);
             Ok(())
         })
     }
 
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        with_usb_stdio_global(|g| {
-            g.try_flush();
+        with_usb_stdio_global(|g, write_buf| {
+            g.try_flush(write_buf);
             g.serial.flush().map_err(map_usb_error_to_nb_error)?;
-            if !g.write_buf.is_empty() {
+            if !write_buf.is_empty() {
                 return Err(nb::Error::WouldBlock);
             }
             Ok(())
@@ -167,13 +174,13 @@ impl embedded_hal::serial::Write<u8> for NbWriter {
 }
 
 impl UsbStdioGlobal {
-    fn try_flush(&mut self) {
+    fn try_flush(&mut self, write_buf: &mut WriteBufDeque) {
         // Withhold the data until DTR is asserted and RTS is cleared
         if !self.serial.dtr() {
             return;
         }
 
-        let first_contiguous_bytes = self.write_buf.first_contiguous_slice();
+        let first_contiguous_bytes = write_buf.first_contiguous_slice();
         if !first_contiguous_bytes.is_empty() {
             match self
                 .serial
@@ -181,7 +188,7 @@ impl UsbStdioGlobal {
                 .map_err(map_usb_error_to_nb_error)
             {
                 Ok(num_bytes) => {
-                    self.write_buf.consume(num_bytes);
+                    write_buf.consume(num_bytes);
                 }
                 Err(nb::Error::WouldBlock) => {}
                 // FIXME: `Infallible` is uninhabited, so this arm is really unreachable
