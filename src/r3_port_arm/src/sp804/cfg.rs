@@ -93,8 +93,7 @@ macro_rules! use_sp804 {
                 type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
 
                 fn tickless_state() -> *mut Self::TicklessState {
-                    // FIXME: Use `core::ptr::addr_of_mut!` when it's stable
-                    unsafe { &mut TIMER_STATE }
+                    unsafe { core::ptr::addr_of_mut!(TIMER_STATE) }
                 }
             }
 
