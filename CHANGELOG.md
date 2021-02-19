@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Upgrade `tokenlock` to `0.3.4`
 - Using the new version of `tokenlock`, some atomics-based hacks were removed. This might marginally improve the runtime performance as the compiler is given more leeway to optimize memory accesses.
 
+### Fixed
+
+- The debug printing of `Mutex` and `RecursiveMutex` in an invalid context now produces a message that makes sense.
+
 ## [0.1.1] - 2020-12-20
 
 ### Added

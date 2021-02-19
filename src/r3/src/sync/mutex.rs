@@ -242,7 +242,7 @@ impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for Mutex<System, T> {
                 struct BadContextPlaceholder;
                 impl fmt::Debug for BadContextPlaceholder {
                     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                        f.write_str("<CPU context active>")
+                        f.write_str("<bad context>")
                     }
                 }
 
