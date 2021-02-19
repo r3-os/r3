@@ -9,7 +9,6 @@
 #![feature(const_fn_union)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
-#![feature(const_checked_int_methods)]
 #![feature(const_option)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
