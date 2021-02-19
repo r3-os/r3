@@ -9,12 +9,10 @@
 #![feature(const_fn_union)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
-#![feature(const_checked_int_methods)]
 #![feature(const_option)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
-#![feature(raw_ref_macros)]
 #![feature(or_patterns)]
 #![feature(option_result_unwrap_unchecked)] // `Option<T>::unwrap_unchecked`
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`

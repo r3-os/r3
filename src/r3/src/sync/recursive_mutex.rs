@@ -320,7 +320,7 @@ impl<System: Kernel, T: 'static> RecursiveMutex<System, T> {
     /// Get a raw pointer to the contained data.
     #[inline]
     pub fn get_ptr(&self) -> *mut T {
-        core::ptr::raw_const!(self.hunk.data) as _
+        core::ptr::addr_of!(self.hunk.data) as _
     }
 }
 
