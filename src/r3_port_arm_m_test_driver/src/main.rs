@@ -6,6 +6,8 @@
 #![cfg_attr(feature = "run", no_std)]
 #![cfg_attr(feature = "run", no_main)]
 
+#[cfg(feature = "board-rp_pico")]
+mod board_rp2040;
 #[cfg(feature = "output-rtt")]
 mod logger_rtt;
 #[cfg(feature = "output-semihosting")]
@@ -31,6 +33,7 @@ macro_rules! instantiate_test {
         use panic_rtt_target as _;
         #[cfg(feature = "output-semihosting")]
         use panic_semihosting as _;
+        // `board-rp_pico`: provided by `crate::board_rp2040`
 
         fn report_success() {
             // The test runner will catch this
@@ -39,6 +42,15 @@ macro_rules! instantiate_test {
 
             #[cfg(feature = "output-semihosting")]
             cortex_m_semihosting::hprintln!("!- TEST WAS SUCCESSFUL -!").unwrap();
+
+            #[cfg(feature = "board-rp_pico")]
+            r3_support_rp2040::sprintln!(
+                "{}!- TEST WAS SUCCESSFUL -!",
+                crate::board_rp2040::mux::BEGIN_MAIN,
+            );
+
+            #[cfg(feature = "board-rp_pico")]
+            board_rp2040::enter_poll_loop();
 
             loop {}
         }
@@ -61,8 +73,12 @@ macro_rules! instantiate_test {
         }
 
         impl port::SysTickOptions for System {
+            #[cfg(feature = "board-rp_pico")]
+            const FREQUENCY: u64 = board_rp2040::SYSTICK_FREQUENCY;
+
             // STM32F401
             // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
+            #[cfg(not(feature = "board-rp_pico"))]
             const FREQUENCY: u64 = 2_000_000;
         }
 
@@ -76,8 +92,15 @@ macro_rules! instantiate_test {
             fn success() {
                 report_success();
             }
+
+            #[cfg(not(feature = "board-rp_pico"))]
             fn performance_time() -> u32 {
                 cortex_m::peripheral::DWT::get_cycle_count()
+            }
+
+            #[cfg(feature = "board-rp_pico")]
+            fn performance_time() -> u32 {
+                board_rp2040::performance_time()
             }
 
             const PERFORMANCE_TIME_UNIT: &'static str = "cycle(s)";
@@ -113,6 +136,7 @@ macro_rules! instantiate_test {
         const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
             // Configure DWT for performance measurement
             #[cfg(feature = "kernel_benchmarks")]
+            #[cfg(not(feature = "board-rp_pico"))]
             StartupHook::<System>::build().start(|_| {
                 unsafe {
                     let mut peripherals = cortex_m::peripheral::Peripherals::steal();
@@ -151,6 +175,11 @@ macro_rules! instantiate_test {
             StartupHook::build().start(|_| {
                 logger_semihosting::init();
             }).finish(b);
+
+            // Create a USB serial device and redirect the log output and the
+            // main message to it
+            #[cfg(feature = "board-rp_pico")]
+            board_rp2040::configure(b);
 
             System::configure_systick(b);
 

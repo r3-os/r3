@@ -1,4 +1,5 @@
-use std::{fmt, future::Future};
+use std::{fmt, future::Future, time::Duration};
+use tokio::time::delay_for;
 
 pub struct CommaSeparatedNoSpace<T>(pub T);
 impl<T> fmt::Display for CommaSeparatedNoSpace<T>
@@ -77,6 +78,37 @@ where
                     return Err(e);
                 } else {
                     log::warn!("Retrying... (remaining count = {:?})", count);
+                }
+            }
+        }
+    }
+}
+
+pub async fn retry_on_fail_with_delay<R, T, E: std::fmt::Debug>(
+    mut f: impl FnMut() -> R,
+) -> Result<T, E>
+where
+    R: Future<Output = Result<T, E>>,
+{
+    let mut count = 8u32;
+    loop {
+        match f().await {
+            Ok(x) => return Ok(x),
+            Err(e) => {
+                log::warn!("Attempt failed: {:?}", e);
+                count -= 1;
+                if count == 0 {
+                    log::warn!("Retry limit reached");
+                    return Err(e);
+                } else {
+                    let delay = (16 >> count).max(1);
+                    log::warn!(
+                        "Retrying in {} seconds... (remaining count = {:?})",
+                        delay,
+                        count
+                    );
+
+                    delay_for(Duration::from_secs(delay)).await;
                 }
             }
         }

@@ -1293,7 +1293,9 @@ dependencies = [
  "panic-semihosting",
  "r3",
  "r3_port_arm_m",
+ "r3_support_rp2040",
  "r3_test_suite",
+ "rp2040",
  "rtt-target",
 ]
 
@@ -1419,8 +1421,10 @@ dependencies = [
  "probe-rs",
  "probe-rs-rtt",
  "r3_test_suite",
+ "rusb",
  "serde",
  "serde_json",
+ "serialport",
  "structopt",
  "tempdir",
  "thiserror",

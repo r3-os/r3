@@ -10,7 +10,7 @@ use std::{
     task::{Context, Poll},
 };
 use tempdir::TempDir;
-use tokio::{io::AsyncRead, process::Child};
+use tokio::{io::AsyncRead, process::Child, task::spawn_blocking};
 
 use super::{Arch, DebugProbe, DynAsyncRead, Target};
 use crate::subprocess;
@@ -175,44 +175,49 @@ impl DebugProbe for Fe310JLinkDebugProbe {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum ProcessElfError {
+pub enum ProcessElfError {
     #[error("Couldn't read the ELF file")]
     Read(#[source] std::io::Error),
     #[error("Couldn't parse the ELF file")]
     Parse(#[source] goblin::error::Error),
 }
 
-struct LoadableCode {
+pub struct LoadableCode {
     /// The regions to be loaded onto the target.
-    regions: Vec<(Vec<u8>, u64)>,
+    pub regions: Vec<(Vec<u8>, u64)>,
     /// The entry point.
-    entry: u64,
+    pub entry: u64,
 }
 
 /// Read the specified ELF file and return regions to be loaded onto the target.
-async fn read_elf(exe: &Path) -> Result<LoadableCode, ProcessElfError> {
+pub async fn read_elf(exe: &Path) -> Result<LoadableCode, ProcessElfError> {
     let elf_bytes = tokio::fs::read(&exe).await.map_err(ProcessElfError::Read)?;
-    let elf = goblin::elf::Elf::parse(&elf_bytes).map_err(ProcessElfError::Parse)?;
 
-    let regions = elf
-        .program_headers
-        .iter()
-        .filter_map(|ph| {
-            if ph.p_type == goblin::elf32::program_header::PT_LOAD && ph.p_filesz > 0 {
-                Some((
-                    elf_bytes[ph.p_offset as usize..][..ph.p_filesz as usize].to_vec(),
-                    ph.p_paddr,
-                ))
-            } else {
-                None
-            }
+    spawn_blocking(move || {
+        let elf = goblin::elf::Elf::parse(&elf_bytes).map_err(ProcessElfError::Parse)?;
+
+        let regions = elf
+            .program_headers
+            .iter()
+            .filter_map(|ph| {
+                if ph.p_type == goblin::elf32::program_header::PT_LOAD && ph.p_filesz > 0 {
+                    Some((
+                        elf_bytes[ph.p_offset as usize..][..ph.p_filesz as usize].to_vec(),
+                        ph.p_paddr,
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(LoadableCode {
+            regions,
+            entry: elf.entry,
         })
-        .collect();
-
-    Ok(LoadableCode {
-        regions,
-        entry: elf.entry,
     })
+    .await
+    .unwrap() // Ignore `JoinError`
 }
 
 struct OutputReader {
