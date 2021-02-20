@@ -65,7 +65,7 @@ pub trait EntryPoint {
     ///  - The register state of the background context should be preserved so
     ///    that the handler can restore it later.
     ///
-    unsafe fn irq_entry() -> !;
+    const IRQ_ENTRY: unsafe extern "C" fn() -> !;
 }
 
 /// Define a system type implementing [`PortThreading`] and [`EntryPoint`].
@@ -90,24 +90,14 @@ macro_rules! use_port {
                 cfg::{ThreadingOptions, EntryPoint},
             };
 
-            pub(super) static PORT_STATE: State = State::new();
-
-            unsafe impl PortInstance for $sys {
-                #[inline(always)]
-                fn port_state() -> &'static State {
-                    &PORT_STATE
-                }
-            }
+            unsafe impl PortInstance for $sys {}
 
             impl EntryPoint for $sys {
-                unsafe fn start() -> !{
-                    unsafe { PORT_STATE.port_boot::<Self>() };
+                unsafe fn start() -> ! {
+                    unsafe { <Self as PortInstance>::port_state().port_boot::<Self>() }
                 }
 
-                #[inline(always)]
-                unsafe fn irq_entry() -> ! {
-                    unsafe { State::irq_entry::<Self>() };
-                }
+                const IRQ_ENTRY: unsafe extern "C" fn() -> ! = State::irq_entry::<Self>;
             }
 
             // Assume `$sys: Kernel`
@@ -122,37 +112,37 @@ macro_rules! use_port {
                 const STACK_DEFAULT_SIZE: usize = 2048;
 
                 unsafe fn dispatch_first_task() -> ! {
-                    PORT_STATE.dispatch_first_task::<Self>()
+                    <Self as PortInstance>::port_state().dispatch_first_task::<Self>()
                 }
 
                 unsafe fn yield_cpu() {
-                    PORT_STATE.yield_cpu::<Self>()
+                    <Self as PortInstance>::port_state().yield_cpu::<Self>()
                 }
 
                 unsafe fn exit_and_dispatch(task: &'static TaskCb<Self>) -> ! {
-                    PORT_STATE.exit_and_dispatch::<Self>(task);
+                    <Self as PortInstance>::port_state().exit_and_dispatch::<Self>(task)
                 }
 
                 #[inline(always)]
                 unsafe fn enter_cpu_lock() {
-                    PORT_STATE.enter_cpu_lock::<Self>()
+                    <Self as PortInstance>::port_state().enter_cpu_lock::<Self>()
                 }
 
                 #[inline(always)]
                 unsafe fn leave_cpu_lock() {
-                    PORT_STATE.leave_cpu_lock::<Self>()
+                    <Self as PortInstance>::port_state().leave_cpu_lock::<Self>()
                 }
 
                 unsafe fn initialize_task_state(task: &'static TaskCb<Self>) {
-                    PORT_STATE.initialize_task_state::<Self>(task)
+                    <Self as PortInstance>::port_state().initialize_task_state::<Self>(task)
                 }
 
                 fn is_cpu_lock_active() -> bool {
-                    PORT_STATE.is_cpu_lock_active::<Self>()
+                    <Self as PortInstance>::port_state().is_cpu_lock_active::<Self>()
                 }
 
                 fn is_task_context() -> bool {
-                    PORT_STATE.is_task_context::<Self>()
+                    <Self as PortInstance>::port_state().is_task_context::<Self>()
                 }
             }
         }

@@ -6,7 +6,7 @@ use crate::{arm, startup::cfg::MemoryRegionAttributes, EntryPoint, StartupOption
 #[repr(align(4096), C)]
 struct VectorTable {
     _trampolines: [u32; 8],
-    _targets: [unsafe extern "C" fn(); 8],
+    _targets: [unsafe extern "C" fn() -> !; 8],
 }
 
 impl VectorTable {
@@ -23,7 +23,7 @@ impl VectorTable {
                 prefetch_abort_handler,
                 data_abort_handler,
                 unhandled_exception_handler,
-                irq_handler::<System>,
+                System::IRQ_ENTRY,
                 fiq_handler,
             ],
         }
@@ -196,32 +196,27 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
 //        `error: internal compiler error: src/librustc_mir/monomorphize/
 //         collector.rs:802:9: cannot create local mono-item for DefId(4:27 ~
 //         r3_port_arm[c8c4]::startup[0]::unhandled_exception_handler[0])`
-pub extern "C" fn unhandled_exception_handler() {
+pub extern "C" fn unhandled_exception_handler() -> ! {
     panic!("reserved exception");
 }
 
-pub extern "C" fn undefined_instruction_handler() {
+pub extern "C" fn undefined_instruction_handler() -> ! {
     panic!("undefined instruction");
 }
 
-pub extern "C" fn supervisor_call_handler() {
+pub extern "C" fn supervisor_call_handler() -> ! {
     panic!("unexpected supervisor call");
 }
 
-pub extern "C" fn prefetch_abort_handler() {
+pub extern "C" fn prefetch_abort_handler() -> ! {
     panic!("prefetch abort");
 }
 
-pub extern "C" fn data_abort_handler() {
+pub extern "C" fn data_abort_handler() -> ! {
     panic!("data abort");
 }
 
-#[naked]
-pub extern "C" fn irq_handler<System: EntryPoint>() {
-    unsafe { System::irq_entry() };
-}
-
-pub extern "C" fn fiq_handler() {
+pub extern "C" fn fiq_handler() -> ! {
     panic!("unexpecte fiq");
 }
 
