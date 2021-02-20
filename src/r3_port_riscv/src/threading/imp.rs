@@ -394,7 +394,7 @@ impl State {
     }
 
     #[naked]
-    unsafe fn yield_cpu_in_task<System: PortInstance>() {
+    unsafe extern "C" fn yield_cpu_in_task<System: PortInstance>() {
         unsafe {
             pp_asm!("
             "   crate::threading::imp::asm_inc::define_load_store!()              "
@@ -477,7 +477,6 @@ impl State {
             "   }                                                                   "
 
                 tail {push_second_level_state_and_dispatch}.not_shortcutting
-            0:
                 ",
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
@@ -486,6 +485,7 @@ impl State {
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
                 FLSF_SIZE = const FLSF_SIZE,
+                options(noreturn),
             );
         }
     }
@@ -538,7 +538,7 @@ impl State {
     ///  - The current task must not be the idle task.
     ///
     #[naked]
-    unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
+    unsafe extern "C" fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
         #[repr(C)]
         struct A0A1<S, T>(S, T);
 
@@ -1113,8 +1113,8 @@ impl State {
     }
 
     /// Implements [`crate::EntryPoint::exception_handler`].
-    #[inline(always)]
-    pub unsafe fn exception_handler<System: PortInstance>() -> ! {
+    #[naked]
+    pub unsafe extern "C" fn exception_handler<System: PortInstance>() -> ! {
         const FRAME_SIZE: usize = if cfg!(target_feature = "f") {
             // [background_sp, mstatus]
             X_SIZE * 2
@@ -1127,6 +1127,9 @@ impl State {
             pp_asm!("
             "   crate::threading::imp::asm_inc::define_load_store!()              "
             "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
+
+                # Align the handler to a 4-byte boundary
+                .align 2
 
                 # Skip the stacking of FLS if the background context is the idle
                 # task.

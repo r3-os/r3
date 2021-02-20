@@ -61,10 +61,7 @@ macro_rules! use_port {
                     unsafe { PORT_STATE.port_boot::<Self>() };
                 }
 
-                #[inline(always)]
-                unsafe fn exception_handler() -> ! {
-                    unsafe { State::exception_handler::<Self>() };
-                }
+                const TRAP_HANDLER: unsafe extern "C" fn() -> ! = State::exception_handler::<Self>;
             }
 
             // Assume `$sys: Kernel`

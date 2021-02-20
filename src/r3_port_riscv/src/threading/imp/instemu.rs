@@ -23,7 +23,7 @@ pub(super) static mut RESERVATION_ADDR_VALUE: [usize; 2] = [0; 2];
 ///  - `s0-s11`: `s0-s11` from the background context state
 ///
 #[naked]
-pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
+pub(super) unsafe extern "C" fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
     // TODO: catch double fault
     // FIXME: We can't put CFI directives yet because the compiler wraps the
     //     function with `.cfi_startproc` and `.cfi_endproc` conditionally,
@@ -159,6 +159,7 @@ pub(super) unsafe fn handle_exception(_fl_state: *mut usize, _mcause: usize) {
             write_x = sym write_x,
             RESERVATION_ADDR_VALUE = sym RESERVATION_ADDR_VALUE,
             X_SIZE = const X_SIZE,
+            options(noreturn),
         );
     }
 }
@@ -188,7 +189,7 @@ extern "C" {
 ///
 #[naked]
 #[cfg(feature = "emulate-lr-sc")]
-unsafe fn read_x(_fl_state: *mut usize) {
+unsafe extern "C" fn read_x(_fl_state: *mut usize) {
     unsafe {
         pp_asm!("
         "   crate::threading::imp::asm_inc::define_load_store!()                "
@@ -302,8 +303,11 @@ unsafe fn read_x(_fl_state: *mut usize) {
         2:
             addi a4, a0, {X_SIZE} * 17
 
-        1:  ",
+        1:  
+            ret
+        ",
             X_SIZE = const X_SIZE,
+            options(noreturn),
         );
     }
 }
@@ -321,7 +325,7 @@ unsafe fn read_x(_fl_state: *mut usize) {
 ///
 #[naked]
 #[cfg(feature = "emulate-lr-sc")]
-unsafe fn write_x(_fl_state: *mut usize) {
+unsafe extern "C" fn write_x(_fl_state: *mut usize) {
     unsafe {
         pp_asm!(
             "
@@ -437,8 +441,11 @@ unsafe fn write_x(_fl_state: *mut usize) {
             j 1f
             STORE a3, ({X_SIZE} * 15)(a0)
 
-        1:  ",
+        1:  
+            ret
+            ",
             X_SIZE = const X_SIZE,
+            options(noreturn),
         );
     }
 }
