@@ -8,7 +8,7 @@ use r3::{
     prelude::*,
     utils::Init,
 };
-use r3_portkit::pptext::pp_llvm_asm;
+use r3_portkit::pptext::pp_asm;
 
 use crate::{
     ThreadingOptions, INTERRUPT_EXTERNAL0, INTERRUPT_NUM_RANGE, INTERRUPT_PRIORITY_RANGE,
@@ -106,13 +106,13 @@ impl State {
         // Safety: Only the port can call this method
         let msp_top = unsafe { System::interrupt_stack_top() };
 
-        pp_llvm_asm!("
+        pp_asm!("
             # Reset MSP to the top of the stack, effectively discarding the
             # current context. Beyond this point, this code is considered to be
             # running in the idle task.
             #
             # The idle task uses MSP as its stack.
-            mov sp, $0
+            mov sp, {msp_top}
 
             # TODO: Set MSPLIM on Armv8-M
 
@@ -123,26 +123,28 @@ impl State {
                 msr basepri, r0
         "   }                                                                   "
             cpsie i
-        "
-        :
-        :   "r"(msp_top)
-        :
-        :   "volatile");
+        ",
+            msp_top = in(reg) msp_top,
+        );
 
         if System::USE_WFI {
-            llvm_asm!("
+            pp_asm!(
+                "
             IdleLoopWithWfi:
                 wfi
                 b IdleLoopWithWfi
-            "::::"volatile");
+            ",
+                options(noreturn),
+            );
         } else {
-            llvm_asm!("
+            pp_asm!(
+                "
             IdleLoopWithoutWfi:
                 b IdleLoopWithoutWfi
-            "::::"volatile");
+            ",
+                options(noreturn),
+            );
         }
-
-        unsafe { core::hint::unreachable_unchecked() };
     }
 
     pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
@@ -157,7 +159,7 @@ impl State {
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
 
-        pp_llvm_asm!("
+        pp_asm!("
             # Activate the idle task's context by switching the current SP to
             # MSP.
             # `running_task` is `None` at this point, so the processor state
@@ -181,16 +183,13 @@ impl State {
 
                 .align 2
             IdleTaskConst:
-                .word $0
+                .word {idle_task}
         "   } else {                                                        "
-                b $0
-        "   }
-        :
-        :   "X"(Self::idle_task::<System> as unsafe extern fn() -> !)
-        :
-        :   "volatile");
-
-        unsafe { core::hint::unreachable_unchecked() };
+                b {idle_task}
+        "   },
+            idle_task = sym Self::idle_task::<System>,
+            options(noreturn),
+        );
     }
 
     #[inline(always)]
@@ -223,29 +222,27 @@ impl State {
             unsafe { State::leave_cpu_lock_inner::<System>() };
         }
 
-        pp_llvm_asm!("
+        pp_asm!("
             # Save the context of the previous task
             #
-            #    [r0 = &running_task, r4-r11 = context,
-            #     s16-s31 = context, lr = EXC_RETURN]
+            #    <r0 = &running_task, r4-r11 = context,
+            #     s16-s31 = context, lr = EXC_RETURN>
             #
             #    r1 = running_task
-            #    if r1.is_some() {
+            #    if r1.is_some():
             #        let fpu_active = cfg!(has_fpu) && (lr & FType) == 0;
-            #        r2 = psp as *u32 - if fpu_active { 26 } else { 10 }
+            #        r2 = psp as *u32 - (if fpu_active then 26 else 10)
             #        r1.port_task_state.sp = r2
             #
             #        r2[0] = lr (EXC_RETURN)
             #        r2[1] = control
             #        r2 += 2;
-            #        if fpu_active {
-            #            r2[0..16] = {s16-s31}
+            #        if fpu_active:
+            #            r2[0..16] = [s16-s31]
             #            r2 += 16;
-            #        }
-            #        r2[0..8] = {r4-r11}
-            #    }
+            #        r2[0..8] = [r4-r11]
             #
-            #    [r0 = &running_task]
+            #    <r0 = &running_task>
 
             ldr r1, [r0]                                                    "
             if cfg!(armv6m) {                                               "
@@ -265,34 +262,34 @@ impl State {
             str r2, [r1]                                                    "
             if cfg!(any(armv6m, armv8m_base)) {                             "
                 mov r1, lr
-                stmia r2!, {r1, r3}
-                stmia r2!, {r4-r7}
+                stmia r2!, {{r1, r3}}
+                stmia r2!, {{r4-r7}}
                 mov r4, r8
                 mov r5, r9
                 mov r6, r10
                 mov r7, r11
-                stmia r2!, {r4-r7}
+                stmia r2!, {{r4-r7}}
         "   } else {                                                        "
                 strd lr, r3, [r2], #8                                       "
                 if cfg!(has_fpu) {                                          "
                     it eq
-                    vstmiaeq r2!, {s16-s31}
+                    vstmiaeq r2!, {{s16-s31}}
         "       }                                                           "
-                stmia r2, {r4-r11}
+                stmia r2, {{r4-r11}}
         "   }                                                               "
 
             # Choose the next task to run
         ChooseTask:
             mov r5, r0
-            bl $1
+            bl {choose_next_task}
             mov r0, r5
 
             # Restore the context of the next task
             #
-            #    [r0 = &running_task]
+            #    <r0 = &running_task>
             #
             #    r1 = running_task
-            #    if r1.is_some() {
+            #    if r1.is_some():
             #        r2 = r1.port_task_state.sp
             #
             #        lr = r2[0]
@@ -300,24 +297,22 @@ impl State {
             #        r2 += 2;
             #
             #        let fpu_active = cfg!(has_fpu) && (lr & FType) == 0;
-            #        if fpu_active {
-            #            {s16-s31} = r2[0..16]
+            #        if fpu_active:
+            #            [s16-s31] = r2[0..16]
             #            r2 += 16;
-            #        }
             #
-            #        {r4-r11} = r2[0..8]
+            #        [r4-r11] = r2[0..8]
             #        r2 += 8;
             #        psp = r2
-            #    } else {
+            #    else:
             #        // The idle task only uses r0-r3, so we can skip most steps
             #        // in this case
             #        control = 2;
             #        lr = 0xfffffff9; /* “ Return to Thread Mode; Exception
             #           return gets state from the Main stack; On return
             #           execution uses the Main Stack.” */
-            #    }
             #
-            #    [r4-r11 = context, s16-s31 = context, lr = EXC_RETURN]
+            #    <r4-r11 = context, s16-s31 = context, lr = EXC_RETURN>
 
             ldr r1, [r0]                                                    "
             if cfg!(armv6m) {                                               "
@@ -328,13 +323,13 @@ impl State {
         "   }                                                               "
             ldr r2, [r1]                                                    "
             if cfg!(any(armv6m, armv8m_base)) {                             "
-                ldmia r2!, {r0, r3}
+                ldmia r2!, {{r0, r3}}
                 mov lr, r0
-                ldmia r2!, {r4-r7}
-                ldmia r2!, {r0, r1}
+                ldmia r2!, {{r4-r7}}
+                ldmia r2!, {{r0, r1}}
                 mov r8, r0
                 mov r9, r1
-                ldmia r2!, {r0, r1}
+                ldmia r2!, {{r0, r1}}
                 mov r10, r0
                 mov r11, r1
         "   } else {                                                        "
@@ -342,9 +337,9 @@ impl State {
                 if cfg!(has_fpu) {                                          "
                     tst lr, #0x10
                     it eq
-                    vldmiaeq r2!, {s16-s31}
+                    vldmiaeq r2!, {{s16-s31}}
         "       }                                                           "
-                ldmia r2!, {r4-r11}
+                ldmia r2!, {{r4-r11}}
         "   }                                                               "
             msr control, r3
             msr psp, r2
@@ -361,12 +356,10 @@ impl State {
                 mov lr, #0xfffffff9
         "   }                                                               "
             msr control, r0
-        "
-        :
-        :   "{r0}"(running_task_ptr)
-        ,   "X"(choose_next_task::<System> as extern fn())
-        :
-        :   "volatile");
+        ",
+            choose_next_task = sym choose_next_task::<System>,
+            in("r0") running_task_ptr,
+        );
     }
 
     #[inline(always)]

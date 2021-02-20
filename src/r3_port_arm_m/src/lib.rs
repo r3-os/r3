@@ -2,7 +2,7 @@
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
-#![feature(llvm_asm)]
+#![feature(asm)]
 #![feature(decl_macro)]
 #![feature(const_panic)]
 #![feature(const_generics)]
