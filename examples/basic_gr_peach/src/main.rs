@@ -1,6 +1,7 @@
 #![feature(const_fn)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
+#![feature(asm)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`

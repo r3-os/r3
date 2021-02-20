@@ -30,8 +30,8 @@ impl VectorTable {
     }
 }
 
-#[inline(always)]
-pub fn start<System: EntryPoint + StartupOptions>() {
+#[naked]
+pub extern "C" fn start<System: EntryPoint + StartupOptions>() {
     unsafe {
         // Set the stack pointer before calling Rust code
         asm!("

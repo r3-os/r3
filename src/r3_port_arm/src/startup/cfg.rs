@@ -14,8 +14,12 @@ macro_rules! use_startup {
     (unsafe $sys:ty) => {
         #[no_mangle]
         #[naked]
-        pub unsafe fn start() {
-            $crate::startup::imp::start::<$sys>();
+        pub unsafe extern "C" fn start() {
+            asm!(
+                "b {}",
+                sym $crate::startup::imp::start::<$sys>,
+                options(noreturn),
+            );
         }
     };
 }
