@@ -1,4 +1,5 @@
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
+use memoffset::offset_of;
 use r3::{
     kernel::{
         ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
@@ -6,9 +7,12 @@ use r3::{
         SetInterruptLinePriorityError, TaskCb,
     },
     prelude::*,
-    utils::Init,
+    utils::{Init, ZeroInit},
 };
-use r3_portkit::pptext::pp_asm;
+use r3_portkit::{
+    pptext::pp_asm,
+    sym::{sym_static, SymStaticExt},
+};
 
 use crate::{
     ThreadingOptions, INTERRUPT_EXTERNAL0, INTERRUPT_NUM_RANGE, INTERRUPT_PRIORITY_RANGE,
@@ -23,7 +27,11 @@ use crate::{
 pub unsafe trait PortInstance:
     Kernel + Port<PortTaskState = TaskState> + ThreadingOptions
 {
-    fn port_state() -> &'static State;
+    sym_static!(static PORT_STATE: SymStatic<State> = zeroed!());
+
+    fn port_state() -> &'static State {
+        sym_static(Self::PORT_STATE).as_ref()
+    }
 }
 /// Converts [`InterruptNum`] to [`cortex_m::interrupt::Nr`].
 struct Int(InterruptNum);
@@ -35,7 +43,19 @@ unsafe impl cortex_m::interrupt::Nr for Int {
     }
 }
 
-pub struct State {}
+pub struct State {
+    /// Stores the value of `System::state().running_task_ptr()` so that it can
+    /// be accessed in naked functions. This field is actually of type
+    /// `*mut Option<&'static TaskCb<System>>`.
+    running_task_ptr: UnsafeCell<*mut ()>,
+}
+
+impl State {
+    const OFFSET_RUNNING_TASK_PTR: usize = offset_of!(State, running_task_ptr);
+}
+
+unsafe impl Sync for State {}
+unsafe impl ZeroInit for State {}
 
 #[derive(Debug)]
 #[repr(C)]
@@ -44,12 +64,6 @@ pub struct TaskState {
 }
 
 unsafe impl Sync for TaskState {}
-
-impl State {
-    pub const fn new() -> Self {
-        Self {}
-    }
-}
 
 impl Init for TaskState {
     const INIT: Self = Self {
@@ -60,6 +74,8 @@ impl Init for TaskState {
 impl State {
     pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<System>() };
+
+        unsafe { *self.running_task_ptr.get() = System::state().running_task_ptr() as *mut () };
 
         // Claim the ownership of `Peripherals`
         let mut peripherals = cortex_m::Peripherals::take().unwrap();
@@ -192,8 +208,15 @@ impl State {
         );
     }
 
-    #[inline(always)]
-    pub unsafe fn handle_pend_sv<System: PortInstance>(&'static self) {
+    /// The PendSV handler.
+    ///
+    /// # Safety
+    ///
+    ///  - This method must be registered as a PendSV handler. The callee-saved
+    ///    registers must contain the values from the background context.
+    ///
+    #[naked]
+    pub unsafe extern "C" fn handle_pend_sv<System: PortInstance>() {
         // Precondition:
         //  - `EXC_RETURN.Mode == 1` - Exception was taken in Thread mode. This
         //    is true because PendSV is configured with the lowest priority.
@@ -203,14 +226,6 @@ impl State {
         //  - `SPSEL.Mode == 0 && running_task.is_none()` - If the interrupted
         //    context is the idle task, the exception frame should have been
         //    stacked to MSP.
-
-        // Compilation assumption:
-        //  - The compiled code does not use any registers other than r0-r3
-        //    before entering the inline assembly code below.
-        //  - This is the top-level function in the PendSV handler. That is,
-        //    the compiler must really inline `handle_pend_sv`.
-
-        let running_task_ptr = System::state().running_task_ptr();
 
         extern "C" fn choose_next_task<System: PortInstance>() {
             // Choose the next task to run
@@ -225,7 +240,7 @@ impl State {
         pp_asm!("
             # Save the context of the previous task
             #
-            #    <r0 = &running_task, r4-r11 = context,
+            #    <r4-r11 = context,
             #     s16-s31 = context, lr = EXC_RETURN>
             #
             #    r1 = running_task
@@ -243,6 +258,9 @@ impl State {
             #        r2[0..8] = [r4-r11]
             #
             #    <r0 = &running_task>
+
+            ldr r0, ={PORT_STATE}_
+            ldr r0, [r0, #{OFFSET_RUNNING_TASK_PTR}]
 
             ldr r1, [r0]                                                    "
             if cfg!(armv6m) {                                               "
@@ -356,9 +374,12 @@ impl State {
                 mov lr, #0xfffffff9
         "   }                                                               "
             msr control, r0
+            bx lr
         ",
             choose_next_task = sym choose_next_task::<System>,
-            in("r0") running_task_ptr,
+            PORT_STATE = sym System::PORT_STATE,
+            OFFSET_RUNNING_TASK_PTR = const Self::OFFSET_RUNNING_TASK_PTR,
+            options(noreturn),
         );
     }
 
@@ -660,4 +681,25 @@ pub const fn validate<System: PortInstance>() {
         "`CPU_LOCK_PRIORITY_MASK` must be zero because the target architecture \
          does not have a BASEPRI register"
     );
+}
+
+/// Define a `PendSV` symbol at the PendSV handler implementation.
+///
+/// Just including this function in linking causes the intended effect. Calling
+/// this function at runtime will have no effect.
+#[naked]
+pub extern "C" fn register_pend_sv_in_rt<System: PortInstance>() {
+    // `global_asm!` can't refer to mangled symbols, so we need to use `asm!`
+    // to do this.
+    unsafe {
+        asm!("
+            bx lr
+
+            .global PendSV
+            PendSV = {}
+        ",
+            sym State::handle_pend_sv::<System>,
+            options(noreturn),
+        );
+    }
 }

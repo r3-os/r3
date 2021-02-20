@@ -93,14 +93,11 @@ macro_rules! use_port {
                 cfg::ThreadingOptions,
             };
 
-            pub(super) static PORT_STATE: State = State::new();
-
-            unsafe impl PortInstance for $sys {
-                #[inline(always)]
-                fn port_state() -> &'static State {
-                    &PORT_STATE
-                }
+            pub(super) fn port_state() -> &'static State {
+                <$sys as PortInstance>::port_state()
             }
+
+            unsafe impl PortInstance for $sys {}
 
             // Assume `$sys: Kernel`
             unsafe impl PortThreading for $sys {
@@ -114,37 +111,37 @@ macro_rules! use_port {
                 const STACK_DEFAULT_SIZE: usize = 2048;
 
                 unsafe fn dispatch_first_task() -> ! {
-                    PORT_STATE.dispatch_first_task::<Self>()
+                    port_state().dispatch_first_task::<Self>()
                 }
 
                 unsafe fn yield_cpu() {
-                    PORT_STATE.yield_cpu::<Self>()
+                    port_state().yield_cpu::<Self>()
                 }
 
                 unsafe fn exit_and_dispatch(task: &'static TaskCb<Self>) -> ! {
-                    PORT_STATE.exit_and_dispatch::<Self>(task);
+                    port_state().exit_and_dispatch::<Self>(task);
                 }
 
                 #[inline(always)]
                 unsafe fn enter_cpu_lock() {
-                    PORT_STATE.enter_cpu_lock::<Self>()
+                    port_state().enter_cpu_lock::<Self>()
                 }
 
                 #[inline(always)]
                 unsafe fn leave_cpu_lock() {
-                    PORT_STATE.leave_cpu_lock::<Self>()
+                    port_state().leave_cpu_lock::<Self>()
                 }
 
                 unsafe fn initialize_task_state(task: &'static TaskCb<Self>) {
-                    PORT_STATE.initialize_task_state::<Self>(task)
+                    port_state().initialize_task_state::<Self>(task)
                 }
 
                 fn is_cpu_lock_active() -> bool {
-                    PORT_STATE.is_cpu_lock_active::<Self>()
+                    port_state().is_cpu_lock_active::<Self>()
                 }
 
                 fn is_task_context() -> bool {
-                    PORT_STATE.is_task_context::<Self>()
+                    port_state().is_task_context::<Self>()
                 }
             }
 
@@ -156,29 +153,29 @@ macro_rules! use_port {
                     line: InterruptNum,
                     priority: InterruptPriority,
                 ) -> Result<(), SetInterruptLinePriorityError> {
-                    PORT_STATE.set_interrupt_line_priority::<Self>(line, priority)
+                    port_state().set_interrupt_line_priority::<Self>(line, priority)
                 }
 
                 unsafe fn enable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError> {
-                    PORT_STATE.enable_interrupt_line::<Self>(line)
+                    port_state().enable_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn disable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError> {
-                    PORT_STATE.disable_interrupt_line::<Self>(line)
+                    port_state().disable_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn pend_interrupt_line(line: InterruptNum) -> Result<(), PendInterruptLineError> {
-                    PORT_STATE.pend_interrupt_line::<Self>(line)
+                    port_state().pend_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn clear_interrupt_line(line: InterruptNum) -> Result<(), ClearInterruptLineError> {
-                    PORT_STATE.clear_interrupt_line::<Self>(line)
+                    port_state().clear_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn is_interrupt_line_pending(
                     line: InterruptNum,
                 ) -> Result<bool, QueryInterruptLineError> {
-                    PORT_STATE.is_interrupt_line_pending::<Self>(line)
+                    port_state().is_interrupt_line_pending::<Self>(line)
                 }
             }
         }
@@ -192,17 +189,18 @@ macro_rules! use_port {
 
         #[$crate::cortex_m_rt::entry]
         fn main() -> ! {
-            unsafe { port_arm_m_impl::PORT_STATE.port_boot::<$sys>() };
+            unsafe { port_arm_m_impl::port_state().port_boot::<$sys>() };
         }
 
-        #[$crate::cortex_m_rt::exception]
-        fn PendSV() {
-            unsafe { port_arm_m_impl::PORT_STATE.handle_pend_sv::<$sys>() };
-        }
+        // Register `handle_pend_sv` as the PendSV handler under
+        // `cortex_m_rt`'s regime
+        #[used]
+        static _REGISTER_PEND_SV: extern "C" fn() =
+            $crate::threading::imp::register_pend_sv_in_rt::<$sys>;
 
         #[$crate::cortex_m_rt::exception]
         fn SysTick() {
-            unsafe { port_arm_m_impl::PORT_STATE.handle_sys_tick::<$sys>() };
+            unsafe { port_arm_m_impl::port_state().handle_sys_tick::<$sys>() };
         }
     };
 }

@@ -42,12 +42,34 @@ unsafe impl<T> SymStaticExt for SymStatic<T> {
     type Output = T;
 
     #[inline(always)]
+    #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))]
+    fn as_ptr(self) -> *const T {
+        // Remove the Thumb flag. Unfortunately, the current compiler does not
+        // fold the offset into the symbol reference, so this will end up in
+        // instructions like the following:
+        //
+        //   ldr        r0, =0x20000001
+        //   subs       r0, r0, #0x1
+        //
+        unsafe { &*((self as usize - 1) as *const T) }
+    }
+
+    #[inline(always)]
+    #[cfg(not(all(target_arch = "arm", target_feature = "thumb-mode")))]
     fn as_ptr(self) -> *const T {
         unsafe { &*(self as usize as *const T) }
     }
 }
 
 /// Define a `fn` item actually representing a `static` variable.
+///
+/// # Target-specific Notes
+///
+/// *On Thumb targets*, the least-significant bit of the `fn` item's address is
+/// set to indicate that it's a Thumb function. However, we are actually using
+/// it as a variable storage, so the bit must be cleared before use.
+/// The [`SymStaticExt`] trait's methods automatically take care of this. When
+/// referencing it from assembler code, you must append `_` to the symbol name.
 ///
 /// # Examples
 ///
@@ -167,7 +189,13 @@ pub macro sym_static {
             #[allow(unused_unsafe)]
             unsafe {
                 $crate::sym::asm!(
-                    ".p2align {}\n.zero {}",
+                    "
+                        .p2align {1}
+                        .global {0}_
+                        {0}_:
+                        .zero {2}
+                    ",
+                    sym Self::$name,
                     const $crate::sym::mem::align_of::<$ty>().trailing_zeros(),
                     const $crate::sym::mem::size_of::<$ty>(),
                     options(noreturn),

@@ -6,7 +6,12 @@
 #![feature(decl_macro)]
 #![feature(const_panic)]
 #![feature(const_generics)]
+#![feature(const_maybe_uninit_as_ptr)]
+#![feature(const_ptr_offset_from)]
+#![feature(const_raw_ptr_deref)]
+#![feature(const_refs_to_cell)]
 #![feature(slice_ptr_len)]
+#![feature(naked_functions)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(include = "./lib.md")]

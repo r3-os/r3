@@ -1289,6 +1289,7 @@ version = "0.1.1"
 dependencies = [
  "cortex-m 0.6.7",
  "cortex-m-rt",
+ "memoffset",
  "r3",
  "r3_portkit",
 ]
