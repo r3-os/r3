@@ -8,6 +8,7 @@
 #![feature(const_ptr_offset)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
 #![cfg_attr(feature = "run", no_std)]
 #![cfg_attr(feature = "run", no_main)]
 

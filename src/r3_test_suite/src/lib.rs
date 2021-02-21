@@ -14,6 +14,7 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::eq_op)] // we want to test `PartialEq` implementations
+#![deny(unsupported_naked_functions)]
 #![doc(include = "./lib.md")]
 #![doc(include = "./common.md")]
 #![no_std]

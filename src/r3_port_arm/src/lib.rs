@@ -15,6 +15,7 @@
 #![feature(slice_ptr_len)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
 #![allow(clippy::verbose_bit_mask)] // questionable
 #![doc(include = "./lib.md")]
 #![no_std]

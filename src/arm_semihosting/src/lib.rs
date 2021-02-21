@@ -46,6 +46,7 @@
 
 #![feature(llvm_asm)]
 #![deny(missing_docs)]
+#![deny(unsupported_naked_functions)]
 #![no_std]
 
 #[macro_use]

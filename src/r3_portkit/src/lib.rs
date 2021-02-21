@@ -7,6 +7,7 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(external_doc)]
 #![feature(asm)]
+#![deny(unsupported_naked_functions)]
 #![no_std]
 
 #[macro_use]
