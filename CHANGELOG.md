@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - The debug printing of `Mutex` and `RecursiveMutex` in an invalid context now produces a message that makes sense.
-- Rewrite `#[naked]` functions in invalid forms
+- Rewrite invalid `#[naked]` functions in valid forms
 
 ## [0.1.1] - 2020-12-20
 
