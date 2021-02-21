@@ -7,6 +7,7 @@
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![doc(include = "./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
 use atomic_ref::AtomicRef;
 use once_cell::sync::OnceCell;
 use r3::{

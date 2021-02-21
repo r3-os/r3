@@ -5,12 +5,17 @@
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_maybe_uninit_as_ptr)]
+#![feature(const_ptr_offset_from)]
+#![feature(const_raw_ptr_deref)]
+#![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(asm)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
 #![allow(clippy::verbose_bit_mask)] // questionable
 #![doc(include = "./lib.md")]
 #![no_std]

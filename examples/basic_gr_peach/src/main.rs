@@ -1,10 +1,12 @@
 #![feature(const_fn)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
+#![feature(asm)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
 #![no_std]
 #![no_main]
 #![cfg(target_os = "none")]

@@ -11,6 +11,7 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
 #![doc(include = "./lib.md")]
 #![doc(include = "./common.md")]
 #![no_std]
@@ -82,13 +83,15 @@ pub trait EntryPoint {
 
     /// The trap handler.
     ///
+    /// It's aligned to a 4-byte boundary so that it can be set to `mtvec`.
+    ///
     /// # Safety
     ///
     ///  - The processor should be in M-mode and have M-mode interrupts masked.
     ///  - The register state of the background context should be preserved so
     ///    that the handler can restore it later.
     ///
-    unsafe fn exception_handler() -> !;
+    const TRAP_HANDLER: unsafe extern "C" fn() -> !;
 }
 
 /// An abstract inferface to a port timer driver. Implemented by

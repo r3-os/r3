@@ -1,9 +1,11 @@
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
+use memoffset::offset_of;
 use r3::{
     kernel::{Port, PortToKernel, TaskCb},
     prelude::*,
-    utils::Init,
+    utils::{Init, ZeroInit},
 };
+use r3_portkit::sym::{sym_static, SymStaticExt};
 
 use super::cfg::{InterruptController, ThreadingOptions, Timer};
 
@@ -15,15 +17,31 @@ use super::cfg::{InterruptController, ThreadingOptions, Timer};
 pub unsafe trait PortInstance:
     Kernel + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController + Timer
 {
-    fn port_state() -> &'static State;
+    sym_static!(static PORT_STATE: SymStatic<State> = zeroed!());
+
+    fn port_state() -> &'static State {
+        sym_static(Self::PORT_STATE).as_ref()
+    }
 }
 
+#[repr(C)]
 pub struct State {
     dispatch_pending: UnsafeCell<bool>,
     main_stack: UnsafeCell<usize>,
+    /// Stores the value of `System::state().running_task_ptr()` so that it can
+    /// be accessed in naked functions. This field is actually of type
+    /// `*mut Option<&'static TaskCb<System>>`.
+    running_task_ptr: UnsafeCell<*mut ()>,
+}
+
+impl State {
+    const OFFSET_DISPATCH_PENDING: usize = offset_of!(State, dispatch_pending);
+    const OFFSET_MAIN_STACK: usize = offset_of!(State, main_stack);
+    const OFFSET_RUNNING_TASK_PTR: usize = offset_of!(State, running_task_ptr);
 }
 
 unsafe impl Sync for State {}
+unsafe impl ZeroInit for State {}
 
 #[derive(Debug)]
 #[repr(C)]
@@ -32,15 +50,6 @@ pub struct TaskState {
 }
 
 unsafe impl Sync for TaskState {}
-
-impl State {
-    pub const fn new() -> Self {
-        Self {
-            dispatch_pending: UnsafeCell::new(false),
-            main_stack: UnsafeCell::new(0),
-        }
-    }
-}
 
 impl Init for TaskState {
     const INIT: Self = Self {
@@ -51,6 +60,8 @@ impl Init for TaskState {
 impl State {
     pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<System>() };
+
+        unsafe { *self.running_task_ptr.get() = System::state().running_task_ptr() as *mut () };
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <System as InterruptController>::init() };
@@ -151,7 +162,7 @@ impl State {
     ///  - This function may overwrite any contents in the main stack.
     ///
     #[naked]
-    unsafe fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
+    unsafe extern "C" fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
         extern "C" fn choose_and_get_next_task<System: PortInstance>(
         ) -> Option<&'static TaskCb<System>> {
             // Safety: CPU Lock active
@@ -160,14 +171,11 @@ impl State {
             unsafe { *System::state().running_task_ptr() }
         }
 
-        // Compilation assumption:
-        //  - The compiled code does not trash any registers other than r0-r3
-        //    before entering the inline assembly code below.
-        let running_task_ptr = System::state().running_task_ptr();
-        let main_stack_ptr = System::port_state().main_stack.get();
-
         unsafe {
             asm!("
+                movw r0, :lower16:{PORT_STATE}
+                movt r0, :upper16:{PORT_STATE}
+
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
                 # but `choose_and_get_next_task` needs one. Therefore we borrow
@@ -182,7 +190,7 @@ impl State {
                 #   choose_and_get_next_task();
                 #
                 tst sp, sp
-                ldreq sp, [r1]
+                ldreq sp, [r0, #{OFFSET_MAIN_STACK}]
                 beq Dispatch
 
                 # Push the second-level context state.
@@ -190,10 +198,11 @@ impl State {
 
                 # Store SP to `TaskState`.
                 #
-                #    <r0 = &running_task>
-                #    r0 = running_task
+                #    <r0 = &PORT_STATE>
+                #    r0 = *PORT_STATE.running_task_ptr // == running_task
                 #    r0.port_task_state.sp = sp_usr
                 #
+                ldr r0, [r0, #{OFFSET_RUNNING_TASK_PTR}]
                 ldr r0, [r0]
                 str sp, [r0]
 
@@ -242,8 +251,9 @@ impl State {
             ",
                 choose_and_get_next_task = sym choose_and_get_next_task::<System>,
                 idle_task = sym Self::idle_task::<System>,
-                in("r0") running_task_ptr,
-                in("r1") main_stack_ptr,
+                PORT_STATE = sym System::PORT_STATE,
+                OFFSET_RUNNING_TASK_PTR = const Self::OFFSET_RUNNING_TASK_PTR,
+                OFFSET_MAIN_STACK = const Self::OFFSET_MAIN_STACK,
                 options(noreturn),
             );
         }
@@ -253,16 +263,14 @@ impl State {
     /// is set. Otherwise, branch to `PopFirstLevelState` (thus skipping the
     /// saving/restoration of second-level states).
     #[naked]
-    unsafe fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>() -> ! {
-        // Compilation assumption:
-        //  - The compiled code does not trash any registers other than r0-r3
-        //    before entering the inline assembly code below.
-        let dispatch_pending_ptr = System::port_state().dispatch_pending.get();
-
+    unsafe extern "C" fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>(
+    ) -> ! {
         unsafe {
             asm!("
-                # Read `dispatch_pending`
-                ldrb r1, [r0]
+                # Read `port_state().dispatch_pending`
+                movw r0, :lower16:{PORT_STATE}
+                movt r0, :upper16:{PORT_STATE}
+                ldrb r1, [r0, #{OFFSET_DISPATCH_PENDING}]
                 tst r1, r1
                 bne NotShortcutting
 
@@ -282,13 +290,14 @@ impl State {
                 # `push_second_level_state_and_dispatch`.
             NotShortcutting:
                 movs r1, #0
-                strb r1, [r0]
+                strb r1, [r0, #{OFFSET_DISPATCH_PENDING}]
                 b {push_second_level_state_and_dispatch}
             ",
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
                 idle_task = sym Self::idle_task::<System>,
-                in("r0") dispatch_pending_ptr,
+                PORT_STATE = sym System::PORT_STATE,
+                OFFSET_DISPATCH_PENDING = const Self::OFFSET_DISPATCH_PENDING,
                 options(noreturn),
             );
         }
@@ -305,7 +314,7 @@ impl State {
     ///  - `*System::state().running_task_ptr()` should be `None`.
     ///
     #[naked]
-    unsafe fn idle_task<System: PortInstance>() -> ! {
+    unsafe extern "C" fn idle_task<System: PortInstance>() -> ! {
         unsafe {
             asm!(
                 "
@@ -420,8 +429,8 @@ impl State {
     }
 
     /// Implements [`crate::EntryPoint::irq_entry`]
-    #[inline(always)]
-    pub unsafe fn irq_entry<System: PortInstance>() -> ! {
+    #[naked]
+    pub unsafe extern "C" fn irq_entry<System: PortInstance>() -> ! {
         unsafe {
             asm!("
                 # Adjust `lr_irq` to get the preferred return address. (The

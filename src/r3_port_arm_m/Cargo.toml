@@ -16,6 +16,8 @@ preload-registers = []
 r3_portkit = { version = "0.1.1", path = "../r3_portkit" }
 r3 = { version = "0.1.1", path = "../r3" }
 
+memoffset = { version = "0.6.1", features = ["unstable_const"] }
+
 # `cortex-m-rt` doesn't build on a hosted target. We don't want
 # `cargo test --all` to fail because of this, so we put these in the
 # target-specific section.

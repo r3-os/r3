@@ -11,6 +11,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
 #![no_std]
 
 pub mod clock;
