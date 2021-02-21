@@ -631,9 +631,11 @@ extern "C" fn save_st1() {
 
             # Restore `x7`
             LOAD x7, (7 * {X_SIZE})(x7)
+            ret
         ",
             ST1 = sym ST1,
             X_SIZE = const X_SIZE,
+            options(noreturn),
         );
     }
 }
@@ -677,8 +679,10 @@ unsafe extern "C" fn restore_st(_a0: *const St) {
 
             # Restore `x10`
             LOAD x10, (10 * {X_SIZE})(x10)
+            ret
         ",
             X_SIZE = const X_SIZE,
+            options(noreturn),
         );
     }
 }
