@@ -146,17 +146,17 @@ impl State {
         if System::USE_WFI {
             pp_asm!(
                 "
-            IdleLoopWithWfi:
+            0:
                 wfi
-                b IdleLoopWithWfi
+                b 0b
             ",
                 options(noreturn),
             );
         } else {
             pp_asm!(
                 "
-            IdleLoopWithoutWfi:
-                b IdleLoopWithoutWfi
+            0:
+                b 0b
             ",
                 options(noreturn),
             );
@@ -194,12 +194,8 @@ impl State {
             #    context),
             #  - CPU Lock active (`exit_and_dispatch`'s requirement)        "
             if cfg!(armv6m) {                                               "
-                ldr r0, IdleTaskConst
+                ldr r0, ={idle_task}
                 bx r0
-
-                .align 2
-            IdleTaskConst:
-                .word {idle_task}
         "   } else {                                                        "
                 b {idle_task}
         "   },
@@ -265,9 +261,9 @@ impl State {
             ldr r1, [r0]                                                    "
             if cfg!(armv6m) {                                               "
                 cmp r1, #0
-                beq ChooseTask
+                beq 0f
         "   } else {                                                        "
-                cbz r1, ChooseTask
+                cbz r1, 0f
         "   }                                                               "
             mrs r2, psp
             mrs r3, control
@@ -297,7 +293,7 @@ impl State {
         "   }                                                               "
 
             # Choose the next task to run
-        ChooseTask:
+        0:     # ChooseTask
             mov r5, r0
             bl {choose_next_task}
             mov r0, r5
@@ -323,6 +319,7 @@ impl State {
             #        r2 += 8;
             #        psp = r2
             #    else:
+            #        // `RestoreIdleTask`
             #        // The idle task only uses r0-r3, so we can skip most steps
             #        // in this case
             #        control = 2;
@@ -335,9 +332,9 @@ impl State {
             ldr r1, [r0]                                                    "
             if cfg!(armv6m) {                                               "
                 cmp r1, #0
-                beq RestoreIdleTask
+                beq 0f
         "   } else {                                                        "
-                cbz r1, RestoreIdleTask
+                cbz r1, 0f
         "   }                                                               "
             ldr r2, [r1]                                                    "
             if cfg!(any(armv6m, armv8m_base)) {                             "
@@ -363,7 +360,7 @@ impl State {
             msr psp, r2
             bx lr
 
-        RestoreIdleTask:
+        0:
             movs r0, #0                                                     "
             if cfg!(any(armv6m, armv8m_base)) {                             "
                 # 0x00000006 = !0xfffffff9

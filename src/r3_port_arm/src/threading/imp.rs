@@ -83,14 +83,16 @@ impl State {
                 # Switch to System mode
                 cps #0x1f
 
-                # `Dispatch` needs stack
+                # `dispatch` needs stack
                 mov sp, r0
 
                 # Save the stack pointer for later use
                 str r0, [r1]
 
-                b Dispatch
+                b {push_second_level_state_and_dispatch}.dispatch
                 ",
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
                 in("r1") self.main_stack.get(),
                 options(noreturn),
             );
@@ -119,7 +121,7 @@ impl State {
                 #   sp_usr[6] = &YieldReturn;
                 #   sp_usr[7] = CPSR;
                 #
-                adr r2, YieldReturn
+                adr r2, 0f
                 mrs r3, CPSR
                 push {{r2, r3}}
                 push {{r12, lr}}
@@ -129,7 +131,7 @@ impl State {
                 cpsid i
                 b {push_second_level_state_and_dispatch}
 
-            YieldReturn:
+            0:        # YieldReturn
                 ",
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<System>,
@@ -145,12 +147,12 @@ impl State {
     ///  - If the current task is not an idle task,
     ///     - Push the second-level state.
     ///     - Store SP to the current task's `TaskState`.
-    ///  - `Dispatch:`
+    ///  - **`dispatch:`** (alternate entry point)
     ///     - Call [`r3::kernel::PortToKernel::choose_running_task`].
     ///     - Restore SP from the next scheduled task's `TaskState`.
     ///  - If there's no task to schedule, branch to [`Self::idle_task`].
     ///  - Pop the second-level state of the next scheduled task.
-    ///  - `PopFirstLevelState:`
+    ///  - **`pop_first_level_state:`** (alternate entry point)
     ///     - Pop the first-level state of the next scheduled task.
     ///
     /// # Safety
@@ -191,7 +193,7 @@ impl State {
                 #
                 tst sp, sp
                 ldreq sp, [r0, #{OFFSET_MAIN_STACK}]
-                beq Dispatch
+                beq {push_second_level_state_and_dispatch}.dispatch
 
                 # Push the second-level context state.
                 push {{r4-r11}}
@@ -206,8 +208,8 @@ impl State {
                 ldr r0, [r0]
                 str sp, [r0]
 
-            .global Dispatch
-            Dispatch:
+            .global {push_second_level_state_and_dispatch}.dispatch
+            {push_second_level_state_and_dispatch}.dispatch:
                 # Choose the next task to run. `choose_and_get_next_task`
                 # returns the new value of `running_task`.
                 bl {choose_and_get_next_task}
@@ -227,8 +229,8 @@ impl State {
                 # Pop the second-level context state.
                 pop {{r4-r11}}
 
-            .global PopFirstLevelState
-            PopFirstLevelState:
+            .global {push_second_level_state_and_dispatch}.pop_first_level_state
+            {push_second_level_state_and_dispatch}.pop_first_level_state:
                 # Reset the local monitor's state (this will cause a
                 # subsequent Store-Exclusive to fail)
                 clrex
@@ -250,6 +252,8 @@ impl State {
                 rfeia sp!
             ",
                 choose_and_get_next_task = sym choose_and_get_next_task::<System>,
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
                 idle_task = sym Self::idle_task::<System>,
                 PORT_STATE = sym System::PORT_STATE,
                 OFFSET_RUNNING_TASK_PTR = const Self::OFFSET_RUNNING_TASK_PTR,
@@ -260,35 +264,37 @@ impl State {
     }
 
     /// Branch to `push_second_level_state_and_dispatch` if `dispatch_pending`
-    /// is set. Otherwise, branch to `PopFirstLevelState` (thus skipping the
+    /// is set. Otherwise, branch to `pop_first_level_state` (thus skipping the
     /// saving/restoration of second-level states).
     #[naked]
     unsafe extern "C" fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>(
     ) -> ! {
         unsafe {
             asm!("
-                # Read `port_state().dispatch_pending`
+                # Read `port_state().dispatch_pending`. If it's clear, branch
+                # to `NotShortcutting`
                 movw r0, :lower16:{PORT_STATE}
                 movt r0, :upper16:{PORT_STATE}
                 ldrb r1, [r0, #{OFFSET_DISPATCH_PENDING}]
                 tst r1, r1
-                bne NotShortcutting
+                bne 0f
 
                 # `dispatch_pending` is clear, meaning we are returning to the
                 # same task that the current exception has interrupted.
                 #
                 # If we are returning to the idle task, branch to `idle_task`
-                # directly because `PopFirstLevelState` can't handle this case.
+                # directly because `pop_first_level_state` can't handle this
+                # case.
                 tst sp, sp
                 beq {idle_task}
 
-                b PopFirstLevelState
+                b {push_second_level_state_and_dispatch}.pop_first_level_state
 
                 # `dispatch_pending` is set, meaning `yield_cpu` was called in
                 # an interrupt handler, meaning we might need to return to a
                 # different task. Clear `dispatch_pending` and branch to
                 # `push_second_level_state_and_dispatch`.
-            NotShortcutting:
+            0:                  # NotShortcutting
                 movs r1, #0
                 strb r1, [r0, #{OFFSET_DISPATCH_PENDING}]
                 b {push_second_level_state_and_dispatch}
@@ -320,12 +326,12 @@ impl State {
                 "
                 movs sp, #0
                 cpsie i
-            IdleLoop:
+            0:
                 # Ensure all outstanding memory transactions are complete before
                 # halting the processor
                 dsb
                 wfi
-                b IdleLoop
+                b 0b
             ",
                 options(noreturn),
             );
@@ -340,8 +346,10 @@ impl State {
             asm!(
                 "
                 cpsid i
-                b Dispatch
+                b {push_second_level_state_and_dispatch}.dispatch
                 ",
+                push_second_level_state_and_dispatch =
+                    sym Self::push_second_level_state_and_dispatch::<System>,
                 options(noreturn),
             );
         }
@@ -445,20 +453,20 @@ impl State {
                 #
                 #   sp_irq = SPSR
                 #   match sp_irq.M:
-                #       Supervisor => cps Supervisor
-                #       System => cps System
+                #       Supervisor => cps Supervisor (== 0x13)
+                #       System => cps System (== 0x1f)
                 #
                 #   <[r0-r12, sp_xxx, lr_xxx, SPSR] = background context,
                 #    lr_irq = preferred return address>
                 #
                 mrs sp, SPSR
                 tst sp, #0x8
-                bne BackgroundIsTask
+                bne 0f
                 cps #0x13
-                b SwitchToBackgroundEnd
-            BackgroundIsTask:
+                b 1f
+            0:          # BackgroundIsTask
                 cps #0x1f
-            SwitchToBackgroundEnd:
+            1:          # SwitchToBackgroundEnd
 
                 # Skip saving the first-level state if the background context
                 # is an idle task.
@@ -473,7 +481,7 @@ impl State {
                 tst sp, sp
                 it eq
                 moveq r1, #8
-                beq PushFirstLevelStateEnd
+                beq 0f
 
                 # Save the first-level state to the background context's stack
                 # (sp_xxx = SP_usr or sp_svc).
@@ -506,7 +514,7 @@ impl State {
                 mov r0, lr
                 mrs r1, SPSR
                 strd r0, r1, [r2, #24]
-            PushFirstLevelStateEnd:
+            0:     # PushFirstLevelStateEnd
 
                 # Switch to Supervisor mode.
                 cps #0x13
@@ -544,7 +552,7 @@ impl State {
                 #           goto ReturnToTask;
                 #
                 tst ip, #0x8
-                bne ReturnToTask
+                bne 0f
 
                 # We are returning to an outer interrupt handler. Switching the
                 # processor mode or finding the next task to dispatch is
@@ -566,7 +574,7 @@ impl State {
                 pop {{r0-r3, r12, lr}}
                 rfeia sp!
 
-            ReturnToTask:
+            0:       # ReturnToTask
                 cpsid i
 
                 # Back to System mode...
