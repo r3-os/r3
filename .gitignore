@@ -2,3 +2,4 @@
 **/*.rs.bk
 /publish
 **/target/criterion
+.DS_Store
