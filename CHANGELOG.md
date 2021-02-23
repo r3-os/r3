@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- Change the target compiler version to `nightly-2021-02-19`
+- Change the target compiler version to `nightly-2021-02-23`
 - Upgrade `register` to `>= 0.5.1, < 2.0.0`
 - Upgrade `r0` to `^1.0.0`
 - Upgrade `tokenlock` to `0.3.4`
