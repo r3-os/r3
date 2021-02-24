@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Upgrade `r0` to `^1.0.0`
 - Upgrade `tokenlock` to `0.3.4`
 - Using the new version of `tokenlock`, some atomics-based hacks were removed. This might marginally improve the runtime performance as the compiler is given more leeway to optimize memory accesses.
+- The `cortex-m-rt` binding has been separated to `r3_port_arm_m::use_rt!`.
 
 ### Fixed
 

@@ -1,3 +1,4 @@
+#![feature(asm)]
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -61,6 +62,7 @@ macro_rules! instantiate_test {
         }
 
         port::use_port!(unsafe struct System);
+        port::use_rt!(unsafe System);
         port::use_systick_tickful!(unsafe impl PortTimer for System);
 
         impl port::ThreadingOptions for System {

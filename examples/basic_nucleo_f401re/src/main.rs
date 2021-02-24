@@ -1,3 +1,4 @@
+#![feature(asm)]
 #![feature(const_fn)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
@@ -18,6 +19,7 @@ use r3_port_arm_m as port;
 use panic_rtt_target as _;
 
 port::use_port!(unsafe struct System);
+port::use_rt!(unsafe System);
 port::use_systick_tickful!(unsafe impl PortTimer for System);
 
 impl port::ThreadingOptions for System {

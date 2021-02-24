@@ -615,59 +615,6 @@ impl State {
             Err(QueryInterruptLineError::BadParam)
         }
     }
-
-    #[inline(always)]
-    pub unsafe fn handle_sys_tick<System: PortInstance>(&'static self) {
-        if let Some(x) = System::INTERRUPT_HANDLERS.get(INTERRUPT_SYSTICK) {
-            // Safety: It's a first-level interrupt handler here. CPU Lock inactive
-            unsafe { x() };
-        }
-    }
-}
-
-/// Used by `use_port!`
-#[derive(Clone, Copy)]
-pub union InterruptHandler {
-    undefined: usize,
-    defined: r3::kernel::cfg::InterruptHandlerFn,
-}
-
-const NUM_INTERRUPTS: usize = if cfg!(armv6m) { 32 } else { 240 };
-
-pub type InterruptHandlerTable = [InterruptHandler; NUM_INTERRUPTS];
-
-/// Used by `use_port!`
-pub const fn make_interrupt_handler_table<System: PortInstance>() -> InterruptHandlerTable {
-    let mut table = [InterruptHandler { undefined: 0 }; NUM_INTERRUPTS];
-    let mut i = 0;
-
-    // FIXME: Work-around for `for` being unsupported in `const fn`
-    while i < table.len() {
-        table[i] = if let Some(x) = System::INTERRUPT_HANDLERS.get(i + 16) {
-            InterruptHandler { defined: x }
-        } else {
-            InterruptHandler { undefined: 0 }
-        };
-        i += 1;
-    }
-
-    // Disallow registering in range `0..16` except for SysTick
-    i = 0;
-    // FIXME: Work-around for `for` being unsupported in `const fn`
-    while i < 16 {
-        if i != INTERRUPT_SYSTICK {
-            // TODO: This check trips even if no handler is registered at `i`
-            #[cfg(any())]
-            assert!(
-                System::INTERRUPT_HANDLERS.get(i).is_none(),
-                "registering a handler for a non-internal exception is \
-                disallowed except for SysTick"
-            );
-        }
-        i += 1;
-    }
-
-    table
 }
 
 /// Used by `use_port!`
@@ -678,25 +625,4 @@ pub const fn validate<System: PortInstance>() {
         "`CPU_LOCK_PRIORITY_MASK` must be zero because the target architecture \
          does not have a BASEPRI register"
     );
-}
-
-/// Define a `PendSV` symbol at the PendSV handler implementation.
-///
-/// Just including this function in linking causes the intended effect. Calling
-/// this function at runtime will have no effect.
-#[naked]
-pub extern "C" fn register_pend_sv_in_rt<System: PortInstance>() {
-    // `global_asm!` can't refer to mangled symbols, so we need to use `asm!`
-    // to do this.
-    unsafe {
-        asm!("
-            bx lr
-
-            .global PendSV
-            PendSV = {}
-        ",
-            sym State::handle_pend_sv::<System>,
-            options(noreturn),
-        );
-    }
 }

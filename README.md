@@ -38,6 +38,7 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 ## Example
 
 ```rust
+#![feature(asm)]
 #![feature(const_fn)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -50,6 +51,7 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 use r3_port_arm_m as port;
 
 port::use_port!(unsafe struct System);
+port::use_rt!(unsafe System);
 port::use_systick_tickful!(unsafe impl PortTimer for System);
 
 impl port::ThreadingOptions for System {}

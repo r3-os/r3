@@ -28,6 +28,7 @@ pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER;
 mod panic_serial;
 
 port::use_port!(unsafe struct System);
+port::use_rt!(unsafe System);
 port::use_systick_tickful!(unsafe impl PortTimer for System);
 
 impl port::ThreadingOptions for System {}

@@ -26,6 +26,14 @@ pub mod threading {
     pub mod imp;
 }
 
+/// The binding for [`::cortex_m_rt`].
+#[doc(hidden)]
+pub mod rt {
+    pub mod cfg;
+    #[cfg(target_os = "none")]
+    pub mod imp;
+}
+
 /// The tickful [`r3::kernel::PortTimer`] implementation based on SysTick.
 #[doc(hidden)]
 pub mod systick_tickful {

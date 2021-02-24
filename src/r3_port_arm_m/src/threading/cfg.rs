@@ -51,13 +51,37 @@ pub trait ThreadingOptions {
     }
 }
 
-/// Instantiate the port.
+/// Defines the entry points of a port instantiation. Implemented by
+/// [`use_port!`].
+pub unsafe trait EntryPoint {
+    /// Proceed with the boot process.
+    ///
+    /// # Safety
+    ///
+    ///  - The processor should be in Thread mode.
+    ///  - This method hasn't been entered yet.
+    ///
+    unsafe fn start() -> !;
+
+    /// The PendSV handler.
+    ///
+    /// # Safety
+    ///
+    ///  - This method must be registered as a PendSV handler. The callee-saved
+    ///    registers must contain the values from the background context.
+    ///
+    const HANDLE_PEND_SV: unsafe extern "C" fn();
+}
+
+/// Instantiate the port. Implements the port traits ([`PortThreading`], etc.)
+/// and [`EntryPoint`].
 ///
 /// This macro doesn't provide an implementation of [`PortTimer`], which you
 /// must supply one through other ways.
 /// See [the crate-level documentation](crate#kernel-timing) for possible
 /// options.
 ///
+/// [`PortThreading`]: r3::kernel::PortThreading
 /// [`PortTimer`]: r3::kernel::PortTimer
 ///
 /// # Safety
@@ -90,7 +114,7 @@ macro_rules! use_port {
             use $crate::core::ops::Range;
             use $crate::threading::{
                 imp::{State, TaskState, PortInstance},
-                cfg::ThreadingOptions,
+                cfg::{ThreadingOptions, EntryPoint},
             };
 
             pub(super) fn port_state() -> &'static State {
@@ -178,29 +202,17 @@ macro_rules! use_port {
                     port_state().is_interrupt_line_pending::<Self>(line)
                 }
             }
+
+            unsafe impl EntryPoint for $sys {
+                unsafe fn start() -> ! {
+                    unsafe { port_state().port_boot::<$sys>() }
+                }
+
+                const HANDLE_PEND_SV: unsafe extern "C" fn() =
+                    State::handle_pend_sv::<$sys>;
+            }
         }
 
         const _: () = $crate::threading::imp::validate::<$sys>();
-
-        #[link_section = ".vector_table.interrupts"]
-        #[no_mangle]
-        static __INTERRUPTS: $crate::threading::imp::InterruptHandlerTable =
-            $crate::threading::imp::make_interrupt_handler_table::<$sys>();
-
-        #[$crate::cortex_m_rt::entry]
-        fn main() -> ! {
-            unsafe { port_arm_m_impl::port_state().port_boot::<$sys>() };
-        }
-
-        // Register `handle_pend_sv` as the PendSV handler under
-        // `cortex_m_rt`'s regime
-        #[used]
-        static _REGISTER_PEND_SV: extern "C" fn() =
-            $crate::threading::imp::register_pend_sv_in_rt::<$sys>;
-
-        #[$crate::cortex_m_rt::exception]
-        fn SysTick() {
-            unsafe { port_arm_m_impl::port_state().handle_sys_tick::<$sys>() };
-        }
     };
 }
