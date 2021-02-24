@@ -78,7 +78,7 @@ impl State {
         unsafe { *self.running_task_ptr.get() = System::state().running_task_ptr() as *mut () };
 
         // Claim the ownership of `Peripherals`
-        let mut peripherals = cortex_m::Peripherals::take().unwrap();
+        let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
 
         // Set the priorities of SVCall and PendSV
         // Safety: We don't make "priority-based critical sections"
