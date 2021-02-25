@@ -23,9 +23,10 @@ jobs:
 
       - name: Exclude Crates
         run: |
-          # `basic_*` fail to compile unless you
-          # provide an appropriate target triple.
+          # Example crates will fail to compile unless an appropriate target
+          # triple is provided.
           sed -E -i.bak 's/.*basic_.*//' Cargo.toml
+          sed -E -i.bak 's/.*smp_rp_pico.*//' Cargo.toml
 
       - name: Clippy
         uses: actions-rs/clippy-check@v1
@@ -81,6 +82,12 @@ jobs:
           # `r3_port_std` doesn't support Windows yet
           sed -E -i.bak 's/.*r3_port_std.*//' Cargo.toml
           sed -E -i.bak 's/.*basic.*//' Cargo.toml
+
+      - name: Exclude Crates
+        shell: bash
+        run: |
+          sed -E -i.bak 's/.*basic_.*//' Cargo.toml
+          sed -E -i.bak 's/.*smp_rp_pico.*//' Cargo.toml
 
       - name: Test
         uses: actions-rs/cargo@v1

@@ -1,0 +1,19 @@
+[package]
+name = "r3_example_smp_rp_pico"
+version = "0.0.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2018"
+publish = false
+
+# `cortex-m-rt` and other crates don't build on a hosted target. We don't want
+# `cargo test --all` to fail because of this, so we put dependencies in the
+# target-specific section.
+[target."cfg(target_os = \"none\")".dependencies]
+r3_support_rp2040 = { path = "../../src/r3_support_rp2040", features = ["semver-exempt"] }
+r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
+r3 = { path = "../../src/r3", features = ["system_time"] }
+
+rp2040-boot2 = { version = "0.1.2" }
+cortex-m-rt = { version = "0.6.12", features = ["device"] }
+cortex-m = { version = "0.6.3", features = ["inline-asm"] }
+rp2040 = { version = "0.1.0" }

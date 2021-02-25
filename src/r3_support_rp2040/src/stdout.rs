@@ -34,7 +34,7 @@ static STDOUT: interrupt::Mutex<RefCell<Option<InlineDynWrite>>> =
 struct WrapSerialWrite;
 
 impl WrapSerialWrite {
-    fn write_str_inner(mut s: &[u8]) -> core::fmt::Result {
+    fn write_bytes_inner(mut s: &[u8]) -> core::fmt::Result {
         loop {
             if s.is_empty() {
                 break Ok(());
@@ -64,25 +64,32 @@ impl WrapSerialWrite {
             }))?;
         }
     }
-}
 
-impl core::fmt::Write for WrapSerialWrite {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let mut s = s.as_bytes();
+    fn write_bytes(mut s: &[u8]) -> core::fmt::Result {
         while let Some(i) = s.iter().position(|&x| x == b'\n') {
             if i > 0 {
-                Self::write_str_inner(&s[0..i])?;
+                Self::write_bytes_inner(&s[0..i])?;
             }
 
-            Self::write_str_inner(b"\r\n")?;
+            Self::write_bytes_inner(b"\r\n")?;
 
             s = &s[i + 1..];
         }
         if s.len() > 0 {
-            Self::write_str_inner(s)?;
+            Self::write_bytes_inner(s)?;
         }
         Ok(())
     }
+}
+
+impl core::fmt::Write for WrapSerialWrite {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        Self::write_bytes(s.as_bytes())
+    }
+}
+
+pub fn write_bytes(s: &[u8]) {
+    let _ = WrapSerialWrite::write_bytes(s);
 }
 
 #[doc(hidden)]

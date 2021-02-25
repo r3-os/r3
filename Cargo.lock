@@ -1273,6 +1273,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "r3_example_smp_rp_pico"
+version = "0.0.0"
+dependencies = [
+ "cortex-m 0.6.7",
+ "cortex-m-rt",
+ "r3",
+ "r3_port_arm_m",
+ "r3_support_rp2040",
+ "rp2040",
+ "rp2040-boot2",
+]
+
+[[package]]
 name = "r3_port_arm"
 version = "0.1.0"
 dependencies = [
