@@ -688,7 +688,7 @@ checksum = "69b1cda20e843558e892373b1fd01a900232103f65fa4be8f18edcd130dde30e"
 dependencies = [
  "bare-metal",
  "riscv 0.5.4",
- "riscv-rt 0.6.2",
+ "riscv-rt",
  "vcell",
 ]
 
@@ -1348,7 +1348,7 @@ dependencies = [
  "r3_portkit",
  "register",
  "riscv 0.6.0",
- "riscv-rt 0.8.0",
+ "riscv-rt",
 ]
 
 [[package]]
@@ -1365,7 +1365,7 @@ dependencies = [
  "r3_portkit",
  "r3_test_suite",
  "riscv 0.6.0",
- "riscv-rt 0.8.0",
+ "riscv-rt",
  "rtt-target",
 ]
 
@@ -1638,18 +1638,6 @@ dependencies = [
  "r0 0.2.2",
  "riscv 0.5.4",
  "riscv-rt-macros",
-]
-
-[[package]]
-name = "riscv-rt"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7fe583b2216c75d6f35996919c09fd4011fbc8f6bf31e5fbc97483a6aaa8bdd"
-dependencies = [
- "r0 1.0.0",
- "riscv 0.6.0",
- "riscv-rt-macros",
- "riscv-target",
 ]
 
 [[package]]
