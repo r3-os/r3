@@ -57,7 +57,7 @@ pub struct BencherCottage<System> {
 struct BencherState(UnsafeCell<BencherStateInner>);
 struct BencherStateInner {
     mark: u32,
-    intervals: StaticVec<IntervalRecord, 8>,
+    intervals: StaticVec<IntervalRecord, 32>,
 }
 
 unsafe impl Sync for BencherState {}

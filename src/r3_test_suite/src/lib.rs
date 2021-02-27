@@ -1,4 +1,5 @@
 #![feature(external_doc)] // `#[doc(include = ...)]`
+#![feature(asm)]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(const_option)]
@@ -530,6 +531,7 @@ pub mod kernel_benchmarks {
         (mod mutex_none {}, "mutex_none"),
         (mod port {}, "port"),
         (mod semaphore {}, "semaphore"),
+        (mod std_binary_search {}, "std_binary_search"),
         (mod task_lifecycle {}, "task_lifecycle"),
         (mod timer_start {}, "timer_start"),
     }
