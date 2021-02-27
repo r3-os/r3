@@ -31,3 +31,4 @@ rev = "8bb53577ccee46550c0b688dfc2d13c1cd896083"
 
 [profile.release]
 debug = true
+lto = true

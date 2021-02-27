@@ -531,7 +531,8 @@ pub mod kernel_benchmarks {
         (mod mutex_none {}, "mutex_none"),
         (mod port {}, "port"),
         (mod semaphore {}, "semaphore"),
-        (mod std_binary_search {}, "std_binary_search"),
+        (mod std_binary_search_u32 {}, "std_binary_search_u32"),
+        (mod std_binary_search_u8x8 {}, "std_binary_search_u8x8"),
         (mod task_lifecycle {}, "task_lifecycle"),
         (mod timer_start {}, "timer_start"),
     }
