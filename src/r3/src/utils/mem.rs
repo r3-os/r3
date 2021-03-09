@@ -25,6 +25,13 @@ pub const unsafe fn transmute<T, U>(x: T) -> U {
 }
 
 /// Construct a `[MaybeUninit<T>; LEN]` whose elements are uninitialized.
+///
+/// This function is a `const fn` version of the [unstable]
+/// `MaybeUninit::uninit_array` method.
+///
+/// FIXME: Remove this function when `MaybeUninit::uninit_array` becomes `const fn`
+///
+/// [unstable]: https://github.com/rust-lang/rust/pull/65580
 pub const fn uninit_array<T, const LEN: usize>() -> [MaybeUninit<T>; LEN] {
     [MaybeUninit::<T>::INIT; LEN]
 }
