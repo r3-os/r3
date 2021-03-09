@@ -245,6 +245,8 @@ macro_rules! const_array_from_fn {
         }
 
         // Safety: See the body of `__assume_init`.
+        // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
+        //        it becomes `const fn`
         unsafe { __assume_init::<$($ctx_t,)* {$len_value}>(array) }
     }};
 }

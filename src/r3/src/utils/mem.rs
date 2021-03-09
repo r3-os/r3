@@ -40,6 +40,8 @@ mod tests {
                 MaybeUninit::new(2),
                 MaybeUninit::new(3),
             ];
+            // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
+            //        it becomes `const fn`
             unsafe { transmute(array) }
         };
         assert_eq!(ARRAY1, [1, 2, 3]);

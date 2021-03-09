@@ -55,6 +55,8 @@ impl<T: Copy> ComptimeVec<T> {
         // FIXME: Work-around for `assert_eq!` being unsupported in `const fn`
         assert!(self.len() == LEN);
 
+        // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
+        //        it becomes `const fn`
         // Safety: This is equivalent to `transmute_copy(&self.storage)`. The
         // memory layout of `[MaybeUninit<T>; LEN]` is identical to `[T; LEN]`.
         // We initialized all elements in `storage[0..LEN]`, so it's safe to

@@ -40,6 +40,8 @@ impl<System: Kernel> AppInner<System> {
                 i += 1;
             }
 
+            // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
+            //        it becomes `const fn`
             unsafe { core::mem::transmute(timers) }
         };
 

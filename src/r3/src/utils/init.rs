@@ -39,6 +39,8 @@ impl<T: Init, const LEN: usize> Init for [T; LEN] {
             i += 1;
         }
 
+        // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
+        //        it becomes `const fn`
         // Safety: The memory layout of `[MaybeUninit<T>; LEN]` is
         // identical to `[T; LEN]`. We initialized all elements, so it's
         // safe to reinterpret that range as `[T; LEN]`.
