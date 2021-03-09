@@ -1,5 +1,7 @@
 use core::mem::{ManuallyDrop, MaybeUninit};
 
+use super::Init;
+
 union Xmute<T, U> {
     t: ManuallyDrop<T>,
     u: ManuallyDrop<U>,
@@ -24,7 +26,7 @@ pub const unsafe fn transmute<T, U>(x: T) -> U {
 
 /// Construct a `[MaybeUninit<T>; LEN]` whose elements are uninitialized.
 pub const fn uninit_array<T, const LEN: usize>() -> [MaybeUninit<T>; LEN] {
-    unsafe { transmute(()) }
+    [MaybeUninit::<T>::INIT; LEN]
 }
 
 #[cfg(test)]
