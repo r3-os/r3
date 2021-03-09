@@ -472,11 +472,13 @@ pub unsafe trait PortThreading: KernelCfg1 {
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
 
     /// Transfer the control to the dispatcher, discarding the current
-    /// (startup) context. [`State::running_task`] is `None` at this point.
-    /// The dispatcher should call [`PortToKernel::choose_running_task`] to find
-    /// the next task to run and transfer the control to that task.
+    /// (startup) context. `*state.`[`running_task_ptr`]`()` is `None` at this
+    /// point. The dispatcher should call [`PortToKernel::choose_running_task`]
+    /// to find the next task to run and transfer the control to that task.
     ///
     /// Precondition: CPU Lock active, a boot context
+    ///
+    /// [`running_task_ptr`]: State::running_task_ptr
     unsafe fn dispatch_first_task() -> !;
 
     /// Yield the processor.
@@ -502,10 +504,12 @@ pub unsafe trait PortThreading: KernelCfg1 {
     unsafe fn yield_cpu();
 
     /// Destroy the state of the previously running task (`task`, which has
-    /// already been removed from [`State::running_task`]) and proceed to
-    /// the dispatcher.
+    /// already been removed from `*state.`[`running_task_ptr`]`()`) and proceed
+    /// to the dispatcher.
     ///
     /// Precondition: CPU Lock active
+    ///
+    /// [`running_task_ptr`]: State::running_task_ptr
     unsafe fn exit_and_dispatch(task: &'static task::TaskCb<Self>) -> !;
 
     /// Disable all kernel-managed interrupts (this state is called *CPU Lock*).
