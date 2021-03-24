@@ -59,3 +59,4 @@ jobs:
         with:
           branch: gh-pages
           folder: output
+          single-commit: true
