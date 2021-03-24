@@ -51,13 +51,13 @@ unsafe impl<T> SymStaticExt for SymStatic<T> {
         //   ldr        r0, =0x20000001
         //   subs       r0, r0, #0x1
         //
-        unsafe { &*((self as usize - 1) as *const T) }
+        (self as usize - 1) as *const T
     }
 
     #[inline(always)]
     #[cfg(not(all(target_arch = "arm", target_feature = "thumb-mode")))]
     fn as_ptr(self) -> *const T {
-        unsafe { &*(self as usize as *const T) }
+        self as usize as *const T
     }
 }
 
