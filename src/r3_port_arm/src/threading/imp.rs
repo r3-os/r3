@@ -175,8 +175,8 @@ impl State {
 
         unsafe {
             asm!("
-                movw r0, :lower16:{PORT_STATE}
-                movt r0, :upper16:{PORT_STATE}
+                movw r0, :lower16:{PORT_STATE}_
+                movt r0, :upper16:{PORT_STATE}_
 
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
@@ -273,8 +273,8 @@ impl State {
             asm!("
                 # Read `port_state().dispatch_pending`. If it's clear, branch
                 # to `NotShortcutting`
-                movw r0, :lower16:{PORT_STATE}
-                movt r0, :upper16:{PORT_STATE}
+                movw r0, :lower16:{PORT_STATE}_
+                movt r0, :upper16:{PORT_STATE}_
                 ldrb r1, [r0, #{OFFSET_DISPATCH_PENDING}]
                 tst r1, r1
                 bne 0f
