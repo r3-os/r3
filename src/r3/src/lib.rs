@@ -13,7 +13,6 @@
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
-#![feature(or_patterns)]
 #![feature(option_result_unwrap_unchecked)] // `Option<T>::unwrap_unchecked`
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(never_type)] // `!`
