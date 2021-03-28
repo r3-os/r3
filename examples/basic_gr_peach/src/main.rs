@@ -4,7 +4,6 @@
 #![feature(asm)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
-#![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![no_std]
