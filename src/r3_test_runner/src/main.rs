@@ -1,4 +1,3 @@
-#![feature(or_patterns)] // `|` in subpatterns
 #![feature(decl_macro)] // `macro`
 use std::{env, path::Path};
 use structopt::StructOpt;

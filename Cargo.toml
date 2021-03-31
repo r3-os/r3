@@ -29,5 +29,26 @@ members = [
 git = "https://github.com/probe-rs/probe-rs.git"
 rev = "8bb53577ccee46550c0b688dfc2d13c1cd896083"
 
+[patch.crates-io.riscv]
+# We need to enable `riscv/inline-asm` to work around
+# <https://github.com/rust-embedded/riscv/issues/69>. However, some external
+# crates depend on `riscv` 0.5.x, which uses the old form of `asm!` with the
+# LLVM syntax, which was moved to `llvm_asm!` when the new inline assembler
+# syntax has landed. Therefore, we have to patch `riscv` 0.5.x with the version
+# that uses the form of inline assembler supported by the current compiler.
+git = "https://github.com/yvt/rust-riscv.git"
+branch = "0.5-asm"
+
+[patch.crates-io.riscv-rt]
+# FIXME: This is a work-around for
+# <https://github.com/rust-embedded/riscv/issues/69>. The upstream version of
+# `riscv-rt` includes a precompiled object file, which may be rejected by the
+# linker because of a floating-point ABI mismatch. This patched version replaces
+# the precompiled object file with naked functions, which will always be
+# complied with the expected floating-point ABI.
+git = "https://github.com/yvt/rust-riscv-rt.git"
+rev = "cd7b460d1940630d235b5a7b46cc50421c12e39b"
+version = "0.6.2"
+
 [profile.release]
 debug = true

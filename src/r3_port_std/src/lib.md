@@ -8,7 +8,6 @@ Simulator for running [`::r3`] on a hosted environment
 #![feature(const_fn_fn_ptr_basics)]
 
 // Require `unsafe` even in `unsafe fn` - highly recommended
-#![feature(unsafe_block_in_unsafe_fn)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use r3::kernel::{Task, cfg::CfgBuilder};

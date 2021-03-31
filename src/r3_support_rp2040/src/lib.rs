@@ -3,7 +3,6 @@
 //!
 //! [R3]: ::r3
 //! [Raspberry Pi Pico]: https://pico.raspberrypi.org
-#![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(raw_ref_op)]
 #![feature(maybe_uninit_ref)]
 #![feature(asm)]

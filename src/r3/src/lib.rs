@@ -13,10 +13,8 @@
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
-#![feature(or_patterns)]
 #![feature(option_result_unwrap_unchecked)] // `Option<T>::unwrap_unchecked`
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
-#![feature(unsafe_block_in_unsafe_fn)] // `unsafe fn` doesn't imply `unsafe {}`
 #![feature(never_type)] // `!`
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]

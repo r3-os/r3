@@ -1123,6 +1123,11 @@ impl State {
             X_SIZE
         };
 
+        // FIXME: Add `#[repr(align(4))]` to this function. `.align 2` in `asm!`
+        //        actually doesn't work as intended. This attribute is being
+        //        implemented by the following PR:
+        //        <https://github.com/rust-lang/rust/pull/81234>
+
         unsafe {
             pp_asm!("
             "   crate::threading::imp::asm_inc::define_load_store!()              "
