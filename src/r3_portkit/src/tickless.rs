@@ -373,7 +373,7 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 /// ```
 /// </center>
 ///
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 #[derive(Debug, Copy, Clone)]
 pub struct TicklessStatelessCore;
 
@@ -391,7 +391,7 @@ pub struct TicklessStateCore<Subticks> {
 }
 
 /// Operations implemented by all valid instantiations of [`TicklessState`].
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// Mark the given hardware tick count as the origin (where
     /// OS tick count is exactly zero).

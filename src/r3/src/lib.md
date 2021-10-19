@@ -676,7 +676,7 @@ Enabling the following features might affect the kernel's runtime peformance and
 [Priority Boost]: #system-states
 
 <!--
-FIXME: Work-around for `svgbobdoc` not supporting `#[doc(include = ...)]`
+FIXME: Work-around for `svgbobdoc` not supporting `#[doc = include_str!(...)]`
        or `rustdoc` not integrating `svgbob` yet ;)
        Related: <https://github.com/ivanceras/svgbob/issues/26>
 

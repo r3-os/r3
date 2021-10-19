@@ -1,4 +1,3 @@
-#![feature(external_doc)]
 #![feature(const_fn)]
 #![feature(decl_macro)]
 #![feature(naked_functions)]
@@ -11,8 +10,8 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
-#![doc(include = "./lib.md")]
-#![doc(include = "./common.md")]
+#![doc = include_str!("./lib.md")]
+#![doc = include_str!("./common.md")]
 #![no_std]
 use core::ops::Range;
 use r3::kernel::{

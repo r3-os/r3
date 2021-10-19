@@ -1,4 +1,3 @@
-#![feature(external_doc)] // `#[doc(include = ...)]`
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -25,8 +24,8 @@
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
-#![doc(include = "./lib.md")]
-#![doc(include = "./common.md")]
+#![doc = include_str!("./lib.md")]
+#![doc = include_str!("./common.md")]
 #![cfg_attr(
     feature = "_full",
     doc = r#"<style type="text/css">.disabled-feature-warning { display: none; }</style>"#

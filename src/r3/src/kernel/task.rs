@@ -64,7 +64,7 @@ use self::readyqueue::Queue as _;
 ///
 /// [thread]: crate#threads
 /// [activated]: Task::activate
-#[doc(include = "../common.md")]
+#[doc = include_str!("../common.md")]
 #[repr(transparent)]
 pub struct Task<System>(Id, PhantomData<System>);
 

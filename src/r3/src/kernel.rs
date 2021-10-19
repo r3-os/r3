@@ -35,7 +35,7 @@ pub type Id = NonZeroUsize;
 ///
 /// This trait is automatically implemented on "system" types that have
 /// sufficient trait `impl`s to instantiate the kernel.
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     type DebugPrinter: fmt::Debug + Send + Sync;
 
@@ -447,7 +447,7 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
 /// implementation.
 ///
 /// These methods are only meant to be called by the kernel.
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe trait PortThreading: KernelCfg1 {
     type PortTaskState: Send + Sync + Init + fmt::Debug + 'static;
@@ -573,7 +573,7 @@ pub unsafe trait PortThreading: KernelCfg1 {
 /// implementation.
 ///
 /// These methods are only meant to be called by the kernel.
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe trait PortInterrupts: KernelCfg1 {
     /// The range of interrupt priority values considered [managed].
@@ -638,7 +638,7 @@ pub unsafe trait PortInterrupts: KernelCfg1 {
 /// # Safety
 ///
 /// These methods are only meant to be called by the kernel.
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 #[allow(clippy::missing_safety_doc)]
 pub trait PortTimer {
     /// The maximum value that [`tick_count`] can return. Must be greater

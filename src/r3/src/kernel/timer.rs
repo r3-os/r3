@@ -317,7 +317,7 @@ use crate::{
 ///
 /// [Reset the delay]: Timer::set_delay
 ///
-#[doc(include = "../common.md")]
+#[doc = include_str!("../common.md")]
 #[repr(transparent)]
 pub struct Timer<System>(Id, PhantomData<System>);
 

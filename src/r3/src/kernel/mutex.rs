@@ -35,7 +35,7 @@ use crate::{time::Duration, utils::Init};
 /// > have been simpler. Nevertheless, it was decided to use this enumerate
 /// > type to accomodate other protocols in the future and to allow specifying
 /// > protocol-specific parameters.
-#[doc(include = "../common.md")]
+#[doc = include_str!("../common.md")]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MutexProtocol {
     /// Locking the mutex does not affect the priority of the owning task.
@@ -297,7 +297,7 @@ pub enum MutexProtocol {
 /// >
 /// > </details>
 ///
-#[doc(include = "../common.md")]
+#[doc = include_str!("../common.md")]
 #[repr(transparent)]
 pub struct Mutex<System>(Id, PhantomData<System>);
 

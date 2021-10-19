@@ -32,7 +32,7 @@ pub const INIT_HOOK_PRIORITY: i32 = -0x7000_0000;
 /// hunk type.
 ///
 /// [`r3::kernel::Hunk`]: crate::kernel::Hunk
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 pub struct Hunk<System, T: ?Sized> {
     /// The offset of the hunk. `System::HUNK_ATTR.hunk_pool_ptr()` must be
     /// added before dereferencing.
