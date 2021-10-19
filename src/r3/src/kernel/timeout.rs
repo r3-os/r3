@@ -430,6 +430,10 @@ impl<System: Kernel> Init for Timeout<System> {
 impl<System: Kernel> Drop for Timeout<System> {
     #[inline]
     fn drop(&mut self) {
+        // TODO: Other threads might be still accessing it; isn't it unsafe
+        //       to get `&mut self`? At least this should be okay for the
+        //       current compiler thanks to `PhantomPinned` according to
+        //       <https://github.com/tokio-rs/tokio/pull/3654>
         if *self.heap_pos.get_mut() != HEAP_POS_NONE {
             // The timeout is still in the heap. Dropping `self` now would
             // cause use-after-free. Since we don't have CPU Lock and we aren't
