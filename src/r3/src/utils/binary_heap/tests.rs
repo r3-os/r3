@@ -1,6 +1,6 @@
 use super::*;
+use arrayvec::ArrayVec;
 use quickcheck_macros::quickcheck;
-use staticvec::StaticVec;
 
 /// A modifying operation on `BinaryHeap`.
 #[derive(Debug)]
@@ -76,13 +76,13 @@ fn test_inner<T: BinaryHeap + Default + super::VecLike<Element = usize> + std::f
 }
 
 #[quickcheck]
-fn test_staticvec_4(bytecode: Vec<u8>) {
-    test_inner::<StaticVec<usize, 4>>(bytecode, 4);
+fn test_arrayvec_4(bytecode: Vec<u8>) {
+    test_inner::<ArrayVec<usize, 4>>(bytecode, 4);
 }
 
 #[quickcheck]
-fn test_staticvec_256(bytecode: Vec<u8>) {
-    test_inner::<StaticVec<usize, 256>>(bytecode, 256);
+fn test_arrayvec_256(bytecode: Vec<u8>) {
+    test_inner::<ArrayVec<usize, 256>>(bytecode, 256);
 }
 
 #[quickcheck]

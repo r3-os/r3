@@ -1,11 +1,11 @@
 //! The benchmark framework that runs on R3.
+use arrayvec::ArrayVec;
 use core::{cell::UnsafeCell, fmt};
 use r3::{
     hunk::Hunk,
     kernel::{cfg::CfgBuilder, Kernel, Task},
     utils::Init,
 };
-use staticvec::StaticVec;
 
 use crate::utils::sort::insertion_sort;
 
@@ -57,21 +57,21 @@ pub struct BencherCottage<System> {
 struct BencherState(UnsafeCell<BencherStateInner>);
 struct BencherStateInner {
     mark: u32,
-    intervals: StaticVec<IntervalRecord, 8>,
+    intervals: ArrayVec<IntervalRecord, 8>,
 }
 
 unsafe impl Sync for BencherState {}
 
 struct IntervalRecord {
     name: Interval,
-    samples: StaticVec<u32, 45>,
+    samples: ArrayVec<u32, 45>,
 }
 
 impl Init for BencherState {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self(UnsafeCell::new(BencherStateInner {
         mark: 0,
-        intervals: StaticVec::new(),
+        intervals: ArrayVec::new_const(),
     }));
 }
 
@@ -112,7 +112,7 @@ impl<System: Kernel, Options: BencherOptions<System>> Bencher<System> for Option
             .intervals
             .try_push(IntervalRecord {
                 name,
-                samples: StaticVec::new(),
+                samples: ArrayVec::new(),
             })
             .is_ok()
         {
@@ -147,7 +147,7 @@ fn main_task<System: Kernel, Options: BencherOptions<System>>(_: usize) {
         }
 
         // Repeat until all instances of `IntervalRecord::samples` are full.
-        state.intervals.iter().any(|i| i.samples.is_not_full())
+        !state.intervals.iter().all(|i| i.samples.is_full())
     } {}
 
     // Report the result

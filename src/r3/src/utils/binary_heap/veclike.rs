@@ -1,12 +1,7 @@
+use arrayvec::ArrayVec;
 use core::ops;
-use staticvec::StaticVec;
 
-pub trait VecLike:
-    ops::Deref<Target = [<Self as VecLike>::Element]>
-    + ops::DerefMut
-    + ops::Index<usize, Output = <Self as VecLike>::Element>
-    + ops::IndexMut<usize, Output = <Self as VecLike>::Element>
-{
+pub trait VecLike: ops::Deref<Target = [<Self as VecLike>::Element]> + ops::DerefMut {
     type Element;
     fn is_empty(&self) -> bool;
     fn len(&self) -> usize;
@@ -14,7 +9,7 @@ pub trait VecLike:
     fn push(&mut self, x: Self::Element);
 }
 
-impl<T, const N: usize> VecLike for StaticVec<T, N> {
+impl<T, const N: usize> VecLike for ArrayVec<T, N> {
     type Element = T;
     fn is_empty(&self) -> bool {
         self.is_empty()

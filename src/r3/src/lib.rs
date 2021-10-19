@@ -58,9 +58,9 @@
 #[doc(hidden)]
 pub extern crate core;
 
-// `build!` requires `StaticVec`
+// `build!` requires `ArrayVec`
 #[doc(hidden)]
-pub extern crate staticvec;
+pub extern crate arrayvec;
 
 #[macro_use]
 pub mod utils;
