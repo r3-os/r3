@@ -1,4 +1,4 @@
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(thread_local)]
 #![feature(deadline_api)]
 #![feature(asm)]

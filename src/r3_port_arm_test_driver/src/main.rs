@@ -3,7 +3,7 @@
 //! padding-bottom: 100%" href="http://derpibooru.org/2079083"
 //! title="Screwdriver"></a></div>
 #![doc = include_str!("./common.md")]
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(naked_functions)]

@@ -80,7 +80,7 @@ pub enum MutexProtocol {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(const_fn)]
+/// #![feature(const_fn_trait_bound)]
 /// #![feature(const_mut_refs)]
 /// use r3::kernel::{
 ///     Kernel, LockMutexError, Mutex, MutexProtocol, Task, cfg::CfgBuilder,

@@ -1,4 +1,4 @@
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_generics)]
 #![feature(const_panic)]
 #![feature(const_ptr_offset)]

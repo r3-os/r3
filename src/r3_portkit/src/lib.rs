@@ -1,6 +1,6 @@
 //! R3 PortKit
 #![feature(const_generics)]
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_panic)]
 #![feature(core_panic)]
 #![feature(decl_macro)]

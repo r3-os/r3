@@ -1,4 +1,4 @@
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(decl_macro)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]

@@ -248,7 +248,7 @@ use crate::{
 /// ## Periodic Timer
 ///
 /// ```rust
-/// # #![feature(const_fn)]
+/// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// use r3::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
@@ -279,7 +279,7 @@ use crate::{
 /// ## One-Shot Timer
 ///
 /// ```rust
-/// # #![feature(const_fn)]
+/// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// use r3::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
