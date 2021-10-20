@@ -9,8 +9,36 @@ macro_rules! If {
     ( if ($cond:expr) { $t:ty } else { $f:ty } ) => {
         <crate::utils::Conditional<$t, $f, {$cond}> as crate::utils::TypeFn>::Output
     };
-    ( if ($cond:expr) { $t:ty } else if $($rest:tt)* ) => {
-        If! { if ($cond) { $t } else { If!{ if $($rest)* } } }
+    (
+        |$($cap:ident: $cap_ty:ty),* $(,)*|
+        if ($cond:expr) { $t:ty } else { $f:ty }
+    ) => {
+        <crate::utils::Conditional<$t, $f, {
+            // "Complex" expressions are not allowed in [generic constants][1],
+            // but function calls are okay for some reasons
+            //
+            // [1]: https://github.com/rust-lang/rust/issues/76560
+            #[allow(unused_variables, non_snake_case)]
+            #[doc(hidden)]
+            pub const fn __evaluate_condition($($cap: $cap_ty),*) -> bool {
+                $cond
+            }
+
+            __evaluate_condition($($cap),*)
+        }> as crate::utils::TypeFn>::Output
+    };
+
+    (
+        $( |$($cap:ident: $cap_ty:ty),* $(,)*| )?
+        if ($cond:expr) { $t:ty } else if $($rest:tt)* ) => {
+        If! {
+            $( |$($cap: $cap_ty),*| )?
+            if ($cond) {
+                $t
+            } else {
+                If!{ $( |$($cap: $cap_ty),*| )? if $($rest)* }
+            }
+        }
     };
 }
 

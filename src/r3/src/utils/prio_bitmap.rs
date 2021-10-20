@@ -35,6 +35,7 @@ pub type FixedPrioBitmap<const LEN: usize> = If! {
 /// entries.
 #[doc(hidden)]
 pub type OneLevelPrioBitmap<const LEN: usize> = If! {
+    |LEN: usize|
     if (LEN == 0) {
         ()
     } else if (LEN <= 8 && LEN <= WORD_LEN) {

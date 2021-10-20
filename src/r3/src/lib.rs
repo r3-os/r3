@@ -2,7 +2,7 @@
 #![feature(const_panic)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
-#![feature(const_generics)]
+#![feature(generic_const_exprs)]
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_union)]
