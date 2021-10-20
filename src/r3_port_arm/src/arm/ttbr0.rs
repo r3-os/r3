@@ -1,4 +1,4 @@
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub TTBR0 [
         /// Cacheable bit. Indicates whether the translation table walk is to
         /// Inner Cacheable memory.
@@ -36,7 +36,14 @@ register::register_bitfields! {u32,
 pub const TTBR0: TTBR0Accessor = TTBR0Accessor;
 pub struct TTBR0Accessor;
 
-impl register::cpu::RegisterReadWrite<u32, TTBR0::Register> for TTBR0Accessor {
+impl tock_registers::interfaces::Readable for TTBR0Accessor {
+    type T = u32;
+    type R = TTBR0::Register;
     sys_coproc_read_raw!(u32, [p15, c2, 0, c0, 0]);
+}
+
+impl tock_registers::interfaces::Writeable for TTBR0Accessor {
+    type T = u32;
+    type R = TTBR0::Register;
     sys_coproc_write_raw!(u32, [p15, c2, 0, c0, 0]);
 }

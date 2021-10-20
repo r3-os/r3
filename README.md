@@ -39,7 +39,7 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 
 ```rust
 #![feature(asm)]
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![no_std]

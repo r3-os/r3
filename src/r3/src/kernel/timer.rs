@@ -12,7 +12,6 @@ use crate::{
     utils::{pin::static_pin, Init},
 };
 
-#[cfg_attr(doc, svgbobdoc::transform)]
 /// Represents a single timer in a system.
 ///
 /// This type is ABI-compatible with [`Id`].
@@ -44,13 +43,17 @@ use crate::{
 ///  - **Active** — The timer is running and can be [stopped].
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
-/// ,---------------,             start              ,--------------,
+/// .---------------.             start              .--------------.
 /// |               | -----------------------------> |              |
 /// |    Dormant    |                                |    Active    |
 /// |               | <----------------------------- |              |
 /// '---------------'              stop              '--------------'
 /// ```
+)]
+///
 /// </center>
 ///
 /// [started]: Timer::start
@@ -81,6 +84,8 @@ use crate::{
 /// ## Overdue Timers
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 /// ​
 /// Higher-priority interrupt               __________
@@ -96,6 +101,8 @@ use crate::{
 ///     activated
 /// ​
 /// ```
+)]
+///
 /// </center>
 ///
 /// When scheduling a next tick, the system takes the observed timer handling
@@ -141,6 +148,8 @@ use crate::{
 /// call at the moment of stopping, they will be dropped.
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///                   _____       _____                   _____       _____
 /// Timer callback   |_____|     |_____|                 |_____|     |_____|
@@ -159,6 +168,8 @@ use crate::{
 ///                                     stop       start
 /// ​
 /// ```
+)]
+///
 /// </center>
 ///
 /// Another way to stop a timer is to [set the delay or the period to `None`
@@ -172,6 +183,8 @@ use crate::{
 /// timer callback function and adds it to the timer's current delay value.
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///                   _____       _____       _____    _____    _____
 /// Timer callback   |_____|     |_____|     |_____|  |_____|  |_____|
@@ -195,6 +208,8 @@ use crate::{
 ///                                period ← 4
 /// ​
 /// ```
+)]
+///
 /// </center>
 ///
 /// It might be tricky to understand the outcome of changing the period when
@@ -209,6 +224,8 @@ use crate::{
 /// this timer is to reset the delay to a finite value.
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///                   _____                               _____       _____
 /// Timer callback   |_____|                             |_____|     |_____|
@@ -219,12 +236,16 @@ use crate::{
 ///                delay ← None              delay ← 3
 /// ​
 /// ```
+)]
+///
 /// </center>
 ///
 /// If [`period` is set] to `None` instead, the timer will stop firing after the
 /// next tick.
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///                   _____       _____                   _____       _____
 /// Timer callback   |_____|     |_____|                 |_____|     |_____|
@@ -238,6 +259,8 @@ use crate::{
 ///                                          delay ← 3
 /// ​
 /// ```
+)]
+///
 /// </center>
 ///
 /// [`delay` is set]: Timer::set_delay
@@ -248,7 +271,7 @@ use crate::{
 /// ## Periodic Timer
 ///
 /// ```rust
-/// # #![feature(const_fn)]
+/// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// use r3::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
@@ -264,6 +287,8 @@ use crate::{
 /// ```
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///                            _____       _____       _____       _____
 /// Timer callback            |_____|     |_____|     |_____|     |_____|
@@ -274,12 +299,14 @@ use crate::{
 /// system boot
 /// ​
 /// ```
+)]
+///
 /// </center>
 ///
 /// ## One-Shot Timer
 ///
 /// ```rust
-/// # #![feature(const_fn)]
+/// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// use r3::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
@@ -303,6 +330,8 @@ use crate::{
 /// ```
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///                         _____                            _____
 /// Timer callback         |_____|                          |_____|
@@ -313,11 +342,13 @@ use crate::{
 ///          sched                   sched    sched
 /// ​
 /// ```
+)]
+///
 /// </center>
 ///
 /// [Reset the delay]: Timer::set_delay
 ///
-#[doc(include = "../common.md")]
+#[doc = include_str!("../common.md")]
 #[repr(transparent)]
 pub struct Timer<System>(Id, PhantomData<System>);
 

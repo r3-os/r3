@@ -1,4 +1,4 @@
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
 #![feature(asm)]

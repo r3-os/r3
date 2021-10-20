@@ -1,10 +1,9 @@
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(thread_local)]
-#![feature(external_doc)]
 #![feature(deadline_api)]
 #![feature(asm)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
-#![doc(include = "./lib.md")]
+#![doc = include_str!("./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 use atomic_ref::AtomicRef;

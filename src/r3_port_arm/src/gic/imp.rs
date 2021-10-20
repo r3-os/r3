@@ -3,6 +3,7 @@ use r3::kernel::{
     ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
     PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
 };
+use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
 use super::{
     cfg::{Gic, GicOptions},

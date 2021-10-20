@@ -26,7 +26,7 @@ pub type EventGroupBits = u32;
 /// > event group (FreeRTOS), event group (Freescale MQX), `EventFlags` (Mbed
 /// > OS), events (OSEK/VDX, assigned to each extended task), event (RT-Thread),
 /// > event set (RTEMS, assigned to each task), Eventflag (μITRON4.0)
-#[doc(include = "../common.md")]
+#[doc = include_str!("../common.md")]
 #[repr(transparent)]
 pub struct EventGroup<System>(Id, PhantomData<System>);
 

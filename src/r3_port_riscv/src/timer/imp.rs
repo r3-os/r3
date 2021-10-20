@@ -1,7 +1,10 @@
 //! The implementation of the RISC-V timer driver.
 use r3::kernel::{cfg::CfgBuilder, InterruptHandler, Kernel, PortToKernel, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
-use register::mmio::ReadWrite;
+use tock_registers::{
+    interfaces::{Readable, Writeable},
+    registers::ReadWrite,
+};
 
 use crate::timer::cfg::TimerOptions;
 

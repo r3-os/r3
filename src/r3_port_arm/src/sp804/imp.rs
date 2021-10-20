@@ -1,6 +1,7 @@
 //! The implementation of the SP804 Dual Timer driver.
 use r3::kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
+use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
 use crate::sp804::{cfg::Sp804Options, sp804_regs};
 

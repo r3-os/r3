@@ -202,7 +202,7 @@ All code executes in Machine mode. The value of `mstatus.MPP` is always `M` (`0b
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
 <!--
-FIXME: Work-around for `svgbobdoc` not supporting `#[doc(include = ...)]`
+FIXME: Work-around for `svgbobdoc` not supporting `#[doc = include_str!(...)]`
        or `rustdoc` not integrating `svgbob` yet ;)
        Related: <https://github.com/ivanceras/svgbob/issues/26>
 

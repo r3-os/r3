@@ -1,4 +1,4 @@
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub CSSELR [
         /// Instruction not Data bit.
         InD OFFSET(0) NUMBITS(1) [
@@ -14,7 +14,14 @@ register::register_bitfields! {u32,
 pub const CSSELR: CSSELRAccessor = CSSELRAccessor;
 pub struct CSSELRAccessor;
 
-impl register::cpu::RegisterReadWrite<u32, CSSELR::Register> for CSSELRAccessor {
+impl tock_registers::interfaces::Readable for CSSELRAccessor {
+    type T = u32;
+    type R = CSSELR::Register;
     sys_coproc_read_raw!(u32, [p15, c0, 2, c0, 0]);
+}
+
+impl tock_registers::interfaces::Writeable for CSSELRAccessor {
+    type T = u32;
+    type R = CSSELR::Register;
     sys_coproc_write_raw!(u32, [p15, c0, 2, c0, 0]);
 }

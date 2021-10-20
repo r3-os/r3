@@ -343,6 +343,8 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
                         "
                             # push context
                             push rbp
+                            push rbx
+                            sub rsp, 8  # pad; ensure 16-byte stack alignment
                             lea rbx, [rip + 0f]
                             push rbx
 
@@ -351,21 +353,23 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
                             mov rsi, rsp
                             call {f}
 
+                            # discard context
+                            add rsp, 32
+
                             jmp 1f
                         0:
                             # longjmp called. restore context
-                            mov rbp, [rsp + 8]
+                            add rsp, 16  # skip 0b and the pad
+                            pop rbx
+                            pop rbp
 
                         1:
-                            # discard context
-                            add rsp, 16
                         ",
                         f = inlateout(reg) f => _,
                         inlateout("rdi") ctx => _,
                         lateout("rsi") _,
                         // System V ABI callee-saved registers
                         // (note: Windows uses a different ABI)
-                        out("rbx") _,
                         lateout("r12") _,
                         lateout("r13") _,
                         lateout("r14") _,
@@ -379,7 +383,8 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
                         "
                             # push context. jump to 0 if longjmp is called
                             adr x2, 0f
-                            str x2, [sp, #-32]!
+                            sub sp, sp, #32
+                            stp x2, x19, [sp]
                             stp x29, x30, [sp, #16]
 
                             # do f(ctx, jmp_buf)
@@ -388,8 +393,9 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
                             blr {f}
 
                         0:
-                            # restore lr and fp
+                            # restore x19, lr, and fp
                             ldp x29, x30, [sp, #16]
+                            ldr x19, [sp, #8]
 
                             # discard context
                             add sp, sp, #32
@@ -397,7 +403,6 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
                         f = inlateout(reg) f => _,
                         inlateout("x0") ctx => _,
                         // AArch64 callee-saved registers
-                        lateout("x19") _,
                         lateout("x20") _,
                         lateout("x21") _,
                         lateout("x22") _,

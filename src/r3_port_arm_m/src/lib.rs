@@ -1,11 +1,9 @@
-#![feature(external_doc)]
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(asm)]
 #![feature(decl_macro)]
-#![feature(const_panic)]
-#![feature(const_generics)]
+#![feature(generic_const_exprs)]
 #![feature(const_maybe_uninit_as_ptr)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_raw_ptr_deref)]
@@ -14,7 +12,7 @@
 #![feature(naked_functions)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
-#![doc(include = "./lib.md")]
+#![doc = include_str!("./lib.md")]
 #![no_std]
 
 /// The [`r3::kernel::PortThreading`] implementation.

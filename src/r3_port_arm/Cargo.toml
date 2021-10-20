@@ -16,8 +16,8 @@ preload-registers = []
 r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
 r3 = { version = "0.1.0", path = "../r3" }
 
+tock-registers = { version = "0.7.0" }
 memoffset = { version = "0.6.1", features = ["unstable_const"] }
-register = { version = ">= 0.5.1, < 2.0.0" }
 r0 = { version = "1.0.0" }
 
 [package.metadata.docs.rs]

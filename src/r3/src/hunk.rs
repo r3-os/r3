@@ -32,7 +32,7 @@ pub const INIT_HOOK_PRIORITY: i32 = -0x7000_0000;
 /// hunk type.
 ///
 /// [`r3::kernel::Hunk`]: crate::kernel::Hunk
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 pub struct Hunk<System, T: ?Sized> {
     /// The offset of the hunk. `System::HUNK_ATTR.hunk_pool_ptr()` must be
     /// added before dereferencing.
@@ -205,6 +205,7 @@ impl<System: Port, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, [T], InitTa
 
 impl<System, T> Init for Hunk<System, [T]> {
     // Safety: This is safe because it points to nothing
+    #[allow(clippy::invalid_null_ptr_usage)]
     const INIT: Self = Self {
         offset: slice_from_raw_parts_mut(core::ptr::null_mut(), 0),
         _phantom: PhantomData,

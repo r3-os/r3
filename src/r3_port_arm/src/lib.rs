@@ -1,7 +1,4 @@
-#![feature(external_doc)]
-#![feature(const_fn)]
-#![feature(const_generics)]
-#![feature(const_panic)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -16,7 +13,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![allow(clippy::verbose_bit_mask)] // questionable
-#![doc(include = "./lib.md")]
+#![doc = include_str!("./lib.md")]
 #![no_std]
 
 /// Used by `use_port!`

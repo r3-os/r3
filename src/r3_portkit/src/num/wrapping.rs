@@ -8,6 +8,7 @@ use crate::utils::Init;
 ///
 /// This type alias tries to choose the most efficient data type to do the job.
 pub type Wrapping<const MAX: u64> = If! {
+    |MAX: u64|
     if (MAX == 0) {
         ()
     } else if (MAX < u8::MAX as u64) {

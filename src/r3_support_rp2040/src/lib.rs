@@ -6,7 +6,7 @@
 #![feature(raw_ref_op)]
 #![feature(maybe_uninit_ref)]
 #![feature(asm)]
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![deny(unsafe_op_in_unsafe_fn)]

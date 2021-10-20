@@ -2,7 +2,7 @@
 #![feature(never_type)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(slice_ptr_len)]
 
 use r3_port_std::PortInstance;

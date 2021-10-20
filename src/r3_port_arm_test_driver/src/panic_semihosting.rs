@@ -1,8 +1,8 @@
 use arm_semihosting::{debug, debug::EXIT_FAILURE, hio};
+use arrayvec::ArrayString;
 use core::{fmt::Write, panic::PanicInfo};
-use staticvec::StaticString;
 
-static mut BUFFER: StaticString<512> = StaticString::new();
+static mut BUFFER: ArrayString<512> = ArrayString::new_const();
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

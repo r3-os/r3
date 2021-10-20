@@ -63,7 +63,7 @@ define_result_code! {
     /// > **Rationale:** Using the C API result codes internally reduces the
     /// > interop overhead at an API surface.
     ///
-    #[doc(include = "../common.md")]
+    #[doc = include_str!("../common.md")]
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
     #[repr(i8)]
     pub enum ResultCode {

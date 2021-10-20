@@ -18,7 +18,7 @@ preload-registers = []
 r3_portkit = { version = "0.1.1", path = "../r3_portkit" }
 r3 = { version = "0.1.1", path = "../r3" }
 
-register = { version = ">= 0.5.1, < 2.0.0" }
+tock-registers = { version = "0.7.0" }
 riscv-rt = { version = ">= 0.6.0, < 0.9.0" }
 riscv = { version = ">= 0.5.0, < 0.7.0" }
 

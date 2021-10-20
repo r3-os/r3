@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use register::mmio::{ReadOnly, ReadWrite};
+use tock_registers::registers::{ReadOnly, ReadWrite};
 
 /// RISC-V Platform-Level Interrupt Controller
 ///

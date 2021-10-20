@@ -340,19 +340,27 @@ impl TicklessCfg {
     pub const fn division(&self) -> u64 {
         self.division
     }
+
+    /// Work-around for the current limitation of `generic_const_exprs`
+    /// (Dereferncing is not supported in generic constants, such as const
+    /// generic parameters)
+    #[doc(hidden)]
+    pub const fn take_division(self) -> u64 {
+        self.division()
+    }
 }
 
 /// Instantiates the optimal version of [`TicklessStateCore`] using a
 /// given [`TicklessCfg`]. All instances implement [`TicklessStateTrait`].
 pub type TicklessState<const CFG: TicklessCfg> = If! {
+    |CFG: TicklessCfg|
     if (matches!(CFG.algorithm, TicklessAlgorithm::Stateful)) {
-        TicklessStateCore<Wrapping<{ CFG.division() - 1 }>>
+        TicklessStateCore<Wrapping<{ CFG.take_division() - 1 }>>
     } else {
         TicklessStatelessCore
     }
 };
 
-#[cfg_attr(doc, svgbobdoc::transform)]
 /// The stateless and tickless implementation of
 /// [`r3::kernel::PortTimer`].
 ///
@@ -361,19 +369,24 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 /// tick counts.
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
 ///  ³/₇μs/tick  0                    7                    14                   21
-///              ,                    ,                    ,           (hw_max_tick_count + 1)
-///              |                    |                    |                    ,
+///              .                    .                    .           (hw_max_tick_count + 1)
+///              |                    |                    |                    .
+///              |                    |                    |                    |
 ///              '                    '                    '                    '
 ///  OS ticks    ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
 ///  1μs/tick    0                    3                    6                    9
 ///                                                                     (max_tick_count + 1)
 /// ```
+)]
+///
 /// </center>
 ///
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 #[derive(Debug, Copy, Clone)]
 pub struct TicklessStatelessCore;
 
@@ -391,7 +404,7 @@ pub struct TicklessStateCore<Subticks> {
 }
 
 /// Operations implemented by all valid instantiations of [`TicklessState`].
-#[doc(include = "./common.md")]
+#[doc = include_str!("./common.md")]
 pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// Mark the given hardware tick count as the origin (where
     /// OS tick count is exactly zero).
@@ -482,7 +495,6 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
         }
     }
 
-    #[cfg_attr(doc, svgbobdoc::transform)]
     /// Calculate the earliest hardware tick count representing a point of time
     /// that coincides or follows the one represented by the specified OS tick
     /// count.
@@ -505,6 +517,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// refers to the past or not.
     ///
     /// <center>
+    #[doc = svgbobdoc::transform_mdstr!(
     /// ```svgbob
     ///                          timer interrupt,
     ///                        calls mark_reference
@@ -519,6 +532,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     ///                            |
     ///                      ref_tick_count
     /// ```
+    )]
     /// </center>
     ///
     /// `cfg` must be the instance of [`TicklessCfg`] that was passed to
@@ -530,7 +544,6 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     fn tick_count_to_hw_tick_count(&self, cfg: &TicklessCfg, tick_count: u32) -> u32;
 
-    #[cfg_attr(doc, svgbobdoc::transform)]
     /// Get the OS tick count
     /// (in range `0..=cfg.`[`max_tick_count`]`()`).
     ///
@@ -557,6 +570,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// identically-named private field of [`TicklessStateCore`].
     ///
     /// <center>
+    #[doc = svgbobdoc::transform_mdstr!(
     /// ```svgbob
     ///                       ref_hw_tick_count
     ///                                │
@@ -576,6 +590,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     ///                            |                              max_timeout
     ///                   ref_tick_count
     /// ```
+    )]
     /// </center>
     ///
     /// In the above diagram, `hw_tick_count` should fall within the filled
@@ -938,8 +953,15 @@ mod tests {
             const HW_PERIOD: u64 = CFG.hw_max_tick_count() as u64 + 1;
             const PERIOD: u64 = CFG.max_tick_count() as u64 + 1;
 
+            // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/89421>
+            //        (The type `TicklessState<CFG>` cannot be specified inside
+            //        the below `do_test` function probably because the function
+            //        is generic, even though the generic parameter is unrelated
+            //        to the specified type.)
+            type TheTicklessState = TicklessState<CFG>;
+
             fn do_test(ops: impl IntoIterator<Item = Op>) {
-                let mut state: TicklessState<CFG> = Init::INIT;
+                let mut state: TheTicklessState = Init::INIT;
                 let mut hw_tick_count: u32 = 0;
 
                 let _ = env_logger::builder().is_test(true).try_init();

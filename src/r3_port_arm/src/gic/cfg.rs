@@ -1,6 +1,9 @@
 //! The public interface of the GIC driver.
 use r3::kernel::InterruptNum;
-use register::FieldValue;
+use tock_registers::{
+    fields::FieldValue,
+    interfaces::{ReadWriteable, Readable},
+};
 
 use super::{gic_regs, imp::GicRegs};
 

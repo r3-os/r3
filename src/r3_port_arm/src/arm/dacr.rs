@@ -1,4 +1,4 @@
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub DACR [
         /// Domain 0 access permission.
         D0 OFFSET(0) NUMBITS(2) [
@@ -18,7 +18,14 @@ register::register_bitfields! {u32,
 pub const DACR: DACRAccessor = DACRAccessor;
 pub struct DACRAccessor;
 
-impl register::cpu::RegisterReadWrite<u32, DACR::Register> for DACRAccessor {
+impl tock_registers::interfaces::Readable for DACRAccessor {
+    type T = u32;
+    type R = DACR::Register;
     sys_coproc_read_raw!(u32, [p15, c3, 0, c0, 0]);
+}
+
+impl tock_registers::interfaces::Writeable for DACRAccessor {
+    type T = u32;
+    type R = DACR::Register;
     sys_coproc_write_raw!(u32, [p15, c3, 0, c0, 0]);
 }

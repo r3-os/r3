@@ -1,5 +1,6 @@
 //! Validates error codes returned by mutex manipulation methods. Also,
 //! checks miscellaneous properties of [`r3::kernel::Mutex`].
+use arrayvec::ArrayVec;
 use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
@@ -7,7 +8,6 @@ use r3::{
     prelude::*,
     time::Duration,
 };
-use staticvec::StaticVec;
 use wyhash::WyHash;
 
 use super::Driver;
@@ -174,7 +174,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         log::debug!("Doing the locking order stress test");
         let mut rng = Xorshift32(0xc0ffee00);
         let mut free = (1u32 << N) - 1; // 0b1111
-        let mut locked: StaticVec<usize, N> = StaticVec::new();
+        let mut locked: ArrayVec<usize, N> = ArrayVec::new();
         for i in (0..100).rev() {
             log::trace!("  locked = {:?}", locked);
 

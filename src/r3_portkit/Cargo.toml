@@ -8,11 +8,14 @@ description = "Utilities for writing a port of R3"
 keywords = ["r3", "simulator"]
 repository = "https://github.com/yvt/r3"
 
+[features]
+doc = ["svgbobdoc/enable"]
+
 [dependencies]
 r3 = { version = "0.1.1", path = "../r3" }
 
 num-rational = { version = "0.3.0", default-features = false }
-svgbobdoc = { version = "0.2.2" }
+svgbobdoc = { version = "0.3.0-alpha.1" }
 
 [dev-dependencies]
 quickcheck_macros = { version = "0.9.1" }
@@ -23,4 +26,5 @@ itertools = { version = "0.9.0" }
 log = { version = "0.4.8" }
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []

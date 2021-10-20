@@ -1,12 +1,9 @@
-#![feature(external_doc)] // `#[doc(include = ...)]`
-#![feature(const_fn)]
-#![feature(const_panic)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
-#![feature(const_generics)]
+#![feature(generic_const_exprs)]
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
-#![feature(const_fn_union)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_option)]
@@ -18,15 +15,14 @@
 #![feature(never_type)] // `!`
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]
-#![feature(int_bits_const)]
 #![feature(cell_update)]
 #![feature(arbitrary_enum_discriminant)]
 #![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
-#![doc(include = "./lib.md")]
-#![doc(include = "./common.md")]
+#![doc = include_str!("./lib.md")]
+#![doc = include_str!("./common.md")]
 #![cfg_attr(
     feature = "_full",
     doc = r#"<style type="text/css">.disabled-feature-warning { display: none; }</style>"#
@@ -58,9 +54,9 @@
 #[doc(hidden)]
 pub extern crate core;
 
-// `build!` requires `StaticVec`
+// `build!` requires `ArrayVec`
 #[doc(hidden)]
-pub extern crate staticvec;
+pub extern crate arrayvec;
 
 #[macro_use]
 pub mod utils;

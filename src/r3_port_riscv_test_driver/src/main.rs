@@ -1,5 +1,5 @@
 #![feature(asm)]
-#![feature(const_fn)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(naked_functions)]

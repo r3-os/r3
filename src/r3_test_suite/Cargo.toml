@@ -27,7 +27,7 @@ system_time = ["r3/system_time"]
 r3 = { version = "0.1.0", path = "../r3" }
 
 assert_matches = { version = "1.4.0" }
-staticvec = { version = "0.10.5", default-features = false }
+arrayvec = { version = "0.7.1", default-features = false }
 wyhash = { version = "0.5.0" }
 log = { version = "0.4.8" }
 

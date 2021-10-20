@@ -36,7 +36,7 @@ macro_rules! build {
                 KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
                 TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
             },
-            staticvec::StaticVec,
+            arrayvec::ArrayVec,
             utils::{
                 for_times::U, AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound,
             },
@@ -182,7 +182,7 @@ macro_rules! build {
 
         // Calculate the required storage of the timeout heap
         const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len() + CFG.timers.len();
-        type TimeoutHeap = StaticVec<TimeoutRef<$sys>, TIMEOUT_HEAP_LEN>;
+        type TimeoutHeap = ArrayVec<TimeoutRef<$sys>, TIMEOUT_HEAP_LEN>;
 
         // Safety: We are `build!`, so it's okay to `impl` this
         unsafe impl KernelCfg2 for $sys {

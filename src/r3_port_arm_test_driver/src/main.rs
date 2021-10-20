@@ -2,9 +2,8 @@
 //! url(https://derpicdn.net/img/2019/6/30/2079083/medium.png);
 //! padding-bottom: 100%" href="http://derpibooru.org/2079083"
 //! title="Screwdriver"></a></div>
-#![doc(include = "./common.md")]
-#![feature(external_doc)] // `#[doc(include = ...)]`
-#![feature(const_fn)]
+#![doc = include_str!("./common.md")]
+#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(naked_functions)]

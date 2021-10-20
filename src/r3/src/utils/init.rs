@@ -88,8 +88,8 @@ impl<T: Init> Init for mem::ManuallyDrop<T> {
     const INIT: Self = mem::ManuallyDrop::new(T::INIT);
 }
 
-impl<T, const N: usize> Init for staticvec::StaticVec<T, N> {
-    const INIT: Self = Self::new();
+impl<T, const N: usize> Init for arrayvec::ArrayVec<T, N> {
+    const INIT: Self = Self::new_const();
 }
 
 macro_rules! impl_init {

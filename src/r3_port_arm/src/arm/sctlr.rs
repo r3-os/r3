@@ -1,4 +1,4 @@
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub SCTLR [
         /// Enables or disables MMU.
         M OFFSET(0) NUMBITS(1) [
@@ -53,7 +53,14 @@ register::register_bitfields! {u32,
 pub const SCTLR: SCTLRAccessor = SCTLRAccessor;
 pub struct SCTLRAccessor;
 
-impl register::cpu::RegisterReadWrite<u32, SCTLR::Register> for SCTLRAccessor {
+impl tock_registers::interfaces::Readable for SCTLRAccessor {
+    type T = u32;
+    type R = SCTLR::Register;
     sys_coproc_read_raw!(u32, [p15, c1, 0, c0, 0]);
+}
+
+impl tock_registers::interfaces::Writeable for SCTLRAccessor {
+    type T = u32;
+    type R = SCTLR::Register;
     sys_coproc_write_raw!(u32, [p15, c1, 0, c0, 0]);
 }
