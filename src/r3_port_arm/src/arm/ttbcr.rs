@@ -1,4 +1,4 @@
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub TTBCR [
         /// Indicate the width of the base address held in TTBR0.
         N OFFSET(0) NUMBITS(3) [],
@@ -36,7 +36,14 @@ register::register_bitfields! {u32,
 pub const TTBCR: TTBCRAccessor = TTBCRAccessor;
 pub struct TTBCRAccessor;
 
-impl register::cpu::RegisterReadWrite<u32, TTBCR::Register> for TTBCRAccessor {
+impl tock_registers::interfaces::Readable for TTBCRAccessor {
+    type T = u32;
+    type R = TTBCR::Register;
     sys_coproc_read_raw!(u32, [p15, c2, 0, c0, 2]);
+}
+
+impl tock_registers::interfaces::Writeable for TTBCRAccessor {
+    type T = u32;
+    type R = TTBCR::Register;
     sys_coproc_write_raw!(u32, [p15, c2, 0, c0, 2]);
 }

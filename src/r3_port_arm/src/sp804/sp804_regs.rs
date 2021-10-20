@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use register::mmio::{ReadOnly, ReadWrite, WriteOnly};
+use tock_registers::registers::{ReadOnly, ReadWrite, WriteOnly};
 
 #[repr(C)]
 pub struct Sp804 {
@@ -21,7 +21,7 @@ pub struct Sp804 {
     _reserved2: u32,
 }
 
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub Control [
         /// Selects one-shot or wrapping counter mode
         OneShot OFFSET(0) NUMBITS(1) [

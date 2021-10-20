@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use register::mmio::{ReadOnly, ReadWrite};
+use tock_registers::registers::{ReadOnly, ReadWrite};
 
 #[repr(C)]
 pub struct GicDistributor {
@@ -74,7 +74,7 @@ pub struct GicCpuInterface {
     pub AHPPIR: ReadWrite<u32>,
 }
 
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub GICC_CTLR [
         /// Enable for the signaling of Group 1 interrupts by the CPU interface
         /// to the connected processor.
@@ -85,7 +85,7 @@ register::register_bitfields! {u32,
     ]
 }
 
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub GICD_CTLR [
         /// Global enable for forwarding pending interrupts from the Distributor
         /// to the CPU interfaces
@@ -96,7 +96,7 @@ register::register_bitfields! {u32,
     ]
 }
 
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub GICD_TYPER [
         /// Indicates whether the GIC implements the Security Extensions.
         SecurityExtn OFFSET(10) NUMBITS(1) [

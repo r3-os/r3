@@ -1,5 +1,5 @@
 //! Provides a standard startup and entry code implementation.
-use register::cpu::{RegisterReadOnly, RegisterReadWrite, RegisterWriteOnly};
+use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
 use crate::{arm, startup::cfg::MemoryRegionAttributes, EntryPoint, StartupOptions};
 

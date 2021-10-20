@@ -1,4 +1,4 @@
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub CLIDR [
         Ctype1 OFFSET(0) NUMBITS(3) [
             NoCache = 0b000,
@@ -23,6 +23,8 @@ register::register_bitfields! {u32,
 pub const CLIDR: CLIDRAccessor = CLIDRAccessor;
 pub struct CLIDRAccessor;
 
-impl register::cpu::RegisterReadOnly<u32, CLIDR::Register> for CLIDRAccessor {
+impl tock_registers::interfaces::Readable for CLIDRAccessor {
+    type T = u32;
+    type R = CLIDR::Register;
     sys_coproc_read_raw!(u32, [p15, c0, 1, c0, 1]);
 }

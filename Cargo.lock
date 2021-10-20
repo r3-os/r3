@@ -1275,7 +1275,7 @@ dependencies = [
  "r0 1.0.0",
  "r3",
  "r3_portkit",
- "register",
+ "tock-registers 0.7.0",
 ]
 
 [[package]]
@@ -1318,8 +1318,8 @@ dependencies = [
  "r3_port_arm",
  "r3_support_rza1",
  "r3_test_suite",
- "register",
  "rza1",
+ "tock-registers 0.7.0",
 ]
 
 [[package]]
@@ -1576,11 +1576,11 @@ checksum = "3b181ba2dcf07aaccad5448e8ead58db5b742cf85dfe035e2227f137a539a189"
 
 [[package]]
 name = "register"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "faf386c0c48fea132b7fbbf71c32d1b1d62e7c59043bbabdd15c9ed9f254517e"
+checksum = "f4a247de29ab7cc8f5006cfe775c4a81c704f9914c5e2a79696862e643135433"
 dependencies = [
- "tock-registers",
+ "tock-registers 0.6.0",
 ]
 
 [[package]]
@@ -2038,6 +2038,12 @@ name = "tock-registers"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f521a79accce68c417c9c77ce22108056b626126da1932f7e2e9b5bbffee0cea"
+
+[[package]]
+name = "tock-registers"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ee8fba06c1f4d0b396ef61a54530bb6b28f0dc61c38bc8bc5a5a48161e6282e"
 
 [[package]]
 name = "tokenlock"
