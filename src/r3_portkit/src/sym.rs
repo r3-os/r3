@@ -12,7 +12,7 @@ use r3::utils::ZeroInit;
 pub struct __UnsafeSymStaticMarker<T: 'static, const ALIGN: usize>(PhantomData<&'static T>);
 
 #[doc(hidden)]
-pub use core::{asm, mem};
+pub use core::{arch::asm, mem};
 
 /// Represents a value of `&'static T`. The functions of this type are defined
 /// by [`sym_static!`].
