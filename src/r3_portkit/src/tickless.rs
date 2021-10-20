@@ -361,7 +361,6 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
     }
 };
 
-#[cfg_attr(doc, svgbobdoc::transform)]
 /// The stateless and tickless implementation of
 /// [`r3::kernel::PortTimer`].
 ///
@@ -370,16 +369,21 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 /// tick counts.
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
 ///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
 ///  ³/₇μs/tick  0                    7                    14                   21
-///              ,                    ,                    ,           (hw_max_tick_count + 1)
-///              |                    |                    |                    ,
+///              .                    .                    .           (hw_max_tick_count + 1)
+///              |                    |                    |                    .
+///              |                    |                    |                    |
 ///              '                    '                    '                    '
 ///  OS ticks    ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
 ///  1μs/tick    0                    3                    6                    9
 ///                                                                     (max_tick_count + 1)
 /// ```
+)]
+///
 /// </center>
 ///
 #[doc = include_str!("./common.md")]
@@ -491,7 +495,6 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
         }
     }
 
-    #[cfg_attr(doc, svgbobdoc::transform)]
     /// Calculate the earliest hardware tick count representing a point of time
     /// that coincides or follows the one represented by the specified OS tick
     /// count.
@@ -514,6 +517,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// refers to the past or not.
     ///
     /// <center>
+    #[doc = svgbobdoc::transform_mdstr!(
     /// ```svgbob
     ///                          timer interrupt,
     ///                        calls mark_reference
@@ -528,6 +532,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     ///                            |
     ///                      ref_tick_count
     /// ```
+    )]
     /// </center>
     ///
     /// `cfg` must be the instance of [`TicklessCfg`] that was passed to
@@ -539,7 +544,6 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// [`hw_max_tick_count`]: TicklessCfg::hw_max_tick_count
     fn tick_count_to_hw_tick_count(&self, cfg: &TicklessCfg, tick_count: u32) -> u32;
 
-    #[cfg_attr(doc, svgbobdoc::transform)]
     /// Get the OS tick count
     /// (in range `0..=cfg.`[`max_tick_count`]`()`).
     ///
@@ -566,6 +570,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// identically-named private field of [`TicklessStateCore`].
     ///
     /// <center>
+    #[doc = svgbobdoc::transform_mdstr!(
     /// ```svgbob
     ///                       ref_hw_tick_count
     ///                                │
@@ -585,6 +590,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     ///                            |                              max_timeout
     ///                   ref_tick_count
     /// ```
+    )]
     /// </center>
     ///
     /// In the above diagram, `hw_tick_count` should fall within the filled

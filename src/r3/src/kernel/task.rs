@@ -16,7 +16,6 @@ use crate::{time::Duration, utils::Init};
 pub mod readyqueue;
 use self::readyqueue::Queue as _;
 
-#[cfg_attr(doc, svgbobdoc::transform)]
 /// Represents a single task in a system.
 ///
 /// This type is ABI-compatible with [`Id`].
@@ -43,23 +42,27 @@ use self::readyqueue::Queue as _;
 ///    currently blocked by a blocking operation
 ///
 /// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
 /// ```svgbob
-///                     ,-------,
-///    ,--------------->| Ready |<--------------,
+///                     .-------.
+///    .--------------->| Ready |<--------------.
 ///    |                '-------'               |
 ///    |          dispatch | ^                  |
 ///    |                   | |                  |
 ///    | release           | |                  | activate
-/// ,---------,            | |           ,---------,
+/// .---------.            | |           .---------.
 /// | Waiting |            | |           | Dormant |
 /// '---------'            | |           '---------'
 ///    ^                   | |                  ^
 ///    |                   | |                  |
 ///    |                   v | preempt          |
-///    |          wait ,---------,              |
+///    |          wait .---------.              |
 ///    '---------------| Running |--------------'
 ///                    '---------' exit
 /// ```
+)]
+///
 /// </center>
 ///
 /// [thread]: crate#threads

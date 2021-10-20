@@ -40,6 +40,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3_support_rza1 }
 
+      - name: Build Documentation for “r3_portkit”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p r3_portkit --all-features }
+
       - name: Build Documentation for “r3”
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3 --all-features }

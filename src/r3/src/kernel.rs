@@ -139,7 +139,6 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// > headroom for potential changes in the implementation.
     fn set_time(time: Time) -> Result<(), TimeError>;
 
-    #[cfg_attr(doc, svgbobdoc::transform)]
     /// Move the current [system time] forward or backward by the specified
     /// amount.
     ///
@@ -175,6 +174,8 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     /// start moving together again (c).
     ///
     /// <center>
+    ///
+    #[doc = svgbobdoc::transform_mdstr!(
     /// ```svgbob
     ///                                   system time
     ///                                    ----*------------------------
@@ -192,6 +193,8 @@ pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
     ///                                                          ^
     ///                                                (c)
     /// ```
+    )]
+    ///
     /// </center>
     ///
     /// Let `frontier` be the current relative time of the frontier (in relation
