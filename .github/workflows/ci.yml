@@ -57,6 +57,7 @@ jobs:
     needs: check
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         # TODO: Add `macos-10.15` after addressing the time inaccuracy that
         #       causes some tests to fail
@@ -103,6 +104,7 @@ jobs:
     needs: check
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-20.04]
         features:
@@ -144,6 +146,7 @@ jobs:
     needs: check
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false
       matrix:
         include:
           # Arm RealView PBX for Cortex-A9, Armv7-A
