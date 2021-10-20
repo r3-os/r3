@@ -2,7 +2,6 @@
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
 #![feature(const_fn_trait_bound)]
-#![feature(const_panic)]
 #![feature(core_panic)]
 #![feature(decl_macro)]
 #![feature(const_fn_fn_ptr_basics)]

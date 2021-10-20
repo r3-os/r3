@@ -1,11 +1,9 @@
-#![feature(const_panic)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(generic_const_exprs)]
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
-#![feature(const_fn_union)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_option)]
@@ -17,7 +15,6 @@
 #![feature(never_type)] // `!`
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]
-#![feature(int_bits_const)]
 #![feature(cell_update)]
 #![feature(arbitrary_enum_discriminant)]
 #![feature(untagged_unions)] // `union` with non-`Copy` fields

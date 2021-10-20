@@ -3,7 +3,6 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(asm)]
 #![feature(decl_macro)]
-#![feature(const_panic)]
 #![feature(const_generics)]
 #![feature(const_maybe_uninit_as_ptr)]
 #![feature(const_ptr_offset_from)]
