@@ -1275,7 +1275,7 @@ dependencies = [
  "r0 1.0.0",
  "r3",
  "r3_portkit",
- "tock-registers 0.7.0",
+ "tock-registers",
 ]
 
 [[package]]
@@ -1319,7 +1319,7 @@ dependencies = [
  "r3_support_rza1",
  "r3_test_suite",
  "rza1",
- "tock-registers 0.7.0",
+ "tock-registers",
 ]
 
 [[package]]
@@ -1328,9 +1328,9 @@ version = "0.1.1"
 dependencies = [
  "r3",
  "r3_portkit",
- "register",
  "riscv 0.6.0",
  "riscv-rt 0.6.2",
+ "tock-registers",
 ]
 
 [[package]]
@@ -1573,15 +1573,6 @@ name = "regex-syntax"
 version = "0.6.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b181ba2dcf07aaccad5448e8ead58db5b742cf85dfe035e2227f137a539a189"
-
-[[package]]
-name = "register"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4a247de29ab7cc8f5006cfe775c4a81c704f9914c5e2a79696862e643135433"
-dependencies = [
- "tock-registers 0.6.0",
-]
 
 [[package]]
 name = "remove_dir_all"
@@ -2032,12 +2023,6 @@ checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
  "lazy_static",
 ]
-
-[[package]]
-name = "tock-registers"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f521a79accce68c417c9c77ce22108056b626126da1932f7e2e9b5bbffee0cea"
 
 [[package]]
 name = "tock-registers"

@@ -3,6 +3,7 @@ use r3::kernel::{
     cfg::CfgBuilder, EnableInterruptLineError, InterruptHandler, InterruptNum, InterruptPriority,
     Kernel, QueryInterruptLineError, SetInterruptLinePriorityError,
 };
+use tock_registers::interfaces::{Readable, Writeable};
 
 use crate::{Plic, INTERRUPT_EXTERNAL, INTERRUPT_PLATFORM_START};
 
