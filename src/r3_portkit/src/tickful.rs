@@ -159,11 +159,20 @@ impl TickfulCfg {
     pub const fn division(&self) -> u64 {
         self.division
     }
+
+    /// Work-around for the current limitation of `generic_const_exprs`
+    /// (Dereferncing is not supported in generic constants, such as const
+    /// generic parameters)
+    #[doc(hidden)]
+    pub const fn take_division(self) -> u64 {
+        self.division()
+    }
 }
 
 /// Instantiates the optimal version of [`TickfulStateCore`] using a
 /// given [`TickfulCfg`]. All instances implement [`TickfulStateTrait`].
-pub type TickfulState<const CFG: TickfulCfg> = TickfulStateCore<Wrapping<{ CFG.division() - 1 }>>;
+pub type TickfulState<const CFG: TickfulCfg> =
+    TickfulStateCore<Wrapping<{ CFG.take_division() - 1 }>>;
 
 /// The internal state of the tickful implementation of
 /// [`r3::kernel::PortTimer`].

@@ -340,13 +340,22 @@ impl TicklessCfg {
     pub const fn division(&self) -> u64 {
         self.division
     }
+
+    /// Work-around for the current limitation of `generic_const_exprs`
+    /// (Dereferncing is not supported in generic constants, such as const
+    /// generic parameters)
+    #[doc(hidden)]
+    pub const fn take_division(self) -> u64 {
+        self.division()
+    }
 }
 
 /// Instantiates the optimal version of [`TicklessStateCore`] using a
 /// given [`TicklessCfg`]. All instances implement [`TicklessStateTrait`].
 pub type TicklessState<const CFG: TicklessCfg> = If! {
+    |CFG: TicklessCfg|
     if (matches!(CFG.algorithm, TicklessAlgorithm::Stateful)) {
-        TicklessStateCore<Wrapping<{ CFG.division() - 1 }>>
+        TicklessStateCore<Wrapping<{ CFG.take_division() - 1 }>>
     } else {
         TicklessStatelessCore
     }
@@ -938,8 +947,15 @@ mod tests {
             const HW_PERIOD: u64 = CFG.hw_max_tick_count() as u64 + 1;
             const PERIOD: u64 = CFG.max_tick_count() as u64 + 1;
 
+            // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/89421>
+            //        (The type `TicklessState<CFG>` cannot be specified inside
+            //        the below `do_test` function probably because the function
+            //        is generic, even though the generic parameter is unrelated
+            //        to the specified type.)
+            type TheTicklessState = TicklessState<CFG>;
+
             fn do_test(ops: impl IntoIterator<Item = Op>) {
-                let mut state: TicklessState<CFG> = Init::INIT;
+                let mut state: TheTicklessState = Init::INIT;
                 let mut hw_tick_count: u32 = 0;
 
                 let _ = env_logger::builder().is_test(true).try_init();
