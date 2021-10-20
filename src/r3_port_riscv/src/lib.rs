@@ -4,7 +4,6 @@
 #![feature(slice_ptr_len)]
 #![feature(asm)]
 #![feature(raw_ref_op)]
-#![feature(const_generics)]
 #![feature(const_option)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
