@@ -2,7 +2,7 @@
 name = "r3_support_rza1"
 version = "0.1.0"
 authors = ["yvt <i@yvt.jp>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Supporting package for running R3 on Renesas RZ/A1"
 categories = ["embedded", "no-std"]

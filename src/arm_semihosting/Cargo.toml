@@ -8,7 +8,7 @@ authors = [
     "The Cortex-M Team <cortex-m@teams.rust-embedded.org>",
     "Jorge Aparicio <japaricious@gmail.com>",
 ]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [features]

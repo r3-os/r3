@@ -2,7 +2,7 @@
 name = "r3_port_arm_m"
 version = "0.1.1"
 authors = ["yvt <i@yvt.jp>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Cortex-M port for R3"
 categories = ["embedded", "no-std"]

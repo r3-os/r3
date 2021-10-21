@@ -2,7 +2,7 @@
 name = "r3_example_smp_rp_pico"
 version = "0.0.0"
 authors = ["yvt <i@yvt.jp>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 # `cortex-m-rt` and other crates don't build on a hosted target. We don't want
