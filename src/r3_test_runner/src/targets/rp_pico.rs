@@ -303,7 +303,7 @@ async fn write_bulk_all(
 
         log::trace!("write_bulk_all({})", endpoint);
 
-        while buf.len() > 0 {
+        while !buf.is_empty() {
             match device_handle.write_bulk(endpoint, buf, DEFAULE_TIMEOUT) {
                 Ok(0) => break,
                 Ok(num_bytes) => {

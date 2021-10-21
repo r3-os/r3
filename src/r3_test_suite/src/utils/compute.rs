@@ -217,7 +217,7 @@ impl BiquadCoefs<f64> {
         }
     }
 
-    const fn to_f32(&self) -> BiquadCoefs<f32> {
+    const fn to_f32(self) -> BiquadCoefs<f32> {
         BiquadCoefs {
             b0: self.b0 as f32,
             b1: self.b1 as f32,

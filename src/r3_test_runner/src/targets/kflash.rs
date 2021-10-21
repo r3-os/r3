@@ -449,7 +449,7 @@ async fn write_request(
     frame_payload[8..].copy_from_slice(req_payload);
 
     let mut digest = crc32::Digest::new_with_initial(crc32::IEEE, 0);
-    digest.write(&req_payload);
+    digest.write(req_payload);
     let crc = digest.sum32();
 
     frame_payload[4..][..4].copy_from_slice(&crc.to_le_bytes());

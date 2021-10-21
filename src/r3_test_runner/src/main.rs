@@ -117,7 +117,7 @@ async fn main_inner() -> anyhow::Result<()> {
 
     // Initialize the test driver interface
     let test_driver = driverinterface::TestDriver::new(
-        &driver_base_path,
+        driver_base_path,
         opt.target,
         &target_arch,
         target_arch_opt,
@@ -142,8 +142,7 @@ async fn main_inner() -> anyhow::Result<()> {
         target_arch,
         // v6-M, v8-M Baseline, and non-M architectures don't support BASEPRI
         targets::Arch::ArmM {
-            version: targets::ArmMVersion::Armv7M |
-                targets::ArmMVersion::Armv8MMainline,
+            version: targets::ArmMVersion::Armv7M | targets::ArmMVersion::Armv8MMainline,
             ..
         },
     );

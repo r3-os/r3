@@ -132,7 +132,7 @@ impl<T: AsyncBufRead + Unpin> Future for ReadFrame<'_, T> {
                         partial_packet.push(b);
                     }
                     Ok(Some(FrameExtractorAction::EndFrame)) => {
-                        break 'result Ok(std::mem::replace(partial_packet, Vec::new()));
+                        break 'result Ok(std::mem::take(partial_packet));
                     }
                     Ok(None) => {}
                     Err(e) => {
