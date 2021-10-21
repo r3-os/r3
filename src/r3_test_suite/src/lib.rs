@@ -378,6 +378,8 @@ pub mod kernel_benchmarks {
     ///
     /// See [`crate::utils::benchmark::BencherOptions`].
     ///
+    // `unused_macros` trips when none of the benchmark tests are compiled in
+    #[allow(unused_macros)]
     macro_rules! use_benchmark_in_kernel_benchmark {
         {
             pub unsafe struct App<System> {
