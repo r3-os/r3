@@ -1,6 +1,6 @@
 //! Provides `FixedPrioBitmap`, a bit array structure supporting
 //! logarithmic-time bit scan operations.
-use core::{convert::TryFrom, fmt};
+use core::fmt;
 
 use super::{ctz::trailing_zeros, BinInteger, Init};
 

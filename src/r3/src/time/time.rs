@@ -1,6 +1,4 @@
-#[cfg(feature = "chrono")]
-use core::convert::TryFrom;
-use core::{convert::TryInto, fmt, ops};
+use core::{fmt, ops};
 
 use crate::{
     time::Duration,
@@ -234,7 +232,6 @@ impl TryFrom<chrono::DateTime<chrono::Utc>> for Time {
     /// # Examples
     ///
     /// ```
-    /// use std::convert::TryFrom;
     /// use chrono::{DateTime, Utc, TimeZone};
     /// use r3::time::Time;
     /// assert_eq!(
@@ -271,7 +268,6 @@ impl TryFrom<Time> for chrono::DateTime<chrono::Utc> {
     /// # Examples
     ///
     /// ```
-    /// use std::convert::TryFrom;
     /// use chrono::{DateTime, Utc, TimeZone};
     /// use r3::time::Time;
     /// assert_eq!(

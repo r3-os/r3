@@ -1,7 +1,4 @@
-use core::{
-    convert::{TryFrom, TryInto},
-    fmt, ops,
-};
+use core::{fmt, ops};
 
 use crate::utils::{Init, ZeroInit};
 
@@ -360,7 +357,6 @@ impl TryFrom<chrono::Duration> for Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::convert::TryFrom;
     /// use chrono::Duration as ChronoDuration;
     /// use r3::time::Duration as OsDuration;
     /// assert_eq!(

@@ -12,7 +12,6 @@ pub trait KernelTimeExt: Kernel {
     #[track_caller]
     #[cfg(feature = "system_time")]
     fn time_ms() -> u32 {
-        use core::convert::TryInto;
         Self::time().unwrap().as_millis().try_into().unwrap()
     }
 

@@ -14,7 +14,6 @@ pub const fn try_i32_into_u32(x: i32) -> Option<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::convert::TryFrom;
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]

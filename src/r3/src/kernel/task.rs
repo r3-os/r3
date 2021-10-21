@@ -1,7 +1,7 @@
 //! Tasks
 #[cfg(feature = "priority_boost")]
 use core::sync::atomic::Ordering;
-use core::{convert::TryFrom, fmt, hash, marker::PhantomData, mem};
+use core::{fmt, hash, marker::PhantomData, mem};
 use num_traits::ToPrimitive;
 
 use super::{

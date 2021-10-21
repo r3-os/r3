@@ -1,6 +1,5 @@
 use anyhow::Result;
 use std::{
-    convert::TryInto,
     fmt::Write,
     future::Future,
     io,

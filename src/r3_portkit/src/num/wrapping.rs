@@ -169,8 +169,8 @@ impl<T: Init, const MAX: u64> Init for FractionalWrapping<T, MAX> {
 impl<T, const MAX: u64> WrappingTrait for FractionalWrapping<T, MAX>
 where
     T: From<u8>
-        + core::convert::TryFrom<u64>
-        + core::convert::TryFrom<u128>
+        + TryFrom<u64>
+        + TryFrom<u128>
         + core::convert::Into<u128>
         + ops::Add<Output = T>
         + ops::Sub<Output = T>
@@ -232,7 +232,6 @@ mod tests {
     extern crate std;
 
     use super::*;
-    use core::convert::TryInto;
     use quickcheck_macros::quickcheck;
     use std::{prelude::v1::*, vec};
 

@@ -4,7 +4,6 @@
 // for RZ/A1.
 #![cfg(feature = "semver-exempt")]
 use super::gpio::{AltMode, GpioExt};
-use core::convert::TryInto;
 
 /// The extension trait for `rza1::SCIFx` (e.g., [`rza1::SCIF0`]).
 ///

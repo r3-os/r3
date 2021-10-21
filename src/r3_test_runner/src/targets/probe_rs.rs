@@ -1,7 +1,6 @@
 use anyhow::Result;
 use futures_core::ready;
 use std::{
-    convert::TryInto,
     future::Future,
     io::Write,
     mem::replace,
