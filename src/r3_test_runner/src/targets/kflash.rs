@@ -151,6 +151,10 @@ impl KflashDebugProbe {
         // Pu the device into ISP mode. Fail-fast if this was unsuccessful.
         let serial_m = Mutex::new(serial);
         retry_on_fail(|| async {
+            // Holding the `LockGuard` across a suspend point is okay because
+            // `Mutex::lock` is never called for this mutex. (It's practically
+            // a thread-safe `RefCell`.)
+            #[allow(must_not_suspend)]
             maix_enter_isp_mode(&mut serial_m.try_lock().unwrap(), isp_boot_cmds).await
         })
         .await
