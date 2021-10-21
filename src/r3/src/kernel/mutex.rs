@@ -1,8 +1,5 @@
 //! ~~Mutices~~ Mutexes
-// FIXME: `debug_assert_matches` needing `assert_matches` is fixed by
-//        <https://github.com/murarth/assert_matches/pull/9>
-use assert_matches::{assert_matches, debug_assert_matches};
-use core::{fmt, hash, marker::PhantomData};
+use core::{assert_matches::debug_assert_matches, fmt, hash, marker::PhantomData};
 
 use super::{
     state, task, timeout, utils,

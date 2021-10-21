@@ -16,6 +16,7 @@
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]
 #![feature(cell_update)]
+#![feature(assert_matches)]
 #![feature(arbitrary_enum_discriminant)]
 #![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![cfg_attr(test, feature(is_sorted))]

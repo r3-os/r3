@@ -1358,7 +1358,6 @@ name = "r3"
 version = "0.1.1"
 dependencies = [
  "arrayvec",
- "assert_matches",
  "bitflags",
  "chrono",
  "env_logger",
