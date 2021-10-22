@@ -137,14 +137,14 @@ impl<'a, Element: Clone, System: Kernel> CellLike<&'a mut CpuLockGuard<System>>
         (**self).get(&***key)
     }
     fn set(&self, key: &mut &'a mut CpuLockGuard<System>, value: Self::Target) {
-        (**self).set(&mut &mut ***key, value);
+        CellLike::set(&**self, &mut &mut ***key, value);
     }
     fn modify<T>(
         &self,
         key: &mut &'a mut CpuLockGuard<System>,
         f: impl FnOnce(&mut Self::Target) -> T,
     ) -> T {
-        (**self).modify(&mut &mut ***key, f)
+        CellLike::modify(&**self, &mut &mut ***key, f)
     }
 }
 
@@ -157,14 +157,14 @@ impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockTokenRefMut<'a, System>
         (**self).get(&**key)
     }
     fn set(&self, key: &mut CpuLockTokenRefMut<'a, System>, value: Self::Target) {
-        (**self).set(&mut &mut **key, value);
+        CellLike::set(&**self, &mut &mut **key, value);
     }
     fn modify<T>(
         &self,
         key: &mut CpuLockTokenRefMut<'a, System>,
         f: impl FnOnce(&mut Self::Target) -> T,
     ) -> T {
-        (**self).modify(&mut &mut **key, f)
+        CellLike::modify(&**self, &mut &mut **key, f)
     }
 }
 
