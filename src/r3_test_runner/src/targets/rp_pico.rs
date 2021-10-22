@@ -199,7 +199,8 @@ fn open_serial() -> Result<Serial> {
                     }),
                     ..
                 }
-                if product.contains("R3 Test Driver Port")
+                if product.contains("R3 Test Driver Port") ||
+                   product.contains("R3_Test_Driver_Port")
             ) ||
             // FIXME: Apple M1 work-around
             //        (`available_ports` returns incorrect `SerialPortType`)
