@@ -32,9 +32,10 @@ log = "0.4.8"
 crc = "1.8.1"
 
 [dependencies.goblin]
-version = "0.2.3"
+version = "0.4.3"
 default-features = false
-features = ["std", "elf32"]
+# FIXME: <https://github.com/m4b/goblin/issues/212> `elf64` isn't actually used
+features = ["std", "elf32", "elf64", "endian_fd"]
 
 [dependencies.tokio]
 version = "0.2.21"

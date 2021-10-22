@@ -232,7 +232,7 @@ fn find_rtt_symbol(elf_bytes: &[u8]) -> Option<u64> {
     };
 
     for sym in &elf.syms {
-        if let Some(Ok(name)) = elf.strtab.get(sym.st_name) {
+        if let Some(name) = elf.strtab.get_at(sym.st_name) {
             if name == "_SEGGER_RTT" {
                 return Some(sym.st_value);
             }
