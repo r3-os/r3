@@ -66,3 +66,34 @@ The `-b` option instructs `r3_test_runner` to run benchmark tests. Note that som
 | Armv6-M      | Raspberry Pi Pico (USB) | `cargo run -p r3_test_runner -- -t rp_pico -b`       |
 | RV32IMAC     | RED-V (SPI flash XIP)   | `cargo run -p r3_test_runner -- -t red_v -b`         |
 | RV64GC       | Maix boards (UART ISP)  | `cargo run -p r3_test_runner -- -t maix -b`          |
+
+
+## Configuring udev
+
+If you are using a Linux (or similar) system, you might have to [define][] additional udev rules to allow non-root access to the target board.
+
+> **Note:** The rules apply when a device is plugged into the computer. You might need to reconnect the device for the changes to take effect.
+
+[define]: https://wiki.archlinux.org/title/udev
+
+### Raspberry Pi Pico
+
+For this board, the test suite uses the USB PICOBOOT interface (provided by the bootrom) and the USB-CDC interface (provided by R3's test driver).
+
+For the PICOBOOT interface, the following rule changes the device file's group to `users`:
+
+```
+SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="0003", GROUP="users"
+```
+
+For the USB-CDC interface, there is usually [a pre-defined udev rule][] that designates `dialout` as the device file's group. You can add yourself to the `dialout` group by doing `sudo usermod -a -G dialout yourUserName`.
+
+[a pre-defined udev rule]: https://unix.stackexchange.com/questions/395464/permissions-incorrect-on-symlink-to-dev-ttyacm0-created-by-udev-rule
+
+### NUCLEO-F401RE (ST-LINK)
+
+The following rule changes the device file's group to `users`:
+
+```
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", GROUP="users"
+```
