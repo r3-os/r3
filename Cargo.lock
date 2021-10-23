@@ -137,6 +137,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bare-metal"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8fe8f5a8a398345e52358e18ff07cc17a568fbca5c6f73873d3a62056309603"
+
+[[package]]
 name = "base64"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -275,7 +281,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9075300b07c6a56263b9b582c214d0ff037b00d45ec9fde1cc711490c56f1bb9"
 dependencies = [
  "aligned",
- "bare-metal",
+ "bare-metal 0.2.5",
  "bitfield",
  "cortex-m 0.7.3",
  "volatile-register",
@@ -287,7 +293,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ac919ef424449ec8c08d515590ce15d9262c0ca5f0da5b0c901e971a3b783b3"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
  "bitfield",
  "embedded-hal",
  "volatile-register",
@@ -377,7 +383,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b4f6d3e0a8850b1143b2c3058a190c71346a84caef6c2e1d55320e337d4a839"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
  "riscv 0.6.0",
  "vcell",
 ]
@@ -810,7 +816,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69b1cda20e843558e892373b1fd01a900232103f65fa4be8f18edcd130dde30e"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
  "riscv 0.5.6",
  "riscv-rt 0.6.2",
  "vcell",
@@ -1600,7 +1606,7 @@ dependencies = [
  "r3_portkit",
  "r3_test_suite",
  "riscv 0.5.6",
- "riscv 0.6.0",
+ "riscv 0.7.0",
  "riscv-rt 0.6.2",
  "rtt-target 0.2.2",
 ]
@@ -1867,7 +1873,7 @@ name = "riscv"
 version = "0.5.6"
 source = "git+https://github.com/yvt/rust-riscv.git?branch=0.5-asm#e46b7225fcc9cff16afb65081a831068f2367167"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
  "bit_field",
 ]
 
@@ -1877,7 +1883,18 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2f0b705d428e9d0f78e2bb73093887ee58a83c9688de3faedbb4c0631c4618e"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
+ "bit_field",
+ "riscv-target",
+]
+
+[[package]]
+name = "riscv"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6907ccdd7a31012b70faf2af85cd9e5ba97657cc3987c4f13f8e4d2c2a088aba"
+dependencies = [
+ "bare-metal 1.0.0",
  "bit_field",
  "riscv-target",
 ]
@@ -1927,7 +1944,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ed6f0ca1c2a3e4e602719212574a8692e52c51fd26e8c5a582424ae20fcd784"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
  "cortex-m 0.7.3",
  "vcell",
 ]
@@ -2231,7 +2248,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11460b4de3a84f072e2cf6e76306c64d27f405a0e83bace0a726f555ddf4bf33"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
  "cortex-m 0.6.7",
  "cortex-m-rt",
  "vcell",
@@ -2243,7 +2260,7 @@ version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3a2f044469d1e3aff2cd02bee8b2724f3d5d91f3175e5d1ec99770320d16192"
 dependencies = [
- "bare-metal",
+ "bare-metal 0.2.5",
  "cast",
  "cortex-m 0.6.7",
  "cortex-m-rt",
