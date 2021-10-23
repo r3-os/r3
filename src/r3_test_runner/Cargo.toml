@@ -29,7 +29,7 @@ serde = "1.0.114"
 rusb = "0.8"
 toml = "0.5.6"
 log = "0.4.8"
-crc = "1.8.1"
+crc = "2.0.0"
 
 [dependencies.goblin]
 version = "0.4.3"

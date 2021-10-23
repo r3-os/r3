@@ -1,7 +1,7 @@
 //! Kendryte K210 UART ISP, based on [`kflash.py`]
 //! (https://github.com/sipeed/kflash.py)
 use anyhow::Result;
-use crc::{crc32, Hasher32};
+use crc::{Crc, CRC_32_ISO_HDLC};
 use std::{future::Future, marker::Unpin, path::Path, pin::Pin, sync::Mutex, time::Duration};
 use tokio::{
     io::{AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufStream},
@@ -452,10 +452,7 @@ async fn write_request(
     frame_payload[0] = cmd;
     frame_payload[8..].copy_from_slice(req_payload);
 
-    let mut digest = crc32::Digest::new_with_initial(crc32::IEEE, 0);
-    digest.write(req_payload);
-    let crc = digest.sum32();
-
+    let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(req_payload);
     frame_payload[4..][..4].copy_from_slice(&crc.to_le_bytes());
 
     slip::write_frame(serial, &frame_payload).await
