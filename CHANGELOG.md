@@ -1,50 +1,16 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+See [the `r3` package's `CHANGELOG.md`](./src/r3/CHANGELOG.md).
 
-The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
-and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+---
 
-## [Unreleased]
+R3 is distributed as a [monorepo][] (poorly) mimicing the style of [lerna][]. This was inspired by several other large open-source projects distributed this way, including [React][], [Gatsby][], etc.
 
-### Changed
+This means that our `CHANGELOG.md` files are distributed alongside the package itself in the `src` directory.
 
-- **Breaking:** Change the target compiler version to `nightly-2021-10-18`
-- Replace `register 1` with `tock-registers 0.7` because `tock-registers 0.6`, which is used by `register`, isn't compatible with the current target compiler.
-- Upgrade `r0` to `^1.0.0`
-- Upgrade `tokenlock` to `0.3.4`
-- Support `cortex-m` `^0.6` *and* `^0.7`
-- Support `cortex-m-rt` `^0.6` *and* `^0.7`
-- Support `riscv` `^0.5`, `^0.6`, *and* `^0.7`
-- Using the new version of `tokenlock`, some atomics-based hacks were removed. This might marginally improve the runtime performance as the compiler is given more leeway to optimize memory accesses.
-- **Breaking:** The `cortex-m-rt` binding has been separated to `r3_port_arm_m::use_rt!`.
-- `r3_port_arm_m` now steals `cortex_m::Peripherals` on boot. This is useful in multi-core systems.
+For example, the package `r3_portkit` has a CHANGELOG.md in [`src/r3_portkit/CHANGELOG.md`](./src/r3_portkit/CHANGELOG.md). If you'd like to check out others, check out the [`src`](./src) directory in the root of the repo.
 
-<!-- TODO: It doesn't seem like a good idea to congregate the changes of all packages, each of which has its own pace, into a single changelog file -->
-
-### Fixed
-
-- The debug printing of `Mutex` and `RecursiveMutex` in an invalid context now produces a message that makes sense.
-- Rewrite invalid `#[naked]` functions in valid forms
-
-## [0.1.1] - 2020-12-20
-
-### Added
-
-- `r3_port_std`'s POSIX backend now supports AArch64.
-
-### Changed
-
-- Change the target compiler version to `nightly-2020-11-25`
-
-### Fixed
-
-- Wrap const generic arguments in braces, fixing builds on the latest compiler version
-- Remove `#[naked]` when inlining is prerequisite for correctness; functions with `#[naked]` are no longer eligible for inlining as of [rust-lang/rust#79192](https://github.com/rust-lang/rust/pull/79192).
-
-## 0.1.0 - 2020-11-03
-
-- Initial release.
-
-[Unreleased]: https://github.com/yvt/r3/compare/0.1.1...HEAD
-[0.1.1]: https://github.com/yvt/r3/compare/0.1.0...0.1.1
+[monorepo]: https://en.wikipedia.org/wiki/Monorepo
+[lerna]: https://github.com/lerna/lerna
+[react]: https://github.com/facebook/react/tree/master/packages
+[Gatsby]: https://github.com/gatsbyjs/gatsby
