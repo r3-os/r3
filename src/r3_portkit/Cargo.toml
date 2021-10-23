@@ -14,7 +14,7 @@ doc = ["svgbobdoc/enable"]
 [dependencies]
 r3 = { version = "0.1.1", path = "../r3" }
 
-num-rational = { version = "0.3.0", default-features = false }
+num-rational = { version = "0.4.0", default-features = false }
 svgbobdoc = { version = "0.3.0-alpha.1" }
 
 [dev-dependencies]

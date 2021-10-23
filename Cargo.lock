@@ -1006,7 +1006,7 @@ dependencies = [
  "matrixmultiply",
  "nalgebra-macros",
  "num-complex",
- "num-rational 0.4.0",
+ "num-rational",
  "num-traits",
  "simba",
  "typenum",
@@ -1120,17 +1120,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2cc698a63b549a70bc047073d2949cce27cd1c7b0a4a862d08a8031bc2801db"
 dependencies = [
  "autocfg",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
-dependencies = [
- "autocfg",
- "num-integer",
  "num-traits",
 ]
 
@@ -1624,7 +1613,7 @@ dependencies = [
  "itertools 0.10.1",
  "log",
  "num-integer",
- "num-rational 0.3.2",
+ "num-rational",
  "quickcheck",
  "quickcheck_macros",
  "r3",
