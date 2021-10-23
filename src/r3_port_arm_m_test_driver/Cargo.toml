@@ -47,7 +47,7 @@ panic-semihosting = { version = "0.5.3", optional = true }
 panic-rtt-target = { version = "0.1.0", optional = true, features = ["cortex-m"] }
 cortex-m-rt = { version = "0.6.12", optional = true, features = ["device"] }
 rtt-target = { version = "0.2.0", optional = true, features = ["cortex-m"] }
-cortex-m = { version = "0.6.3", optional = true, features = ["inline-asm"] }
+cortex-m = { version = "0.7.3", optional = true, features = ["inline-asm"] }
 rp2040 = { version = "0.1.0", optional = true }
 log = { version = "0.4.8", optional = true }
 

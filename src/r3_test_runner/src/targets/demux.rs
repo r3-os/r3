@@ -17,7 +17,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite};
+use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite, ReadBuf};
 
 /// The demultiplexing adapter for [`AsyncBufRead`] types. See the module-level
 /// documentation for details on the multiplexing protocol that this adapter
@@ -53,17 +53,14 @@ impl AsyncRead for Demux<'_> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-        buf: &mut [u8],
-    ) -> Poll<io::Result<usize>> {
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
         // Naïve implementation of `poll_read` that uses `<Self as AsyncBufRead>`
-        let my_buf = match ready!(Pin::as_mut(&mut self).poll_fill_buf(cx)) {
-            Ok(x) => x,
-            Err(e) => return Poll::Ready(Err(e)),
-        };
-        let num_bytes_read = my_buf.len().min(buf.len());
-        buf[..num_bytes_read].copy_from_slice(&my_buf[..num_bytes_read]);
+        let my_buf = ready!(Pin::as_mut(&mut self).poll_fill_buf(cx))?;
+        let num_bytes_read = my_buf.len().min(buf.remaining());
+        buf.put_slice(&my_buf[..num_bytes_read]);
         Pin::as_mut(&mut self).consume(num_bytes_read);
-        Poll::Ready(Ok(num_bytes_read))
+        Poll::Ready(Ok(()))
     }
 }
 

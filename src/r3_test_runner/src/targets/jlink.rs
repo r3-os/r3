@@ -9,7 +9,11 @@ use std::{
     task::{Context, Poll},
 };
 use tempdir::TempDir;
-use tokio::{io::AsyncRead, process::Child, task::spawn_blocking};
+use tokio::{
+    io::{AsyncRead, ReadBuf},
+    process::Child,
+    task::spawn_blocking,
+};
 
 use super::{Arch, DebugProbe, DynAsyncRead, Target};
 use crate::subprocess;
@@ -141,7 +145,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
 
             // The stale RTT data from a previous run might still be there until
             // the new startup code zero-fills the memory.
-            tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             log::debug!("Opening the debug probe using `probe-rs`");
 
             // Open the probe using `probe-rs`
@@ -227,8 +231,8 @@ impl AsyncRead for OutputReader {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context,
-        buf: &mut [u8],
-    ) -> Poll<io::Result<usize>> {
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
         Pin::new(self.child.stdout.as_mut().unwrap()).poll_read(cx, buf)
     }
 }

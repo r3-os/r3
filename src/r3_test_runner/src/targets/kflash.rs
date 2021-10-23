@@ -1,14 +1,14 @@
 //! Kendryte K210 UART ISP, based on [`kflash.py`]
 //! (https://github.com/sipeed/kflash.py)
 use anyhow::Result;
-use crc::{crc32, Hasher32};
+use crc::{Crc, CRC_32_ISO_HDLC};
 use std::{future::Future, marker::Unpin, path::Path, pin::Pin, sync::Mutex, time::Duration};
 use tokio::{
     io::{AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufStream},
     task::spawn_blocking,
-    time::delay_for,
+    time::sleep,
 };
-use tokio_serial::{Serial, SerialPort, SerialPortSettings};
+use tokio_serial::{SerialPort, SerialPortBuilderExt, SerialStream};
 
 use super::{
     demux::Demux,
@@ -107,7 +107,7 @@ impl From<slip::FrameExtractorError> for CommunicationError {
 const COMM_TIMEOUT: Duration = Duration::from_secs(3);
 
 struct KflashDebugProbe {
-    serial: BufStream<Serial>,
+    serial: BufStream<SerialStream>,
     isp_boot_cmds: &'static [BootCmd],
 }
 
@@ -133,15 +133,10 @@ impl KflashDebugProbe {
         let serial = spawn_blocking(|| {
             let dev = choose_serial().map_err(OpenError::ChooseSerial)?;
 
-            Serial::from_path(
-                &dev,
-                &SerialPortSettings {
-                    baud_rate: 115200,
-                    timeout: std::time::Duration::from_secs(60),
-                    ..Default::default()
-                },
-            )
-            .map_err(|e| OpenError::Serial(dev, e.into()))
+            tokio_serial::new(&dev, 115200)
+                .timeout(std::time::Duration::from_secs(60))
+                .open_native_async()
+                .map_err(|e| OpenError::Serial(dev, e.into()))
         })
         .await
         .unwrap()?;
@@ -301,7 +296,7 @@ const ISP_BOOT_CMDS: &[(&str, &[BootCmd])] = &[
 ];
 
 async fn maix_enter_isp_mode(
-    serial: &mut BufStream<Serial>,
+    serial: &mut BufStream<SerialStream>,
     cmds: &[BootCmd],
 ) -> Result<(), CommunicationError> {
     let t = Duration::from_millis(100);
@@ -322,7 +317,7 @@ async fn maix_enter_isp_mode(
                     .map_err(CommunicationError::Serial)?;
             }
             BootCmd::Delay => {
-                delay_for(t).await;
+                sleep(t).await;
             }
         }
     }
@@ -452,10 +447,7 @@ async fn write_request(
     frame_payload[0] = cmd;
     frame_payload[8..].copy_from_slice(req_payload);
 
-    let mut digest = crc32::Digest::new_with_initial(crc32::IEEE, 0);
-    digest.write(req_payload);
-    let crc = digest.sum32();
-
+    let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(req_payload);
     frame_payload[4..][..4].copy_from_slice(&crc.to_le_bytes());
 
     slip::write_frame(serial, &frame_payload).await

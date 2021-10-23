@@ -62,11 +62,12 @@ e310x-hal = { version = "0.9.0", optional = true, features = ["g002"] }
 k210-hal = { version = "0.2.0", optional = true }
 riscv-rt = { version = ">= 0.6.0, < 0.9.0", optional = true }
 e310x = { version = "0.9.0", optional = true }
+riscv = { version = "0.7.0", optional = true, features = ["inline-asm"] }
 # FIXME: We work around <https://github.com/rust-embedded/riscv/issues/69> by enabling
 #        `riscv/inline-asm`. Without this feature, `riscv` uses a precompiled object file, which may
-#        be rejected by the linker because of a floating-point ABI mismatch. Remove this work-around
-#        after this is resolved, somehow.
-riscv = { version = "0.6.0", optional = true, features = ["inline-asm"] }
+#        be rejected by the linker because of a floating-point ABI mismatch. Although this is fixed
+#        in `riscv ^0.7`, the prospect of `riscv ^0.5` receiving the fix is pretty low. We need to
+#        wait for `k210-pac` to stop using `riscv ^0.5`.
 riscv_0p5 = { version = "0.5.0", package = "riscv", optional = true, features = ["inline-asm"] }
 log = { version = "0.4.8", optional = true }
 nb = { version = "1.0.0", optional = true }

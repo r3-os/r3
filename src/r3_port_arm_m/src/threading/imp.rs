@@ -34,6 +34,7 @@ pub unsafe trait PortInstance:
     }
 }
 /// Converts [`InterruptNum`] to [`cortex_m::interrupt::Nr`].
+#[derive(Clone, Copy)]
 struct Int(InterruptNum);
 
 unsafe impl cortex_m::interrupt::Nr for Int {

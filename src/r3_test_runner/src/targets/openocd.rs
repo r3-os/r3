@@ -7,7 +7,10 @@ use std::{
     task::{Context, Poll},
 };
 use tempdir::TempDir;
-use tokio::{io::AsyncRead, process::Child};
+use tokio::{
+    io::{AsyncRead, ReadBuf},
+    process::Child,
+};
 
 use super::{Arch, DebugProbe, DynAsyncRead, Target};
 use crate::subprocess;
@@ -195,8 +198,8 @@ impl AsyncRead for OutputReader {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context,
-        buf: &mut [u8],
-    ) -> Poll<io::Result<usize>> {
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
         Pin::new(self.child.stdout.as_mut().unwrap()).poll_read(cx, buf)
     }
 }

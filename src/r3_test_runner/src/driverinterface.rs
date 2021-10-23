@@ -5,7 +5,7 @@ use std::{
     pin::Pin,
     time::Duration,
 };
-use tokio::prelude::*;
+use tokio::io::AsyncReadExt;
 
 use crate::{selection, subprocess, targets};
 
@@ -403,7 +403,7 @@ async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
     loop {
         log::trace!("... calling `read`");
         let read_fut = stream.read(&mut buffer);
-        let timeout_fut = tokio::time::delay_for(Duration::from_secs(35));
+        let timeout_fut = tokio::time::sleep(Duration::from_secs(35));
 
         let num_bytes = tokio::select! {
             read_result = read_fut => {
@@ -411,7 +411,7 @@ async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
                 read_result.unwrap_or(0)
             },
             _ = timeout_fut => {
-                log::trace!("... `delay_for` resolved earlier - timeout");
+                log::trace!("... `sleep` resolved earlier - timeout");
                 log::trace!("... The output so far: {:?}", String::from_utf8_lossy(&output));
                 return Err(RunError::Timeout);
             },
@@ -458,7 +458,8 @@ async fn read_to_end_timeout(
 ) -> tokio::io::Result<Vec<u8>> {
     let mut output = Vec::new();
     let mut buffer = vec![0u8; 16384];
-    let mut timeout_fut = tokio::time::delay_for(timeout);
+    let timeout_fut = tokio::time::sleep(timeout);
+    pin_utils::pin_mut!(timeout_fut);
 
     log::trace!("read_to_end_timeout: Got a stream");
 
@@ -472,7 +473,7 @@ async fn read_to_end_timeout(
                 read_result.unwrap_or(0)
             },
             _ = &mut timeout_fut => {
-                log::trace!("... `delay_for` resolved earlier - timeout");
+                log::trace!("... `sleep` resolved earlier - timeout");
                 break;
             },
         };

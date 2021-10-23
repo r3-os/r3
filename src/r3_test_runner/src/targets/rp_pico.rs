@@ -21,9 +21,9 @@ use std::future::Future;
 use tokio::{
     io::{AsyncWriteExt, BufStream},
     task::spawn_blocking,
-    time::delay_for,
+    time::sleep,
 };
-use tokio_serial::{Serial, SerialPortSettings};
+use tokio_serial::{SerialPortBuilderExt, SerialStream};
 
 use super::{demux::Demux, jlink::read_elf, Arch, DebugProbe, Target};
 use crate::utils::retry_on_fail_with_delay;
@@ -116,7 +116,7 @@ struct RaspberryPiPicoUsbDebugProbe {
     /// Even if this field is set, the test driver's current state is
     /// indeterminate in general, so the target must be rebooted before doing
     /// anything meaningful.
-    serial: Option<BufStream<Serial>>,
+    serial: Option<BufStream<SerialStream>>,
 }
 
 impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
@@ -141,7 +141,7 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
                 })?;
 
                 // Wait until the host operating system recognizes the USB device...
-                delay_for(DEFAULT_PAUSE).await;
+                sleep(DEFAULT_PAUSE).await;
             }
 
             program_and_run_by_picoboot(&exe).await.with_context(|| {
@@ -152,7 +152,7 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
             })?;
 
             // Wait until the host operating system recognizes the USB device...
-            delay_for(DEFAULT_PAUSE).await;
+            sleep(DEFAULT_PAUSE).await;
 
             let serial =
                 retry_on_fail_with_delay(|| async { spawn_blocking(open_serial).await.unwrap() })
@@ -181,7 +181,7 @@ impl DebugProbe for RaspberryPiPicoUsbDebugProbe {
 
 /// Locate and open the test driver serial interface. A test driver must be
 /// running for this function to succeed.
-fn open_serial() -> Result<Serial> {
+fn open_serial() -> Result<SerialStream> {
     log::debug!("Looking for the test driver serial port");
     let ports = serialport::available_ports()?;
     let port = ports
@@ -194,13 +194,12 @@ fn open_serial() -> Result<Serial> {
                 port_info,
                 SerialPortInfo {
                     port_type: SerialPortType::UsbPort(UsbPortInfo {
-                        product: Some(product),
+                        vid: 0x16c0,
+                        pid: 0x27dd,
                         ..
                     }),
                     ..
                 }
-                if product.contains("R3 Test Driver Port") ||
-                   product.contains("R3_Test_Driver_Port")
             ) ||
             // FIXME: Apple M1 work-around
             //        (`available_ports` returns incorrect `SerialPortType`)
@@ -210,19 +209,14 @@ fn open_serial() -> Result<Serial> {
     log::debug!("Test driver serial port = {:?}", port);
 
     // Open the serial port
-    Serial::from_path(
-        &port.port_name,
-        &SerialPortSettings {
-            timeout: DEFAULE_TIMEOUT,
-            ..Default::default()
-        },
-    )
-    .with_context(|| {
-        format!(
-            "Could not open the test driver serial port at path '{}'.",
-            port.port_name
-        )
-    })
+    tokio_serial::new(&port.port_name, 115200)
+        .open_native_async()
+        .with_context(|| {
+            format!(
+                "Could not open the test driver serial port at path '{}'.",
+                port.port_name
+            )
+        })
 }
 
 /// Program and execute the specified ELF file by PICOBOOT protocol.

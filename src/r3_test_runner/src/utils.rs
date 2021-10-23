@@ -1,5 +1,5 @@
 use std::{fmt, future::Future, time::Duration};
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 pub struct CommaSeparatedNoSpace<T>(pub T);
 impl<T> fmt::Display for CommaSeparatedNoSpace<T>
@@ -108,7 +108,7 @@ where
                         count
                     );
 
-                    delay_for(Duration::from_secs(delay)).await;
+                    sleep(Duration::from_secs(delay)).await;
                 }
             }
         }
