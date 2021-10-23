@@ -2,7 +2,6 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
 #![feature(asm)]
-#![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]

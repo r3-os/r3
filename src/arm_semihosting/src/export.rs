@@ -1,6 +1,9 @@
 //! IMPLEMENTATION DETAILS USED BY MACROS
 
-use core::fmt::{self, Write};
+use core::{
+    arch::asm,
+    fmt::{self, Write},
+};
 
 use crate::hio::{self, HStderr, HStdout};
 
@@ -9,13 +12,13 @@ static mut HSTDOUT: Option<HStdout> = None;
 #[cfg(arm)]
 fn interrupt_free<R>(f: impl FnOnce() -> R) -> R {
     let cpsr_old: u32;
-    unsafe { llvm_asm!("mrs $0, cpsr":"=r"(cpsr_old):::"volatile") };
-    unsafe { llvm_asm!("cpsid i"::::"volatile") };
+    unsafe { asm!("mrs {}, cpsr", out(reg) cpsr_old) };
+    unsafe { asm!("cpsid i") };
 
     let ret = f();
 
     if cpsr_old & 0x80 == 0 {
-        unsafe { llvm_asm!("cpsie i"::::"volatile") };
+        unsafe { asm!("cpsie i") };
     }
 
     ret
