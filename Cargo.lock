@@ -1511,7 +1511,7 @@ dependencies = [
 name = "r3_example_smp_rp_pico"
 version = "0.0.0"
 dependencies = [
- "cortex-m 0.6.7",
+ "cortex-m 0.7.3",
  "cortex-m-rt",
  "r3",
  "r3_port_arm_m",
@@ -1535,7 +1535,7 @@ dependencies = [
 name = "r3_port_arm_m"
 version = "0.1.1"
 dependencies = [
- "cortex-m 0.6.7",
+ "cortex-m 0.7.3",
  "cortex-m-rt",
  "memoffset",
  "r3",
@@ -1546,7 +1546,7 @@ dependencies = [
 name = "r3_port_arm_m_test_driver"
 version = "0.0.0"
 dependencies = [
- "cortex-m 0.6.7",
+ "cortex-m 0.7.3",
  "cortex-m-rt",
  "cortex-m-semihosting",
  "log",
@@ -1640,7 +1640,7 @@ dependencies = [
 name = "r3_support_rp2040"
 version = "0.1.0"
 dependencies = [
- "cortex-m 0.6.7",
+ "cortex-m 0.7.3",
  "embedded-hal",
  "inline_dyn",
  "nb 1.0.0",
