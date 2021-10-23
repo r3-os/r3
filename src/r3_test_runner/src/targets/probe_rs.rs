@@ -11,9 +11,9 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::{
-    io::{AsyncBufRead, AsyncRead},
+    io::{AsyncBufRead, AsyncRead, ReadBuf},
     task::{spawn_blocking, JoinHandle},
-    time::{delay_for, Delay},
+    time::{sleep, Sleep},
 };
 
 use super::{Arch, DebugProbe, DynAsyncRead, Target};
@@ -212,7 +212,7 @@ pub async fn attach_rtt(
             return Err(AttachRttError::Timeout);
         }
 
-        delay_for(POLL_INTERVAL).await;
+        sleep(POLL_INTERVAL).await;
     };
 
     // Stream the output of all up channels
@@ -301,7 +301,7 @@ enum ReadRttSt {
     PollDelay {
         buf: ReadRttBuf,
         rtt: Box<probe_rs_rtt::Rtt>,
-        delay: Delay,
+        delay: Pin<Box<Sleep>>,
     },
 
     Invalid,
@@ -332,17 +332,14 @@ impl AsyncRead for ReadRtt {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-        buf: &mut [u8],
-    ) -> Poll<tokio::io::Result<usize>> {
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<tokio::io::Result<()>> {
         // Naïve implementation of `poll_read` that uses `<Self as AsyncBufRead>`
-        let my_buf = match ready!(Pin::as_mut(&mut self).poll_fill_buf(cx)) {
-            Ok(x) => x,
-            Err(e) => return Poll::Ready(Err(e)),
-        };
-        let num_bytes_read = my_buf.len().min(buf.len());
-        buf[..num_bytes_read].copy_from_slice(&my_buf[..num_bytes_read]);
+        let my_buf = ready!(Pin::as_mut(&mut self).poll_fill_buf(cx))?;
+        let num_bytes_read = my_buf.len().min(buf.remaining());
+        buf.put_slice(&my_buf[..num_bytes_read]);
         Pin::as_mut(&mut self).consume(num_bytes_read);
-        Poll::Ready(Ok(num_bytes_read))
+        Poll::Ready(Ok(()))
     }
 }
 
@@ -399,7 +396,7 @@ impl AsyncBufRead for ReadRtt {
                         ReadRttSt::PollDelay {
                             buf,
                             rtt,
-                            delay: delay_for(POLL_INTERVAL),
+                            delay: Box::pin(sleep(POLL_INTERVAL)),
                         }
                     } else {
                         ReadRttSt::Idle {
@@ -412,7 +409,7 @@ impl AsyncBufRead for ReadRtt {
                 }
 
                 ReadRttSt::PollDelay { delay, .. } => {
-                    ready!(Pin::new(delay).poll(cx));
+                    ready!(delay.as_mut().poll(cx));
 
                     let (buf, rtt) = match replace(&mut this.st, ReadRttSt::Invalid) {
                         ReadRttSt::PollDelay { buf, rtt, .. } => (buf, rtt),

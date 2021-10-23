@@ -6,9 +6,9 @@ use std::{future::Future, marker::Unpin, path::Path, pin::Pin, sync::Mutex, time
 use tokio::{
     io::{AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufStream},
     task::spawn_blocking,
-    time::delay_for,
+    time::sleep,
 };
-use tokio_serial::{Serial, SerialPort, SerialPortSettings};
+use tokio_serial::{SerialPort, SerialPortBuilderExt, SerialStream};
 
 use super::{
     demux::Demux,
@@ -107,7 +107,7 @@ impl From<slip::FrameExtractorError> for CommunicationError {
 const COMM_TIMEOUT: Duration = Duration::from_secs(3);
 
 struct KflashDebugProbe {
-    serial: BufStream<Serial>,
+    serial: BufStream<SerialStream>,
     isp_boot_cmds: &'static [BootCmd],
 }
 
@@ -133,15 +133,10 @@ impl KflashDebugProbe {
         let serial = spawn_blocking(|| {
             let dev = choose_serial().map_err(OpenError::ChooseSerial)?;
 
-            Serial::from_path(
-                &dev,
-                &SerialPortSettings {
-                    baud_rate: 115200,
-                    timeout: std::time::Duration::from_secs(60),
-                    ..Default::default()
-                },
-            )
-            .map_err(|e| OpenError::Serial(dev, e.into()))
+            tokio_serial::new(&dev, 115200)
+                .timeout(std::time::Duration::from_secs(60))
+                .open_native_async()
+                .map_err(|e| OpenError::Serial(dev, e.into()))
         })
         .await
         .unwrap()?;
@@ -301,7 +296,7 @@ const ISP_BOOT_CMDS: &[(&str, &[BootCmd])] = &[
 ];
 
 async fn maix_enter_isp_mode(
-    serial: &mut BufStream<Serial>,
+    serial: &mut BufStream<SerialStream>,
     cmds: &[BootCmd],
 ) -> Result<(), CommunicationError> {
     let t = Duration::from_millis(100);
@@ -322,7 +317,7 @@ async fn maix_enter_isp_mode(
                     .map_err(CommunicationError::Serial)?;
             }
             BootCmd::Delay => {
-                delay_for(t).await;
+                sleep(t).await;
             }
         }
     }
