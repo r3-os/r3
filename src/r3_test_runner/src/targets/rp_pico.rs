@@ -194,13 +194,12 @@ fn open_serial() -> Result<SerialStream> {
                 port_info,
                 SerialPortInfo {
                     port_type: SerialPortType::UsbPort(UsbPortInfo {
-                        product: Some(product),
+                        vid: 0x16c0,
+                        pid: 0x27dd,
                         ..
                     }),
                     ..
                 }
-                if product.contains("R3 Test Driver Port") ||
-                   product.contains("R3_Test_Driver_Port")
             ) ||
             // FIXME: Apple M1 work-around
             //        (`available_ports` returns incorrect `SerialPortType`)
