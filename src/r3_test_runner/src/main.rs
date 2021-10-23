@@ -13,8 +13,10 @@ mod utils;
 // runtime to keep the compile time and runtime footprint low
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    env_logger::from_env(env_logger::Env::default().default_filter_or("r3_test_runner=info"))
-        .init();
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or("r3_test_runner=info"),
+    )
+    .init();
 
     if let Err(e) = main_inner().await {
         log::error!("Command failed.\n{:?}", e);
