@@ -980,7 +980,7 @@ dependencies = [
  "log",
  "mio",
  "nix 0.22.0",
- "serialport 4.0.1",
+ "serialport",
  "winapi",
 ]
 
@@ -1049,19 +1049,6 @@ name = "new_debug_unreachable"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4a24736216ec316047a1fc4252e27dabb04218aa4a3f37c6e7ddbf1f9782b54"
-
-[[package]]
-name = "nix"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c722bee1037d430d0f8e687bbdbf222f27cc6e4e68d5caf630857bb2b6dbdce"
-dependencies = [
- "bitflags",
- "cc",
- "cfg-if 0.1.10",
- "libc",
- "void",
-]
 
 [[package]]
 name = "nix"
@@ -1699,7 +1686,7 @@ dependencies = [
  "rusb",
  "serde",
  "serde_json",
- "serialport 3.3.0",
+ "serialport",
  "structopt",
  "tempdir",
  "thiserror",
@@ -2172,23 +2159,6 @@ dependencies = [
 
 [[package]]
 name = "serialport"
-version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b8d3ecaf58010bedccae17be55d4ed6f2ecde5646fc48ce8c66ea2d35a1419c"
-dependencies = [
- "CoreFoundation-sys",
- "IOKit-sys",
- "bitflags",
- "cfg-if 0.1.10",
- "libudev",
- "mach 0.2.3",
- "nix 0.14.1",
- "regex",
- "winapi",
-]
-
-[[package]]
-name = "serialport"
 version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d8cd7c0f22290ee2c01457009fa6fc1cae4153d5608a924e5dc423babc2c655"
@@ -2197,6 +2167,7 @@ dependencies = [
  "IOKit-sys",
  "bitflags",
  "cfg-if 0.1.10",
+ "libudev",
  "mach 0.2.3",
  "nix 0.16.1",
  "regex",
