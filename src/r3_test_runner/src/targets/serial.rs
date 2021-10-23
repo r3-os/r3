@@ -15,7 +15,7 @@ pub fn choose_serial() -> Result<String, ChooseSerialError> {
         log::info!("Using the serial port {:?} (manually selected)", p);
         Ok(p)
     } else {
-        let ports = mio_serial::available_ports()?;
+        let ports = tokio_serial::available_ports()?;
         log::trace!("Available ports: {:?}", ports);
         if ports.is_empty() {
             return Err(ChooseSerialError::NoPortsAvailable);
@@ -45,6 +45,6 @@ pub enum ChooseSerialError {
     SystemError(
         #[from]
         #[source]
-        mio_serial::Error,
+        tokio_serial::Error,
     ),
 }
