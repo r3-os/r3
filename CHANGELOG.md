@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- Change the target compiler version to `nightly-2021-10-18`
+- **Breaking:** Change the target compiler version to `nightly-2021-10-18`
 - Replace `register 1` with `tock-registers 0.7` because `tock-registers 0.6`, which is used by `register`, isn't compatible with the current target compiler.
 - Upgrade `r0` to `^1.0.0`
 - Upgrade `tokenlock` to `0.3.4`
@@ -17,8 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support `cortex-m-rt` `^0.6` *and* `^0.7`
 - Support `riscv` `^0.5`, `^0.6`, *and* `^0.7`
 - Using the new version of `tokenlock`, some atomics-based hacks were removed. This might marginally improve the runtime performance as the compiler is given more leeway to optimize memory accesses.
-- The `cortex-m-rt` binding has been separated to `r3_port_arm_m::use_rt!`.
+- **Breaking:** The `cortex-m-rt` binding has been separated to `r3_port_arm_m::use_rt!`.
 - `r3_port_arm_m` now steals `cortex_m::Peripherals` on boot. This is useful in multi-core systems.
+
+<!-- TODO: It doesn't seem like a good idea to congregate the changes of all packages, each of which has its own pace, into a single changelog file -->
 
 ### Fixed
 
