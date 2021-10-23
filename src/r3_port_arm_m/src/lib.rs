@@ -15,6 +15,10 @@
 #![doc = include_str!("./lib.md")]
 #![no_std]
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 /// The [`r3::kernel::PortThreading`] implementation.
 #[doc(hidden)]
 pub mod threading {

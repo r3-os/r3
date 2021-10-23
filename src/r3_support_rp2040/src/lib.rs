@@ -13,6 +13,10 @@
 #![deny(unsupported_naked_functions)]
 #![no_std]
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 pub mod clock;
 pub mod serial;
 pub mod stdout;

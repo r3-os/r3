@@ -29,6 +29,10 @@ pub extern crate r3_portkit;
 #[cfg(target_os = "none")]
 pub extern crate core;
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 #[cfg(target_os = "none")]
 mod arm;
 

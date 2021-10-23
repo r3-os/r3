@@ -59,6 +59,10 @@ pub extern crate core;
 #[doc(hidden)]
 pub extern crate arrayvec;
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 #[macro_use]
 pub mod utils;
 #[macro_use]

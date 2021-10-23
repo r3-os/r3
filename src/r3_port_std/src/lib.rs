@@ -23,6 +23,10 @@ use std::{
 };
 use try_mutex::TryMutex;
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 #[cfg(unix)]
 #[path = "threading_unix.rs"]
 mod threading;

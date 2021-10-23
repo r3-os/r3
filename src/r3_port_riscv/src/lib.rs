@@ -30,6 +30,10 @@ pub extern crate r3_portkit;
 #[doc(hidden)]
 pub extern crate core;
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 /// The Platform-Level Interrupt Controller driver.
 #[doc(hidden)]
 pub mod plic {

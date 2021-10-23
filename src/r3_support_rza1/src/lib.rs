@@ -24,6 +24,10 @@ pub extern crate r3_portkit;
 #[doc(hidden)]
 pub extern crate r3_port_arm;
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 /// The RZ/A1 OS Timer driver.
 #[doc(hidden)]
 pub mod os_timer {

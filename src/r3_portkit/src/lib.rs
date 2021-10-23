@@ -9,6 +9,10 @@
 #![deny(unsupported_naked_functions)]
 #![no_std]
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 #[macro_use]
 pub mod utils;
 
