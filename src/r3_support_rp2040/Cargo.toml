@@ -21,7 +21,7 @@ semver-exempt = [
 ]
 
 [dependencies]
-r3_port_arm_m = { version = "0.1.0", path = "../r3_port_arm_m" }
+r3_port_arm_m = { version = "0.2.0", path = "../r3_port_arm_m" }
 r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
 r3 = { version = "0.1.0", path = "../r3" }
 

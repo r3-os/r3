@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.2] - 2021-10-23
+
 ### Changed
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2021-10-18`
@@ -25,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 Initial release.
 
-[Unreleased]: https://github.com/yvt/r3/compare/r3_port_arm_m@0.1.1...HEAD
+[Unreleased]: https://github.com/yvt/r3/compare/r3_port_arm_m@0.1.2...HEAD
+[0.1.2]: https://github.com/yvt/r3/compare/r3_port_arm_m@0.1.1...r3_port_arm_m@0.1.2
 [0.1.1]: https://github.com/yvt/r3/compare/r3_port_arm_m@0.1.0...r3_port_arm_m@0.1.1
 
