@@ -48,18 +48,3 @@ impl HasAtomicEquivalent for isize {
 }
 
 pub type Atomic<T> = <T as HasAtomicEquivalent>::AtomicEquivalent;
-
-pub trait LockConsuming {
-    type LockGuard;
-
-    fn lock(self) -> Self::LockGuard;
-}
-
-impl<'a, T> LockConsuming for &'a try_mutex::TryMutex<T> {
-    type LockGuard = try_mutex::TryMutexGuard<'a, T>;
-
-    #[inline]
-    fn lock(self) -> Self::LockGuard {
-        self.try_lock().unwrap()
-    }
-}

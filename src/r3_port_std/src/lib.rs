@@ -16,12 +16,12 @@ use r3::{
     },
     prelude::*,
 };
+use spin::Mutex as SpinMutex;
 use std::{
     cell::Cell,
     sync::mpsc,
     time::{Duration, Instant},
 };
-use try_mutex::TryMutex;
 
 #[cfg(doc)]
 #[doc = include_str!("../CHANGELOG.md")]
@@ -41,8 +41,6 @@ mod threading_test;
 mod sched;
 mod ums;
 mod utils;
-
-use self::utils::LockConsuming;
 
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -89,7 +87,7 @@ pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
 #[doc(hidden)]
 pub struct State {
     thread_group: OnceCell<ums::ThreadGroup<sched::SchedState>>,
-    timer_cmd_send: TryMutex<Option<mpsc::Sender<TimerCmd>>>,
+    timer_cmd_send: SpinMutex<Option<mpsc::Sender<TimerCmd>>>,
     origin: AtomicRef<'static, Instant>,
 }
 
@@ -98,10 +96,10 @@ pub struct TaskState {
     /// The task's state in the task state machine.
     ///
     /// This field is expected to be accessed with CPU Lock or a scheduler lock,
-    /// so `TryMutex` is sufficient (no real mutexes are necessary). It could be
+    /// so `SpinMutex` is sufficient (no real mutexes are necessary). It could be
     /// even `UnsafeCell`, but we'd like to avoid unsafe code whenever possible.
     /// The runtime performance is not a concern in `r3_port_std`.
-    tsm: TryMutex<Tsm>,
+    tsm: SpinMutex<Tsm>,
 }
 
 impl Init for TaskState {
@@ -147,7 +145,7 @@ thread_local! {
 impl TaskState {
     pub const fn new() -> Self {
         Self {
-            tsm: TryMutex::new(Tsm::Uninit),
+            tsm: SpinMutex::new(Tsm::Uninit),
         }
     }
 
@@ -198,7 +196,7 @@ impl State {
     pub const fn new() -> Self {
         Self {
             thread_group: OnceCell::new(),
-            timer_cmd_send: TryMutex::new(None),
+            timer_cmd_send: SpinMutex::new(None),
             origin: AtomicRef::new(None),
         }
     }
