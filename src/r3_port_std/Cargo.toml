@@ -11,11 +11,11 @@ repository = "https://github.com/yvt/r3"
 [dependencies]
 r3 = { version = "0.1.1", path = "../r3" }
 
-atomic_ref = "0.2.0"
-env_logger = "0.8.4"
-once_cell = "1.4.0"
-try-mutex = "0.3.0"
-log = "0.4.8"
+atomic_ref = { version = "0.2.0" }
+env_logger = { version = "0.8.4" }
+once_cell = { version = "1.4.0" }
+try-mutex = { version = "0.3.0" }
+log = { version = "0.4.8" }
 
 [dev-dependencies.r3_test_suite]
 path = "../r3_test_suite"
