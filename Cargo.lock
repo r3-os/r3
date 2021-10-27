@@ -1847,6 +1847,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "atsamd-hal",
+ "cortex-m 0.6.7",
  "cortex-m-rt",
  "embedded-graphics",
  "r3",

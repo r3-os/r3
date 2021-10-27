@@ -12,7 +12,11 @@ use embedded_graphics as eg;
 use r3_port_arm_m as port;
 use wio_terminal as wio;
 
-use core::{fmt::Write, panic::PanicInfo};
+use core::{
+    fmt::Write,
+    panic::PanicInfo,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
 use r3::{
     kernel::{cfg::CfgBuilder, Mutex, StartupHook, Task},
@@ -81,6 +85,7 @@ const _: () = {
 struct Objects {
     console_pipe: queue::Queue<System, u8>,
     lcd_mutex: Mutex<System>,
+    button_reporter_task: Task<System>,
 }
 
 const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
@@ -100,6 +105,11 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     Task::build()
         .start(noisy_task_body)
         .priority(0)
+        .active(true)
+        .finish(b);
+    let button_reporter_task = Task::build()
+        .start(button_reporter_task_body)
+        .priority(2)
         .active(true)
         .finish(b);
     Task::build()
@@ -125,6 +135,7 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     Objects {
         console_pipe,
         lcd_mutex,
+        button_reporter_task,
     }
 }
 
@@ -137,7 +148,7 @@ struct BlinkSt {
 
 fn init_hardware() {
     let mut peripherals = Peripherals::take().unwrap();
-    let core_peripherals = unsafe { CorePeripherals::steal() };
+    let mut core_peripherals = unsafe { CorePeripherals::steal() };
 
     // Configure the clock tree
     let mut clocks = GenericClockController::with_external_32kosc(
@@ -172,6 +183,16 @@ fn init_hardware() {
         .unwrap();
 
     *LCD.lock() = Some(display);
+
+    // Register button event handlers
+    let button_ctrlr = sets.buttons.init(
+        peripherals.EIC,
+        &mut clocks,
+        &mut peripherals.MCLK,
+        &mut sets.port,
+    );
+    button_ctrlr.enable(&mut core_peripherals.NVIC);
+    unsafe { BUTTON_CTRLR = Some(button_ctrlr) };
 }
 
 /// Acquire a lock on `wio::LCD`, yielding the CPU to lower-priority tasks as
@@ -330,6 +351,80 @@ fn animation_task_body(_: usize) {
         drop(lcd);
 
         System::sleep(r3::time::Duration::from_millis(20)).unwrap();
+    }
+}
+
+static BUTTON_STATE: AtomicUsize = AtomicUsize::new(0);
+
+/// The task responsible for reporting button events.
+fn button_reporter_task_body(_: usize) {
+    let mut msg = arrayvec::ArrayString::<80>::new();
+    let mut st = 0;
+    loop {
+        System::park().unwrap();
+
+        let new_st = BUTTON_STATE.load(Ordering::Relaxed);
+
+        // Report changes in the button state
+        use wio::Button;
+        for (i, b) in [
+            Button::TopLeft,
+            Button::TopMiddle,
+            Button::Down,
+            Button::Up,
+            Button::Left,
+            Button::Right,
+            Button::Click,
+        ]
+        .iter()
+        .enumerate()
+        {
+            // `assert_eq!(*b as usize, i)`, but if we did this, `b` would be
+            // lost because it's not `Copy` (why???)
+            let mask = 1 << i;
+            if (st ^ new_st) & mask != 0 {
+                msg.clear();
+                let _ = write!(
+                    msg,
+                    "{:?}: {}",
+                    b,
+                    ["UP", "DOWN"][(new_st & mask != 0) as usize]
+                );
+                COTTAGE.console_pipe.write(msg.as_bytes());
+            }
+        }
+
+        st = new_st;
+    }
+}
+
+static mut BUTTON_CTRLR: Option<wio::ButtonController> = None;
+
+// These are all needed by `wio::button_interrupt!`
+use cortex_m::interrupt::{free as disable_interrupts, CriticalSection};
+use wio::{pac::interrupt, ButtonEvent};
+
+wio::button_interrupt! {
+    BUTTON_CTRLR,
+    unsafe fn on_button_event(_cs: &CriticalSection, event: ButtonEvent) {
+        // We can't call kernel methods while `PRIMASK` is set
+        // (Lesson: Poorly designed abstraction can (motivate people to)
+        // undermine Rust's safety mechanism.)
+        // Safety: la la la
+        unsafe { cortex_m::interrupt::enable() };
+
+        let mut st = BUTTON_STATE.load(Ordering::Relaxed);
+        if event.down {
+            st |= 1<<event.button as u32;
+        } else {
+            st &= !(1<<event.button as u32);
+        }
+        BUTTON_STATE.store(st, Ordering::Relaxed);
+
+        // Report the event
+        COTTAGE.button_reporter_task.unpark().unwrap();
+
+        cortex_m::interrupt::disable();
     }
 }
 
