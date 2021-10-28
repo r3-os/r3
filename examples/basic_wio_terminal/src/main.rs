@@ -13,9 +13,9 @@ use r3_port_arm_m as port;
 use wio_terminal as wio;
 
 use core::{fmt::Write, panic::PanicInfo};
-use eg::{mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
+use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
 use r3::{
-    kernel::{cfg::CfgBuilder, StartupHook, Task},
+    kernel::{cfg::CfgBuilder, Mutex, StartupHook, Task},
     prelude::*,
 };
 use spin::Mutex as SpinMutex;
@@ -80,6 +80,7 @@ const _: () = {
 
 struct Objects {
     console_pipe: queue::Queue<System, u8>,
+    lcd_mutex: Mutex<System>,
 }
 
 const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
@@ -98,12 +99,12 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
 
     Task::build()
         .start(noisy_task_body)
-        .priority(1)
+        .priority(0)
         .active(true)
         .finish(b);
     Task::build()
         .start(blink_task_body)
-        .priority(2)
+        .priority(1)
         .active(true)
         .finish(b);
     Task::build()
@@ -111,10 +112,20 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         .priority(3)
         .active(true)
         .finish(b);
+    Task::build()
+        .start(animation_task_body)
+        .priority(2)
+        .active(true)
+        .finish(b);
 
     let console_pipe = queue::Queue::new(b);
 
-    Objects { console_pipe }
+    let lcd_mutex = Mutex::build().finish(b);
+
+    Objects {
+        console_pipe,
+        lcd_mutex,
+    }
 }
 
 static LCD: SpinMutex<Option<wio::LCD>> = SpinMutex::new(None);
@@ -163,6 +174,42 @@ fn init_hardware() {
     *LCD.lock() = Some(display);
 }
 
+/// Acquire a lock on `wio::LCD`, yielding the CPU to lower-priority tasks as
+/// necessary.
+///
+/// Do not do `LCD.lock()` directly - it monopolizes CPU time, possibly causing
+/// a dead lock.
+fn borrow_lcd() -> impl core::ops::DerefMut<Target = wio::LCD> {
+    struct Guard(Option<spin::MutexGuard<'static, Option<wio::LCD>>>);
+
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            self.0 = None;
+            COTTAGE.lcd_mutex.unlock().unwrap();
+        }
+    }
+
+    impl core::ops::Deref for Guard {
+        type Target = wio::LCD;
+
+        #[inline]
+        fn deref(&self) -> &Self::Target {
+            self.0.as_ref().unwrap().as_ref().unwrap()
+        }
+    }
+
+    impl core::ops::DerefMut for Guard {
+        #[inline]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            self.0.as_mut().unwrap().as_mut().unwrap()
+        }
+    }
+
+    COTTAGE.lcd_mutex.lock().unwrap();
+    Guard(Some(LCD.lock()))
+}
+
+/// The task responsible for outputting messages to the console.
 fn noisy_task_body(_: usize) {
     let mut msg = arrayvec::ArrayString::<80>::new();
     loop {
@@ -179,6 +226,7 @@ fn noisy_task_body(_: usize) {
     }
 }
 
+/// The task responsible for blinking the user LED.
 fn blink_task_body(_: usize) {
     let mut st = BLINK_ST.lock();
     let st = st.as_mut().unwrap();
@@ -188,9 +236,9 @@ fn blink_task_body(_: usize) {
     }
 }
 
+/// The task responsible for rendering the console.
 fn console_task_body(_: usize) {
-    let mut lcd = LCD.lock();
-    let lcd = lcd.as_mut().unwrap();
+    let mut lcd = borrow_lcd();
 
     let bg_style = primitives::PrimitiveStyleBuilder::new()
         .fill_color(Rgb565::BLACK)
@@ -208,16 +256,22 @@ fn console_task_body(_: usize) {
     let mut cursor = [0usize; 2];
     let char_width: usize = 6;
     let char_height: usize = 10;
-    let num_cols: usize = 320 / char_width;
+    let num_cols: usize = 200 / char_width;
     let num_rows: usize = 240 / char_height;
 
     primitives::Rectangle::with_corners(Point::new(0, 0), Point::new(320, 320))
         .into_styled(bg_style)
-        .draw(lcd)
+        .draw(&mut *lcd)
         .unwrap();
+
+    drop(lcd);
 
     loop {
         let num_read = COTTAGE.console_pipe.read(&mut buf);
+
+        let mut lcd = borrow_lcd();
+        let lcd = &mut *lcd;
+
         let mut buf = &buf[..num_read];
         while !buf.is_empty() {
             let i = buf.iter().position(|&b| b == b'\n').unwrap_or(buf.len());
@@ -247,7 +301,10 @@ fn console_task_body(_: usize) {
                 // Erase the new line
                 primitives::Rectangle::with_corners(
                     Point::new(0, (char_height * cursor[1]) as i32),
-                    Point::new(320, (char_height * cursor[1] + char_height) as i32),
+                    Point::new(
+                        (num_cols * char_width) as i32,
+                        (char_height * cursor[1] + char_height) as i32,
+                    ),
                 )
                 .into_styled(bg_style)
                 .draw(lcd)
@@ -259,6 +316,20 @@ fn console_task_body(_: usize) {
             }
             buf = &buf[span_len..];
         }
+    }
+}
+
+/// The task responsible for rendering an animated image.
+fn animation_task_body(_: usize) {
+    let images = r3_example_common::ANIMATION_FRAMES_565;
+    for image in images.iter().cycle() {
+        let mut lcd = borrow_lcd();
+        Image::new(&image(), Point::new(320 - 10 - 102, 240 - 10 - 86))
+            .draw(&mut *lcd)
+            .unwrap();
+        drop(lcd);
+
+        System::sleep(r3::time::Duration::from_millis(20)).unwrap();
     }
 }
 

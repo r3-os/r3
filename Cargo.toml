@@ -5,6 +5,7 @@ members = [
     "examples/basic_nucleo_f401re",
     "examples/basic_rp_pico",
     "examples/basic_wio_terminal",
+    "examples/common",
     "examples/smp_rp_pico",
     "src/arm_semihosting",
     "src/r3",
@@ -21,6 +22,7 @@ members = [
     "src/r3_test_runner",
     "src/r3_test_suite",
 ]
+resolver = "2"
 
 [patch.crates-io.riscv]
 # We need to enable `riscv/inline-asm` to work around
