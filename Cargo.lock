@@ -1854,6 +1854,7 @@ dependencies = [
  "r3_example_common",
  "r3_port_arm_m",
  "spin",
+ "usb-device",
  "usbd-serial",
  "wio_terminal",
 ]

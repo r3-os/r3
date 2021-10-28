@@ -2,6 +2,7 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
+#![feature(let_else)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![no_std]
@@ -13,18 +14,25 @@ use r3_port_arm_m as port;
 use wio_terminal as wio;
 
 use core::{
+    cell::RefCell,
     fmt::Write,
     panic::PanicInfo,
     sync::atomic::{AtomicUsize, Ordering},
 };
+use cortex_m::{interrupt::Mutex as PrimaskMutex, singleton};
 use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
 use r3::{
-    kernel::{cfg::CfgBuilder, Mutex, StartupHook, Task},
+    kernel::{cfg::CfgBuilder, InterruptLine, InterruptNum, Mutex, StartupHook, Task, Timer},
     prelude::*,
 };
 use spin::Mutex as SpinMutex;
+use usb_device::{
+    bus::UsbBusAllocator,
+    device::{UsbDevice, UsbDeviceBuilder, UsbVidPid},
+};
+use usbd_serial::{SerialPort, USB_CLASS_CDC};
 use wio::{
-    hal::{clock::GenericClockController, delay::Delay, gpio},
+    hal::{clock::GenericClockController, delay::Delay, gpio, usb::UsbBus},
     pac::{CorePeripherals, Peripherals},
     prelude::*,
     Pins, Sets,
@@ -40,6 +48,7 @@ impl port::ThreadingOptions for System {}
 
 impl port::SysTickOptions for System {
     const FREQUENCY: u64 = 120_000_000; // ??
+    const TICK_PERIOD: u32 = Self::FREQUENCY as u32 / 500; // 2ms
 }
 
 /// This part is `port::use_rt!` minus `__INTERRUPTS`. `wio_terminal`'s default
@@ -86,6 +95,9 @@ struct Objects {
     console_pipe: queue::Queue<System, u8>,
     lcd_mutex: Mutex<System>,
     button_reporter_task: Task<System>,
+    usb_in_task: Task<System>,
+    usb_poll_timer: Timer<System>,
+    usb_interrupt_lines: [InterruptLine<System>; 3],
 }
 
 const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
@@ -121,6 +133,36 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         .active(true)
         .finish(b);
 
+    // USB input handler
+    let usb_in_task = Task::build()
+        .start(usb_in_task_body)
+        .priority(2)
+        .active(true)
+        .finish(b);
+    let usb_poll_timer = Timer::build()
+        .start(usb_poll_timer_handler)
+        .delay(r3::time::Duration::from_millis(0))
+        // Should be < 10ms for USB compliance
+        .period(r3::time::Duration::from_millis(5))
+        .finish(b);
+    let usb_interrupt_lines = [
+        InterruptLine::build()
+            .line(interrupt::USB_OTHER as InterruptNum + port::INTERRUPT_EXTERNAL0)
+            .priority(1)
+            .enabled(true)
+            .finish(b),
+        InterruptLine::build()
+            .line(interrupt::USB_TRCPT0 as InterruptNum + port::INTERRUPT_EXTERNAL0)
+            .priority(1)
+            .enabled(true)
+            .finish(b),
+        InterruptLine::build()
+            .line(interrupt::USB_TRCPT1 as InterruptNum + port::INTERRUPT_EXTERNAL0)
+            .priority(1)
+            .enabled(true)
+            .finish(b),
+    ];
+
     // Graphics-related tasks and objects
     let _animation_task = Task::build()
         .start(animation_task_body)
@@ -139,6 +181,9 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         console_pipe,
         lcd_mutex,
         button_reporter_task,
+        usb_in_task,
+        usb_poll_timer,
+        usb_interrupt_lines,
     }
 }
 
@@ -196,7 +241,52 @@ fn init_hardware() {
     );
     button_ctrlr.enable(&mut core_peripherals.NVIC);
     unsafe { BUTTON_CTRLR = Some(button_ctrlr) };
+
+    // Configure the USB serial device
+    let sets_usb = sets.usb;
+    let peripherals_usb = peripherals.USB;
+    let peripherals_mclk = &mut peripherals.MCLK;
+    let usb_bus_allocator = singleton!(
+        : UsbBusAllocator<UsbBus> =
+        sets_usb.usb_allocator(
+            peripherals_usb,
+            &mut clocks,
+            peripherals_mclk,
+        )
+    )
+    .unwrap();
+    let serial = SerialPort::new(usb_bus_allocator);
+    let usb_device = UsbDeviceBuilder::new(usb_bus_allocator, UsbVidPid(0x16c0, 0x27dd))
+        .product("R3 Example")
+        .device_class(USB_CLASS_CDC)
+        .max_packet_size_0(64)
+        .build();
+    *USB_STDIO_GLOBAL.lock() = Some(UsbStdioGlobal { serial, usb_device });
 }
+
+// Message producer
+// ----------------------------------------------------------------------------
+
+/// The task responsible for outputting messages to the console.
+fn noisy_task_body(_: usize) {
+    let _ = writeln!(Console, "////////////////////////////////");
+    let _ = writeln!(
+        Console,
+        "Hello! Send text to me over the USB serial port \
+        (e.g., `/dev/ttyACM0`), and I'll display it!"
+    );
+    let _ = writeln!(Console, "////////////////////////////////");
+    loop {
+        // Print a message
+        let _ = write!(Console, "-- {:?} --", System::time().unwrap());
+
+        System::sleep(r3::time::Duration::from_secs(60)).unwrap();
+        let _ = writeln!(Console);
+    }
+}
+
+// Console and graphics
+// ----------------------------------------------------------------------------
 
 /// Acquire a lock on `wio::LCD`, yielding the CPU to lower-priority tasks as
 /// necessary.
@@ -239,20 +329,6 @@ impl Write for Console {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         COTTAGE.console_pipe.write(s.as_bytes());
         Ok(())
-    }
-}
-
-/// The task responsible for outputting messages to the console.
-fn noisy_task_body(_: usize) {
-    loop {
-        // Print a message
-        let _ = write!(Console, "time = {:?}", System::time().unwrap());
-
-        for _ in 0..10 {
-            let _ = write!(Console, ".");
-            System::sleep(r3::time::Duration::from_millis(55)).unwrap();
-        }
-        let _ = writeln!(Console);
     }
 }
 
@@ -363,6 +439,9 @@ fn animation_task_body(_: usize) {
     }
 }
 
+// Button listener
+// ----------------------------------------------------------------------------
+
 static BUTTON_STATE: AtomicUsize = AtomicUsize::new(0);
 
 /// The task responsible for reporting button events.
@@ -431,6 +510,132 @@ wio::button_interrupt! {
         COTTAGE.button_reporter_task.unpark().unwrap();
 
         cortex_m::interrupt::disable();
+    }
+}
+
+// USB serial
+// ----------------------------------------------------------------------------
+
+struct UsbStdioGlobal {
+    usb_device: UsbDevice<'static, UsbBus>,
+    serial: SerialPort<'static, UsbBus>,
+}
+
+/// Stores [`UsbStdioGlobal`]. Only accessed by `poll_usb` (the USB interrupt
+/// handler).
+static USB_STDIO_GLOBAL: SpinMutex<Option<UsbStdioGlobal>> = SpinMutex::new(None);
+
+/// The USB input queue size
+const USB_BUF_CAP: usize = 64;
+
+/// The queue through which received data is passed from `poll_usb` to
+/// `usb_in_task_body`
+static USB_BUF_IN: PrimaskMutex<RefCell<([u8; USB_BUF_CAP], usize)>> =
+    PrimaskMutex::new(RefCell::new(([0; USB_BUF_CAP], 0)));
+
+/// USB interrupt handler
+fn poll_usb() {
+    let Some(mut g) = USB_STDIO_GLOBAL.try_lock() else { return };
+    let g = g.as_mut().unwrap();
+
+    // It's important that we poll the USB device frequently enough
+    g.usb_device.poll(&mut [&mut g.serial]);
+
+    let mut should_unpark = false;
+    let mut should_start_polling = false;
+
+    disable_interrupts(|cs| {
+        let mut usb_buf_in = USB_BUF_IN.borrow(cs).borrow_mut();
+        let (buf, buf_len) = &mut *usb_buf_in;
+        let remaining = &mut buf[*buf_len..];
+        if remaining.is_empty() {
+            // We can't process the data fast enough; apply back-pressure.
+            // Also, disable the USB interrupt lines because we would otherwise
+            // get an interrupt storm. (I'm surprised we have to do this. Is
+            // this really the proper way to apply back-pressure?)
+            should_start_polling = true;
+            return;
+        }
+
+        if let Ok(len) = g.serial.read(remaining) {
+            assert!(len <= remaining.len());
+            *buf_len += len;
+            should_unpark = len > 0;
+        }
+    });
+
+    // In this configuration `disable_interrupts` is equivalent to CPU Lock, so
+    // kernel functions cannot be called inside it
+    if should_unpark {
+        COTTAGE.usb_in_task.unpark().unwrap();
+    }
+
+    if should_start_polling {
+        set_usb_polling(true);
+    }
+}
+
+#[interrupt]
+fn USB_OTHER() {
+    poll_usb();
+}
+
+#[interrupt]
+fn USB_TRCPT0() {
+    poll_usb();
+}
+
+#[interrupt]
+fn USB_TRCPT1() {
+    poll_usb();
+}
+
+fn usb_poll_timer_handler(_: usize) {
+    poll_usb();
+}
+
+/// Change whether `poll_usb` is called in response to USB interrupts or in a
+/// constant interval.
+fn set_usb_polling(b: bool) {
+    if b {
+        COTTAGE.usb_poll_timer.start().unwrap();
+        for line in COTTAGE.usb_interrupt_lines.iter() {
+            line.disable().unwrap();
+        }
+    } else {
+        COTTAGE.usb_poll_timer.stop().unwrap();
+        for line in COTTAGE.usb_interrupt_lines.iter() {
+            line.enable().unwrap();
+        }
+    }
+}
+
+/// The task to print the data received by the USB serial endpoint
+fn usb_in_task_body(_: usize) {
+    let mut data = arrayvec::ArrayVec::<u8, USB_BUF_CAP>::new();
+    loop {
+        // Get next data to output
+        disable_interrupts(|cs| {
+            let mut usb_buf_in = USB_BUF_IN.borrow(cs).borrow_mut();
+            let (buf, buf_len) = &mut *usb_buf_in;
+            data.clear();
+            data.try_extend_from_slice(&buf[..*buf_len]).unwrap();
+            *buf_len = 0;
+        });
+
+        if data.is_empty() {
+            // Got nothing; sleep until new data arrives
+            System::park().unwrap();
+            continue;
+        }
+
+        if data.is_full() {
+            set_usb_polling(false);
+        }
+
+        // Send it to the console
+        let data = core::str::from_utf8(&data).unwrap_or("");
+        let _ = Console.write_str(data);
     }
 }
 
