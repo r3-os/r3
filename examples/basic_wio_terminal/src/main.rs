@@ -90,19 +90,22 @@ struct Objects {
 
 const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
 
+/// The top-level configuration function.
 const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
     b.num_task_priority_levels(4);
 
-    // Initialize hardware
+    // Register a hook to initialize hardware
     StartupHook::build()
         .start(|_| {
             init_hardware();
         })
         .finish(b);
 
+    // Register a timer driver initializer
     System::configure_systick(b);
 
-    Task::build()
+    // Miscellaneous tasks
+    let _noisy_task = Task::build()
         .start(noisy_task_body)
         .priority(0)
         .active(true)
@@ -112,24 +115,24 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         .priority(2)
         .active(true)
         .finish(b);
-    Task::build()
+    let _blink_task = Task::build()
         .start(blink_task_body)
         .priority(1)
         .active(true)
         .finish(b);
-    Task::build()
-        .start(console_task_body)
-        .priority(3)
-        .active(true)
-        .finish(b);
-    Task::build()
+
+    // Graphics-related tasks and objects
+    let _animation_task = Task::build()
         .start(animation_task_body)
         .priority(2)
         .active(true)
         .finish(b);
-
+    let _console_task = Task::build()
+        .start(console_task_body)
+        .priority(3)
+        .active(true)
+        .finish(b);
     let console_pipe = queue::Queue::new(b);
-
     let lcd_mutex = Mutex::build().finish(b);
 
     Objects {
