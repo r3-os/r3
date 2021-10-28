@@ -230,20 +230,26 @@ fn borrow_lcd() -> impl core::ops::DerefMut<Target = wio::LCD> {
     Guard(Some(LCD.lock()))
 }
 
+struct Console;
+
+impl Write for Console {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        COTTAGE.console_pipe.write(s.as_bytes());
+        Ok(())
+    }
+}
+
 /// The task responsible for outputting messages to the console.
 fn noisy_task_body(_: usize) {
-    let mut msg = arrayvec::ArrayString::<80>::new();
     loop {
         // Print a message
-        msg.clear();
-        let _ = write!(msg, "time = {:?}", System::time().unwrap());
-        COTTAGE.console_pipe.write(msg.as_bytes());
+        let _ = write!(Console, "time = {:?}", System::time().unwrap());
 
         for _ in 0..10 {
-            COTTAGE.console_pipe.write(b".");
+            let _ = write!(Console, ".");
             System::sleep(r3::time::Duration::from_millis(55)).unwrap();
         }
-        COTTAGE.console_pipe.write(b"\n");
+        let _ = writeln!(Console);
     }
 }
 
@@ -358,7 +364,6 @@ static BUTTON_STATE: AtomicUsize = AtomicUsize::new(0);
 
 /// The task responsible for reporting button events.
 fn button_reporter_task_body(_: usize) {
-    let mut msg = arrayvec::ArrayString::<80>::new();
     let mut st = 0;
     loop {
         System::park().unwrap();
@@ -383,14 +388,12 @@ fn button_reporter_task_body(_: usize) {
             // lost because it's not `Copy` (why???)
             let mask = 1 << i;
             if (st ^ new_st) & mask != 0 {
-                msg.clear();
                 let _ = write!(
-                    msg,
+                    Console,
                     "{:?}: {}",
                     b,
                     ["UP", "DOWN"][(new_st & mask != 0) as usize]
                 );
-                COTTAGE.console_pipe.write(msg.as_bytes());
             }
         }
 
