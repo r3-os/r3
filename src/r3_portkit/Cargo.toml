@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Utilities for writing a port of R3"
 keywords = ["r3", "simulator"]
-repository = "https://github.com/yvt/r3"
+repository = "https://github.com/r3-os/r3"
 
 [features]
 doc = ["svgbobdoc/enable"]

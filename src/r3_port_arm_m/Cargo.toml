@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 description = "Cortex-M port for R3"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "arm"]
-repository = "https://github.com/yvt/r3"
+repository = "https://github.com/r3-os/r3"
 
 [features]
 preload-registers = []

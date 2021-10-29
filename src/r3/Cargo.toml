@@ -8,7 +8,7 @@ readme = "README.md"
 description = "Static RTOS testing the limit of Rust's const eval and generics"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "rtos"]
-repository = "https://github.com/yvt/r3"
+repository = "https://github.com/r3-os/r3"
 
 [features]
 default = []

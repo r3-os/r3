@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 Initial release.
 
-[Unreleased]: https://github.com/yvt/r3/compare/r3_portkit@0.1.2...HEAD
-[0.1.2]: https://github.com/yvt/r3/compare/r3_portkit@0.1.1...r3_portkit@0.1.2
-[0.1.1]: https://github.com/yvt/r3/compare/r3_portkit@0.1.0...r3_portkit@0.1.1
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.2...HEAD
+[0.1.2]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.1...r3_portkit@0.1.2
+[0.1.1]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.0...r3_portkit@0.1.1
 

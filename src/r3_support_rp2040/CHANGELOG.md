@@ -11,5 +11,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 Initial release.
 
-[Unreleased]: https://github.com/yvt/r3/compare/r3_support_rp2040@0.1.0...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.1.0...HEAD
 

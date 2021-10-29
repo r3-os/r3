@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 description = "Supporting package for running R3 on RP2040"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "arm"]
-repository = "https://github.com/yvt/r3"
+repository = "https://github.com/r3-os/r3"
 
 [features]
 semver-exempt = [
