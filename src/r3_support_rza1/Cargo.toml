@@ -1,6 +1,6 @@
 [package]
 name = "r3_support_rza1"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"

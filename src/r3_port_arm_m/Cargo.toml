@@ -1,6 +1,6 @@
 [package]
 name = "r3_port_arm_m"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
