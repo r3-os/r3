@@ -1,0 +1,14 @@
+[package]
+name = "r3_example_common"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+embedded-graphics = { version = "0.7.1" }
+
+[build-dependencies]
+embedded-graphics = { version = "0.7.1" }
+image = { version = "0.23.14", default-features = false, features = ["gif"] }
+nsvg = { version = "0.5.1", default-features = false }
+zstd = { version = "0.9.0" }

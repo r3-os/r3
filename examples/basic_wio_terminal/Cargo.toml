@@ -1,0 +1,24 @@
+[package]
+name = "r3_example_basic_wio_terminal"
+version = "0.0.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2021"
+publish = false
+
+# `cortex-m-rt` and other crates don't build on a hosted target. We don't want
+# `cargo test --all` to fail because of this, so we put dependencies in the
+# target-specific section.
+[target."cfg(target_os = \"none\")".dependencies]
+r3_example_common = { path = "../common"}
+r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
+r3 = { path = "../../src/r3", features = ["system_time"] }
+
+embedded-graphics = { version = "0.7.1" }
+wio_terminal = { version = "0.4" }
+cortex-m-rt = { version = "0.6.12" }
+usbd-serial = { version = "0.1" }
+usb-device = { version = "0.2.7" }
+atsamd-hal = { version = "0.13", features = ["samd51p"] }
+arrayvec = { version = "0.7.1", default-features = false }
+cortex-m = { version = "*" }
+spin = { version = "0.9.2", default-features = false, features = ["spin_mutex"] }
