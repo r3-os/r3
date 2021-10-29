@@ -1,15 +1,15 @@
 //! Utterly inefficient cross-platform preemptive user-mode scheduling
 use once_cell::sync::OnceCell;
+use slab::Slab;
 use std::{
     panic::{catch_unwind, AssertUnwindSafe},
     sync::{mpsc, Arc, Mutex, MutexGuard},
     thread::Result,
 };
 
-use crate::{
-    threading,
-    utils::iterpool::{Pool, PoolPtr},
-};
+use crate::threading;
+
+type SlabPtr = usize;
 
 #[cfg(test)]
 mod tests;
@@ -43,7 +43,7 @@ pub struct ThreadGroupLockGuard<'a, Sched: ?Sized> {
 
 /// Identifies a thread in [`ThreadGroup`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct ThreadId(PoolPtr);
+pub struct ThreadId(SlabPtr);
 
 /// Encapsulates the state of a client-supplied user-mode scheduler.
 pub trait Scheduler: Send + 'static {
@@ -61,7 +61,7 @@ pub trait Scheduler: Send + 'static {
 
 #[derive(Debug)]
 struct State<Sched: ?Sized> {
-    threads: Pool<WorkerThread>,
+    threads: Slab<WorkerThread>,
     num_threads: usize,
     cur_thread_id: Option<ThreadId>,
     shutting_down: bool,
@@ -92,7 +92,7 @@ impl<Sched: Scheduler> ThreadGroup<Sched> {
         let (send, recv) = mpsc::channel();
 
         let state = Arc::new(Mutex::new(State {
-            threads: Pool::new(),
+            threads: Slab::new(),
             num_threads: 0,
             cur_thread_id: None,
             shutting_down: false,
@@ -144,10 +144,10 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
         let state = Arc::clone(self.state_ref);
 
         // Allocate a `ThreadId`
-        let ptr = self
+        let ptr: SlabPtr = self
             .guard
             .threads
-            .allocate(WorkerThread { join_handle: None });
+            .insert(WorkerThread { join_handle: None });
         let thread_id = ThreadId(ptr);
         self.guard.num_threads += 1;
 
@@ -312,7 +312,7 @@ fn finalize_thread(
     // Delete the current thread
     let mut state_guard = thread_group.lock().unwrap();
     state_guard.sched.thread_exited(thread_id);
-    state_guard.threads.deallocate(thread_id.0).unwrap();
+    state_guard.threads.remove(thread_id.0);
     state_guard.num_threads -= 1;
 
     if let Err(e) = result {
