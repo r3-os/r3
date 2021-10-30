@@ -1,60 +1,59 @@
-use super::{Init, TypeFn};
+use core::mem::MaybeUninit;
+
+use super::Init;
 
 /// Untyped storage of the specified size and alignment.
 /// This is analogous to C++'s [`std::aligned_storage_t`].
 ///
 /// [`std::aligned_storage_t`]: https://en.cppreference.com/w/cpp/types/aligned_storage
-///
-/// This type alias expands to something like the following:
-///
-/// ```rust,ignore
-/// #[repr(align(8))]
-/// #[derive(Clone, Copy)]
-/// struct AlignedStorage_256_8([u8; 256]);
-/// impl Init for AlignedStorage_256_8 { /* ... */ }
-/// ```
-pub type AlignedStorage<const LEN: usize, const ALIGN: usize> =
-    <AlignedStorageFn<LEN, ALIGN> as TypeFn>::Output;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AlignedStorage<const LEN: usize, const ALIGN: usize>(
+    elain::Align<ALIGN>,
+    [MaybeUninit<u8>; LEN],
+)
+where
+    elain::Align<ALIGN>: elain::Alignment;
 
-#[doc(hidden)]
-pub struct AlignedStorageFn<const LEN: usize, const ALIGN: usize>;
+impl<const LEN: usize, const ALIGN: usize> Init for AlignedStorage<LEN, ALIGN>
+where
+    elain::Align<ALIGN>: elain::Alignment,
+{
+    const INIT: Self = Self(elain::Align::NEW, [MaybeUninit::uninit(); LEN]);
+}
 
-#[doc(hidden)]
-pub mod aligned_storage_0b1 {
-    /// Implements `TypeFn` on `AlignedStorageFn` for each possible alignemtn
-    /// value.
-    macro_rules! impl_aligned_storage_fn {
-        ($align:tt, $($rest:tt)*) => {
-            use super::{TypeFn, Init, AlignedStorageFn};
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn size_align() {
+        use core::alloc::Layout;
 
-            impl<const LEN: usize> TypeFn for AlignedStorageFn<LEN, $align> {
-                type Output = Bytes<LEN>;
-            }
+        macro test($len:expr, $align:expr) {{
+            let layout = Layout::new::<AlignedStorage<$len, $align>>();
+            dbg!(layout);
+            assert_eq!(layout.align(), $align);
+            assert_eq!(layout.size(), ($len + $align - 1) / $align * $align);
+        }}
 
-            #[repr(align($align))]
-            #[derive(Clone, Copy)]
-            pub struct Bytes<const LEN: usize>(pub [u8; LEN]);
+        macro test_outer($len:expr) {
+            test!($len, 1);
+            test!($len, 2);
+            test!($len, 4);
+            test!($len, 8);
+            test!($len, 16);
+            test!($len, 32);
+            test!($len, 1024);
+        }
 
-            impl<const LEN: usize> Init for Bytes<LEN> {
-                const INIT: Self = Self([0; LEN]);
-            }
-
-            // It's not allowed to define multiple items with identical names
-            // in the same scope. Macros such as `concat!` don't work in an
-            // identifier position.
-            // The solution? Define them in child modules! As a bonus, these
-            // types receive paths remotely resembling the binary representation
-            // of alignments, for example:
-            // `aligned_storage_0b1::_0::_0::_0::_0::Bytes` (`0b10000`-byte
-            // alignment).
-            pub mod _0 {
-                impl_aligned_storage_fn! { $($rest)* }
-            }
-        };
-        () => {};
-    }
-
-    impl_aligned_storage_fn! {
-        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+        test_outer!(0);
+        test_outer!(1);
+        test_outer!(10);
+        test_outer!(100);
+        test_outer!(1000);
+        test_outer!(1234);
+        test_outer!(4321);
+        test_outer!(10000);
+        test_outer!(30000);
     }
 }
