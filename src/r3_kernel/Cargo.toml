@@ -1,25 +1,19 @@
 [package]
-name = "r3"
-version = "0.1.3"
+name = "r3_kernel"
+version = "0.0.0"
 authors = ["yvt <i@yvt.jp>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-readme = "README.md"
-description = "Static RTOS API testing the limit of Rust's const eval and generics"
+description = "An RTOS kernel implementing the R3 API"
 categories = ["embedded", "no-std"]
-keywords = ["r3", "rtos"]
+keywords = ["r3"]
 repository = "https://github.com/r3-os/r3"
 
 [features]
 default = []
-
-# TODO: Remove these - they now belong to `r3_kernel`
 inline_syscall = []
 priority_boost = []
 system_time = []
-
-# Enable the diagram rendering by svgbob
-doc = ["svgbobdoc/enable"]
 
 [dependencies]
 num-integer = { version = "0.1.42", default-features = false }

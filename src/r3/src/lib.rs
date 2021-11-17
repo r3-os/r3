@@ -7,12 +7,15 @@
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_option)]
+#![feature(const_trait_impl)]
+#![feature(const_refs_to_cell)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
 #![feature(option_result_unwrap_unchecked)] // `Option<T>::unwrap_unchecked`
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(never_type)] // `!`
+#![feature(const_type_id)] // `TypeId::of` as `const fn`
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![feature(specialization)]
 #![feature(cell_update)]
@@ -67,6 +70,7 @@ pub mod _changelog_ {}
 pub mod utils;
 #[macro_use]
 pub mod kernel;
+pub mod bag;
 pub mod hunk;
 pub mod sync;
 pub mod time;
@@ -74,5 +78,5 @@ pub mod time;
 /// The prelude module.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{kernel::Kernel, utils::Init};
+    pub use crate::utils::Init;
 }

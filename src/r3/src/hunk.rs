@@ -8,7 +8,7 @@ use core::{
 };
 
 use crate::{
-    kernel::{self, cfg::CfgBuilder, Kernel, Port, StartupHook},
+    kernel::{self, cfg, hunk, raw, raw_cfg, Cfg, StartupHook},
     utils::{Init, ZeroInit},
 };
 
@@ -43,11 +43,11 @@ pub struct Hunk<System, T: ?Sized> {
 unsafe impl<System, T: ?Sized + Send> Send for Hunk<System, T> {}
 unsafe impl<System, T: ?Sized + Sync> Sync for Hunk<System, T> {}
 
-impl<System: Kernel, T: ?Sized> Hunk<System, T> {
-    /// Construct a `CfgTaskBuilder` to define a hunk in [a configuration
+impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
+    /// Construct a `HunkDefiner` to define a hunk in [a configuration
     /// function](crate#static-configuration).
-    pub const fn build() -> CfgHunkBuilder<System, T, DefaultInitTag> {
-        CfgHunkBuilder {
+    pub const fn build() -> HunkDefiner<System, T, DefaultInitTag> {
+        HunkDefiner {
             _phantom: PhantomData,
             len: 1,
             align: 1,
@@ -55,7 +55,7 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
     }
 }
 
-/// As a generic parameter of [`CfgHunkBuilder`], indicates that the [hunk]
+/// As a generic parameter of [`HunkDefiner`], indicates that the [hunk]
 /// should be initialized with [`Init`].
 ///
 /// [`Init`]: crate::utils::Init
@@ -63,7 +63,7 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct DefaultInitTag;
 
-/// As a generic parameter of [`CfgHunkBuilder`], indicates that the [hunk]
+/// As a generic parameter of [`HunkDefiner`], indicates that the [hunk]
 /// should be zero-initialized.
 ///
 /// [hunk]: crate::kernel::Hunk
@@ -101,13 +101,15 @@ impl<T> HunkIniter<T> for ZeroInitTag {
 ///
 /// [`Hunk`]: crate::kernel::Hunk
 #[must_use = "must call `finish()` to complete registration"]
-pub struct CfgHunkBuilder<System, T: ?Sized, InitTag> {
+pub struct HunkDefiner<System, T: ?Sized, InitTag> {
     _phantom: PhantomData<(System, InitTag, T)>,
     len: usize,
     align: usize,
 }
 
-impl<System: Kernel, T: ?Sized, InitTag> CfgHunkBuilder<System, T, InitTag> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized, InitTag>
+    HunkDefiner<System, T, InitTag>
+{
     /// Specify the element count. Defaults to `1`. Must be `1` for a non-array
     /// hunk.
     pub const fn len(self, len: usize) -> Self {
@@ -120,7 +122,7 @@ impl<System: Kernel, T: ?Sized, InitTag> CfgHunkBuilder<System, T, InitTag> {
     }
 
     /// Zero-initialize the hunk.
-    pub const fn zeroed(self) -> CfgHunkBuilder<System, T, ZeroInitTag>
+    pub const fn zeroed(self) -> HunkDefiner<System, T, ZeroInitTag>
     where
         T: ZeroInit,
     {
@@ -134,8 +136,8 @@ impl<System: Kernel, T: ?Sized, InitTag> CfgHunkBuilder<System, T, InitTag> {
     ///
     /// If zero initialization is not a valid bit pattern for `T`, accessing the
     /// hunk's contents may result in an undefined behavior.
-    pub const unsafe fn zeroed_unchecked(self) -> CfgHunkBuilder<System, T, ZeroInitTag> {
-        CfgHunkBuilder {
+    pub const unsafe fn zeroed_unchecked(self) -> HunkDefiner<System, T, ZeroInitTag> {
+        HunkDefiner {
             _phantom: PhantomData,
             len: self.len,
             align: self.align,
@@ -143,9 +145,14 @@ impl<System: Kernel, T: ?Sized, InitTag> CfgHunkBuilder<System, T, InitTag> {
     }
 }
 
-impl<System: Kernel, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, T, InitTag> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
+    HunkDefiner<System, T, InitTag>
+{
     /// Complete the definition of a hunk, returning a reference to the hunk.
-    pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> Hunk<System, T> {
+    pub const fn finish<C: ~const raw_cfg::CfgBase<System = System>>(
+        self,
+        cfg: &mut Cfg<C>,
+    ) -> Hunk<System, T> {
         let untyped_hunk = kernel::Hunk::<System>::build()
             .len(mem::size_of::<T>())
             .align(max(mem::align_of::<T>(), self.align))
@@ -178,9 +185,14 @@ impl<System: Kernel, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, T, InitTa
     }
 }
 
-impl<System: Port, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, [T], InitTag> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
+    HunkDefiner<System, [T], InitTag>
+{
     /// Complete the definition of a hunk, returning a reference to the hunk.
-    pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> Hunk<System, [T]> {
+    pub const fn finish<C: ~const raw_cfg::CfgBase<System = System>>(
+        self,
+        cfg: &mut Cfg<C>,
+    ) -> Hunk<System, [T]> {
         assert!(self.align.is_power_of_two(), "`align` is not power of two");
 
         let untyped_hunk = kernel::Hunk::<System>::build()
@@ -203,7 +215,7 @@ impl<System: Port, T, InitTag: HunkIniter<T>> CfgHunkBuilder<System, [T], InitTa
     }
 }
 
-impl<System, T> Init for Hunk<System, [T]> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T> Init for Hunk<System, [T]> {
     // Safety: This is safe because it points to nothing
     #[allow(clippy::invalid_null_ptr_usage)]
     const INIT: Self = Self {
@@ -212,7 +224,9 @@ impl<System, T> Init for Hunk<System, [T]> {
     };
 }
 
-impl<System: Kernel, T: fmt::Debug + ?Sized> fmt::Debug for Hunk<System, T> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T: fmt::Debug + ?Sized> fmt::Debug
+    for Hunk<System, T>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Hunk")
             .field(&Self::as_ptr(*self))
@@ -245,11 +259,11 @@ impl<System, T: ?Sized> Hunk<System, T> {
     }
 }
 
-impl<System: Kernel, T: ?Sized> Hunk<System, T> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
     /// Get the untyped hunk.
     #[inline]
     pub fn untyped_hunk(this: Self) -> kernel::Hunk<System> {
-        kernel::Hunk::from_offset(this.offset as *const u8 as usize)
+        hunk::Hunk::from_offset(this.offset as *const u8 as usize)
     }
 
     // FIXME: The following methods are not `const fn` on account of
@@ -282,13 +296,13 @@ impl<System: Kernel, T: ?Sized> Hunk<System, T> {
     }
 }
 
-impl<System: Kernel, T: ?Sized> AsRef<T> for Hunk<System, T> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> AsRef<T> for Hunk<System, T> {
     fn as_ref(&self) -> &T {
         unsafe { &*Self::as_ptr(*self) }
     }
 }
 
-impl<System: Kernel, T: ?Sized> Deref for Hunk<System, T> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Deref for Hunk<System, T> {
     type Target = T;
 
     #[inline]

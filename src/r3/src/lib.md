@@ -15,6 +15,10 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 - The kernel is written in a target-independent way. The target-specific portion (called *a port*) is provided as a separate crate, which an application chooses and **combines with the kernel using the trait system**.
 - Leverages Rust's type safety for access control of kernel objects. Safe code can't access an object that it doesn't own.
 
+<div class="admonition-follows"></div>
+
+> **This documentation is work in progress!** It hasn't yet been updated for the recently introduced split between the kernel API (`r3`) and implementation (`r3_kernel`).
+
 <!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
 <div class="admonition-follows"></div>
 <blockquote class="disabled-feature-warning"><p><span></span><code></code></p></blockquote>
@@ -191,7 +195,10 @@ struct Objects { task: Task<System> }
 const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
 
 // This is the top-level configuration function
-const fn configure_app<System: Kernel>(b: &mut CfgBuilder<System>) -> Objects {
+const fn configure_app<C>(b: &mut Cfg<C>) -> Objects
+where
+    C: ~const traits::CfgTask<System = System>,
+{
     b.num_task_priority_levels(4);
     let task = Task::build()
         .start(task_body).priority(3).active(true).finish(b);
@@ -214,19 +221,26 @@ Configuration functions are highly composable as they can call other configurati
 # #![feature(const_fn_trait_bound)]
 # #![feature(const_mut_refs)]
 # #![feature(const_fn_fn_ptr_basics)]
-# use r3::kernel::{cfg::CfgBuilder, Kernel};
-# struct Objects<System> { my_module: m::MyModule<System> }
+# #![feature(const_trait_impl)]
+# use r3::kernel::{Cfg, traits};
+# struct Objects<System: traits::KernelBase> { my_module: m::MyModule<System> }
 // Top-level configuration function
-const fn configure_app<System: Kernel>(b: &mut CfgBuilder<System>) -> Objects<System> {
+const fn configure_app<C>(b: &mut Cfg<C>) -> Objects<C::System>
+where
+    C: ~const traits::CfgBase + ~const traits::CfgTask,
+{
     b.num_task_priority_levels(4);
     let my_module = m::configure(b);
     Objects { my_module }
 }
 
 mod m {
-#   use r3::kernel::{cfg::CfgBuilder, Kernel, Task};
-#   pub struct MyModule<System> { task: Task<System> }
-    pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) -> MyModule<System> {
+#   use r3::kernel::{Cfg, Task, traits};
+#   pub struct MyModule<System: traits::KernelBase> { task: Task<System> }
+    pub const fn configure<C>(b: &mut Cfg<C>) -> MyModule<C::System>
+    where
+        C: ~const traits::CfgBase + ~const traits::CfgTask,
+    {
         let task = Task::build()
             .start(task_body).priority(3).active(true).finish(b);
         MyModule { task }

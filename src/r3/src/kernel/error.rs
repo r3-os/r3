@@ -222,39 +222,11 @@ macro_rules! define_error {
 }
 
 define_error! {
-    mod bad_context_error {}
-    pub(super) enum BadContextError {
-        BadContext,
-    }
-}
-
-define_error! {
-    mod bad_id_error {}
-    pub(super) enum BadIdError {
-        BadId,
-    }
-}
-
-define_error! {
-    mod bad_param_error {}
-    pub(super) enum BadParamError {
-        BadParam,
-    }
-}
-
-define_error! {
-    mod bad_object_state_error {}
-    pub(super) enum BadObjectStateError {
-        BadObjectState,
-    }
-}
-
-define_error! {
     mod activate_task_error {}
     /// Error type for [`Task::activate`].
     ///
     /// [`Task::activate`]: super::Task::activate
-    pub enum ActivateTaskError: BadContextError, BadIdError {
+    pub enum ActivateTaskError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -277,7 +249,7 @@ define_error! {
     /// Error type for [`Task::current`].
     ///
     /// [`Task::current`]: super::Task::current
-    pub enum GetCurrentTaskError: BadContextError {
+    pub enum GetCurrentTaskError {
         /// CPU Lock is active.
         BadContext,
     }
@@ -288,7 +260,7 @@ define_error! {
     /// Error type for [`Task::interrupt`].
     ///
     /// [`Task::interrupt`]: super::Task::interrupt
-    pub enum InterruptTaskError: BadContextError, BadIdError, BadObjectStateError {
+    pub enum InterruptTaskError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -303,7 +275,7 @@ define_error! {
     /// Error type for [`Task::set_priority`].
     ///
     /// [`Task::set_priority`]: super::Task::set_priority
-    pub enum SetTaskPriorityError: BadContextError, BadIdError {
+    pub enum SetTaskPriorityError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -324,7 +296,7 @@ define_error! {
     /// Error type for [`Task::priority`].
     ///
     /// [`Task::priority`]: super::Task::priority
-    pub enum GetTaskPriorityError: BadContextError, BadIdError {
+    pub enum GetTaskPriorityError {
         /// The task ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -339,7 +311,7 @@ define_error! {
     /// Error type for [`Kernel::exit_task`].
     ///
     /// [`Kernel::exit_task`]: super::Kernel::exit_task
-    pub enum ExitTaskError: BadContextError {
+    pub enum ExitTaskError {
         /// CPU Lock is active, or the current context is not a task context.
         BadContext,
     }
@@ -352,7 +324,7 @@ define_error! {
     ///
     /// [`Kernel::acquire_cpu_lock`]: super::Kernel::acquire_cpu_lock
     /// [`Kernel::release_cpu_lock`]: super::Kernel::release_cpu_lock
-    pub enum CpuLockError: BadContextError {
+    pub enum CpuLockError {
         /// CPU Lock is already active or inactive.
         BadContext,
     }
@@ -365,7 +337,7 @@ define_error! {
     ///
     /// [`Kernel::boost_priority`]: super::Kernel::boost_priority
     /// [`Kernel::unboost_priority`]: super::Kernel::unboost_priority
-    pub enum BoostPriorityError: BadContextError {
+    pub enum BoostPriorityError {
         /// Priority Boost is already active or inactive, the current
         /// context is not a task context, or CPU Lock is active.
         BadContext,
@@ -379,7 +351,7 @@ define_error! {
     ///
     /// [`Kernel::time`]: super::Kernel::time
     /// [`Kernel::set_time`]: super::Kernel::set_time
-    pub enum TimeError: BadContextError {
+    pub enum TimeError {
         /// The current context is not a task context, or CPU Lock is active.
         BadContext,
     }
@@ -390,7 +362,7 @@ define_error! {
     /// Error type for [`Kernel::adjust_time`].
     ///
     /// [`Kernel::adjust_time`]: super::Kernel::adjust_time
-    pub enum AdjustTimeError: BadContextError {
+    pub enum AdjustTimeError {
         /// CPU Lock is active.
         BadContext,
         /// The requested adjustment is not possible under the current system
@@ -421,22 +393,12 @@ define_error! {
     }
 }
 
-impl WaitTimeoutError {
-    /// Convert `self` to `WaitError`, panicking if `self == Self::Timeout`.
-    pub(super) fn expect_not_timeout(self) -> WaitError {
-        match self {
-            Self::Interrupted => WaitError::Interrupted,
-            Self::Timeout => panic!("got timeout result for a non-timeout wait"),
-        }
-    }
-}
-
 define_error! {
     mod park_error {}
     /// Error type for [`Kernel::park`].
     ///
     /// [`Kernel::park`]: super::Kernel::park
-    pub enum ParkError: BadContextError, WaitError {
+    pub enum ParkError: WaitError {
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -450,7 +412,7 @@ define_error! {
     /// Error type for [`Kernel::park_timeout`].
     ///
     /// [`Kernel::park_timeout`]: super::Kernel::park_timeout
-    pub enum ParkTimeoutError: BadContextError, WaitTimeoutError, BadParamError {
+    pub enum ParkTimeoutError: WaitTimeoutError {
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -467,7 +429,7 @@ define_error! {
     /// Error type for [`Task::unpark`].
     ///
     /// [`Task::unpark`]: super::Task::unpark
-    pub enum UnparkError: BadContextError, BadIdError {
+    pub enum UnparkError {
         /// CPU Lock is active.
         BadContext,
         /// The task ID is out of range.
@@ -482,7 +444,7 @@ define_error! {
     /// Error type for [`Task::unpark_exact`].
     ///
     /// [`Task::unpark_exact`]: super::Task::unpark_exact
-    pub enum UnparkExactError: BadContextError, BadIdError {
+    pub enum UnparkExactError {
         /// CPU Lock is active.
         BadContext,
         /// The task ID is out of range.
@@ -499,7 +461,7 @@ define_error! {
     /// Error type for [`Kernel::sleep`].
     ///
     /// [`Kernel::sleep`]: super::Kernel::sleep
-    pub enum SleepError: BadContextError, BadParamError {
+    pub enum SleepError {
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -515,7 +477,7 @@ define_error! {
     ///
     /// [`EventGroup::set`]: super::EventGroup::set
     /// [`EventGroup::clear`]: super::EventGroup::clear
-    pub enum UpdateEventGroupError: BadContextError, BadIdError {
+    pub enum UpdateEventGroupError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -528,7 +490,7 @@ define_error! {
     /// Error type for [`EventGroup::get`].
     ///
     /// [`EventGroup::get`]: super::EventGroup::get
-    pub enum GetEventGroupError: BadContextError, BadIdError {
+    pub enum GetEventGroupError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -541,7 +503,7 @@ define_error! {
     /// Error type for [`EventGroup::poll`].
     ///
     /// [`EventGroup::poll`]: super::EventGroup::poll
-    pub enum PollEventGroupError: BadContextError, BadIdError {
+    pub enum PollEventGroupError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -555,7 +517,7 @@ define_error! {
     /// Error type for [`EventGroup::wait`].
     ///
     /// [`EventGroup::wait`]: super::EventGroup::wait
-    pub enum WaitEventGroupError: BadContextError, BadIdError, WaitError {
+    pub enum WaitEventGroupError: WaitError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -571,7 +533,7 @@ define_error! {
     /// Error type for [`EventGroup::wait_timeout`].
     ///
     /// [`EventGroup::wait_timeout`]: super::EventGroup::wait_timeout
-    pub enum WaitEventGroupTimeoutError: BadContextError, BadIdError, WaitTimeoutError, BadParamError {
+    pub enum WaitEventGroupTimeoutError: WaitTimeoutError {
         /// The event group ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -590,7 +552,7 @@ define_error! {
     /// Error type for [`Semaphore::get`].
     ///
     /// [`Semaphore::get`]: super::Semaphore::get
-    pub enum GetSemaphoreError: BadContextError, BadIdError {
+    pub enum GetSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -603,7 +565,7 @@ define_error! {
     /// Error type for [`Semaphore::drain`].
     ///
     /// [`Semaphore::drain`]: super::Semaphore::drain
-    pub enum DrainSemaphoreError: BadContextError, BadIdError {
+    pub enum DrainSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -616,7 +578,7 @@ define_error! {
     /// Error type for [`Semaphore::signal`].
     ///
     /// [`Semaphore::signal`]: super::Semaphore::signal
-    pub enum SignalSemaphoreError: BadContextError, BadIdError {
+    pub enum SignalSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -631,7 +593,7 @@ define_error! {
     /// Error type for [`Semaphore::poll_one`].
     ///
     /// [`Semaphore::poll_one`]: super::Semaphore::poll_one
-    pub enum PollSemaphoreError: BadContextError, BadIdError {
+    pub enum PollSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -645,7 +607,7 @@ define_error! {
     /// Error type for [`Semaphore::wait_one`].
     ///
     /// [`Semaphore::wait_one`]: super::Semaphore::wait_one
-    pub enum WaitSemaphoreError: BadContextError, BadIdError, WaitError {
+    pub enum WaitSemaphoreError: WaitError {
         /// The semaphore ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -661,7 +623,7 @@ define_error! {
     /// Error type for [`Semaphore::wait_one_timeout`].
     ///
     /// [`Semaphore::wait_one_timeout`]: super::Semaphore::wait_one_timeout
-    pub enum WaitSemaphoreTimeoutError: BadContextError, BadIdError, WaitTimeoutError, BadParamError {
+    pub enum WaitSemaphoreTimeoutError: WaitTimeoutError {
         /// The semaphore ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -680,7 +642,7 @@ define_error! {
     /// Error type for [`Mutex::is_locked`].
     ///
     /// [`Mutex::is_locked`]: super::Mutex::is_locked
-    pub enum QueryMutexError: BadContextError, BadIdError {
+    pub enum QueryMutexError {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -693,7 +655,7 @@ define_error! {
     /// Error type for [`Mutex::unlock`].
     ///
     /// [`Mutex::unlock`]: super::Mutex::unlock
-    pub enum UnlockMutexError: BadContextError, BadIdError {
+    pub enum UnlockMutexError {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -708,29 +670,11 @@ define_error! {
 }
 
 define_error! {
-    mod lock_mutex_precheck_error {}
-    /// Some of the error codes shared by [`TryLockMutexError`],
-    /// [`LockMutexError`], and [`LockMutexTimeoutError`]. Used internally
-    /// by the mutex implementation.
-    pub(super) enum LockMutexPrecheckError {
-        /// The current task already owns the mutex.
-        WouldDeadlock,
-        /// The mutex was created with the protocol attribute having the value
-        /// [`Ceiling`] and the current task's priority is higher than the
-        /// mutex's priority ceiling.
-        ///
-        /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
-        BadParam,
-    }
-}
-
-define_error! {
     mod try_lock_mutex_error {}
     /// Error type for [`Mutex::try_lock`].
     ///
     /// [`Mutex::try_lock`]: super::Mutex::try_lock
-    pub enum TryLockMutexError: BadContextError, BadIdError, LockMutexPrecheckError
-    {
+    pub enum TryLockMutexError {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not a [task context].
@@ -758,8 +702,7 @@ define_error! {
     /// Error type for [`Mutex::lock`].
     ///
     /// [`Mutex::lock`]: super::Mutex::lock
-    pub enum LockMutexError: BadContextError, BadIdError, WaitError,
-        LockMutexPrecheckError
+    pub enum LockMutexError: WaitError
     {
         /// The mutex ID is out of range.
         BadId,
@@ -788,9 +731,7 @@ define_error! {
     /// Error type for [`Mutex::lock_timeout`].
     ///
     /// [`Mutex::lock_timeout`]: super::Mutex::lock_timeout
-    pub enum LockMutexTimeoutError: BadContextError, BadIdError, WaitTimeoutError,
-        BadParamError, LockMutexPrecheckError
-    {
+    pub enum LockMutexTimeoutError: WaitTimeoutError {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active, or the current context is not [waitable].
@@ -819,7 +760,7 @@ define_error! {
     /// Error type for [`Mutex::mark_consistent`].
     ///
     /// [`Mutex::mark_consistent`]: super::Mutex::mark_consistent
-    pub enum MarkConsistentMutexError: BadContextError, BadIdError {
+    pub enum MarkConsistentMutexError {
         /// The mutex ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -836,7 +777,7 @@ define_error! {
     ///
     /// [`InterruptLine::set_priority`]: super::InterruptLine::set_priority
     /// [`InterruptLine::set_priority_unchecked`]: super::InterruptLine::set_priority_unchecked
-    pub enum SetInterruptLinePriorityError: BadContextError, BadParamError {
+    pub enum SetInterruptLinePriorityError {
         /// The operation is not supported by the port.
         NotSupported,
         /// CPU Lock is active, or the current context is not [a task context].
@@ -855,7 +796,7 @@ define_error! {
     ///
     /// [`InterruptLine::enable`]: super::InterruptLine::enable
     /// [`InterruptLine::disable`]: super::InterruptLine::disable
-    pub enum EnableInterruptLineError: BadParamError {
+    pub enum EnableInterruptLineError {
         /// The operation is not supported by the port.
         NotSupported,
         /// Enabling or disabling the specified interrupt line is not supported.
@@ -868,7 +809,7 @@ define_error! {
     /// Error type for [`InterruptLine::pend`].
     ///
     /// [`InterruptLine::pend`]: super::InterruptLine::pend
-    pub enum PendInterruptLineError: BadParamError {
+    pub enum PendInterruptLineError {
         /// Setting a pending flag is not supported by the port.
         NotSupported,
         /// Setting the pending flag of the specified interrupt line is not
@@ -888,7 +829,7 @@ define_error! {
     /// Error type for [`InterruptLine::clear`].
     ///
     /// [`InterruptLine::clear`]: super::InterruptLine::clear
-    pub enum ClearInterruptLineError: BadParamError {
+    pub enum ClearInterruptLineError {
         /// Clearing a pending flag is not supported by the port.
         NotSupported,
         /// Clearing the pending flag of the specified interrupt line is not
@@ -908,7 +849,7 @@ define_error! {
     /// Error type for [`InterruptLine::is_pending`].
     ///
     /// [`InterruptLine::is_pending`]: super::InterruptLine::is_pending
-    pub enum QueryInterruptLineError: BadParamError {
+    pub enum QueryInterruptLineError {
         /// Reading a pending flag is not supported by the port.
         NotSupported,
         /// Reading the pending flag of the specified interrupt line is not
@@ -922,7 +863,7 @@ define_error! {
     /// Error type for [`Timer::start`].
     ///
     /// [`Timer::start`]: super::Timer::start
-    pub enum StartTimerError: BadContextError, BadIdError {
+    pub enum StartTimerError {
         /// The timer ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -935,7 +876,7 @@ define_error! {
     /// Error type for [`Timer::stop`].
     ///
     /// [`Timer::stop`]: super::Timer::stop
-    pub enum StopTimerError: BadContextError, BadIdError {
+    pub enum StopTimerError {
         /// The timer ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -948,7 +889,7 @@ define_error! {
     /// Error type for [`Timer::set_delay`].
     ///
     /// [`Timer::set_delay`]: super::Timer::set_delay
-    pub enum SetTimerDelayError: BadContextError, BadIdError, BadParamError {
+    pub enum SetTimerDelayError {
         /// The timer ID is out of range.
         BadId,
         /// CPU Lock is active.
@@ -963,7 +904,7 @@ define_error! {
     /// Error type for [`Timer::set_period`].
     ///
     /// [`Timer::set_period`]: super::Timer::set_period
-    pub enum SetTimerPeriodError: BadContextError, BadIdError, BadParamError {
+    pub enum SetTimerPeriodError {
         /// The timer ID is out of range.
         BadId,
         /// CPU Lock is active.

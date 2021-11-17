@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+**The design has been wholly revamped!** `r3` now only defines the interface between an application and a kernel implementation. The current kernel implementation has been moved to `r3_kernel`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
+
 ## [0.1.3] - 2021-10-29
 
 This release only includes changes to the documentation.

@@ -1803,6 +1803,7 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "chrono",
+ "either",
  "elain",
  "env_logger",
  "log",
@@ -1887,6 +1888,26 @@ dependencies = [
  "r3_support_rp2040",
  "rp2040",
  "rp2040-boot2",
+]
+
+[[package]]
+name = "r3_kernel"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+ "bitflags",
+ "chrono",
+ "either",
+ "elain",
+ "env_logger",
+ "log",
+ "num-integer",
+ "num-traits",
+ "pin-utils",
+ "quickcheck",
+ "quickcheck_macros",
+ "svgbobdoc",
+ "tokenlock",
 ]
 
 [[package]]
