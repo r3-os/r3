@@ -2,6 +2,8 @@ use core::{cell::UnsafeCell, mem, sync::atomic};
 
 /// Trait for zero-initializable types.
 ///
+/// This trait is subject to the API stability guarantee.
+///
 /// # Safety
 ///
 /// Zero-initialization is not safe for all types. For example, references
