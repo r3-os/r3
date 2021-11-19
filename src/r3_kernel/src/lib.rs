@@ -1,3 +1,10 @@
+#![feature(decl_macro)]
+#![feature(never_type)] // `!`
+#![feature(assert_matches)]
+#![feature(specialization)]
+#![feature(const_trait_impl)]
+#![feature(generic_const_exprs)]
+#![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]
 #![cfg_attr(
