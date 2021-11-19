@@ -50,7 +50,6 @@ mod aligned_storage;
 pub mod binary_heap;
 pub(crate) mod convert;
 mod ctz;
-mod init;
 mod int;
 pub(crate) mod intrusive_list;
 pub mod mem;
@@ -61,10 +60,8 @@ mod rawcell;
 mod vec;
 #[macro_use]
 pub mod for_times;
-mod zeroinit;
-pub use self::{
-    aligned_storage::*, init::*, int::*, prio_bitmap::*, rawcell::*, vec::*, zeroinit::*,
-};
+pub use self::{aligned_storage::*, int::*, prio_bitmap::*, rawcell::*, vec::*};
+pub use r3::utils::{Init, ZeroInit};
 
 /// A "type function" producing a type.
 #[doc(hidden)]
