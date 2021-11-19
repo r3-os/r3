@@ -25,7 +25,7 @@ use crate::utils::Init;
 /// > [the TOPPERS kernels].
 ///
 /// [the TOPPERS kernels]: https://www.toppers.jp/index.html
-#[doc = include_str!("../common.md")]
+#[doc = include_str!("./common.md")]
 pub struct Hunk<System> {
     start: usize,
     _phantom: PhantomData<System>,

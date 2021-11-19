@@ -22,7 +22,7 @@ use crate::{time::Duration, utils::Init};
 /// > constrained targets such as AVR and MSP430. In addition, many RISC targets
 /// > handle small data types less efficiently. The portability issue shouldn't
 /// > pose a problem in practice.
-#[doc = include_str!("../common.md")]
+#[doc = include_str!("./common.md")]
 pub type SemaphoreValue = usize;
 
 /// Represents a single semaphore in a system.
@@ -38,7 +38,7 @@ pub type SemaphoreValue = usize;
 ///
 /// > **Relation to Other Specifications:** Present in almost every real-time
 /// > operating system.
-#[doc = include_str!("../common.md")]
+#[doc = include_str!("./common.md")]
 #[repr(transparent)]
 pub struct Semaphore<System>(Id, PhantomData<System>);
 
