@@ -9,6 +9,7 @@ pub mod interrupt;
 pub mod mutex;
 pub mod raw;
 pub mod raw_cfg;
+pub mod semaphore;
 pub mod task;
 pub mod timer;
 pub use {
@@ -20,6 +21,7 @@ pub use {
     interrupt::{InterruptLine, InterruptNum, InterruptPriority},
     mutex::{Mutex, MutexProtocol},
     raw::{Id, QueueOrder},
+    semaphore::{Semaphore, SemaphoreValue},
     task::Task,
     timer::Timer,
 };
