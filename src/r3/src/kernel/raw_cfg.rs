@@ -129,8 +129,8 @@ pub struct TimerDescriptor<System> {
     pub start: fn(usize),
     pub param: usize,
     pub active: bool,
-    pub delay: Duration,
-    pub period: Duration,
+    pub delay: Option<Duration>,
+    pub period: Option<Duration>,
 }
 
 pub unsafe trait CfgInterruptLine: CfgBase

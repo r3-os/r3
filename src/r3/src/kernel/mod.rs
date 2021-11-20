@@ -10,6 +10,7 @@ pub mod mutex;
 pub mod raw;
 pub mod raw_cfg;
 pub mod task;
+pub mod timer;
 pub use {
     cfg::Cfg,
     error::*,
@@ -20,6 +21,7 @@ pub use {
     mutex::{Mutex, MutexProtocol},
     raw::{Id, QueueOrder},
     task::Task,
+    timer::Timer,
 };
 
 /// The prelude module.
