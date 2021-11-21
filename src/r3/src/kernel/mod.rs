@@ -19,7 +19,7 @@ pub use {
     event_group::{EventGroup, EventGroupBits, EventGroupWaitFlags},
     hook::StartupHook,
     hunk::Hunk,
-    interrupt::{InterruptLine, InterruptNum, InterruptPriority},
+    interrupt::{InterruptHandler, InterruptLine, InterruptNum, InterruptPriority},
     kernel::*,
     mutex::{Mutex, MutexProtocol},
     raw::{Id, QueueOrder},
