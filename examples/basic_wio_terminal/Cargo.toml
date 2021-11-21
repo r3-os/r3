@@ -11,6 +11,7 @@ publish = false
 [target."cfg(target_os = \"none\")".dependencies]
 r3_example_common = { path = "../common"}
 r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
+r3_kernel = { path = "../../src/r3_kernel" }
 r3 = { path = "../../src/r3", features = ["system_time"] }
 
 embedded-graphics = { version = "0.7.1" }

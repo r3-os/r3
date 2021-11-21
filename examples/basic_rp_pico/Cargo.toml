@@ -11,6 +11,7 @@ publish = false
 [target."cfg(target_os = \"none\")".dependencies]
 r3_support_rp2040 = { path = "../../src/r3_support_rp2040", features = ["semver-exempt"] }
 r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
+r3_kernel = { path = "../../src/r3_kernel" }
 r3 = { path = "../../src/r3", features = ["system_time"] }
 
 rp2040-boot2 = { version = "0.1.2" }

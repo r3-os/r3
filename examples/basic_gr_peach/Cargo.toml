@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 r3_support_rza1 = { path = "../../src/r3_support_rza1", features = ["semver-exempt"] }
 r3_port_arm = { path = "../../src/r3_port_arm" }
+r3_kernel = { path = "../../src/r3_kernel" }
 r3 = { path = "../../src/r3", features = ["system_time"] }
 
 rtt-target = { version = "0.2.0" }
