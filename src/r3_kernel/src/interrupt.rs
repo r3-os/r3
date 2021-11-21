@@ -1,212 +1,79 @@
-use core::{fmt, hash, marker::PhantomData};
+use core::marker::PhantomData;
 
-use super::{
-    utils, ClearInterruptLineError, EnableInterruptLineError, Kernel, PendInterruptLineError, Port,
-    QueryInterruptLineError, SetInterruptLinePriorityError,
+use r3::{
+    kernel::{
+        traits::KernelInterruptLine, ClearInterruptLineError, EnableInterruptLineError,
+        InterruptNum, InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
+        SetInterruptLinePriorityError,
+    },
+    utils::Init,
 };
-use crate::utils::Init;
 
-/// Numeric value used to identify interrupt lines.
-///
-/// The meaning of this value is defined by a port and target hardware. They
-/// are not necessarily tightly packed from zero.
-pub type InterruptNum = usize;
+use crate::{klock, KernelTraits, Port, System};
 
-/// Priority value for an interrupt line.
-pub type InterruptPriority = i16;
-
-/// Refers to an interrupt line in a system.
-pub struct InterruptLine<System>(InterruptNum, PhantomData<System>);
-
-impl<System> Clone for InterruptLine<System> {
-    fn clone(&self) -> Self {
-        Self(self.0, self.1)
-    }
-}
-
-impl<System> Copy for InterruptLine<System> {}
-
-impl<System> PartialEq for InterruptLine<System> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System> Eq for InterruptLine<System> {}
-
-impl<System> hash::Hash for InterruptLine<System> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System> fmt::Debug for InterruptLine<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("InterruptLine").field(&self.0).finish()
-    }
-}
-
-impl<System> InterruptLine<System> {
-    /// Construct a `InterruptLine` from `InterruptNum`.
-    pub const fn from_num(num: InterruptNum) -> Self {
-        Self(num, PhantomData)
-    }
-
-    /// Get the raw `InterruptNum` value representing this interrupt line.
-    pub const fn num(self) -> InterruptNum {
-        self.0
-    }
-}
-
-impl<System: Kernel> InterruptLine<System> {
-    /// Set the priority of the interrupt line. The new priority must fall
-    /// within [a managed range].
-    ///
-    /// Turning a managed interrupt handler into an unmanaged one is unsafe
-    /// because the behavior of system calls is undefined inside an unmanaged
-    /// interrupt handler. This method checks the new priority to prevent this
-    /// from happening and returns [`SetInterruptLinePriorityError::BadParam`]
-    /// if the operation is unsafe.
-    ///
-    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelInterruptLine for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn set_priority(
-        self,
+    unsafe fn interrupt_line_set_priority(
+        this: InterruptNum,
         value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
-        let mut lock = utils::lock_cpu::<System>()?;
+        let mut lock = klock::lock_cpu::<Traits>()?;
 
         // Deny a non-task context
-        if !System::is_task_context() {
+        if !Traits::is_task_context() {
             return Err(SetInterruptLinePriorityError::BadContext);
         }
 
-        // Deny unmanaged priority
-        if !System::MANAGED_INTERRUPT_PRIORITY_RANGE.contains(&value) {
-            return Err(SetInterruptLinePriorityError::BadParam);
-        }
-
-        // Safety: (1) Some of the preconditions of `set_priority_unchecked`,
-        //         which are upheld by the caller.
-        //         (2) A task context.
-        unsafe { self.set_priority_unchecked_inner(value, lock.borrow_mut()) }
-    }
-
-    /// Set the priority of the interrupt line without checking if the new
-    /// priority falls within [a managed range].
-    ///
-    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
-    ///
-    /// # Safety
-    ///
-    /// If a non-[unmanaged-safe] interrupt handler is attached to the interrupt
-    /// line, changing the priority of the interrupt line to outside of the
-    /// managed range (thus turning the handler into an unmanaged handler) may
-    /// allow the interrupt handler to invoke an undefined behavior, for
-    /// example, by making system calls, which are disallowed in an unmanaged
-    /// interrupt handler.
-    ///
-    /// [unmanaged-safe]: crate::kernel::cfg::CfgInterruptHandlerBuilder::unmanaged
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub unsafe fn set_priority_unchecked(
-        self,
-        value: InterruptPriority,
-    ) -> Result<(), SetInterruptLinePriorityError> {
-        let mut lock = utils::lock_cpu::<System>()?;
-
-        // Deny a non-task context
-        if !System::is_task_context() {
-            return Err(SetInterruptLinePriorityError::BadContext);
-        }
-
-        // Safety: (1) Some of the preconditions of `set_priority_unchecked`,
-        //         which are upheld by the caller.
-        //         (2) A task context.
-        unsafe { self.set_priority_unchecked_inner(value, lock.borrow_mut()) }
-    }
-
-    /// Like `set_priority_unchecked` but assumes a task context or a boot
-    /// phase.
-    ///
-    /// # Safety
-    ///
-    /// In addition to `set_priority_unchecked`,
-    #[inline]
-    unsafe fn set_priority_unchecked_inner(
-        self,
-        value: InterruptPriority,
-        _lock: utils::CpuLockTokenRefMut<System>,
-    ) -> Result<(), SetInterruptLinePriorityError> {
         // Safety: (1) We are the kernel, so it's okay to call `Port`'s methods.
         //         (2) CPU Lock active
-        unsafe { System::set_interrupt_line_priority(self.0, value) }
+        unsafe { Traits::set_interrupt_line_priority(this, value) }
     }
 
-    /// Enable the interrupt line.
     #[inline]
-    pub fn enable(self) -> Result<(), EnableInterruptLineError> {
+    unsafe fn interrupt_line_enable(this: InterruptNum) -> Result<(), EnableInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
-        unsafe { System::enable_interrupt_line(self.0) }
+        unsafe { Traits::enable_interrupt_line(this) }
     }
 
-    /// Disable the interrupt line.
     #[inline]
-    pub fn disable(self) -> Result<(), EnableInterruptLineError> {
+    unsafe fn interrupt_line_disable(this: InterruptNum) -> Result<(), EnableInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
-        unsafe { System::disable_interrupt_line(self.0) }
+        unsafe { Traits::disable_interrupt_line(this) }
     }
 
-    /// Set the pending flag of the interrupt line.
     #[inline]
-    pub fn pend(self) -> Result<(), PendInterruptLineError> {
+    unsafe fn interrupt_line_pend(this: InterruptNum) -> Result<(), PendInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
-        unsafe { System::pend_interrupt_line(self.0) }
+        unsafe { Traits::pend_interrupt_line(this) }
     }
 
-    /// Clear the pending flag of the interrupt line.
     #[inline]
-    pub fn clear(self) -> Result<(), ClearInterruptLineError> {
+    unsafe fn interrupt_line_clear(this: InterruptNum) -> Result<(), ClearInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
-        unsafe { System::clear_interrupt_line(self.0) }
+        unsafe { Traits::clear_interrupt_line(this) }
     }
 
-    /// Read the pending flag of the interrupt line.
     #[inline]
-    pub fn is_pending(self) -> Result<bool, QueryInterruptLineError> {
+    unsafe fn interrupt_line_is_pending(
+        this: InterruptNum,
+    ) -> Result<bool, QueryInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
-        unsafe { System::is_interrupt_line_pending(self.0) }
-    }
-
-    // TODO: port-specific attributes
-}
-
-/// Represents a registered (second-level) interrupt handler in a system.
-///
-/// There are no operations defined for interrupt handlers, so this type
-/// is only used for static configuration.
-pub struct InterruptHandler<System>(PhantomData<System>);
-
-impl<System> InterruptHandler<System> {
-    pub(super) const fn new() -> Self {
-        Self(PhantomData)
+        unsafe { Traits::is_interrupt_line_pending(this) }
     }
 }
 
 /// Initialization parameter for an interrupt line.
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy)]
-pub struct InterruptLineInit<System> {
-    pub(super) line: InterruptLine<System>,
+pub struct InterruptLineInit {
+    pub(super) line: InterruptNum,
     pub(super) priority: InterruptPriority,
     pub(super) flags: InterruptLineInitFlags,
 }
 
-impl<System> Init for InterruptLineInit<System> {
+impl Init for InterruptLineInit {
     const INIT: Self = Self {
-        line: InterruptLine::from_num(0),
+        line: 0,
         priority: Init::INIT,
         flags: InterruptLineInitFlags::empty(),
     };
@@ -224,11 +91,12 @@ bitflags::bitflags! {
 /// Initialization parameter for interrupt lines.
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy)]
-pub struct InterruptAttr<System: Port> {
-    pub line_inits: &'static [InterruptLineInit<System>],
+pub struct InterruptAttr<Traits> {
+    pub _phantom: PhantomData<Traits>,
+    pub line_inits: &'static [InterruptLineInit],
 }
 
-impl<System: Kernel> InterruptAttr<System> {
+impl<Traits: KernelTraits> InterruptAttr<Traits> {
     /// Initialize interrupt lines.
     ///
     /// # Safety
@@ -237,7 +105,7 @@ impl<System: Kernel> InterruptAttr<System> {
     /// is responsible for ensuring *unmanaged safety*.
     ///
     /// Can be called only during a boot phase.
-    pub(super) unsafe fn init(&self, mut lock: utils::CpuLockTokenRefMut<System>) {
+    pub(super) unsafe fn init(&self, mut lock: klock::CpuLockTokenRefMut<Traits>) {
         for line_init in self.line_inits {
             if line_init
                 .flags
@@ -247,14 +115,15 @@ impl<System: Kernel> InterruptAttr<System> {
                 //             safety.
                 //         (2) Boot phase
                 unsafe {
-                    line_init
-                        .line
-                        .set_priority_unchecked_inner(line_init.priority, lock.borrow_mut())
-                        .unwrap()
-                };
+                    System::<Traits>::interrupt_line_set_priority(
+                        line_init.line,
+                        line_init.priority,
+                    )
+                    .unwrap();
+                }
             }
             if line_init.flags.contains(InterruptLineInitFlags::ENABLE) {
-                line_init.line.enable().unwrap();
+                unsafe { System::<Traits>::interrupt_line_enable(line_init.line).unwrap() };
             }
         }
     }

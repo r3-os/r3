@@ -1,30 +1,34 @@
+//! Kernel state locking mechanism
 use core::{fmt, ops};
 use tokenlock::UnsyncTokenLock;
 
-use super::{error::BadContextError, Kernel};
-use crate::utils::{intrusive_list::CellLike, Init};
+use crate::{
+    error::BadContextError,
+    utils::{intrusive_list::CellLike, Init},
+    PortThreading, System,
+};
 
-pub(super) struct CpuLockTag<System>(System);
+pub(super) struct CpuLockTag<Traits>(Traits);
 
 /// The key that "unlocks" [`CpuLockCell`].
-pub(super) type CpuLockToken<System> = tokenlock::UnsyncSingletonToken<CpuLockTag<System>>;
+pub(super) type CpuLockToken<Traits> = tokenlock::UnsyncSingletonToken<CpuLockTag<Traits>>;
 
 /// The keyhole type for [`UnsyncTokenLock`] that can be "unlocked" by
 /// [`CpuLockToken`].
-pub(super) type CpuLockKeyhole<System> = tokenlock::SingletonTokenId<CpuLockTag<System>>;
+pub(super) type CpuLockKeyhole<Traits> = tokenlock::SingletonTokenId<CpuLockTag<Traits>>;
 
 /// Cell type that can be accessed by [`CpuLockToken`] (which can be obtained
 /// by [`lock_cpu`]).
-pub(super) struct CpuLockCell<System, T: ?Sized>(UnsyncTokenLock<T, CpuLockKeyhole<System>>);
+pub(super) struct CpuLockCell<Traits, T: ?Sized>(UnsyncTokenLock<T, CpuLockKeyhole<Traits>>);
 
-impl<System, T> CpuLockCell<System, T> {
+impl<Traits, T> CpuLockCell<Traits, T> {
     #[allow(dead_code)]
     pub(super) const fn new(x: T) -> Self {
         Self(UnsyncTokenLock::new(CpuLockKeyhole::INIT, x))
     }
 }
 
-impl<System: Kernel, T: ?Sized> CpuLockCell<System, T> {
+impl<Traits: PortThreading, T: ?Sized> CpuLockCell<Traits, T> {
     /// Clone the contents and apply debug formatting.
     ///
     /// `CpuLockCell` needs to acquire CPU Lock when doing debug formatting and
@@ -50,13 +54,13 @@ impl<System: Kernel, T: ?Sized> CpuLockCell<System, T> {
     where
         T: Clone,
     {
-        struct DebugFmtWith<'a, System, T: ?Sized, F> {
-            cell: &'a CpuLockCell<System, T>,
+        struct DebugFmtWith<'a, Traits, T: ?Sized, F> {
+            cell: &'a CpuLockCell<Traits, T>,
             f: F,
         }
 
-        impl<System: Kernel, T: Clone, F: Fn(T, &mut fmt::Formatter) -> fmt::Result> fmt::Debug
-            for DebugFmtWith<'_, System, T, F>
+        impl<Traits: PortThreading, T: Clone, F: Fn(T, &mut fmt::Formatter) -> fmt::Result>
+            fmt::Debug for DebugFmtWith<'_, Traits, T, F>
         {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 if let Ok(lock) = lock_cpu() {
@@ -82,13 +86,13 @@ impl<System: Kernel, T: ?Sized> CpuLockCell<System, T> {
         &'a self,
         f: F,
     ) -> impl fmt::Debug + 'a {
-        struct DebugFmtWithRef<'a, System, T: ?Sized, F> {
-            cell: &'a CpuLockCell<System, T>,
+        struct DebugFmtWithRef<'a, Traits, T: ?Sized, F> {
+            cell: &'a CpuLockCell<Traits, T>,
             f: F,
         }
 
-        impl<System: Kernel, T: ?Sized, F: Fn(&T, &mut fmt::Formatter) -> fmt::Result> fmt::Debug
-            for DebugFmtWithRef<'_, System, T, F>
+        impl<Traits: PortThreading, T: ?Sized, F: Fn(&T, &mut fmt::Formatter) -> fmt::Result>
+            fmt::Debug for DebugFmtWithRef<'_, Traits, T, F>
         {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 if let Ok(lock) = lock_cpu() {
@@ -105,63 +109,63 @@ impl<System: Kernel, T: ?Sized> CpuLockCell<System, T> {
     }
 }
 
-impl<System: Kernel, T: fmt::Debug> fmt::Debug for CpuLockCell<System, T> {
+impl<Traits: PortThreading, T: fmt::Debug> fmt::Debug for CpuLockCell<Traits, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_fmt_with_ref(|x, f| x.fmt(f)).fmt(f)
     }
 }
 
-impl<System, T: Init> Init for CpuLockCell<System, T> {
+impl<Traits, T: Init> Init for CpuLockCell<Traits, T> {
     const INIT: Self = Self(Init::INIT);
 }
 
-impl<System, T> ops::Deref for CpuLockCell<System, T> {
-    type Target = UnsyncTokenLock<T, CpuLockKeyhole<System>>;
+impl<Traits, T> ops::Deref for CpuLockCell<Traits, T> {
+    type Target = UnsyncTokenLock<T, CpuLockKeyhole<Traits>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<System, T> ops::DerefMut for CpuLockCell<System, T> {
+impl<Traits, T> ops::DerefMut for CpuLockCell<Traits, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<'a, Element: Clone, System: Kernel> CellLike<&'a mut CpuLockGuard<System>>
-    for CpuLockCell<System, Element>
+impl<'a, Element: Clone, Traits: PortThreading> CellLike<&'a mut CpuLockGuard<Traits>>
+    for CpuLockCell<Traits, Element>
 {
     type Target = Element;
 
-    fn get(&self, key: &&'a mut CpuLockGuard<System>) -> Self::Target {
+    fn get(&self, key: &&'a mut CpuLockGuard<Traits>) -> Self::Target {
         (**self).get(&***key)
     }
-    fn set(&self, key: &mut &'a mut CpuLockGuard<System>, value: Self::Target) {
+    fn set(&self, key: &mut &'a mut CpuLockGuard<Traits>, value: Self::Target) {
         CellLike::set(&**self, &mut &mut ***key, value);
     }
     fn modify<T>(
         &self,
-        key: &mut &'a mut CpuLockGuard<System>,
+        key: &mut &'a mut CpuLockGuard<Traits>,
         f: impl FnOnce(&mut Self::Target) -> T,
     ) -> T {
         CellLike::modify(&**self, &mut &mut ***key, f)
     }
 }
 
-impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockTokenRefMut<'a, System>>
-    for CpuLockCell<System, Element>
+impl<'a, Element: Clone, Traits: PortThreading> CellLike<CpuLockTokenRefMut<'a, Traits>>
+    for CpuLockCell<Traits, Element>
 {
     type Target = Element;
 
-    fn get(&self, key: &CpuLockTokenRefMut<'a, System>) -> Self::Target {
+    fn get(&self, key: &CpuLockTokenRefMut<'a, Traits>) -> Self::Target {
         (**self).get(&**key)
     }
-    fn set(&self, key: &mut CpuLockTokenRefMut<'a, System>, value: Self::Target) {
+    fn set(&self, key: &mut CpuLockTokenRefMut<'a, Traits>, value: Self::Target) {
         CellLike::set(&**self, &mut &mut **key, value);
     }
     fn modify<T>(
         &self,
-        key: &mut CpuLockTokenRefMut<'a, System>,
+        key: &mut CpuLockTokenRefMut<'a, Traits>,
         f: impl FnOnce(&mut Self::Target) -> T,
     ) -> T {
         CellLike::modify(&**self, &mut &mut **key, f)
@@ -170,9 +174,9 @@ impl<'a, Element: Clone, System: Kernel> CellLike<CpuLockTokenRefMut<'a, System>
 
 /// Attempt to enter a CPU Lock state and get an RAII guard.
 /// Return `BadContext` if the kernel is already in a CPU Lock state.
-pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadContextError> {
+pub(super) fn lock_cpu<Traits: PortThreading>() -> Result<CpuLockGuard<Traits>, BadContextError> {
     // Safety: `try_enter_cpu_lock` is only meant to be called by the kernel
-    if unsafe { System::try_enter_cpu_lock() } {
+    if unsafe { Traits::try_enter_cpu_lock() } {
         // Safety: We just entered a CPU Lock state. This also means there are
         //         no instances of `CpuLockGuard` existing at this point.
         Ok(unsafe { assume_cpu_lock() })
@@ -187,8 +191,8 @@ pub(super) fn lock_cpu<System: Kernel>() -> Result<CpuLockGuard<System>, BadCont
 ///
 /// The system must be really in a CPU Lock state. There must be no instances of
 /// `CpuLockGuard` existing at the point of the call.
-pub(super) unsafe fn assume_cpu_lock<System: Kernel>() -> CpuLockGuard<System> {
-    debug_assert!(System::is_cpu_lock_active());
+pub(super) unsafe fn assume_cpu_lock<Traits: PortThreading>() -> CpuLockGuard<Traits> {
+    debug_assert!(Traits::is_cpu_lock_active());
 
     CpuLockGuard {
         // Safety: There are no other instances of `CpuLockToken`; this is
@@ -200,35 +204,35 @@ pub(super) unsafe fn assume_cpu_lock<System: Kernel>() -> CpuLockGuard<System> {
 /// RAII guard for a CPU Lock state.
 ///
 /// [`CpuLockToken`] can be borrowed from this type.
-pub(super) struct CpuLockGuard<System: Kernel> {
-    token: CpuLockToken<System>,
+pub(super) struct CpuLockGuard<Traits: PortThreading> {
+    token: CpuLockToken<Traits>,
 }
 
-impl<System: Kernel> CpuLockGuard<System> {
+impl<Traits: PortThreading> CpuLockGuard<Traits> {
     /// Construct a [`CpuLockTokenRefMut`] by borrowing `self`.
-    pub(super) fn borrow_mut(&mut self) -> CpuLockTokenRefMut<'_, System> {
+    pub(super) fn borrow_mut(&mut self) -> CpuLockTokenRefMut<'_, Traits> {
         self.token.borrow_mut()
     }
 }
 
-impl<System: Kernel> Drop for CpuLockGuard<System> {
+impl<Traits: PortThreading> Drop for CpuLockGuard<Traits> {
     fn drop(&mut self) {
         // Safety: CPU Lock is currently active, and it's us (the kernel) who
         // are currently controlling the CPU Lock state
         unsafe {
-            System::leave_cpu_lock();
+            Traits::leave_cpu_lock();
         }
     }
 }
 
-impl<System: Kernel> ops::Deref for CpuLockGuard<System> {
-    type Target = CpuLockToken<System>;
+impl<Traits: PortThreading> ops::Deref for CpuLockGuard<Traits> {
+    type Target = CpuLockToken<Traits>;
     fn deref(&self) -> &Self::Target {
         &self.token
     }
 }
 
-impl<System: Kernel> ops::DerefMut for CpuLockGuard<System> {
+impl<Traits: PortThreading> ops::DerefMut for CpuLockGuard<Traits> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.token
     }
@@ -244,15 +248,15 @@ impl<System: Kernel> ops::DerefMut for CpuLockGuard<System> {
 ///    `CpuLockTokenRefMut`. You have to call [`borrow_mut`] manually.
 ///
 /// [`borrow_mut`]: tokenlock::UnsyncSingletonTokenRefMut::borrow_mut
-pub(super) type CpuLockTokenRefMut<'a, System> =
-    tokenlock::UnsyncSingletonTokenRefMut<'a, CpuLockTag<System>>;
+pub(super) type CpuLockTokenRefMut<'a, Traits> =
+    tokenlock::UnsyncSingletonTokenRefMut<'a, CpuLockTag<Traits>>;
 
 /// Borrowed version of [`CpuLockGuard`]. This is equivalent to
 /// `&'a CpuLockGuard` but does not consume memory.
 ///
 /// Compared to [`CpuLockTokenRefMut`], this is only used in very limited
 /// circumstances, such as allowing a callback function to mutate the contents
-/// of `CpuLockCell<System, Cell<_>>` cells belonging to its implementor but not
+/// of `CpuLockCell<Traits, Cell<_>>` cells belonging to its implementor but not
 /// to reenter its caller.
-pub(super) type CpuLockTokenRef<'a, System> =
-    tokenlock::UnsyncSingletonTokenRef<'a, CpuLockTag<System>>;
+pub(super) type CpuLockTokenRef<'a, Traits> =
+    tokenlock::UnsyncSingletonTokenRef<'a, CpuLockTag<Traits>>;

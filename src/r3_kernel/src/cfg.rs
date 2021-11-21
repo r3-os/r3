@@ -1,22 +1,20 @@
 //! Static configuration mechanism for the kernel
 use core::marker::PhantomData;
 
+use r3::kernel::cfg::KernelStatic;
+
 use crate::{
-    kernel::Port,
     utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN},
+    KernelTraits, Port, System,
 };
 
 mod event_group;
-mod hunk;
 mod interrupt;
 mod mutex;
 mod semaphore;
-mod startup;
 mod task;
 mod timer;
-pub use self::{
-    event_group::*, hunk::*, interrupt::*, mutex::*, semaphore::*, startup::*, task::*, timer::*,
-};
+pub use self::{event_group::*, interrupt::*, mutex::*, semaphore::*, task::*, timer::*};
 
 /// Attach [a configuration function] to a "system" type by implementing
 /// [`KernelCfg2`].
@@ -27,15 +25,13 @@ pub use self::{
 macro_rules! build {
     ($sys:ty, $configure:expr => $id_map_ty:ty) => {{
         use $crate::{
-            kernel::{
-                cfg::{
-                    CfgBuilder, CfgBuilderInner, CfgBuilderInterruptHandler, InterruptHandlerFn,
-                    InterruptHandlerTable,
-                },
-                EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
-                KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
-                TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
+            cfg::{
+                CfgBuilder, CfgBuilderInner, CfgBuilderInterruptHandler, InterruptHandlerFn,
+                InterruptHandlerTable,
             },
+            EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
+            KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
+            TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
             arrayvec::ArrayVec,
             utils::{
                 for_times::U, AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound,
@@ -196,6 +192,7 @@ macro_rules! build {
             const INTERRUPT_HANDLERS: &'static InterruptHandlerTable = &INTERRUPT_HANDLERS_SIZED;
 
             const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
+                _phantom: Init::INIT,
                 line_inits: &INTERRUPT_LINE_INITS,
             };
 
@@ -263,31 +260,30 @@ macro_rules! array_item_from_fn {
 }
 
 /// A kernel configuration being constructed.
-pub struct CfgBuilder<System> {
+pub struct CfgBuilder<Traits: KernelTraits> {
     /// Disallows the mutation of `CfgBuilderInner` by a user-defined
     /// configuration function by making this not `pub`.
-    inner: CfgBuilderInner<System>,
+    inner: CfgBuilderInner<Traits>,
 }
 
 /// The private portion of [`CfgBuilder`]. This is not a real public interface,
 /// but needs to be `pub` so [`build!`] can access the contents.
 #[doc(hidden)]
-pub struct CfgBuilderInner<System> {
-    _phantom: PhantomData<System>,
+pub struct CfgBuilderInner<Traits: KernelTraits> {
+    _phantom: PhantomData<Traits>,
     pub hunk_pool_len: usize,
     pub hunk_pool_align: usize,
-    pub tasks: ComptimeVec<CfgBuilderTask<System>>,
+    pub tasks: ComptimeVec<CfgBuilderTask<Traits>>,
     pub num_task_priority_levels: usize,
     pub interrupt_lines: ComptimeVec<CfgBuilderInterruptLine>,
-    pub interrupt_handlers: ComptimeVec<CfgBuilderInterruptHandler>,
-    pub startup_hooks: ComptimeVec<CfgBuilderStartupHook>,
+    pub startup_hook: Option<fn()>,
     pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
     pub mutexes: ComptimeVec<CfgBuilderMutex>,
     pub semaphores: ComptimeVec<CfgBuilderSemaphore>,
     pub timers: ComptimeVec<CfgBuilderTimer>,
 }
 
-impl<System> CfgBuilder<System> {
+impl<Traits: KernelTraits> CfgBuilder<Traits> {
     /// Construct a `CfgBuilder`.
     ///
     /// # Safety
@@ -307,8 +303,7 @@ impl<System> CfgBuilder<System> {
                 tasks: ComptimeVec::new(),
                 num_task_priority_levels: 4,
                 interrupt_lines: ComptimeVec::new(),
-                interrupt_handlers: ComptimeVec::new(),
-                startup_hooks: ComptimeVec::new(),
+                startup_hook: None,
                 event_groups: ComptimeVec::new(),
                 mutexes: ComptimeVec::new(),
                 semaphores: ComptimeVec::new(),
@@ -319,22 +314,25 @@ impl<System> CfgBuilder<System> {
 
     /// Get `CfgBuilderInner`, consuming `self`.
     #[doc(hidden)]
-    pub const fn into_inner(self) -> CfgBuilderInner<System> {
+    pub const fn into_inner(self) -> CfgBuilderInner<Traits> {
         self.inner
     }
 
-    /// Specify the number of task priority levels. The default value is `4`.
-    ///
-    /// Must be in range `1..4096`. The actual upper bound might be larger
-    /// depending on the internal implementation.
-    ///
-    /// The RAM consumption by task ready queues is proportional to the number
-    /// of task priority levels. In addition, the scheduler is heavily optimized
-    /// for the cases where the number is very small (e.g., < `16`). The
-    /// performance improvement can be notable especially if the target
-    /// processor does not have a CTZ (count trailing zero) instruction,
-    /// barrel shifter, or hardware multiplier.
-    pub const fn num_task_priority_levels(&mut self, new_value: usize) {
+    /// Apply post-processing before [`r3::kernel::Cfg`] is finalized.
+    #[doc(hidden)]
+    pub const fn finalize_in_cfg(c: &mut r3::kernel::Cfg<Self>)
+    where
+        Traits: KernelStatic,
+    {
+
+        // TODO: process "auto" stacks
+    }
+}
+
+unsafe impl<Traits: KernelTraits> const r3::kernel::raw_cfg::CfgBase for CfgBuilder<Traits> {
+    type System = System<Traits>;
+
+    fn num_task_priority_levels(&mut self, new_value: usize) {
         if new_value == 0 {
             panic!("`num_task_priority_levels` must be greater than zero");
         } else if new_value > FIXED_PRIO_BITMAP_MAX_LEN {
@@ -352,23 +350,11 @@ impl<System> CfgBuilder<System> {
         self.inner.num_task_priority_levels = new_value;
     }
 
-    /// Finalize the configuration.
-    #[doc(hidden)]
-    pub const fn finalize(&mut self)
-    where
-        System: Port,
-    {
-        let inner = &mut self.inner;
-
-        interrupt::panic_if_unmanaged_safety_is_violated::<System>(
-            &inner.interrupt_lines,
-            &inner.interrupt_handlers,
+    fn startup_hook_define(&mut self, func: fn()) {
+        assert!(
+            self.inner.startup_hook.is_none(),
+            "only one combined startup hook can be registered"
         );
-
-        // Sort handlers by (interrupt number, priority)
-        interrupt::sort_handlers(&mut inner.interrupt_handlers);
-
-        // Sort startup hooks by priority
-        startup::sort_hooks(&mut inner.startup_hooks);
+        self.inner.startup_hook = Some(func);
     }
 }

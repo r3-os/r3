@@ -352,7 +352,13 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
 /// Specifies the [`Hunk`] to use as a task's stack when included in the task's
 /// property [`Bag`].
 ///
+/// A kernel might choose to ignore this if `StackHunk` is not supported.
+///
+/// If a `StackHunk` is given, the stack size ([`TaskDefiner::stack_size`]) must
+/// be specified explicitly.
+///
 /// [`Bag`]: crate::bag::Bag
+/// [`Hunk`]: crate::kernel::Hunk
 pub struct StackHunk<System: cfg::KernelStatic>(super::Hunk<System>);
 
 impl<System: cfg::KernelStatic> StackHunk<System> {
@@ -364,6 +370,12 @@ impl<System: cfg::KernelStatic> StackHunk<System> {
     /// the region starting at `hunk` without no borrow checking.
     pub const unsafe fn new(hunk: super::Hunk<System>) -> Self {
         Self(hunk)
+    }
+
+    /// Get the contained [`Hunk`].
+    #[inline]
+    pub const fn hunk(self) -> super::Hunk<System> {
+        self.0
     }
 }
 

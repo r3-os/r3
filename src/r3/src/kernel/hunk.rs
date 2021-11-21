@@ -72,6 +72,7 @@ impl<System: cfg::KernelStatic> Hunk<System> {
         }
     }
 
+    // FIXME: Hunk offsets are implementation details
     /// Get the offset of the hunk.
     #[inline]
     pub const fn offset(self) -> usize {

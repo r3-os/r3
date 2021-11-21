@@ -126,19 +126,19 @@
 //! ```
 //!
 use core::{fmt, marker::PhantomPinned, pin::Pin, ptr::NonNull};
+use r3::{
+    kernel::{AdjustTimeError, TimeError},
+    time::{Duration, Time},
+    utils::Init,
+};
 
-use super::{
+use crate::{
+    error::BadParamError,
+    klock::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     state::expect_task_context,
     task,
-    utils::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
-    AdjustTimeError, BadParamError, Kernel, TimeError, UTicks,
-};
-use crate::{
-    time::{Duration, Time},
-    utils::{
-        binary_heap::{BinaryHeap, BinaryHeapCtx},
-        Init,
-    },
+    utils::binary_heap::{BinaryHeap, BinaryHeapCtx},
+    KernelTraits, UTicks,
 };
 
 #[cfg(tests)]
@@ -166,35 +166,35 @@ type TimeoutPropCell<T> = tokenlock::UnsyncTokenLock<T, TimeoutPropKeyhole>;
 // ---------------------------------------------------------------------------
 
 /// A kernel-global state for timed event management.
-pub(super) struct TimeoutGlobals<System, TimeoutHeap: 'static> {
+pub(super) struct TimeoutGlobals<Traits, TimeoutHeap: 'static> {
     /// The value of [`PortTimer::tick_count`] on the previous “tick”.
     ///
     /// [`PortTimer::tick_count`]: super::PortTimer::tick_count
-    last_tick_count: CpuLockCell<System, UTicks>,
+    last_tick_count: CpuLockCell<Traits, UTicks>,
 
     /// The event time on the previous “tick”.
-    last_tick_time: CpuLockCell<System, Time32>,
+    last_tick_time: CpuLockCell<Traits, Time32>,
 
     /// The system time on the previous “tick”.
     ///
     /// The current system time is always greater than or equal to
     /// `last_tick_sys_time`.
     #[cfg(feature = "system_time")]
-    last_tick_sys_time: CpuLockCell<System, Time64>,
+    last_tick_sys_time: CpuLockCell<Traits, Time64>,
 
     /// The gap between the frontier and the previous tick.
     ///
     /// This value only can be increased by [`adjust_system_and_event_time`].
     /// The upper bound is [`USER_HEADROOM`].
-    frontier_gap: CpuLockCell<System, Time32>,
+    frontier_gap: CpuLockCell<Traits, Time32>,
 
     /// The heap (priority queue) containing outstanding timeouts, sorted by
     /// arrival time, and the `TimeoutPropToken` used to access
-    /// [`Timeout`]`<System>`'s field contents.
-    heap_and_prop_token: CpuLockCell<System, TimeoutHeapAndPropToken<TimeoutHeap>>,
+    /// [`Timeout`]`<Traits>`'s field contents.
+    heap_and_prop_token: CpuLockCell<Traits, TimeoutHeapAndPropToken<TimeoutHeap>>,
 
     /// Flag indicating whether `handle_tick` is in progress or not.
-    handle_tick_in_progress: CpuLockCell<System, bool>,
+    handle_tick_in_progress: CpuLockCell<Traits, bool>,
 }
 
 #[derive(Debug)]
@@ -203,12 +203,12 @@ struct TimeoutHeapAndPropToken<TimeoutHeap: 'static> {
     /// arrival time.
     heap: TimeoutHeap,
 
-    /// The `TimeoutPropToken` used to access [`Timeout`]`<System>`'s field
+    /// The `TimeoutPropToken` used to access [`Timeout`]`<Traits>`'s field
     /// contents.
     prop_token: TimeoutPropToken,
 }
 
-impl<System, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<System, TimeoutHeap> {
+impl<Traits, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<Traits, TimeoutHeap> {
     const INIT: Self = Self {
         last_tick_count: Init::INIT,
         last_tick_time: Init::INIT,
@@ -217,19 +217,21 @@ impl<System, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<System, Timeou
         frontier_gap: Init::INIT,
         heap_and_prop_token: CpuLockCell::new(TimeoutHeapAndPropToken {
             heap: Init::INIT,
-            // Safety: In each particular `System`, this is the only instance of
-            //         `TimeoutPropToken`. If there are more than one `System` in a
+            // Safety: In each particular `Traits`, this is the only instance of
+            //         `TimeoutPropToken`. If there are more than one `Traits` in a
             //         program, the singleton property of `UnsyncSingletonToken`
             //         will be broken, technicually, but that doesn't pose a problem
             //         because we don't even think about using `TimeoutPropToken` of
-            //         one `System` to unlock another `System`'s data structures.
+            //         one `Traits` to unlock another `Traits`'s data structures.
             prop_token: unsafe { TimeoutPropToken::new_unchecked() },
         }),
         handle_tick_in_progress: Init::INIT,
     };
 }
 
-impl<System: Kernel, TimeoutHeap: fmt::Debug> fmt::Debug for TimeoutGlobals<System, TimeoutHeap> {
+impl<Traits: KernelTraits, TimeoutHeap: fmt::Debug> fmt::Debug
+    for TimeoutGlobals<Traits, TimeoutHeap>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TimeoutGlobals")
             .field("last_tick_count", &self.last_tick_count)
@@ -253,11 +255,11 @@ impl<System: Kernel, TimeoutHeap: fmt::Debug> fmt::Debug for TimeoutGlobals<Syst
 // ---------------------------------------------------------------------------
 
 /// An internal utility to access `TimeoutGlobals`.
-trait KernelTimeoutGlobalsExt: Kernel {
+trait KernelTimeoutGlobalsExt: KernelTraits {
     fn g_timeout() -> &'static TimeoutGlobals<Self, Self::TimeoutHeap>;
 }
 
-impl<T: Kernel> KernelTimeoutGlobalsExt for T {
+impl<T: KernelTraits> KernelTimeoutGlobalsExt for T {
     /// Shortcut for `&Self::state().timeout`.
     #[inline(always)]
     fn g_timeout() -> &'static TimeoutGlobals<Self, Self::TimeoutHeap> {
@@ -370,13 +372,13 @@ pub const TIME_HARD_HEADROOM: Duration = Duration::from_micros(HARD_HEADROOM as 
 ///  - [`remove_timeout`] can unregister a `Timeout` at anytime. There is a
 ///    RAII guard type [`TimeoutGuard`] that does this automatically.
 ///
-pub(super) struct Timeout<System: Kernel> {
+pub(super) struct Timeout<Traits: KernelTraits> {
     /// The arrival time of the timeout. This is *an event time*.
     ///
     /// This is wrapped by `TimeoutPropCell` because [`TimeoutHeapCtx`]'s
     /// methods need to access this. [`TimeoutHeapCtx`] doesn't have full access
     /// to `CpuLockTokenRefMut` because it's currently in use to write
-    /// `TimeoutHeap`. Otherwise, this would have been [`CpuLockCell`]`<System,
+    /// `TimeoutHeap`. Otherwise, this would have been [`CpuLockCell`]`<Traits,
     /// _>`.
     at: TimeoutPropCell<u32>,
 
@@ -389,7 +391,7 @@ pub(super) struct Timeout<System: Kernel> {
     heap_pos: TimeoutPropCell<usize>,
 
     /// Callback function.
-    callback: TimeoutFn<System>,
+    callback: TimeoutFn<Traits>,
 
     /// Parameter given to the callback function.
     callback_param: usize,
@@ -398,7 +400,7 @@ pub(super) struct Timeout<System: Kernel> {
     _pin: PhantomPinned,
 
     // TODO: callback
-    _phantom: core::marker::PhantomData<System>,
+    _phantom: core::marker::PhantomData<Traits>,
 }
 
 /// Tiemout callback function.
@@ -409,13 +411,13 @@ pub(super) struct Timeout<System: Kernel> {
 /// The callback function may wake up tasks. When it does that, it doesn't have
 /// to call `unlock_cpu_and_check_preemption` or `yield_cpu` - it's
 /// automatically taken care of.
-pub(super) type TimeoutFn<System> = fn(usize, CpuLockGuard<System>) -> CpuLockGuard<System>;
+pub(super) type TimeoutFn<Traits> = fn(usize, CpuLockGuard<Traits>) -> CpuLockGuard<Traits>;
 
 /// Value of [`Timeout::heap_pos`] indicating the timeout is not included in the
 /// heap.
 const HEAP_POS_NONE: usize = usize::MAX;
 
-impl<System: Kernel> Init for Timeout<System> {
+impl<Traits: KernelTraits> Init for Timeout<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         at: Init::INIT,
@@ -427,7 +429,7 @@ impl<System: Kernel> Init for Timeout<System> {
     };
 }
 
-impl<System: Kernel> Drop for Timeout<System> {
+impl<Traits: KernelTraits> Drop for Timeout<Traits> {
     #[inline]
     fn drop(&mut self) {
         // TODO: Other threads might be still accessing it; isn't it unsafe
@@ -449,7 +451,7 @@ impl<System: Kernel> Drop for Timeout<System> {
     }
 }
 
-impl<System: Kernel> fmt::Debug for Timeout<System> {
+impl<Traits: KernelTraits> fmt::Debug for Timeout<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Timeout")
             .field("at", &self.at)
@@ -460,12 +462,12 @@ impl<System: Kernel> fmt::Debug for Timeout<System> {
     }
 }
 
-impl<System: Kernel> Timeout<System> {
+impl<Traits: KernelTraits> Timeout<Traits> {
     /// Construct a `Timeout`.
     ///
     /// The expiration time is set to zero (the origin at boot time, an
     /// unspecified time point otherwise).
-    pub(super) const fn new(callback: TimeoutFn<System>, callback_param: usize) -> Self {
+    pub(super) const fn new(callback: TimeoutFn<Traits>, callback_param: usize) -> Self {
         Self {
             at: TimeoutPropCell::new(Init::INIT, 0),
             heap_pos: TimeoutPropCell::new(Init::INIT, HEAP_POS_NONE),
@@ -477,8 +479,8 @@ impl<System: Kernel> Timeout<System> {
     }
 
     /// Get a flag indicating whether the `Timeout` is currently in the heap.
-    pub(super) fn is_linked(&self, lock: CpuLockTokenRefMut<'_, System>) -> bool {
-        let prop_token = &System::g_timeout()
+    pub(super) fn is_linked(&self, lock: CpuLockTokenRefMut<'_, Traits>) -> bool {
+        let prop_token = &Traits::g_timeout()
             .heap_and_prop_token
             .read(&*lock)
             .prop_token;
@@ -489,7 +491,7 @@ impl<System: Kernel> Timeout<System> {
     /// Configure the `Timeout` to expire in the specified duration.
     pub(super) fn set_expiration_after(
         &self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
         duration_time32: Time32,
     ) {
         debug_assert_ne!(duration_time32, BAD_DURATION32);
@@ -497,7 +499,7 @@ impl<System: Kernel> Timeout<System> {
         let current_time = current_time(lock.borrow_mut());
         let at = current_time.wrapping_add(duration_time32);
 
-        let prop_token = &mut System::g_timeout()
+        let prop_token = &mut Traits::g_timeout()
             .heap_and_prop_token
             .write(&mut *lock)
             .prop_token;
@@ -511,12 +513,12 @@ impl<System: Kernel> Timeout<System> {
     /// `Timeout`.
     pub(super) fn adjust_expiration(
         &self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
         duration_time32: Time32,
     ) {
         debug_assert_ne!(duration_time32, BAD_DURATION32);
 
-        let prop_token = &mut System::g_timeout()
+        let prop_token = &mut Traits::g_timeout()
             .heap_and_prop_token
             .write(&mut *lock)
             .prop_token;
@@ -528,11 +530,11 @@ impl<System: Kernel> Timeout<System> {
     #[inline]
     pub(super) fn saturating_duration_until_timeout(
         &self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
     ) -> Time32 {
         let current_time = current_time(lock.borrow_mut());
 
-        let prop_token = &System::g_timeout()
+        let prop_token = &Traits::g_timeout()
             .heap_and_prop_token
             .read(&*lock)
             .prop_token;
@@ -541,8 +543,8 @@ impl<System: Kernel> Timeout<System> {
     }
 
     /// Get the raw expiration time.
-    pub(super) fn at_raw(&self, lock: CpuLockTokenRefMut<'_, System>) -> Time32 {
-        let prop_token = &System::g_timeout()
+    pub(super) fn at_raw(&self, lock: CpuLockTokenRefMut<'_, Traits>) -> Time32 {
+        let prop_token = &Traits::g_timeout()
             .heap_and_prop_token
             .read(&*lock)
             .prop_token;
@@ -553,8 +555,8 @@ impl<System: Kernel> Timeout<System> {
     /// Set the raw expiration time.
     ///
     /// This might be useful for storing arbitrary data in an unlinked `Timeout`.
-    pub(super) fn set_at_raw(&self, mut lock: CpuLockTokenRefMut<'_, System>, value: Time32) {
-        let prop_token = &mut System::g_timeout()
+    pub(super) fn set_at_raw(&self, mut lock: CpuLockTokenRefMut<'_, Traits>, value: Time32) {
+        let prop_token = &mut Traits::g_timeout()
             .heap_and_prop_token
             .write(&mut *lock)
             .prop_token;
@@ -580,21 +582,21 @@ impl<System: Kernel> Timeout<System> {
 
 /// A reference to a [`Timeout`].
 #[doc(hidden)]
-pub struct TimeoutRef<System: Kernel>(NonNull<Timeout<System>>);
+pub struct TimeoutRef<Traits: KernelTraits>(NonNull<Timeout<Traits>>);
 
 // Safety: `Timeout` is `Send + Sync`
-unsafe impl<System: Kernel> Send for TimeoutRef<System> {}
-unsafe impl<System: Kernel> Sync for TimeoutRef<System> {}
+unsafe impl<Traits: KernelTraits> Send for TimeoutRef<Traits> {}
+unsafe impl<Traits: KernelTraits> Sync for TimeoutRef<Traits> {}
 
-impl<System: Kernel> Clone for TimeoutRef<System> {
+impl<Traits: KernelTraits> Clone for TimeoutRef<Traits> {
     fn clone(&self) -> Self {
         Self(self.0)
     }
 }
 
-impl<System: Kernel> Copy for TimeoutRef<System> {}
+impl<Traits: KernelTraits> Copy for TimeoutRef<Traits> {}
 
-impl<System: Kernel> fmt::Debug for TimeoutRef<System> {
+impl<Traits: KernelTraits> fmt::Debug for TimeoutRef<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("TimeoutRef").field(&self.0).finish()
     }
@@ -608,9 +610,9 @@ struct TimeoutHeapCtx<'a> {
     prop_token: TimeoutPropTokenRefMut<'a>,
 }
 
-impl<System: Kernel> BinaryHeapCtx<TimeoutRef<System>> for TimeoutHeapCtx<'_> {
+impl<Traits: KernelTraits> BinaryHeapCtx<TimeoutRef<Traits>> for TimeoutHeapCtx<'_> {
     #[inline]
-    fn lt(&mut self, x: &TimeoutRef<System>, y: &TimeoutRef<System>) -> bool {
+    fn lt(&mut self, x: &TimeoutRef<Traits>, y: &TimeoutRef<Traits>) -> bool {
         // Safety: `x` and `y` are in the heap, so the pointees must be valid
         let (x, y) = unsafe {
             (
@@ -623,7 +625,7 @@ impl<System: Kernel> BinaryHeapCtx<TimeoutRef<System>> for TimeoutHeapCtx<'_> {
     }
 
     #[inline]
-    fn on_move(&mut self, e: &mut TimeoutRef<System>, new_index: usize) {
+    fn on_move(&mut self, e: &mut TimeoutRef<Traits>, new_index: usize) {
         // Safety: `e` is in the heap, so the pointee must be valid
         unsafe { e.0.as_ref() }
             .heap_pos
@@ -634,18 +636,18 @@ impl<System: Kernel> BinaryHeapCtx<TimeoutRef<System>> for TimeoutHeapCtx<'_> {
 // Initialization
 // ---------------------------------------------------------------------------
 
-impl<System: Kernel, TimeoutHeap> TimeoutGlobals<System, TimeoutHeap> {
+impl<Traits: KernelTraits, TimeoutHeap> TimeoutGlobals<Traits, TimeoutHeap> {
     /// Initialize the timekeeping system.
-    pub(super) fn init(&self, mut lock: CpuLockTokenRefMut<'_, System>) {
+    pub(super) fn init(&self, mut lock: CpuLockTokenRefMut<'_, Traits>) {
         // Mark the first “tick”
         // Safety: CPU Lock active
         self.last_tick_count
-            .replace(&mut *lock.borrow_mut(), unsafe { System::tick_count() });
+            .replace(&mut *lock.borrow_mut(), unsafe { Traits::tick_count() });
 
         // Schedule the next tick. There are no timeouts registered at the
         // moment, so use `MAX_TIMEOUT`.
         // Safety: CPU Lock active
-        unsafe { System::pend_tick_after(System::MAX_TIMEOUT) };
+        unsafe { Traits::pend_tick_after(Traits::MAX_TIMEOUT) };
     }
 }
 
@@ -654,12 +656,12 @@ impl<System: Kernel, TimeoutHeap> TimeoutGlobals<System, TimeoutHeap> {
 
 /// Implements [`Kernel::time`].
 #[cfg(feature = "system_time")]
-pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
-    expect_task_context::<System>()?;
-    let mut lock = lock_cpu::<System>()?;
+pub(super) fn system_time<Traits: KernelTraits>() -> Result<Time, TimeError> {
+    expect_task_context::<Traits>()?;
+    let mut lock = lock_cpu::<Traits>()?;
 
     let (duration_since_last_tick, _) = duration_since_last_tick(lock.borrow_mut());
-    let last_tick_sys_time = System::g_timeout()
+    let last_tick_sys_time = Traits::g_timeout()
         .last_tick_sys_time
         .get(&*lock.borrow_mut());
     let cur_sys_time = last_tick_sys_time.wrapping_add(duration_since_last_tick as Time64);
@@ -669,13 +671,13 @@ pub(super) fn system_time<System: Kernel>() -> Result<Time, TimeError> {
 }
 
 /// Implements [`Kernel::set_time`].
-pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), TimeError> {
-    expect_task_context::<System>()?;
+pub(super) fn set_system_time<Traits: KernelTraits>(new_sys_time: Time) -> Result<(), TimeError> {
+    expect_task_context::<Traits>()?;
 
     match () {
         #[cfg(feature = "system_time")]
         () => {
-            let mut lock = lock_cpu::<System>()?;
+            let mut lock = lock_cpu::<Traits>()?;
             let (duration_since_last_tick, _) = duration_since_last_tick(lock.borrow_mut());
 
             // Adjust `last_tick_sys_time` so that `system_time` will return the value
@@ -683,7 +685,7 @@ pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), 
             let new_last_tick_sys_time =
                 time64_from_sys_time(new_sys_time).wrapping_sub(duration_since_last_tick as Time64);
 
-            System::g_timeout()
+            Traits::g_timeout()
                 .last_tick_sys_time
                 .replace(&mut *lock.borrow_mut(), new_last_tick_sys_time);
         }
@@ -694,7 +696,7 @@ pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), 
             // observable, so this function is no-op. It still needs to validate
             // the current context and return an error as needed.
             let _ = new_sys_time; // suppress "unused parameter"
-            lock_cpu::<System>()?;
+            lock_cpu::<Traits>()?;
         }
     }
 
@@ -702,11 +704,11 @@ pub(super) fn set_system_time<System: Kernel>(new_sys_time: Time) -> Result<(), 
 }
 
 /// Implements [`Kernel::adjust_time`].
-pub(super) fn adjust_system_and_event_time<System: Kernel>(
+pub(super) fn adjust_system_and_event_time<Traits: KernelTraits>(
     delta: Duration,
 ) -> Result<(), AdjustTimeError> {
-    let mut lock = lock_cpu::<System>()?;
-    let g_timeout = System::g_timeout();
+    let mut lock = lock_cpu::<Traits>()?;
+    let g_timeout = Traits::g_timeout();
 
     // For the `delta.is_negative()` case, we'd like to check if the adjustment
     // would throw the frontier out of the valid range. The frontier is a
@@ -793,19 +795,19 @@ pub(super) fn adjust_system_and_event_time<System: Kernel>(
 ///
 /// Returns two values:
 ///
-///  1. The duration in range `0..=System::MAX_TICK_COUNT`.
-///  2. The value of `System::tick_count()` used for calculation.
+///  1. The duration in range `0..=Traits::MAX_TICK_COUNT`.
+///  2. The value of `Traits::tick_count()` used for calculation.
 ///
 #[inline]
-// I didn't mean `System::MAX_TICK_COUNT == UTicks::MAX_TICK_COUNT`
+// I didn't mean `Traits::MAX_TICK_COUNT == UTicks::MAX_TICK_COUNT`
 #[allow(clippy::suspicious_operation_groupings)]
-fn duration_since_last_tick<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
+fn duration_since_last_tick<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
 ) -> (Time32, Time32) {
     // Safety: CPU Lock active
-    let tick_count = unsafe { System::tick_count() };
+    let tick_count = unsafe { Traits::tick_count() };
 
-    let last_tick_count = System::g_timeout().last_tick_count.get(&*lock.borrow_mut());
+    let last_tick_count = Traits::g_timeout().last_tick_count.get(&*lock.borrow_mut());
 
     // Guess the current time, taking the wrap-around behavior into account.
     // Basically, we want to find the smallest value of `time`
@@ -814,7 +816,7 @@ fn duration_since_last_tick<System: Kernel>(
     //     (last_tick_count + (time - last_tick_time)) % (MAX_TICK_COUNT + 1)
     //       == tick_count
     //
-    let elapsed = if System::MAX_TICK_COUNT == UTicks::MAX || tick_count >= last_tick_count {
+    let elapsed = if Traits::MAX_TICK_COUNT == UTicks::MAX || tick_count >= last_tick_count {
         // last_tick_count    tick_count
         // ┌──────┴────────────────┴────────┬───────────┐
         // 0      ╚════════════════╝  MAX_TICK_COUNT    MAX
@@ -825,20 +827,20 @@ fn duration_since_last_tick<System: Kernel>(
         // ┌──────┴────────────────┴────────┬───────────┐
         // 0 ═════╝                ╚════════           MAX
         //                          elapsed
-        // Note: If `System::MAX_TICK_COUNT == UTicks::MAX`, this reduces to
+        // Note: If `Traits::MAX_TICK_COUNT == UTicks::MAX`, this reduces to
         // the first case because we are using wrapping arithmetics.
-        tick_count.wrapping_sub(last_tick_count) - (UTicks::MAX - System::MAX_TICK_COUNT)
+        tick_count.wrapping_sub(last_tick_count) - (UTicks::MAX - Traits::MAX_TICK_COUNT)
     };
 
     (elapsed, tick_count)
 }
 
 /// Create a tick now.
-fn mark_tick<System: Kernel>(mut lock: CpuLockTokenRefMut<'_, System>) {
+fn mark_tick<Traits: KernelTraits>(mut lock: CpuLockTokenRefMut<'_, Traits>) {
     let (duration_since_last_tick, tick_count) =
-        duration_since_last_tick::<System>(lock.borrow_mut());
+        duration_since_last_tick::<Traits>(lock.borrow_mut());
 
-    let g_timeout = System::g_timeout();
+    let g_timeout = Traits::g_timeout();
     g_timeout.last_tick_count.replace(&mut *lock, tick_count);
     g_timeout
         .last_tick_time
@@ -865,14 +867,14 @@ fn mark_tick<System: Kernel>(mut lock: CpuLockTokenRefMut<'_, System>) {
 ///
 /// [`PortToKernel::timer_tick`]: super::PortToKernel::timer_tick
 #[inline]
-pub(super) fn handle_tick<System: Kernel>() {
+pub(super) fn handle_tick<Traits: KernelTraits>() {
     // The precondition includes CPU Lock being inactive, so this `unwrap`
     // should succeed
-    let mut lock = lock_cpu::<System>().unwrap();
+    let mut lock = lock_cpu::<Traits>().unwrap();
 
     mark_tick(lock.borrow_mut());
 
-    let g_timeout = System::g_timeout();
+    let g_timeout = Traits::g_timeout();
     let current_time = g_timeout.last_tick_time.get(&*lock);
     let critical_point = critical_point(current_time);
 
@@ -934,10 +936,10 @@ pub(super) fn handle_tick<System: Kernel>() {
 }
 
 /// Get the current event time.
-fn current_time<System: Kernel>(mut lock: CpuLockTokenRefMut<'_, System>) -> Time32 {
-    let (duration_since_last_tick, _) = duration_since_last_tick::<System>(lock.borrow_mut());
+fn current_time<Traits: KernelTraits>(mut lock: CpuLockTokenRefMut<'_, Traits>) -> Time32 {
+    let (duration_since_last_tick, _) = duration_since_last_tick::<Traits>(lock.borrow_mut());
 
-    let g_timeout = System::g_timeout();
+    let g_timeout = Traits::g_timeout();
     g_timeout
         .last_tick_time
         .get(&*lock)
@@ -945,11 +947,14 @@ fn current_time<System: Kernel>(mut lock: CpuLockTokenRefMut<'_, System>) -> Tim
 }
 
 /// Schedule the next tick.
-fn pend_next_tick<System: Kernel>(lock: CpuLockTokenRefMut<'_, System>, current_time: Time32) {
-    let mut delay = System::MAX_TIMEOUT;
+fn pend_next_tick<Traits: KernelTraits>(
+    lock: CpuLockTokenRefMut<'_, Traits>,
+    current_time: Time32,
+) {
+    let mut delay = Traits::MAX_TIMEOUT;
 
     let TimeoutHeapAndPropToken { heap, prop_token } =
-        System::g_timeout().heap_and_prop_token.read(&*lock);
+        Traits::g_timeout().heap_and_prop_token.read(&*lock);
 
     // Check the top element (representing the earliest timeout) in the heap
     if let Some(&timeout_ref) = heap.get(0) {
@@ -967,9 +972,9 @@ fn pend_next_tick<System: Kernel>(lock: CpuLockTokenRefMut<'_, System>, current_
     // Safety: CPU Lock active
     unsafe {
         if delay == 0 {
-            System::pend_tick();
+            Traits::pend_tick();
         } else {
-            System::pend_tick_after(delay);
+            Traits::pend_tick_after(delay);
         }
     }
 }
@@ -985,8 +990,8 @@ fn critical_point(current_time: Time32) -> Time32 {
 
 /// Calculate the duration until the specified timeout is reached. Returns `0`
 /// if the timeout is already overdue.
-fn saturating_duration_until_timeout<System: Kernel>(
-    timeout: &Timeout<System>,
+fn saturating_duration_until_timeout<Traits: KernelTraits>(
+    timeout: &Timeout<Traits>,
     current_time: Time32,
     prop_token: TimeoutPropTokenRef<'_>,
 ) -> Time32 {
@@ -1000,8 +1005,8 @@ fn saturating_duration_until_timeout<System: Kernel>(
 
 /// Calculate the duration before the specified timeout surpasses the user
 /// headroom zone (and enters the hard headroom zone).
-fn saturating_duration_before_timeout_exhausting_user_headroom<System: Kernel>(
-    timeout: &Timeout<System>,
+fn saturating_duration_before_timeout_exhausting_user_headroom<Traits: KernelTraits>(
+    timeout: &Timeout<Traits>,
     current_time: Time32,
     prop_token: TimeoutPropTokenRef<'_>,
 ) -> Time32 {
@@ -1014,9 +1019,9 @@ fn saturating_duration_before_timeout_exhausting_user_headroom<System: Kernel>(
 }
 
 /// Register the specified timeout.
-pub(super) fn insert_timeout<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timeout: Pin<&Timeout<System>>,
+pub(super) fn insert_timeout<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    timeout: Pin<&Timeout<Traits>>,
 ) {
     // This check is important for memory safety. For each `Timeout`, there can
     // be only one heap entry pointing to that `Timeout`. `heap_pos` indicates
@@ -1025,7 +1030,7 @@ pub(super) fn insert_timeout<System: Kernel>(
     // the `Timeout` as "not in the heap". If we drop the `Timeout` in this
     // state, The second entry would be still referencing the no-longer existent
     // `Timeout`.
-    let prop_token = &System::g_timeout()
+    let prop_token = &Traits::g_timeout()
         .heap_and_prop_token
         .read(&*lock)
         .prop_token;
@@ -1048,7 +1053,7 @@ pub(super) fn insert_timeout<System: Kernel>(
     //  ¹ Rust jargon meaning destroying an object without running its
     //    destructor.
     let TimeoutHeapAndPropToken { heap, prop_token } =
-        System::g_timeout().heap_and_prop_token.write(&mut *lock);
+        Traits::g_timeout().heap_and_prop_token.write(&mut *lock);
 
     let pos = heap.heap_push(
         TimeoutRef((&*timeout).into()),
@@ -1061,7 +1066,7 @@ pub(super) fn insert_timeout<System: Kernel>(
     // `TimeoutHeapCtx:on_move` should have assigned `heap_pos`
     debug_assert_eq!(*timeout.heap_pos.read(prop_token), pos);
 
-    if !System::g_timeout().handle_tick_in_progress.get(&*lock) {
+    if !Traits::g_timeout().handle_tick_in_progress.get(&*lock) {
         // (Re-)schedule the next tick
         pend_next_tick(lock, current_time);
     }
@@ -1069,13 +1074,13 @@ pub(super) fn insert_timeout<System: Kernel>(
 
 /// Unregister the specified `Timeout`. Does nothing if it's not registered.
 #[inline]
-pub(super) fn remove_timeout<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timeout: &Timeout<System>,
+pub(super) fn remove_timeout<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    timeout: &Timeout<Traits>,
 ) {
     remove_timeout_inner(lock.borrow_mut(), timeout);
 
-    let prop_token = &mut System::g_timeout()
+    let prop_token = &mut Traits::g_timeout()
         .heap_and_prop_token
         .write(&mut *lock)
         .prop_token;
@@ -1095,9 +1100,9 @@ pub(super) fn remove_timeout<System: Kernel>(
     timeout.heap_pos.replace(prop_token, HEAP_POS_NONE);
 }
 
-fn remove_timeout_inner<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timeout: &Timeout<System>,
+fn remove_timeout_inner<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    timeout: &Timeout<Traits>,
 ) {
     let current_time = current_time(lock.borrow_mut());
     let critical_point = critical_point(current_time);
@@ -1109,7 +1114,7 @@ fn remove_timeout_inner<System: Kernel>(
     // such a huge value by bounds check. This way, we can check both for bounds
     // and `HEAP_POS_NONE` in one fell swoop.
     let TimeoutHeapAndPropToken { heap, prop_token } =
-        System::g_timeout().heap_and_prop_token.write(&mut *lock);
+        Traits::g_timeout().heap_and_prop_token.write(&mut *lock);
 
     let heap_pos = *timeout.heap_pos.read(prop_token);
 
@@ -1135,19 +1140,19 @@ fn remove_timeout_inner<System: Kernel>(
         timeout as *const _
     );
 
-    if !System::g_timeout().handle_tick_in_progress.get(&*lock) {
+    if !Traits::g_timeout().handle_tick_in_progress.get(&*lock) {
         // (Re-)schedule the next tick
         pend_next_tick(lock, current_time);
     }
 }
 
 /// RAII guard that automatically unregisters `Timeout` when dropped.
-pub(super) struct TimeoutGuard<'a, 'b, System: Kernel> {
-    pub(super) timeout: Pin<&'a Timeout<System>>,
-    pub(super) lock: CpuLockTokenRefMut<'b, System>,
+pub(super) struct TimeoutGuard<'a, 'b, Traits: KernelTraits> {
+    pub(super) timeout: Pin<&'a Timeout<Traits>>,
+    pub(super) lock: CpuLockTokenRefMut<'b, Traits>,
 }
 
-impl<'a, 'b, System: Kernel> Drop for TimeoutGuard<'a, 'b, System> {
+impl<'a, 'b, Traits: KernelTraits> Drop for TimeoutGuard<'a, 'b, Traits> {
     #[inline]
     fn drop(&mut self) {
         remove_timeout(self.lock.borrow_mut(), &self.timeout);

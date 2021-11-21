@@ -1,49 +1,50 @@
 use core::{cell::Cell, fmt, ops, ptr::NonNull};
-
-use super::{
-    event_group, mutex, task,
-    task::{TaskCb, TaskSt},
-    timeout,
-    utils::{CpuLockCell, CpuLockGuard, CpuLockTokenRef, CpuLockTokenRefMut},
-    BadObjectStateError, Kernel, Port, PortThreading, WaitError, WaitTimeoutError,
+use r3::{
+    kernel::{EventGroupBits, EventGroupWaitFlags, WaitError, WaitTimeoutError},
+    utils::Init,
 };
 
-use crate::utils::{
-    intrusive_list::{self, HandleInconsistencyUnchecked, ListAccessorCell},
-    Init,
+use crate::{
+    error::{expect_not_timeout, BadObjectStateError},
+    klock::{CpuLockCell, CpuLockGuard, CpuLockTokenRef, CpuLockTokenRefMut},
+    mutex, task,
+    task::{TaskCb, TaskSt},
+    timeout,
+    utils::intrusive_list::{self, HandleInconsistencyUnchecked, ListAccessorCell},
+    KernelTraits, Port, PortThreading,
 };
 
 // Type definitions and trait implementations for wait lists
 // ---------------------------------------------------------------------------
 
 /// A reference to a [`Wait`].
-struct WaitRef<System: PortThreading>(NonNull<Wait<System>>);
+struct WaitRef<Traits: PortThreading>(NonNull<Wait<Traits>>);
 
 // Safety: `Wait` is `Send + Sync`
-unsafe impl<System: PortThreading> Send for WaitRef<System> {}
-unsafe impl<System: PortThreading> Sync for WaitRef<System> {}
+unsafe impl<Traits: PortThreading> Send for WaitRef<Traits> {}
+unsafe impl<Traits: PortThreading> Sync for WaitRef<Traits> {}
 
-impl<System: PortThreading> Clone for WaitRef<System> {
+impl<Traits: PortThreading> Clone for WaitRef<Traits> {
     fn clone(&self) -> Self {
         Self(self.0)
     }
 }
 
-impl<System: PortThreading> Copy for WaitRef<System> {}
+impl<Traits: PortThreading> Copy for WaitRef<Traits> {}
 
-impl<System: PortThreading> fmt::Debug for WaitRef<System> {
+impl<Traits: PortThreading> fmt::Debug for WaitRef<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("WaitRef").field(&self.0).finish()
     }
 }
 
-impl<System: PortThreading> PartialEq for WaitRef<System> {
+impl<Traits: PortThreading> PartialEq for WaitRef<Traits> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl<System: PortThreading> Eq for WaitRef<System> {}
+impl<Traits: PortThreading> Eq for WaitRef<Traits> {}
 
 use self::unsafe_static::UnsafeStatic;
 mod unsafe_static {
@@ -66,11 +67,11 @@ mod unsafe_static {
         }
     }
 
-    impl<System: Port> ops::Index<WaitRef<System>> for UnsafeStatic {
-        type Output = Wait<System>;
+    impl<Traits: Port> ops::Index<WaitRef<Traits>> for UnsafeStatic {
+        type Output = Wait<Traits>;
 
         #[inline]
-        fn index(&self, index: WaitRef<System>) -> &Self::Output {
+        fn index(&self, index: WaitRef<Traits>) -> &Self::Output {
             // Safety: See `wait_queue_accessor`.
             unsafe { &*index.0.as_ptr() }
         }
@@ -104,29 +105,29 @@ macro_rules! wait_queue_accessor {
 /// This object is constructed by `WaitQueue::wait` on a waiting task's stack,
 /// and only survives until the method returns. This means that `Wait` can
 /// expire only when the waiting task is not waiting anymore.
-struct Wait<System: PortThreading> {
+struct Wait<Traits: PortThreading> {
     /// The task that is waiting for something.
-    task: &'static TaskCb<System>,
+    task: &'static TaskCb<Traits>,
 
     /// Forms a linked list headed by `wait_queue.waits`.
-    link: CpuLockCell<System, Option<intrusive_list::Link<WaitRef<System>>>>,
+    link: CpuLockCell<Traits, Option<intrusive_list::Link<WaitRef<Traits>>>>,
 
     /// The containing [`WaitQueue`].
-    wait_queue: Option<&'static WaitQueue<System>>,
+    wait_queue: Option<&'static WaitQueue<Traits>>,
 
-    payload: WaitPayload<System>,
+    payload: WaitPayload<Traits>,
 }
 
 /// Additional information included in `With`, specific to waitable object
 /// types.
-pub(super) enum WaitPayload<System: PortThreading> {
+pub(super) enum WaitPayload<Traits: PortThreading> {
     EventGroupBits {
-        bits: event_group::EventGroupBits,
-        flags: event_group::EventGroupWaitFlags,
-        orig_bits: CpuLockCell<System, Cell<event_group::EventGroupBits>>,
+        bits: EventGroupBits,
+        flags: EventGroupWaitFlags,
+        orig_bits: CpuLockCell<Traits, Cell<EventGroupBits>>,
     },
     Semaphore,
-    Mutex(&'static mutex::MutexCb<System>),
+    Mutex(&'static mutex::MutexCb<Traits>),
     Park,
     Sleep,
     __Nonexhaustive,
@@ -163,18 +164,18 @@ impl<T: PortThreading> WaitPayload<T> {
 }
 
 /// A queue of wait objects ([`Wait`]) waiting on a particular waitable object.
-pub(crate) struct WaitQueue<System: PortThreading> {
+pub(crate) struct WaitQueue<Traits: PortThreading> {
     /// Wait objects waiting on the waitable object associated with this
     /// instance of `WaitQueue`. The waiting tasks (`Wait::task`) must be in a
     /// Waiting state.
     ///
     /// All elements of this linked list must be valid.
-    waits: CpuLockCell<System, intrusive_list::ListHead<WaitRef<System>>>,
+    waits: CpuLockCell<Traits, intrusive_list::ListHead<WaitRef<Traits>>>,
 
     order: QueueOrder,
 }
 
-impl<System: PortThreading> Init for WaitQueue<System> {
+impl<Traits: PortThreading> Init for WaitQueue<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         waits: Init::INIT,
@@ -182,30 +183,23 @@ impl<System: PortThreading> Init for WaitQueue<System> {
     };
 }
 
-/// Specifies the sorting order of a wait queue.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum QueueOrder {
-    /// The wait queue is processed in a FIFO order.
-    Fifo,
-    /// The wait queue is processed in a task priority order. Tasks with the
-    /// same priorities follow a FIFO order.
-    TaskPriority,
-}
+// FIXME: provide our own, exhaustive `QueueOrder`
+pub(crate) use r3::kernel::QueueOrder;
 
 /// The wait state of a task.
-pub(crate) struct TaskWait<System: PortThreading> {
+pub(crate) struct TaskWait<Traits: PortThreading> {
     /// The wait object describing the ongoing Waiting state of the task. Should
     /// be `None` iff the task is not in the Waiting state.
     ///
     /// The pointee must be valid.
-    current_wait: CpuLockCell<System, Option<WaitRef<System>>>,
+    current_wait: CpuLockCell<Traits, Option<WaitRef<Traits>>>,
 
     /// The result of the last wait operation. Set by a wake-upper. Returned by
     /// [`WaitQueue::wait`].
-    wait_result: CpuLockCell<System, Result<(), WaitTimeoutError>>,
+    wait_result: CpuLockCell<Traits, Result<(), WaitTimeoutError>>,
 }
 
-impl<System: PortThreading> Init for TaskWait<System> {
+impl<Traits: PortThreading> Init for TaskWait<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         current_wait: Init::INIT,
@@ -237,7 +231,7 @@ macro_rules! setup_timeout_wait {
     };
 }
 
-impl<System: PortThreading> WaitQueue<System> {
+impl<Traits: PortThreading> WaitQueue<Traits> {
     /// Construct a `WaitQueue`.
     pub(super) const fn new(order: QueueOrder) -> Self {
         Self {
@@ -247,7 +241,7 @@ impl<System: PortThreading> WaitQueue<System> {
     }
 }
 
-impl<System: Kernel> WaitQueue<System> {
+impl<Traits: KernelTraits> WaitQueue<Traits> {
     /// Insert a wait object pertaining to the currently running task to `self`,
     /// transitioning the task into the Waiting state.
     ///
@@ -258,10 +252,10 @@ impl<System: Kernel> WaitQueue<System> {
     #[inline]
     pub(super) fn wait(
         &'static self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
-        payload: WaitPayload<System>,
-    ) -> Result<WaitPayload<System>, WaitError> {
-        let task = System::state().running_task(lock.borrow_mut()).unwrap();
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
+        payload: WaitPayload<Traits>,
+    ) -> Result<WaitPayload<Traits>, WaitError> {
+        let task = Traits::state().running_task(lock.borrow_mut()).unwrap();
         let wait = Wait {
             task,
             link: CpuLockCell::new(None),
@@ -269,8 +263,7 @@ impl<System: Kernel> WaitQueue<System> {
             payload: payload.r#move(),
         };
 
-        self.wait_inner(lock, &wait)
-            .map_err(WaitTimeoutError::expect_not_timeout)?;
+        self.wait_inner(lock, &wait).map_err(expect_not_timeout)?;
 
         Ok(wait.payload)
     }
@@ -286,11 +279,11 @@ impl<System: Kernel> WaitQueue<System> {
     #[inline]
     pub(super) fn wait_timeout(
         &'static self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
-        payload: WaitPayload<System>,
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
+        payload: WaitPayload<Traits>,
         duration_time32: timeout::Time32,
-    ) -> Result<WaitPayload<System>, WaitTimeoutError> {
-        let task = System::state().running_task(lock.borrow_mut()).unwrap();
+    ) -> Result<WaitPayload<Traits>, WaitTimeoutError> {
+        let task = Traits::state().running_task(lock.borrow_mut()).unwrap();
         let wait = Wait {
             task,
             link: CpuLockCell::new(None),
@@ -313,15 +306,15 @@ impl<System: Kernel> WaitQueue<System> {
     /// `#[inline]`.
     fn wait_inner(
         &'static self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
-        wait: &Wait<System>,
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
+        wait: &Wait<Traits>,
     ) -> Result<(), WaitTimeoutError> {
         let task = wait.task;
         let wait_ref = WaitRef(wait.into());
 
         debug_assert!(core::ptr::eq(
             wait.task,
-            System::state().running_task(lock.borrow_mut()).unwrap()
+            Traits::state().running_task(lock.borrow_mut()).unwrap()
         ));
         debug_assert!(core::ptr::eq(wait.wait_queue.unwrap(), self));
 
@@ -365,20 +358,20 @@ impl<System: Kernel> WaitQueue<System> {
     /// Find the insertion position for a wait object owned by a task whose
     /// priority is `cur_task_pri`.
     fn find_insertion_position_by_task_priority<MapLink>(
-        cur_task_pri: System::TaskPriority,
+        cur_task_pri: Traits::TaskPriority,
         accessor: &ListAccessorCell<
             '_,
-            &CpuLockCell<System, intrusive_list::ListHead<WaitRef<System>>>,
+            &CpuLockCell<Traits, intrusive_list::ListHead<WaitRef<Traits>>>,
             UnsafeStatic,
             MapLink,
-            CpuLockTokenRefMut<'_, System>,
+            CpuLockTokenRefMut<'_, Traits>,
             HandleInconsistencyUnchecked,
         >,
-    ) -> Option<WaitRef<System>>
+    ) -> Option<WaitRef<Traits>>
     where
         MapLink: Fn(
-            &Wait<System>,
-        ) -> &CpuLockCell<System, Option<intrusive_list::Link<WaitRef<System>>>>,
+            &Wait<Traits>,
+        ) -> &CpuLockCell<Traits, Option<intrusive_list::Link<WaitRef<Traits>>>>,
     {
         let mut insert_at = None;
         let Ok(mut cursor) = accessor.back();
@@ -406,7 +399,7 @@ impl<System: Kernel> WaitQueue<System> {
 
     /// Reposition `wait` in the wait queue. This is necessary after
     /// changing the waiting task's priority.
-    fn reorder_wait(&'static self, mut lock: CpuLockTokenRefMut<'_, System>, wait: &Wait<System>) {
+    fn reorder_wait(&'static self, mut lock: CpuLockTokenRefMut<'_, Traits>, wait: &Wait<Traits>) {
         match self.order {
             QueueOrder::Fifo => return,
             QueueOrder::TaskPriority => {}
@@ -442,8 +435,8 @@ impl<System: Kernel> WaitQueue<System> {
     /// Get the next waiting task to be woken up.
     pub(super) fn first_waiting_task(
         &self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
-    ) -> Option<&'static TaskCb<System>> {
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
+    ) -> Option<&'static TaskCb<Traits>> {
         // Get the waiting task of the first wait object
         // Safety: This linked list is structurally sound, so it shouldn't
         //         return `Err(InconsistentError)`
@@ -456,7 +449,7 @@ impl<System: Kernel> WaitQueue<System> {
     ///
     /// This method may make a task Ready, but doesn't yield the processor.
     /// Call `unlock_cpu_and_check_preemption` as needed.
-    pub(super) fn wake_up_one(&self, mut lock: CpuLockTokenRefMut<'_, System>) -> bool {
+    pub(super) fn wake_up_one(&self, mut lock: CpuLockTokenRefMut<'_, Traits>) -> bool {
         // Get the first wait object
         // Safety: This linked list is structurally sound, so it shouldn't
         //         return `Err(InconsistentError)`
@@ -486,8 +479,8 @@ impl<System: Kernel> WaitQueue<System> {
     /// Call `unlock_cpu_and_check_preemption` as needed.
     pub(super) fn wake_up_all_conditional(
         &self,
-        mut lock: CpuLockTokenRefMut<'_, System>,
-        mut cond: impl FnMut(&WaitPayload<System>, CpuLockTokenRef<'_, System>) -> bool,
+        mut lock: CpuLockTokenRefMut<'_, Traits>,
+        mut cond: impl FnMut(&WaitPayload<Traits>, CpuLockTokenRef<'_, Traits>) -> bool,
     ) {
         let Ok(mut cur) = {
             let accessor = wait_queue_accessor!(&self.waits, lock.borrow_mut());
@@ -533,7 +526,7 @@ impl<System: Kernel> WaitQueue<System> {
     }
 }
 
-impl<System: Kernel> fmt::Debug for Wait<System> {
+impl<Traits: KernelTraits> fmt::Debug for Wait<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -543,7 +536,7 @@ impl<System: Kernel> fmt::Debug for Wait<System> {
     }
 }
 
-impl<System: Kernel> fmt::Debug for WaitPayload<System> {
+impl<Traits: KernelTraits> fmt::Debug for WaitPayload<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::EventGroupBits {
@@ -565,15 +558,15 @@ impl<System: Kernel> fmt::Debug for WaitPayload<System> {
     }
 }
 
-impl<System: Kernel> fmt::Debug for WaitQueue<System> {
+impl<Traits: KernelTraits> fmt::Debug for WaitQueue<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct WaitQueuePrinter<'a, System: Kernel> {
-            waits: &'a CpuLockCell<System, intrusive_list::ListHead<WaitRef<System>>>,
+        struct WaitQueuePrinter<'a, Traits: KernelTraits> {
+            waits: &'a CpuLockCell<Traits, intrusive_list::ListHead<WaitRef<Traits>>>,
         }
 
-        impl<System: Kernel> fmt::Debug for WaitQueuePrinter<'_, System> {
+        impl<Traits: KernelTraits> fmt::Debug for WaitQueuePrinter<'_, Traits> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                if let Ok(mut lock) = super::utils::lock_cpu() {
+                if let Ok(mut lock) = super::klock::lock_cpu() {
                     let accessor = wait_queue_accessor!(&self.waits, lock.borrow_mut());
 
                     f.debug_list()
@@ -592,7 +585,7 @@ impl<System: Kernel> fmt::Debug for WaitQueue<System> {
     }
 }
 
-impl<System: Kernel> fmt::Debug for TaskWait<System> {
+impl<Traits: KernelTraits> fmt::Debug for TaskWait<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskWait")
             .field(
@@ -614,10 +607,10 @@ impl<System: Kernel> fmt::Debug for TaskWait<System> {
 /// The wait object might get deallocated when the task starts running. This
 /// function allows access to the wait object while ensuring the reference to
 /// the wait object doesn't escape from the scope.
-pub(super) fn with_current_wait_payload<System: Kernel, R>(
-    lock: CpuLockTokenRefMut<'_, System>,
-    task_cb: &TaskCb<System>,
-    f: impl FnOnce(Option<&WaitPayload<System>>) -> R,
+pub(super) fn with_current_wait_payload<Traits: KernelTraits, R>(
+    lock: CpuLockTokenRefMut<'_, Traits>,
+    task_cb: &TaskCb<Traits>,
+    f: impl FnOnce(Option<&WaitPayload<Traits>>) -> R,
 ) -> R {
     let wait_ref = task_cb.wait.current_wait.get(&*lock);
 
@@ -634,9 +627,9 @@ pub(super) fn with_current_wait_payload<System: Kernel, R>(
 ///
 /// This function does nothing if the task is currently not in the Waiting state
 /// or the wait object is not associated with any wait queue.
-pub(super) fn reorder_wait_of_task<System: Kernel>(
-    lock: CpuLockTokenRefMut<'_, System>,
-    task_cb: &TaskCb<System>,
+pub(super) fn reorder_wait_of_task<Traits: KernelTraits>(
+    lock: CpuLockTokenRefMut<'_, Traits>,
+    task_cb: &TaskCb<Traits>,
 ) {
     if let Some(wait_ref) = task_cb.wait.current_wait.get(&*lock) {
         // Safety: `wait_ref` must point to an existing `Wait`
@@ -659,11 +652,11 @@ pub(super) fn reorder_wait_of_task<System: Kernel>(
 ///
 /// [waitable]: crate#contexts
 #[inline]
-pub(super) fn wait_no_queue<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    payload: WaitPayload<System>,
-) -> Result<WaitPayload<System>, WaitError> {
-    let task = System::state().running_task(lock.borrow_mut()).unwrap();
+pub(super) fn wait_no_queue<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    payload: WaitPayload<Traits>,
+) -> Result<WaitPayload<Traits>, WaitError> {
+    let task = Traits::state().running_task(lock.borrow_mut()).unwrap();
     let wait = Wait {
         task,
         link: CpuLockCell::new(None),
@@ -671,7 +664,7 @@ pub(super) fn wait_no_queue<System: Kernel>(
         payload: payload.r#move(),
     };
 
-    wait_no_queue_inner(lock, &wait).map_err(WaitTimeoutError::expect_not_timeout)?;
+    wait_no_queue_inner(lock, &wait).map_err(expect_not_timeout)?;
 
     Ok(wait.payload)
 }
@@ -688,12 +681,12 @@ pub(super) fn wait_no_queue<System: Kernel>(
 ///
 /// [waitable]: crate#contexts
 #[inline]
-pub(super) fn wait_no_queue_timeout<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    payload: WaitPayload<System>,
+pub(super) fn wait_no_queue_timeout<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    payload: WaitPayload<Traits>,
     duration_time32: timeout::Time32,
-) -> Result<WaitPayload<System>, WaitTimeoutError> {
-    let task = System::state().running_task(lock.borrow_mut()).unwrap();
+) -> Result<WaitPayload<Traits>, WaitTimeoutError> {
+    let task = Traits::state().running_task(lock.borrow_mut()).unwrap();
     let wait = Wait {
         task,
         link: CpuLockCell::new(None),
@@ -714,16 +707,16 @@ pub(super) fn wait_no_queue_timeout<System: Kernel>(
 /// Passing `WaitPayload` by value is expensive, so moving `WaitPayload`
 /// into and out of `Wait` is done in the outer function `Self::wait` with
 /// `#[inline]`.
-fn wait_no_queue_inner<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    wait: &Wait<System>,
+fn wait_no_queue_inner<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    wait: &Wait<Traits>,
 ) -> Result<(), WaitTimeoutError> {
     let task = wait.task;
     let wait_ref = WaitRef(wait.into());
 
     debug_assert!(core::ptr::eq(
         wait.task,
-        System::state().running_task(lock.borrow_mut()).unwrap()
+        Traits::state().running_task(lock.borrow_mut()).unwrap()
     ));
     debug_assert!(wait.wait_queue.is_none());
     debug_assert!(wait.link.read(&*lock).is_none());
@@ -751,9 +744,9 @@ fn wait_no_queue_inner<System: Kernel>(
 ///
 /// This method may make a task Ready, but doesn't yield the processor.
 /// Call `unlock_cpu_and_check_preemption` as needed.
-fn complete_wait<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    wait: &Wait<System>,
+fn complete_wait<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    wait: &Wait<Traits>,
     wait_result: Result<(), WaitTimeoutError>,
 ) {
     let task_cb = wait.task;
@@ -791,9 +784,9 @@ fn complete_wait<System: Kernel>(
 /// path in [`WaitTimeoutError::expect_not_timeout`]). As a rule of thumb, code
 /// outside this module should not pass `WaitTimeoutError::Timeout` to this
 /// method.
-pub(super) fn interrupt_task<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    task_cb: &'static TaskCb<System>,
+pub(super) fn interrupt_task<Traits: KernelTraits>(
+    mut lock: CpuLockTokenRefMut<'_, Traits>,
+    task_cb: &'static TaskCb<Traits>,
     wait_result: Result<(), WaitTimeoutError>,
 ) -> Result<(), BadObjectStateError> {
     match *task_cb.st.read(&*lock) {
@@ -826,22 +819,22 @@ pub(super) fn interrupt_task<System: Kernel>(
 
 /// Construct [`timeout::Timeout`] to interrupt the specified task with
 /// [`WaitTimeoutError::Timeout`] after a certain period of time.
-fn new_timeout_object_for_task<System: Kernel>(
-    lock: CpuLockTokenRefMut<'_, System>,
-    task_cb: &'static TaskCb<System>,
+fn new_timeout_object_for_task<Traits: KernelTraits>(
+    lock: CpuLockTokenRefMut<'_, Traits>,
+    task_cb: &'static TaskCb<Traits>,
     duration_time32: timeout::Time32,
-) -> timeout::Timeout<System> {
+) -> timeout::Timeout<Traits> {
     // Construct a `Timeout`, supplying our callback function
     let param = task_cb as *const _ as usize;
     let timeout_object = timeout::Timeout::new(interrupt_task_by_timeout, param);
 
     /// The callback function
-    fn interrupt_task_by_timeout<System: Kernel>(
+    fn interrupt_task_by_timeout<Traits: KernelTraits>(
         param: usize,
-        mut lock: CpuLockGuard<System>,
-    ) -> CpuLockGuard<System> {
+        mut lock: CpuLockGuard<Traits>,
+    ) -> CpuLockGuard<Traits> {
         // Safety: We are just converting `param` back to the original form
-        let task_cb = unsafe { &*(param as *const TaskCb<System>) };
+        let task_cb = unsafe { &*(param as *const TaskCb<Traits>) };
 
         // Interrupt the task
         match interrupt_task(lock.borrow_mut(), task_cb, Err(WaitTimeoutError::Timeout)) {

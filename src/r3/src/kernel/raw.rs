@@ -310,6 +310,7 @@ pub unsafe trait KernelAdjustTime: KernelBase {
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>;
 }
 
+// FIXME: Maybe this should be `non_exhaustive`?
 /// Specifies the sorting order of a wait queue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QueueOrder {

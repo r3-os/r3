@@ -1,178 +1,87 @@
 //! Semaphores
-use core::{fmt, hash, marker::PhantomData};
-
-use super::{
-    state, task, timeout, utils,
-    wait::{WaitPayload, WaitQueue},
-    BadIdError, DrainSemaphoreError, GetSemaphoreError, Id, Kernel, PollSemaphoreError, Port,
-    SignalSemaphoreError, WaitSemaphoreError, WaitSemaphoreTimeoutError,
+use core::fmt;
+use r3::{
+    kernel::{
+        DrainSemaphoreError, GetSemaphoreError, PollSemaphoreError, SemaphoreValue,
+        SignalSemaphoreError, WaitSemaphoreError, WaitSemaphoreTimeoutError,
+    },
+    time::Duration,
+    utils::Init,
 };
-use crate::{time::Duration, utils::Init};
 
-/// Unsigned integer type representing the number of permits held by a
-/// [semaphore].
-///
-/// [semaphore]: Semaphore
-///
-/// <div class="admonition-follows"></div>
-///
-/// > **Rationale:** On the one hand, using a data type with a target-dependent
-/// > size can hurt portability. On the other hand, a fixed-size data type such
-/// > as `u32` can significantly increase the runtime overhead on extremely
-/// > constrained targets such as AVR and MSP430. In addition, many RISC targets
-/// > handle small data types less efficiently. The portability issue shouldn't
-/// > pose a problem in practice.
-#[doc = include_str!("./common.md")]
-pub type SemaphoreValue = usize;
+use crate::{
+    error::BadIdError,
+    klock, state, task, timeout,
+    wait::{WaitPayload, WaitQueue},
+    Id, KernelTraits, Port, System,
+};
 
-/// Represents a single semaphore in a system.
-///
-/// A semaphore maintains a set of permits that can be acquired (possibly
-/// blocking) or released by application code. The number of permits held by a
-/// semaphore is called the semaphore's *value* and represented by
-/// [`SemaphoreValue`].
-///
-/// This type is ABI-compatible with [`Id`].
-///
-/// <div class="admonition-follows"></div>
-///
-/// > **Relation to Other Specifications:** Present in almost every real-time
-/// > operating system.
-#[doc = include_str!("./common.md")]
-#[repr(transparent)]
-pub struct Semaphore<System>(Id, PhantomData<System>);
+pub(super) type SemaphoreId = Id;
 
-impl<System> Clone for Semaphore<System> {
-    fn clone(&self) -> Self {
-        Self(self.0, self.1)
+impl<Traits: KernelTraits> System<Traits> {
+    fn semaphore_cb(this: SemaphoreId) -> Result<&'static SemaphoreCb<Traits>, BadIdError> {
+        Traits::get_semaphore_cb(this.get() - 1).ok_or(BadIdError::BadId)
     }
 }
 
-impl<System> Copy for Semaphore<System> {}
+unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Traits> {
+    type SemaphoreId = SemaphoreId;
 
-impl<System> PartialEq for Semaphore<System> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System> Eq for Semaphore<System> {}
-
-impl<System> hash::Hash for Semaphore<System> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System> fmt::Debug for Semaphore<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Semaphore").field(&self.0).finish()
-    }
-}
-
-impl<System> Semaphore<System> {
-    /// Construct a `Semaphore` from `Id`.
-    ///
-    /// # Safety
-    ///
-    /// The kernel can handle invalid IDs without a problem. However, the
-    /// constructed `Semaphore` may point to an object that is not intended to be
-    /// manipulated except by its creator. This is usually prevented by making
-    /// `Semaphore` an opaque handle, but this safeguard can be circumvented by
-    /// this method.
-    pub const unsafe fn from_id(id: Id) -> Self {
-        Self(id, PhantomData)
-    }
-
-    /// Get the raw `Id` value representing this semaphore.
-    pub const fn id(self) -> Id {
-        self.0
-    }
-}
-
-impl<System: Kernel> Semaphore<System> {
-    fn semaphore_cb(self) -> Result<&'static SemaphoreCb<System>, BadIdError> {
-        System::get_semaphore_cb(self.0.get() - 1).ok_or(BadIdError::BadId)
-    }
-
-    /// Remove all permits held by the semaphore.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn drain(self) -> Result<(), DrainSemaphoreError> {
-        let mut lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
+    unsafe fn semaphore_drain(this: SemaphoreId) -> Result<(), DrainSemaphoreError> {
+        let mut lock = klock::lock_cpu::<Traits>()?;
+        let semaphore_cb = Self::semaphore_cb(this)?;
         semaphore_cb.value.replace(&mut *lock, 0);
         Ok(())
     }
 
-    /// Get the number of permits currently held by the semaphore.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn get(self) -> Result<SemaphoreValue, GetSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
+    unsafe fn semaphore_get(this: SemaphoreId) -> Result<SemaphoreValue, GetSemaphoreError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let semaphore_cb = Self::semaphore_cb(this)?;
         Ok(semaphore_cb.value.get(&*lock))
     }
 
-    /// Release `count` permits, returning them to the semaphore.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn signal(self, count: SemaphoreValue) -> Result<(), SignalSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
+    unsafe fn semaphore_signal(
+        this: SemaphoreId,
+        count: SemaphoreValue,
+    ) -> Result<(), SignalSemaphoreError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let semaphore_cb = Self::semaphore_cb(this)?;
         signal(semaphore_cb, lock, count)
     }
 
-    /// Release a permit, returning it to the semaphore.
-    pub fn signal_one(self) -> Result<(), SignalSemaphoreError> {
-        self.signal(1)
+    unsafe fn semaphore_signal_one(this: SemaphoreId) -> Result<(), SignalSemaphoreError> {
+        unsafe { Self::semaphore_signal(this, 1) }
     }
 
-    /// Acquire a permit, potentially blocking the calling thread until one is
-    /// available.
-    ///
-    /// This system service may block. Therefore, calling this method is not
-    /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
-    ///
-    /// [a non-waitable context]: crate#contexts
-    ///
-    /// <div class="admonition-follows"></div>
-    ///
-    /// > **Rationale:** Multi-wait (waiting for more than one permit) is not
-    /// > supported because it introduces additional complexity to the wait
-    /// > queue mechanism by requiring it to reevaluate wait conditions after
-    /// > reordering the queue.
-    /// >
-    /// > The support for multi-wait is relatively rare among operating systems.
-    /// > It's not supported by POSIX, RTEMS, TOPPERS, VxWorks, nor Win32. The
-    /// > rare exception is μT-Kernel.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn wait_one(self) -> Result<(), WaitSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        state::expect_waitable_context::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
+    unsafe fn semaphore_wait_one(this: SemaphoreId) -> Result<(), WaitSemaphoreError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        state::expect_waitable_context::<Traits>()?;
+        let semaphore_cb = Self::semaphore_cb(this)?;
 
         wait_one(semaphore_cb, lock)
     }
 
-    /// [`wait_one`](Self::wait_one) with timeout.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn wait_one_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
+    unsafe fn semaphore_wait_one_timeout(
+        this: SemaphoreId,
+        timeout: Duration,
+    ) -> Result<(), WaitSemaphoreTimeoutError> {
         let time32 = timeout::time32_from_duration(timeout)?;
-        let lock = utils::lock_cpu::<System>()?;
-        state::expect_waitable_context::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
+        let lock = klock::lock_cpu::<Traits>()?;
+        state::expect_waitable_context::<Traits>()?;
+        let semaphore_cb = Self::semaphore_cb(this)?;
 
         wait_one_timeout(semaphore_cb, lock, time32)
     }
 
-    /// Non-blocking version of [`wait_one`](Self::wait_one). Returns
-    /// immediately with [`PollSemaphoreError::Timeout`] if the unblocking
-    /// condition is not satisfied.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn poll_one(self) -> Result<(), PollSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
+    unsafe fn semaphore_poll_one(this: SemaphoreId) -> Result<(), PollSemaphoreError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let semaphore_cb = Self::semaphore_cb(this)?;
 
         poll_one(semaphore_cb, lock)
     }
@@ -180,14 +89,14 @@ impl<System: Kernel> Semaphore<System> {
 
 /// *Semaphore control block* - the state data of an event group.
 #[doc(hidden)]
-pub struct SemaphoreCb<System: Port> {
-    pub(super) value: utils::CpuLockCell<System, SemaphoreValue>,
+pub struct SemaphoreCb<Traits: Port> {
+    pub(super) value: klock::CpuLockCell<Traits, SemaphoreValue>,
     pub(super) max_value: SemaphoreValue,
 
-    pub(super) wait_queue: WaitQueue<System>,
+    pub(super) wait_queue: WaitQueue<Traits>,
 }
 
-impl<System: Port> Init for SemaphoreCb<System> {
+impl<Traits: Port> Init for SemaphoreCb<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         value: Init::INIT,
@@ -196,7 +105,7 @@ impl<System: Port> Init for SemaphoreCb<System> {
     };
 }
 
-impl<System: Kernel> fmt::Debug for SemaphoreCb<System> {
+impl<Traits: KernelTraits> fmt::Debug for SemaphoreCb<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SemaphoreCb")
             .field("self", &(self as *const _))
@@ -207,9 +116,9 @@ impl<System: Kernel> fmt::Debug for SemaphoreCb<System> {
     }
 }
 
-fn poll_one<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
+fn poll_one<Traits: KernelTraits>(
+    semaphore_cb: &'static SemaphoreCb<Traits>,
+    mut lock: klock::CpuLockGuard<Traits>,
 ) -> Result<(), PollSemaphoreError> {
     if poll_core(semaphore_cb.value.write(&mut *lock)) {
         Ok(())
@@ -218,9 +127,9 @@ fn poll_one<System: Kernel>(
     }
 }
 
-fn wait_one<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
+fn wait_one<Traits: KernelTraits>(
+    semaphore_cb: &'static SemaphoreCb<Traits>,
+    mut lock: klock::CpuLockGuard<Traits>,
 ) -> Result<(), WaitSemaphoreError> {
     if poll_core(semaphore_cb.value.write(&mut *lock)) {
         Ok(())
@@ -236,9 +145,9 @@ fn wait_one<System: Kernel>(
     }
 }
 
-fn wait_one_timeout<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
+fn wait_one_timeout<Traits: KernelTraits>(
+    semaphore_cb: &'static SemaphoreCb<Traits>,
+    mut lock: klock::CpuLockGuard<Traits>,
     time32: timeout::Time32,
 ) -> Result<(), WaitSemaphoreTimeoutError> {
     if poll_core(semaphore_cb.value.write(&mut *lock)) {
@@ -270,9 +179,9 @@ fn poll_core(value: &mut SemaphoreValue) -> bool {
     }
 }
 
-fn signal<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
+fn signal<Traits: KernelTraits>(
+    semaphore_cb: &'static SemaphoreCb<Traits>,
+    mut lock: klock::CpuLockGuard<Traits>,
     mut count: SemaphoreValue,
 ) -> Result<(), SignalSemaphoreError> {
     let value = semaphore_cb.value.get(&*lock);

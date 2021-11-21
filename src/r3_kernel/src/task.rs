@@ -3,141 +3,38 @@
 use core::sync::atomic::Ordering;
 use core::{fmt, hash, marker::PhantomData, mem};
 use num_traits::ToPrimitive;
-
-use super::{
-    hunk::Hunk, mutex, state, timeout, utils, wait, ActivateTaskError, BadIdError, ExitTaskError,
-    GetCurrentTaskError, GetTaskPriorityError, Id, InterruptTaskError, Kernel, KernelCfg1,
-    ParkError, ParkTimeoutError, PortThreading, SetTaskPriorityError, SleepError, UnparkError,
-    UnparkExactError, WaitTimeoutError,
+use r3::{
+    kernel::{
+        raw::KernelBase, ActivateTaskError, ExitTaskError, GetCurrentTaskError,
+        GetTaskPriorityError, Hunk, InterruptTaskError, ParkError, ParkTimeoutError,
+        SetTaskPriorityError, SleepError, UnparkError, UnparkExactError, WaitTimeoutError,
+    },
+    time::Duration,
+    utils::Init,
 };
-use crate::{time::Duration, utils::Init};
+
+use crate::{
+    error::BadIdError, klock, mutex, state, timeout, wait, Id, KernelCfg1, KernelTraits,
+    PortThreading, System,
+};
 
 #[doc(hidden)]
 pub mod readyqueue;
 use self::readyqueue::Queue as _;
 
-/// Represents a single task in a system.
-///
-/// This type is ABI-compatible with [`Id`].
-///
-/// <div class="admonition-follows"></div>
-///
-/// > **Relation to Other Specifications:** Present in almost every real-time
-/// > operating system.
-///
-/// # Task States
-///
-/// A task may be in one of the following states:
-///
-///  - **Dormant** — The task is not executing, doesn't have an associated
-///    execution [thread], and can be [activated].
-///
-///  - **Ready** — The task has an associated execution thread, which is ready to
-///    be scheduled to the CPU
-///
-///  - **Running** — The task has an associated execution thread, which is
-///    currently scheduled to the CPU
-///
-///  - **Waiting** — The task has an associated execution thread, which is
-///    currently blocked by a blocking operation
-///
-/// <center>
-///
-#[doc = svgbobdoc::transform_mdstr!(
-/// ```svgbob
-///                     .-------.
-///    .--------------->| Ready |<--------------.
-///    |                '-------'               |
-///    |          dispatch | ^                  |
-///    |                   | |                  |
-///    | release           | |                  | activate
-/// .---------.            | |           .---------.
-/// | Waiting |            | |           | Dormant |
-/// '---------'            | |           '---------'
-///    ^                   | |                  ^
-///    |                   | |                  |
-///    |                   v | preempt          |
-///    |          wait .---------.              |
-///    '---------------| Running |--------------'
-///                    '---------' exit
-/// ```
-)]
-///
-/// </center>
-///
-/// [thread]: crate#threads
-/// [activated]: Task::activate
-#[doc = include_str!("./common.md")]
-#[repr(transparent)]
-pub struct Task<System>(Id, PhantomData<System>);
+pub(super) type TaskId = Id;
 
-impl<System> Clone for Task<System> {
-    fn clone(&self) -> Self {
-        Self(self.0, self.1)
-    }
-}
-
-impl<System> Copy for Task<System> {}
-
-impl<System> PartialEq for Task<System> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System> Eq for Task<System> {}
-
-impl<System> hash::Hash for Task<System> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System> fmt::Debug for Task<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Task").field(&self.0).finish()
-    }
-}
-
-impl<System> Task<System> {
-    /// Construct a `Task` from `Id`.
-    ///
-    /// # Safety
-    ///
-    /// The kernel can handle invalid IDs without a problem. However, the
-    /// constructed `Task` may point to an object that is not intended to be
-    /// manipulated except by its creator. This is usually prevented by making
-    /// `Task` an opaque handle, but this safeguard can be circumvented by
-    /// this method.
-    ///
-    /// Constructing a `Task` for a current task is allowed. This can be safely
-    /// done by [`Task::current`].
-    pub const unsafe fn from_id(id: Id) -> Self {
-        Self(id, PhantomData)
+/// These associate functions implement the task-related portion of
+/// [`r3::kernel::raw::KernelBase`].
+impl<Traits: KernelTraits> System<Traits> {
+    fn task_cb(this: TaskId) -> Result<&'static TaskCb<Traits>, BadIdError> {
+        Traits::get_task_cb(this.get() - 1).ok_or(BadIdError::BadId)
     }
 
-    /// Get the raw `Id` value representing this task.
-    pub const fn id(self) -> Id {
-        self.0
-    }
-}
-
-impl<System: Kernel> Task<System> {
-    /// Get the current task (i.e., the task in the Running state).
-    ///
-    /// In a task context, this method returns the currently running task.
-    ///
-    /// In an interrupt context, the result is unreliable because scheduling is
-    /// deferred until the control returns to a task, but the current interrupt
-    /// handler could be interrupted by another interrrupt, which might do
-    /// scheduling on return (whether this happens or not is unspecified).
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
-        let mut lock = utils::lock_cpu::<System>()?;
-        let task_cb = if let Some(cb) = System::state().running_task(lock.borrow_mut()) {
+    pub(super) fn task_current() -> Result<Option<TaskId>, GetCurrentTaskError> {
+        let mut lock = klock::lock_cpu::<Traits>()?;
+        let task_cb = if let Some(cb) = Traits::state().running_task(lock.borrow_mut()) {
             cb
         } else {
             return Ok(None);
@@ -145,39 +42,25 @@ impl<System: Kernel> Task<System> {
 
         // Calculate an `Id` from the task CB pointer
         let offset_bytes =
-            task_cb as *const TaskCb<_> as usize - System::task_cb_pool().as_ptr() as usize;
-        let offset = offset_bytes / mem::size_of::<TaskCb<System>>();
+            task_cb as *const TaskCb<_> as usize - Traits::task_cb_pool().as_ptr() as usize;
+        let offset = offset_bytes / mem::size_of::<TaskCb<Traits>>();
 
-        // Safety: Constructing a `Task` for a current task is allowed
-        let task = unsafe { Self::from_id(Id::new(offset as usize + 1).unwrap()) };
+        let task = Id::new(offset as usize + 1).unwrap();
 
         Ok(Some(task))
     }
 
-    fn task_cb(self) -> Result<&'static TaskCb<System>, BadIdError> {
-        System::get_task_cb(self.0.get() - 1).ok_or(BadIdError::BadId)
-    }
-
-    /// Start the execution of the task.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn activate(self) -> Result<(), ActivateTaskError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let task_cb = self.task_cb()?;
+    pub(super) fn task_activate(this: TaskId) -> Result<(), ActivateTaskError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let task_cb = Self::task_cb(this)?;
         activate(lock, task_cb)
     }
 
-    /// Interrupt any ongoing wait operations undertaken by the task.
-    ///
-    /// This method interrupt any ongoing system call that is blocking the task.
-    /// The interrupted system call will return [`WaitError::Interrupted`] or
-    /// [`WaitTimeoutError::Interrupted`].
-    ///
-    /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
-    /// [`WaitTimeoutError::Interrupted`]: crate::kernel::WaitTimeoutError::Interrupted
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn interrupt(self) -> Result<(), InterruptTaskError> {
-        let mut lock = utils::lock_cpu::<System>()?;
-        let task_cb = self.task_cb()?;
+    pub(super) fn task_interrupt(this: TaskId) -> Result<(), InterruptTaskError> {
+        let mut lock = klock::lock_cpu::<Traits>()?;
+        let task_cb = Self::task_cb(this)?;
         wait::interrupt_task(
             lock.borrow_mut(),
             task_cb,
@@ -190,19 +73,9 @@ impl<System: Kernel> Task<System> {
         Ok(())
     }
 
-    /// Make the task's token available, unblocking [`Kernel::park`] now or in
-    /// the future.
-    ///
-    /// If the token is already available, this method will return without doing
-    /// anything. Use [`Task::unpark_exact`] if you need to detect this
-    /// condition.
-    ///
-    /// If the task is currently being blocked by `Kernel::park`, the token will
-    /// be immediately consumed. Otherwise, it will be consumed on a next call
-    /// to `Kernel::park`.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn unpark(self) -> Result<(), UnparkError> {
-        match self.unpark_exact() {
+    pub(super) fn task_unpark(this: TaskId) -> Result<(), UnparkError> {
+        match Self::task_unpark_exact(this) {
             Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
             Err(UnparkExactError::BadContext) => Err(UnparkError::BadContext),
             Err(UnparkExactError::BadId) => Err(UnparkError::BadId),
@@ -210,55 +83,27 @@ impl<System: Kernel> Task<System> {
         }
     }
 
-    /// Make *exactly* one new token available for the task, unblocking
-    /// [`Kernel::park`] now or in the future.
-    ///
-    /// If the token is already available, this method will return
-    /// [`UnparkExactError::QueueOverflow`]. Thus, this method will succeed
-    /// only if it made *exactly* one token available.
-    ///
-    /// If the task is currently being blocked by `Kernel::park`, the token will
-    /// be immediately consumed. Otherwise, it will be consumed on a next call
-    /// to `Kernel::park`.
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let task_cb = self.task_cb()?;
+    pub(super) fn task_unpark_exact(this: TaskId) -> Result<(), UnparkExactError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let task_cb = Self::task_cb(this)?;
         unpark_exact(lock, task_cb)
     }
 
-    /// Set the task's base priority.
-    ///
-    /// A task's base priority is used to calculate its [effective priority].
-    /// Tasks with lower effective priorities execute first. The base priority
-    /// is reset to the initial value specified by [`CfgTaskBuilder::priority`]
-    /// upon activation.
-    ///
-    /// [effective priority]: Self::effective_priority
-    /// [`CfgTaskBuilder::priority`]: crate::kernel::cfg::CfgTaskBuilder::priority
-    ///
-    /// The value must be in range `0..`[`num_task_priority_levels`]. Otherwise,
-    /// this method will return [`SetTaskPriorityError::BadParam`].
-    ///
-    /// The task shouldn't be in the Dormant state. Otherwise, this method will
-    /// return [`SetTaskPriorityError::BadObjectState`].
-    ///
-    /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let task_cb = self.task_cb()?;
+    pub(super) fn task_set_priority(
+        this: TaskId,
+        priority: usize,
+    ) -> Result<(), SetTaskPriorityError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let task_cb = Self::task_cb(this)?;
         set_task_base_priority(lock, task_cb, priority)
     }
 
-    /// Get the task's base priority.
-    ///
-    /// The task shouldn't be in the Dormant state. Otherwise, this method will
-    /// return [`GetTaskPriorityError::BadObjectState`].
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn priority(self) -> Result<usize, GetTaskPriorityError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let task_cb = self.task_cb()?;
+    pub(super) fn task_priority(this: TaskId) -> Result<usize, GetTaskPriorityError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let task_cb = Self::task_cb(this)?;
 
         if *task_cb.st.read(&*lock) == TaskSt::Dormant {
             Err(GetTaskPriorityError::BadObjectState)
@@ -267,20 +112,10 @@ impl<System: Kernel> Task<System> {
         }
     }
 
-    /// Get the task's effective priority.
-    ///
-    /// The effective priority is calculated based on the task's [base priority]
-    /// and can be temporarily raised by a [mutex locking protocol].
-    ///
-    /// [base priority]: Self::priority
-    /// [mutex locking protocol]: crate::kernel::MutexProtocol
-    ///
-    /// The task shouldn't be in the Dormant state. Otherwise, this method will
-    /// return [`GetTaskPriorityError::BadObjectState`].
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub fn effective_priority(self) -> Result<usize, GetTaskPriorityError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let task_cb = self.task_cb()?;
+    pub(super) fn task_effective_priority(this: TaskId) -> Result<usize, GetTaskPriorityError> {
+        let lock = klock::lock_cpu::<Traits>()?;
+        let task_cb = Self::task_cb(this)?;
 
         if *task_cb.st.read(&*lock) == TaskSt::Dormant {
             Err(GetTaskPriorityError::BadObjectState)
@@ -290,67 +125,103 @@ impl<System: Kernel> Task<System> {
     }
 }
 
+// FIXME: Since we don't want to say "task stack is guaranteed to be a hunk" in
+//        a public interface, we should rename this type
 /// [`Hunk`] for a task stack.
-pub struct StackHunk<System>(Hunk<System>, usize);
+pub struct StackHunk<Traits> {
+    _phantom: PhantomData<Traits>,
+    hunk_offset: usize,
+    len: usize,
+}
+
+const STACK_HUNK_AUTO: usize = (isize::MIN) as usize;
 
 // Safety: Safe code can't access the contents. Also, the port is responsible
 // for making sure `StackHunk` is used in the correct way.
-unsafe impl<System> Sync for StackHunk<System> {}
+unsafe impl<Traits: KernelTraits> Sync for StackHunk<Traits> {}
 
-impl<System: Kernel> fmt::Debug for StackHunk<System> {
+impl<Traits: KernelTraits> fmt::Debug for StackHunk<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("StackHunk").field(&self.0.as_ptr()).finish()
+        f.debug_tuple("StackHunk")
+            .field(&self.hunk().as_ptr())
+            .finish()
     }
 }
 
-// TODO: Preferably `StackHunk` shouldn't be `Clone` as it strengthens the
-//       safety obligation of `StackHunk::from_hunk`.
-impl<System> Clone for StackHunk<System> {
+impl<Traits: KernelTraits> Clone for StackHunk<Traits> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<System> Copy for StackHunk<System> {}
+impl<Traits: KernelTraits> Copy for StackHunk<Traits> {}
 
 // TODO: Should we allow zero-sized `StackHunk`?
-impl<System> Init for StackHunk<System> {
-    const INIT: Self = Self(Init::INIT, 0);
+impl<Traits: KernelTraits> Init for StackHunk<Traits> {
+    const INIT: Self = Self {
+        _phantom: PhantomData,
+        hunk_offset: 0,
+        len: 0,
+    };
 }
 
-impl<System> StackHunk<System> {
+impl<Traits: KernelTraits> StackHunk<Traits> {
+    #[inline]
+    const fn hunk(&self) -> Hunk<System<Traits>> {
+        // FIXME: `Hunk::from_offset` is an implementation detail
+        Hunk::from_offset(self.hunk_offset)
+    }
+
     /// Construct a `StackHunk` from `Hunk`.
-    ///
-    /// # Safety
-    ///
-    /// The caller is responsible for making sure the region represented by
-    /// `hunk` is solely used for a single task's stack.
-    ///
-    /// Also, `hunk` must be properly aligned for a stack region.
-    pub const unsafe fn from_hunk(hunk: Hunk<System>, len: usize) -> Self {
-        Self(hunk, len)
+    pub(crate) const fn from_hunk(hunk: Hunk<System<Traits>>, len: usize) -> Self {
+        assert!(len & STACK_HUNK_AUTO == 0, "too large");
+        Self {
+            _phantom: PhantomData,
+            hunk_offset: hunk.offset(),
+            len,
+        }
     }
 
-    /// Get the inner `Hunk` and the length, consuming `self`.
-    pub fn into_inner(self) -> (Hunk<System>, usize) {
-        (self.0, self.1)
+    /// Construct a `StackHunk` representing an automatically allocated stack
+    /// region.
+    pub(crate) const fn auto(len: usize) -> Self {
+        assert!(len & STACK_HUNK_AUTO == 0, "too large");
+        Self {
+            _phantom: PhantomData,
+            hunk_offset: 0,
+            len: len | STACK_HUNK_AUTO,
+        }
+    }
+
+    /// Get the requested size if this `StackHunk` represents an automatically
+    /// allocated stack region.
+    pub(crate) const fn auto_size(self) -> Option<usize> {
+        if self.len & STACK_HUNK_AUTO != 0 {
+            Some(self.len & !STACK_HUNK_AUTO)
+        } else {
+            None
+        }
     }
 }
 
-impl<System: Kernel> StackHunk<System> {
+impl<Traits: KernelTraits> StackHunk<Traits> {
     /// Get a raw pointer to the hunk's contents.
+    ///
+    /// This is mainly used by [`PortThreading::initialize_task_state`] to
+    /// calculate the initial stack pointer.
+    #[inline]
     pub fn as_ptr(&self) -> *mut [u8] {
-        core::ptr::slice_from_raw_parts_mut(self.0.as_ptr(), self.1)
+        core::ptr::slice_from_raw_parts_mut(self.hunk().as_ptr(), self.len)
     }
 }
 
 /// *Task control block* - the state data of a task.
 #[repr(C)]
 pub struct TaskCb<
-    System: PortThreading,
-    PortTaskState: 'static = <System as PortThreading>::PortTaskState,
-    TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
-    TaskReadyQueueData: 'static = <<System as KernelCfg1>::TaskReadyQueue as readyqueue::Queue<
-        System,
+    Traits: PortThreading,
+    PortTaskState: 'static = <Traits as PortThreading>::PortTaskState,
+    TaskPriority: 'static = <Traits as KernelCfg1>::TaskPriority,
+    TaskReadyQueueData: 'static = <<Traits as KernelCfg1>::TaskReadyQueue as readyqueue::Queue<
+        Traits,
     >>::PerTaskData,
 > {
     /// Get a reference to `PortTaskState` in the task control block.
@@ -360,10 +231,10 @@ pub struct TaskCb<
     pub port_task_state: PortTaskState,
 
     /// The static properties of the task.
-    pub attr: &'static TaskAttr<System, TaskPriority>,
+    pub attr: &'static TaskAttr<Traits, TaskPriority>,
 
     /// The task's base priority.
-    pub(super) base_priority: utils::CpuLockCell<System, TaskPriority>,
+    pub(super) base_priority: klock::CpuLockCell<Traits, TaskPriority>,
 
     /// The task's effective priority. It's calculated based on `base_priority`
     /// and may be temporarily elevated by a mutex locking protocol.
@@ -389,12 +260,12 @@ pub struct TaskCb<
     /// The effective priority determines the task's position within the task
     /// ready queue. You must call `TaskReadyQueue::reorder_task` after updating
     /// `effective_priority` of a task which is in Ready state.
-    pub(super) effective_priority: utils::CpuLockCell<System, TaskPriority>,
+    pub(super) effective_priority: klock::CpuLockCell<Traits, TaskPriority>,
 
-    pub(super) st: utils::CpuLockCell<System, TaskSt>,
+    pub(super) st: klock::CpuLockCell<Traits, TaskSt>,
 
     /// A flag indicating whether the task has a park token or not.
-    pub(super) park_token: utils::CpuLockCell<System, bool>,
+    pub(super) park_token: klock::CpuLockCell<Traits, bool>,
 
     /// Allows `TaskCb` to participate in one of linked lists.
     ///
@@ -405,18 +276,18 @@ pub struct TaskCb<
     pub(super) ready_queue_data: TaskReadyQueueData,
 
     /// The wait state of the task.
-    pub(super) wait: wait::TaskWait<System>,
+    pub(super) wait: wait::TaskWait<Traits>,
 
     /// The last mutex locked by the task.
-    pub(super) last_mutex_held: utils::CpuLockCell<System, Option<&'static mutex::MutexCb<System>>>,
+    pub(super) last_mutex_held: klock::CpuLockCell<Traits, Option<&'static mutex::MutexCb<Traits>>>,
 }
 
 impl<
-        System: Kernel,
+        Traits: KernelTraits,
         PortTaskState: fmt::Debug + 'static,
         TaskPriority: fmt::Debug + 'static,
         TaskReadyQueueData: fmt::Debug + 'static,
-    > fmt::Debug for TaskCb<System, PortTaskState, TaskPriority, TaskReadyQueueData>
+    > fmt::Debug for TaskCb<Traits, PortTaskState, TaskPriority, TaskReadyQueueData>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskCb")
@@ -442,7 +313,10 @@ impl<
 }
 
 /// The static properties of a task.
-pub struct TaskAttr<System, TaskPriority: 'static = <System as KernelCfg1>::TaskPriority> {
+pub struct TaskAttr<
+    Traits: KernelCfg1,
+    TaskPriority: 'static = <Traits as KernelCfg1>::TaskPriority,
+> {
     /// The entry point of the task.
     ///
     /// # Safety
@@ -458,13 +332,13 @@ pub struct TaskAttr<System, TaskPriority: 'static = <System as KernelCfg1>::Task
     // FIXME: Ideally, `stack` should directly point to the stack region. But
     //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>
     /// The hunk representing the stack region for the task.
-    pub stack: StackHunk<System>,
+    pub stack: StackHunk<Traits>,
 
     /// The initial base priority of the task.
     pub priority: TaskPriority,
 }
 
-impl<System: Kernel, TaskPriority: fmt::Debug> fmt::Debug for TaskAttr<System, TaskPriority> {
+impl<Traits: KernelTraits, TaskPriority: fmt::Debug> fmt::Debug for TaskAttr<Traits, TaskPriority> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TaskAttr")
             .field("entry_point", &self.entry_point)
@@ -499,9 +373,9 @@ impl Init for TaskSt {
     const INIT: Self = Self::Dormant;
 }
 
-/// Implements [`Kernel::exit_task`].
-pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskError> {
-    if !System::is_task_context() {
+/// Implements `KernelBase::exit_task`.
+pub(super) unsafe fn exit_current_task<Traits: KernelTraits>() -> Result<!, ExitTaskError> {
+    if !Traits::is_task_context() {
         return Err(ExitTaskError::BadContext);
     }
 
@@ -510,21 +384,21 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
     //       application that has the lock. It's illegal for it to be a
     //       kernel-owned CPU Lock.
     let mut lock = unsafe {
-        if !System::is_cpu_lock_active() {
-            System::enter_cpu_lock();
+        if !Traits::is_cpu_lock_active() {
+            Traits::enter_cpu_lock();
         }
-        utils::assume_cpu_lock::<System>()
+        klock::assume_cpu_lock::<Traits>()
     };
 
     #[cfg(feature = "priority_boost")]
     {
         // If Priority Boost is active, deactivate it.
-        System::state()
+        Traits::state()
             .priority_boost
             .store(false, Ordering::Release);
     }
 
-    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
+    let running_task = Traits::state().running_task(lock.borrow_mut()).unwrap();
 
     // Abandon mutexes, waking up the next waiters of the mutexes (if any)
     mutex::abandon_held_mutexes(lock.borrow_mut(), running_task);
@@ -535,7 +409,7 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
     running_task.st.replace(&mut *lock, TaskSt::Dormant);
 
     // Erase `running_task`
-    System::state().running_task.replace(&mut *lock, None);
+    Traits::state().running_task.replace(&mut *lock, None);
 
     core::mem::forget(lock);
 
@@ -543,21 +417,21 @@ pub(super) unsafe fn exit_current_task<System: Kernel>() -> Result<!, ExitTaskEr
     // data on the task stack will be invalidated and has promised that this
     // will not cause any UBs. (2) CPU Lock active
     unsafe {
-        System::exit_and_dispatch(running_task);
+        Traits::exit_and_dispatch(running_task);
     }
 }
 
 /// Initialize a task at boot time.
-pub(super) fn init_task<System: Kernel>(
-    lock: utils::CpuLockTokenRefMut<'_, System>,
-    task_cb: &'static TaskCb<System>,
+pub(super) fn init_task<Traits: KernelTraits>(
+    lock: klock::CpuLockTokenRefMut<'_, Traits>,
+    task_cb: &'static TaskCb<Traits>,
 ) {
     if let TaskSt::PendingActivation = task_cb.st.read(&*lock) {
         // `PendingActivation` is equivalent to `Dormant` but serves as a marker
         // indicating tasks that should be activated by `init_task`.
 
         // Safety: CPU Lock active, the task is (essentially) in the Dormant state
-        unsafe { System::initialize_task_state(task_cb) };
+        unsafe { Traits::initialize_task_state(task_cb) };
 
         // Safety: The previous state is PendingActivation (which is equivalent
         // to Dormant) and we just initialized the task state, so this is safe
@@ -566,9 +440,9 @@ pub(super) fn init_task<System: Kernel>(
 }
 
 /// Implements `Task::activate`.
-fn activate<System: Kernel>(
-    mut lock: utils::CpuLockGuard<System>,
-    task_cb: &'static TaskCb<System>,
+fn activate<Traits: KernelTraits>(
+    mut lock: klock::CpuLockGuard<Traits>,
+    task_cb: &'static TaskCb<Traits>,
 ) -> Result<(), ActivateTaskError> {
     if *task_cb.st.read(&*lock) != TaskSt::Dormant {
         return Err(ActivateTaskError::QueueOverflow);
@@ -578,7 +452,7 @@ fn activate<System: Kernel>(
     task_cb.park_token.replace(&mut *lock, false);
 
     // Safety: CPU Lock active, the task is in the Dormant state
-    unsafe { System::initialize_task_state(task_cb) };
+    unsafe { Traits::initialize_task_state(task_cb) };
 
     // Reset the task priority
     task_cb
@@ -602,9 +476,9 @@ fn activate<System: Kernel>(
 /// proper cleanup for a previous state. If the previous state is `Dormant`, the
 /// caller must initialize the task state first by calling
 /// `initialize_task_state`.
-pub(super) unsafe fn make_ready<System: Kernel>(
-    mut lock: utils::CpuLockTokenRefMut<'_, System>,
-    task_cb: &'static TaskCb<System>,
+pub(super) unsafe fn make_ready<Traits: KernelTraits>(
+    mut lock: klock::CpuLockTokenRefMut<'_, Traits>,
+    task_cb: &'static TaskCb<Traits>,
 ) {
     // Make the task Ready
     task_cb.st.replace(&mut *lock, TaskSt::Ready);
@@ -613,7 +487,7 @@ pub(super) unsafe fn make_ready<System: Kernel>(
     //
     // Safety: `task_cb` is not in the ready queue
     unsafe {
-        <System>::state()
+        <Traits>::state()
             .task_ready_queue
             .push_back_task(lock.into(), task_cb);
     }
@@ -624,14 +498,14 @@ pub(super) unsafe fn make_ready<System: Kernel>(
 ///
 /// System services that transition a task into the Ready state should call
 /// this before returning to the caller.
-pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
-    mut lock: utils::CpuLockGuard<System>,
+pub(super) fn unlock_cpu_and_check_preemption<Traits: KernelTraits>(
+    mut lock: klock::CpuLockGuard<Traits>,
 ) {
     // If Priority Boost is active, treat the currently running task as the
     // highest-priority task.
-    if System::is_priority_boost_active() {
+    if System::<Traits>::is_priority_boost_active() {
         debug_assert_eq!(
-            *System::state()
+            *Traits::state()
                 .running_task(lock.borrow_mut())
                 .unwrap()
                 .st
@@ -642,7 +516,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
     }
 
     let prev_task_priority =
-        if let Some(running_task) = System::state().running_task(lock.borrow_mut()) {
+        if let Some(running_task) = Traits::state().running_task(lock.borrow_mut()) {
             if *running_task.st.read(&*lock) == TaskSt::Running {
                 running_task
                     .effective_priority
@@ -656,7 +530,7 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
             usize::MAX
         };
 
-    let has_preempting_task = System::state()
+    let has_preempting_task = Traits::state()
         .task_ready_queue
         .has_ready_task_in_priority_range(lock.borrow_mut().into(), ..prev_task_priority);
 
@@ -665,21 +539,21 @@ pub(super) fn unlock_cpu_and_check_preemption<System: Kernel>(
 
     if has_preempting_task {
         // Safety: CPU Lock inactive
-        unsafe { System::yield_cpu() };
+        unsafe { Traits::yield_cpu() };
     }
 }
 
 /// Implements `PortToKernel::choose_running_task`.
 #[inline]
-pub(super) fn choose_next_running_task<System: Kernel>(
-    mut lock: utils::CpuLockTokenRefMut<System>,
+pub(super) fn choose_next_running_task<Traits: KernelTraits>(
+    mut lock: klock::CpuLockTokenRefMut<Traits>,
 ) {
     // If Priority Boost is active, treat the currently running task as the
     // highest-priority task.
-    if System::is_priority_boost_active() {
+    if System::<Traits>::is_priority_boost_active() {
         // Blocking system calls aren't allowed when Priority Boost is active
         debug_assert_eq!(
-            *System::state()
+            *Traits::state()
                 .running_task(lock.borrow_mut())
                 .unwrap()
                 .st
@@ -690,7 +564,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     }
 
     // The priority of `running_task`
-    let prev_running_task = System::state().running_task(lock.borrow_mut());
+    let prev_running_task = Traits::state().running_task(lock.borrow_mut());
     let prev_task_priority = if let Some(running_task) = prev_running_task {
         if *running_task.st.read(&*lock) == TaskSt::Running {
             running_task
@@ -714,7 +588,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
     // schedulable task or not. That is, even if there was not such a task, we
     // would still want to assign `None` to `running_task`. Therefore,
     // `pop_front_task` is designed to return `SwitchTo(None)` in this case.
-    let decision = System::state()
+    let decision = Traits::state()
         .task_ready_queue
         .pop_front_task(lock.borrow_mut().into(), prev_task_priority);
 
@@ -763,7 +637,7 @@ pub(super) fn choose_next_running_task<System: Kernel>(
         }
     }
 
-    System::state()
+    Traits::state()
         .running_task
         .replace(&mut *lock, next_running_task);
 }
@@ -784,11 +658,13 @@ fn ptr_from_option_ref<T>(x: Option<&T>) -> *const T {
 /// that). The caller should use `expect_waitable_context` to do that.
 ///
 /// [waitable]: crate#contets
-pub(super) fn wait_until_woken_up<System: Kernel>(mut lock: utils::CpuLockTokenRefMut<'_, System>) {
-    debug_assert_eq!(state::expect_waitable_context::<System>(), Ok(()));
+pub(super) fn wait_until_woken_up<Traits: KernelTraits>(
+    mut lock: klock::CpuLockTokenRefMut<'_, Traits>,
+) {
+    debug_assert_eq!(state::expect_waitable_context::<Traits>(), Ok(()));
 
     // Transition the current task to Waiting
-    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
+    let running_task = Traits::state().running_task(lock.borrow_mut()).unwrap();
     assert_eq!(*running_task.st.read(&*lock), TaskSt::Running);
     running_task.st.replace(&mut *lock, TaskSt::Waiting);
 
@@ -798,13 +674,13 @@ pub(super) fn wait_until_woken_up<System: Kernel>(mut lock: utils::CpuLockTokenR
         //         (2) We currently have CPU Lock.
         //         (3) We will re-acquire a CPU Lock before returning from this
         //             function.
-        unsafe { System::leave_cpu_lock() };
+        unsafe { Traits::leave_cpu_lock() };
 
         // Safety: CPU Lock inactive
-        unsafe { System::yield_cpu() };
+        unsafe { Traits::yield_cpu() };
 
         // Re-acquire a CPU Lock
-        unsafe { System::enter_cpu_lock() };
+        unsafe { Traits::enter_cpu_lock() };
 
         if *running_task.st.read(&*lock) == TaskSt::Running {
             break;
@@ -814,12 +690,12 @@ pub(super) fn wait_until_woken_up<System: Kernel>(mut lock: utils::CpuLockTokenR
     }
 }
 
-/// Implements [`Kernel::park`].
-pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
-    let mut lock = utils::lock_cpu::<System>()?;
-    state::expect_waitable_context::<System>()?;
+/// Implements `KernelBase::park`.
+pub(super) fn park_current_task<Traits: KernelTraits>() -> Result<(), ParkError> {
+    let mut lock = klock::lock_cpu::<Traits>()?;
+    state::expect_waitable_context::<Traits>()?;
 
-    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
+    let running_task = Traits::state().running_task(lock.borrow_mut()).unwrap();
 
     // If the task already has a park token, return immediately
     if running_task.park_token.replace(&mut *lock, false) {
@@ -832,15 +708,15 @@ pub(super) fn park_current_task<System: Kernel>() -> Result<(), ParkError> {
     Ok(())
 }
 
-/// Implements [`Kernel::park_timeout`].
-pub(super) fn park_current_task_timeout<System: Kernel>(
+/// Implements `KernelBase::park_timeout`.
+pub(super) fn park_current_task_timeout<Traits: KernelTraits>(
     timeout: Duration,
 ) -> Result<(), ParkTimeoutError> {
     let time32 = timeout::time32_from_duration(timeout)?;
-    let mut lock = utils::lock_cpu::<System>()?;
-    state::expect_waitable_context::<System>()?;
+    let mut lock = klock::lock_cpu::<Traits>()?;
+    state::expect_waitable_context::<Traits>()?;
 
-    let running_task = System::state().running_task(lock.borrow_mut()).unwrap();
+    let running_task = Traits::state().running_task(lock.borrow_mut()).unwrap();
 
     // If the task already has a park token, return immediately
     if running_task.park_token.replace(&mut *lock, false) {
@@ -854,9 +730,9 @@ pub(super) fn park_current_task_timeout<System: Kernel>(
 }
 
 /// Implements [`Task::unpark_exact`].
-fn unpark_exact<System: Kernel>(
-    mut lock: utils::CpuLockGuard<System>,
-    task_cb: &'static TaskCb<System>,
+fn unpark_exact<Traits: KernelTraits>(
+    mut lock: klock::CpuLockGuard<Traits>,
+    task_cb: &'static TaskCb<Traits>,
 ) -> Result<(), UnparkExactError> {
     // Is the task currently parked?
     let is_parked = match task_cb.st.read(&*lock) {
@@ -887,13 +763,13 @@ fn unpark_exact<System: Kernel>(
     }
 }
 
-/// Implements [`Kernel::sleep`].
-pub(super) fn put_current_task_on_sleep_timeout<System: Kernel>(
+/// Implements `KernelBase::sleep`.
+pub(super) fn put_current_task_on_sleep_timeout<Traits: KernelTraits>(
     timeout: Duration,
 ) -> Result<(), SleepError> {
     let time32 = timeout::time32_from_duration(timeout)?;
-    let mut lock = utils::lock_cpu::<System>()?;
-    state::expect_waitable_context::<System>()?;
+    let mut lock = klock::lock_cpu::<Traits>()?;
+    state::expect_waitable_context::<Traits>()?;
 
     // Wait until woken up by timeout
     match wait::wait_no_queue_timeout(lock.borrow_mut(), wait::WaitPayload::Sleep, time32) {
@@ -904,17 +780,17 @@ pub(super) fn put_current_task_on_sleep_timeout<System: Kernel>(
 }
 
 /// Implements [`Task::set_priority`].
-fn set_task_base_priority<System: Kernel>(
-    mut lock: utils::CpuLockGuard<System>,
-    task_cb: &'static TaskCb<System>,
+fn set_task_base_priority<Traits: KernelTraits>(
+    mut lock: klock::CpuLockGuard<Traits>,
+    task_cb: &'static TaskCb<Traits>,
     base_priority: usize,
 ) -> Result<(), SetTaskPriorityError> {
     // Validate the given priority
-    if base_priority >= System::NUM_TASK_PRIORITY_LEVELS {
+    if base_priority >= Traits::NUM_TASK_PRIORITY_LEVELS {
         return Err(SetTaskPriorityError::BadParam);
     }
     let base_priority_internal =
-        System::TaskPriority::try_from(base_priority).unwrap_or_else(|_| unreachable!());
+        Traits::TaskPriority::try_from(base_priority).unwrap_or_else(|_| unreachable!());
 
     let st = *task_cb.st.read(&*lock);
 
@@ -988,7 +864,7 @@ fn set_task_base_priority<System: Kernel>(
             // Safety: `task_cb` was previously inserted to the ready queue
             // with an effective priority that is identical to
             // `old_effective_priority`.
-            System::state().task_ready_queue.reorder_task(
+            Traits::state().task_ready_queue.reorder_task(
                 lock.borrow_mut().into(),
                 task_cb,
                 effective_priority,
