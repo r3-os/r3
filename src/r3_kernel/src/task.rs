@@ -183,6 +183,9 @@ impl<Traits: KernelTraits> StackHunk<Traits> {
 
     /// Construct a `StackHunk` representing an automatically allocated stack
     /// region.
+    ///
+    /// `StackHunk`s created by this method are supposed to be converted to
+    /// non-automatic `StackHunk`s during the configuration phase.
     pub(crate) const fn auto(len: usize) -> Self {
         assert!(len & STACK_HUNK_AUTO == 0, "too large");
         Self {

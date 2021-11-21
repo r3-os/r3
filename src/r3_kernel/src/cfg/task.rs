@@ -54,7 +54,7 @@ unsafe impl<Traits: KernelTraits> CfgTask for CfgBuilder<Traits> {
 pub struct CfgBuilderTask<Traits: KernelTraits> {
     start: fn(usize),
     param: usize,
-    stack: task::StackHunk<Traits>,
+    pub(super) stack: task::StackHunk<Traits>,
     priority: usize,
     active: bool,
 }

@@ -1,7 +1,7 @@
 //! Static configuration mechanism for the kernel
 use core::marker::PhantomData;
 
-use r3::kernel::cfg::KernelStatic;
+use r3::kernel::{cfg::KernelStatic, Hunk};
 
 use crate::{
     utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN},
@@ -320,12 +320,32 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
 
     /// Apply post-processing before [`r3::kernel::Cfg`] is finalized.
     #[doc(hidden)]
-    pub const fn finalize_in_cfg(c: &mut r3::kernel::Cfg<Self>)
+    pub const fn finalize_in_cfg(cfg: &mut r3::kernel::Cfg<Self>)
     where
         Traits: KernelStatic,
     {
+        // Create hunks for task stacks.
+        let mut i = 0;
+        let mut tasks = &mut cfg.raw().inner.tasks;
+        while i < tasks.len() {
+            if let Some(size) = tasks.get(i).stack.auto_size() {
+                // Round up the stack size
+                let size =
+                    (size + Traits::STACK_ALIGN - 1) / Traits::STACK_ALIGN * Traits::STACK_ALIGN;
 
-        // TODO: process "auto" stacks
+                let hunk = Hunk::build()
+                    .len(size)
+                    .align(Traits::STACK_ALIGN)
+                    .finish(cfg);
+
+                // Borrow again `tasks`, which was unborrowed because of the
+                // call to `HunkDefiner::finish`
+                tasks = &mut cfg.raw().inner.tasks;
+
+                tasks.get_mut(i).stack = crate::task::StackHunk::from_hunk(hunk, size);
+            }
+            i += 1;
+        }
     }
 }
 
