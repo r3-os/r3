@@ -6,6 +6,7 @@ pub mod event_group;
 pub mod hook;
 pub mod hunk;
 pub mod interrupt;
+mod kernel;
 pub mod mutex;
 pub mod raw;
 pub mod raw_cfg;
@@ -19,6 +20,7 @@ pub use {
     hook::StartupHook,
     hunk::Hunk,
     interrupt::{InterruptLine, InterruptNum, InterruptPriority},
+    kernel::*,
     mutex::{Mutex, MutexProtocol},
     raw::{Id, QueueOrder},
     semaphore::{Semaphore, SemaphoreValue},
@@ -26,14 +28,10 @@ pub use {
     timer::Timer,
 };
 
-/// The prelude module.
-///
-/// This module re-exports traits from [`raw`] that defines global functions
-/// of a system type. Other traits for which object-safe wrappers are provided,
-/// e.g., [`raw::KernelMutex`], are not re-exported here.
+/// The prelude module. This module re-exports [`Kernel`].
 pub mod prelude {
     #[doc(no_inline)]
-    pub use super::raw::{KernelAdjustTime, KernelBase, KernelBoostPriority, KernelTime};
+    pub use super::Kernel;
 }
 
 /// Re-exports all traits defined under this module for convenience.
@@ -49,5 +47,6 @@ pub mod traits {
         raw_cfg::{
             CfgBase, CfgEventGroup, CfgInterruptLine, CfgMutex, CfgSemaphore, CfgTask, CfgTimer,
         },
+        Kernel,
     };
 }
