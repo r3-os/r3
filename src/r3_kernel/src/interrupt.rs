@@ -116,7 +116,7 @@ impl<Traits: KernelTraits> InterruptAttr<Traits> {
                 //             safety.
                 //         (2) Boot phase
                 unsafe {
-                    System::<Traits>::interrupt_line_set_priority(
+                    <Traits as PortInterrupts>::set_interrupt_line_priority(
                         line_init.line,
                         line_init.priority,
                     )
