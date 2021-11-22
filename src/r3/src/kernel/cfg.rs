@@ -203,8 +203,9 @@ impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T {
     }
 }
 
-/// Implement [`KernelStatic`] on the given system type `$Ty` using the given
-/// `$params: `[`KernelStaticParams`] to associate static data with it.
+/// Implement [`KernelStatic`] on `$Ty` using the given `$params:
+/// `[`KernelStaticParams`]`<$System>` to associate static data with the system
+/// type `$System`.
 ///
 /// This macro produces `static` items and a `KernelStatic<$System>`
 /// implementation for `$Ty`. It doesn't support generics.
@@ -255,7 +256,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
             >()
         };
 
-        impl $crate::kernel::cfg::KernelStatic for $Ty {
+        impl $crate::kernel::cfg::KernelStatic<$System> for $Ty {
             const STARTUP_HOOKS: &'static [hook::StartupHookAttr] = &STARTUP_HOOKS;
 
             const INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
