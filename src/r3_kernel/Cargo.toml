@@ -8,6 +8,7 @@ description = "An RTOS kernel implementing the R3 API"
 categories = ["embedded", "no-std"]
 keywords = ["r3"]
 repository = "https://github.com/r3-os/r3"
+publish = false  # it's not ready yet
 
 [features]
 default = []
