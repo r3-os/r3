@@ -19,7 +19,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     where
         C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgInterruptLine,
     {
-        StartupHook::build().start(hook_body::<System, D>).finish(b);
+        StartupHook::build().start(hook_body::<Traits, D>).finish(b);
 
         InterruptLine::build().line(2).priority(64).finish(b);
         InterruptLine::build().line(3).priority(64).finish(b);
