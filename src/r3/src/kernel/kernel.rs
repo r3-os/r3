@@ -4,7 +4,7 @@ use core::fmt;
 use crate::{
     kernel::{
         raw, AdjustTimeError, BoostPriorityError, CpuLockError, ExitTaskError, ParkError,
-        ParkTimeoutError, TimeError,
+        ParkTimeoutError, SleepError, TimeError,
     },
     time::{Duration, Time},
 };
@@ -255,6 +255,9 @@ pub trait Kernel: private::Sealed {
     ///
     /// [a non-waitable context]: crate#contexts
     fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError>;
+
+    /// Block the current task for the specified duration.
+    fn sleep(duration: Duration) -> Result<(), SleepError>;
 }
 
 mod private {
@@ -340,5 +343,10 @@ impl<T: raw::KernelBase> Kernel for T {
     #[inline]
     fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError> {
         <T as raw::KernelBase>::park_timeout(timeout)
+    }
+
+    #[inline]
+    fn sleep(duration: Duration) -> Result<(), SleepError> {
+        <T as raw::KernelBase>::sleep(duration)
     }
 }
