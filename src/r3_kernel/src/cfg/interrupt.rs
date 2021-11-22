@@ -36,7 +36,7 @@ pub struct CfgBuilderInterruptLine {
 }
 
 impl CfgBuilderInterruptLine {
-    pub const fn to_init<Traits>(&self) -> interrupt::InterruptLineInit {
+    pub const fn to_init(&self) -> interrupt::InterruptLineInit {
         interrupt::InterruptLineInit {
             line: self.line,
             // FIXME: `Option::unwrap_or` is not `const fn` yet
