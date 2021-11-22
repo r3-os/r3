@@ -649,7 +649,7 @@ pub trait PortToKernel {
     unsafe fn timer_tick();
 }
 
-impl<Traits: KernelTraits> PortToKernel for System<Traits> {
+impl<Traits: KernelTraits> PortToKernel for Traits {
     unsafe fn boot() -> ! {
         let mut lock = unsafe { klock::assume_cpu_lock::<Traits>() };
 
