@@ -20,7 +20,7 @@ use r3::{
 };
 
 use super::Driver;
-use crate::utils::{time::KernelTimeExt, SeqTracker};
+use crate::utils::{conditional::KernelTimeExt, SeqTracker};
 
 pub trait SupportedSystem:
     traits::KernelBase + traits::KernelTimer + traits::KernelStatic + KernelTimeExt

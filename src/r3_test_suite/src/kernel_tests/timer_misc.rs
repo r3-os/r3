@@ -1,22 +1,22 @@
 //! Checks miscellaneous properties of `Timer`.
 use core::num::NonZeroUsize;
-#[cfg(feature = "system_time")]
-use r3::time::Time;
 use r3::{
     hunk::Hunk,
     kernel::{self, traits, Cfg, Task, Timer},
-    time::Duration,
+    time::{Duration, Time},
 };
 use wyhash::WyHash;
 
 use super::Driver;
-use crate::utils::{conditional::KernelBoostPriorityExt, time::KernelTimeExt, SeqTracker};
+use crate::utils::{
+    conditional::{KernelBoostPriorityExt, KernelTimeExt},
+    SeqTracker,
+};
 
 // TODO: Somehow remove the `NonZeroUsize` bound
 pub trait SupportedSystem:
     traits::KernelBase
     + traits::KernelTimer<TimerId = NonZeroUsize>
-    + traits::KernelTime
     + traits::KernelStatic
     + KernelBoostPriorityExt
     + KernelTimeExt
@@ -25,7 +25,6 @@ pub trait SupportedSystem:
 impl<
         T: traits::KernelBase
             + traits::KernelTimer<TimerId = NonZeroUsize>
-            + traits::KernelTime
             + traits::KernelStatic
             + KernelBoostPriorityExt
             + KernelTimeExt,
@@ -117,10 +116,9 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     System::park().unwrap();
     seq.expect_and_replace(1, 2);
 
-    #[cfg(feature = "system_time")]
-    {
+    if let Some(cap) = System::TIME_CAPABILITY {
         let now = Time::from_millis(100);
-        let now_got = System::time().unwrap();
+        let now_got = System::time(cap).unwrap();
         log::trace!("time = {:?} (expected {:?})", now_got, now);
         assert!(now_got.as_micros() >= now.as_micros());
         assert!(now_got.as_micros() <= now.as_micros() + 100_000);
@@ -130,10 +128,9 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     System::park().unwrap();
     seq.expect_and_replace(3, 4);
 
-    #[cfg(feature = "system_time")]
-    {
+    if let Some(cap) = System::TIME_CAPABILITY {
         let now = Time::from_millis(200);
-        let now_got = System::time().unwrap();
+        let now_got = System::time(cap).unwrap();
         log::trace!("time = {:?} (expected {:?})", now_got, now);
         assert!(now_got.as_micros() >= now.as_micros());
         assert!(now_got.as_micros() <= now.as_micros() + 100_000);
