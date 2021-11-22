@@ -722,11 +722,11 @@ pub fn lock_scheduler<Traits: PortInstance>() -> impl Sized {
 
 #[macro_export]
 macro_rules! use_port {
-    (unsafe $vis:vis struct $sys:ident) => {
-        $vis struct $sys;
+    (unsafe $vis:vis struct $SystemTraits:ident) => {
+        $vis struct $SystemTraits;
 
         mod port_std_impl {
-            use super::$sys;
+            use super::$SystemTraits;
             use $crate::r3::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
                 PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
@@ -738,15 +738,15 @@ macro_rules! use_port {
 
             pub(super) static PORT_STATE: State = State::new();
 
-            unsafe impl PortInstance for $sys {
+            unsafe impl PortInstance for $SystemTraits {
                 #[inline]
                 fn port_state() -> &'static State {
                     &PORT_STATE
                 }
             }
 
-            // Assume `$sys: KernelTraits`
-            unsafe impl PortThreading for $sys {
+            // Assume `$SystemTraits: KernelTraits`
+            unsafe impl PortThreading for $SystemTraits {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState = TaskState::new();
@@ -784,7 +784,7 @@ macro_rules! use_port {
                 }
             }
 
-            unsafe impl PortInterrupts for $sys {
+            unsafe impl PortInterrupts for $SystemTraits {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE:
                     ::std::ops::Range<InterruptPriority> = 0..InterruptPriority::MAX;
 
@@ -818,7 +818,7 @@ macro_rules! use_port {
                 }
             }
 
-            impl PortTimer for $sys {
+            impl PortTimer for $SystemTraits {
                 const MAX_TICK_COUNT: UTicks = State::MAX_TICK_COUNT;
                 const MAX_TIMEOUT: UTicks = State::MAX_TIMEOUT;
 
@@ -839,7 +839,7 @@ macro_rules! use_port {
         fn main() {
             $crate::env_logger::init();
 
-            port_std_impl::PORT_STATE.port_boot::<$sys>();
+            port_std_impl::PORT_STATE.port_boot::<$SystemTraits>();
         }
     };
 }
