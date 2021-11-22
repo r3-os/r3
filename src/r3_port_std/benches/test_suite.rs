@@ -80,7 +80,7 @@ macro_rules! instantiate_kernel_tests {
             }
 
             static COTTAGE: test_case::App<System> =
-                r3::build!(SystemTraits, test_case::App::new::<Driver> => test_case::App<System>);
+                r3_kernel::build!(SystemTraits, test_case::App::new::<_, Driver> => test_case::App<System>);
 
             pub fn run() {
                 TEST_UTIL.run(|| {
