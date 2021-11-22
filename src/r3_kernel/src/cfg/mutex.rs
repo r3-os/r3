@@ -13,7 +13,7 @@ unsafe impl<Traits: KernelTraits> const CfgMutex for CfgBuilder<Traits> {
             phantom: _,
             protocol,
         }: MutexDescriptor<Self::System>,
-        properties: Properties,
+        _properties: Properties,
     ) -> mutex::MutexId {
         let inner = &mut self.inner;
 

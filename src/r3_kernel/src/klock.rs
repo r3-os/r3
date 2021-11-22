@@ -5,7 +5,7 @@ use tokenlock::UnsyncTokenLock;
 use crate::{
     error::BadContextError,
     utils::{intrusive_list::CellLike, Init},
-    PortThreading, System,
+    PortThreading,
 };
 
 pub(super) struct CpuLockTag<Traits>(Traits);

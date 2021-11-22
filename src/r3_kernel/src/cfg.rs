@@ -1,11 +1,11 @@
 //! Static configuration mechanism for the kernel
 use core::marker::PhantomData;
 
-use r3::kernel::{cfg::KernelStatic, Hunk};
+use r3::kernel::Hunk;
 
 use crate::{
     utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN},
-    KernelTraits, Port, System,
+    KernelTraits, System,
 };
 
 mod event_group;
@@ -35,7 +35,7 @@ macro_rules! build {
             TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
             arrayvec::ArrayVec,
             utils::{
-                for_times::U, AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound,
+                AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound,
             },
         };
 

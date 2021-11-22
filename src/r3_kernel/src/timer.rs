@@ -1,5 +1,5 @@
 //! Timers
-use core::{fmt, hash, marker::PhantomData, mem::ManuallyDrop};
+use core::{fmt, marker::PhantomData, mem::ManuallyDrop};
 use r3::{
     kernel::{traits, SetTimerDelayError, SetTimerPeriodError, StartTimerError, StopTimerError},
     time::Duration,

@@ -42,10 +42,6 @@ macro_rules! If {
     };
 }
 
-#[macro_use]
-mod binary_search;
-#[macro_use]
-mod sort;
 mod aligned_storage;
 pub mod binary_heap;
 pub(crate) mod convert;
@@ -58,8 +54,6 @@ mod prio_bitmap;
 mod rawcell;
 #[macro_use]
 mod vec;
-#[macro_use]
-pub mod for_times;
 pub use self::{aligned_storage::*, int::*, prio_bitmap::*, rawcell::*, vec::*};
 pub use r3::utils::{Init, ZeroInit};
 

@@ -108,7 +108,7 @@ impl<Traits: KernelTraits> InterruptAttr<Traits> {
     /// is responsible for ensuring *unmanaged safety*.
     ///
     /// Can be called only during a boot phase.
-    pub(super) unsafe fn init(&self, mut lock: klock::CpuLockTokenRefMut<Traits>) {
+    pub(super) unsafe fn init(&self, _lock: klock::CpuLockTokenRefMut<Traits>) {
         for line_init in self.line_inits {
             if line_init
                 .flags
@@ -117,6 +117,7 @@ impl<Traits: KernelTraits> InterruptAttr<Traits> {
                 // Safety: (1) The caller is responsible for ensuring unmanaged
                 //             safety.
                 //         (2) Boot phase
+                //         (3) CPU Lock
                 unsafe {
                     <Traits as PortInterrupts>::set_interrupt_line_priority(
                         line_init.line,

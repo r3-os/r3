@@ -105,6 +105,7 @@ impl<T: Copy> ComptimeVec<T> {
 // FIXME: Waiting for `FnMut` to be usable in `const fn`
 /// An implementation of `$vec.iter().position(|$item| $predicate)` that is
 /// compatible with a const context.
+#[allow(unused_macros)]
 macro_rules! vec_position {
     ($vec:expr, |$item:ident| $predicate:expr) => {{
         let mut i = 0;

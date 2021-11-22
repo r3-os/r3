@@ -1,13 +1,13 @@
 //! Tasks
 #[cfg(feature = "priority_boost")]
 use core::sync::atomic::Ordering;
-use core::{fmt, hash, marker::PhantomData, mem};
+use core::{fmt, marker::PhantomData, mem};
 use num_traits::ToPrimitive;
 use r3::{
     kernel::{
         raw::KernelBase, ActivateTaskError, ExitTaskError, GetCurrentTaskError,
         GetTaskPriorityError, Hunk, InterruptTaskError, ParkError, ParkTimeoutError,
-        SetTaskPriorityError, SleepError, UnparkError, UnparkExactError, WaitTimeoutError,
+        SetTaskPriorityError, SleepError, UnparkExactError, WaitTimeoutError,
     },
     time::Duration,
     utils::Init,
@@ -71,16 +71,6 @@ impl<Traits: KernelTraits> System<Traits> {
         unlock_cpu_and_check_preemption(lock);
 
         Ok(())
-    }
-
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub(super) fn task_unpark(this: TaskId) -> Result<(), UnparkError> {
-        match Self::task_unpark_exact(this) {
-            Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
-            Err(UnparkExactError::BadContext) => Err(UnparkError::BadContext),
-            Err(UnparkExactError::BadId) => Err(UnparkError::BadId),
-            Err(UnparkExactError::BadObjectState) => Err(UnparkError::BadObjectState),
-        }
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
