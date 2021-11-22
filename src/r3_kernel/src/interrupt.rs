@@ -20,6 +20,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelInterruptLine for Syste
         this: InterruptNum,
         value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
+        let mut _lock = klock::lock_cpu::<Traits>()?;
+
         // Deny a non-task context
         if !Traits::is_task_context() {
             return Err(SetInterruptLinePriorityError::BadContext);
