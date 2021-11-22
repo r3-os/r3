@@ -54,3 +54,68 @@ impl CfgBuilderInterruptLine {
         }
     }
 }
+
+#[doc(hidden)]
+pub const fn interrupt_handler_table_len(interrupt_lines: &[CfgBuilderInterruptLine]) -> usize {
+    let mut num = 0;
+    let mut i = 0;
+    while i < interrupt_lines.len() {
+        let k = interrupt_lines[i].line + 1;
+        if k > num {
+            num = k;
+        }
+        i += 1;
+    }
+    num
+}
+
+#[doc(hidden)]
+pub const fn interrupt_handler_table<const LEN: usize>(
+    interrupt_lines: &[CfgBuilderInterruptLine],
+) -> [Option<InterruptHandlerFn>; LEN] {
+    let mut table = [None; LEN];
+
+    let mut i = 0;
+    while i < interrupt_lines.len() {
+        if let CfgBuilderInterruptLine {
+            line,
+            start: Some(start),
+            ..
+        } = interrupt_lines[i]
+        {
+            assert!(
+                table[line].is_none(),
+                "an interrupt line's handler is registered twice"
+            );
+            table[line] = Some(start);
+        }
+
+        i += 1;
+    }
+
+    table
+}
+
+/// A table of combined second-level interrupt handlers.
+#[derive(Debug)]
+pub struct InterruptHandlerTable {
+    #[doc(hidden)]
+    pub storage: &'static [Option<InterruptHandlerFn>],
+}
+
+impl InterruptHandlerTable {
+    /// Get a combined second-level interrupt handler for the specified
+    /// interrupt number.
+    ///
+    /// Returns `None` if no interrupt handlers have been registered for the
+    /// specified interrupt number.
+    #[inline]
+    pub const fn get(&self, line: InterruptNum) -> Option<InterruptHandlerFn> {
+        // FIXME: `[T]::get` is not `const fn` yet
+        if line < self.storage.len() {
+            self.storage[line]
+        } else {
+            None
+        }
+    }
+}

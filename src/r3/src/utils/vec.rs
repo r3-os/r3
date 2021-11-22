@@ -69,6 +69,20 @@ impl<T: Copy> ComptimeVec<T> {
         }
         out
     }
+
+    // FIXME: Replace this type's several methods with `const Deref<Target = [T]>`
+    /// Borrow the storage as a slice.
+    #[inline]
+    pub const fn as_slice(&self) -> &[T] {
+        // FIXME: Slicing is not `const fn` yet
+        let slice = core::ptr::slice_from_raw_parts(
+            &self.storage as *const _ as *const MaybeUninit<T>,
+            self.len,
+        );
+
+        // Safety: `self.storage[0..self.len]` is initialized
+        unsafe { MaybeUninit::slice_assume_init_ref(&*slice) }
+    }
 }
 
 impl<T: Copy> ComptimeVec<T> {
@@ -109,6 +123,8 @@ macro_rules! vec_position {
 
 #[cfg(test)]
 mod tests {
+    use core::assert_matches::assert_matches;
+
     use super::*;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
@@ -134,6 +150,19 @@ mod tests {
 
         const VEC_VAL: u32 = *VEC.get(0);
         assert_eq!(VEC_VAL, 42);
+    }
+
+    #[test]
+    fn map() {
+        const fn array() {
+            let mut x = ComptimeVec::new();
+            x.push(1);
+            x.push(2);
+            x.push(3);
+            let slice = x.as_slice();
+            assert_matches!(slice, [1, 2, 3]);
+        }
+        const _: () = array();
     }
 
     #[test]

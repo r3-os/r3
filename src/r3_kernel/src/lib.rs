@@ -1,4 +1,6 @@
+#![feature(const_maybe_uninit_assume_init)]
 #![feature(option_result_unwrap_unchecked)]
+#![feature(const_slice_from_raw_parts)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_fn_trait_bound)]
@@ -6,6 +8,7 @@
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(generic_const_exprs)]
 #![feature(const_refs_to_cell)]
+#![feature(maybe_uninit_slice)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(specialization)]
@@ -717,10 +720,10 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
     #[doc(hidden)]
     type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + Init + fmt::Debug + 'static;
 
-    // /// The table of combined second-level interrupt handlers.
-    // ///
-    // /// A port should generate first-level interrupt handlers that call them.
-    // const INTERRUPT_HANDLERS: &'static cfg::InterruptHandlerTable;
+    /// The table of combined second-level interrupt handlers.
+    ///
+    /// A port should generate first-level interrupt handlers that call them.
+    const INTERRUPT_HANDLERS: &'static cfg::InterruptHandlerTable;
 
     #[doc(hidden)]
     const INTERRUPT_ATTR: InterruptAttr<Self>;

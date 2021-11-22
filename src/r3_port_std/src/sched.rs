@@ -57,7 +57,7 @@ impl SchedState {
         };
 
         for i in 0..NUM_INTERRUPT_LINES {
-            if let Some(&Some(handler)) = Traits::INTERRUPT_HANDLERS.get(i) {
+            if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(i) {
                 this.int_lines.insert(
                     i as InterruptNum,
                     IntLine {

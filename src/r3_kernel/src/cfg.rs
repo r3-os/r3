@@ -29,9 +29,7 @@ macro_rules! build {
     ($Traits:ty, $configure:expr => $IdMap:ty) => {{
         use $crate::{
             r3,
-            cfg::{
-                CfgBuilder, CfgBuilderInner,
-            },
+            cfg::{self, CfgBuilder, CfgBuilderInner},
             EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
             KernelCfg2, Port, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
             TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
@@ -158,6 +156,13 @@ macro_rules! build {
         type KernelState = State<$Traits>;
         static KERNEL_STATE: KernelState = State::INIT;
 
+        // Construct a table of interrupt handlers
+        const INTERRUPT_HANDLER_TABLE_LEN: usize =
+            cfg::interrupt_handler_table_len(CFG.interrupt_lines.as_slice());
+        const INTERRUPT_HANDLER_TABLE:
+            [Option<r3::kernel::interrupt::InterruptHandlerFn>; INTERRUPT_HANDLER_TABLE_LEN] =
+            cfg::interrupt_handler_table(CFG.interrupt_lines.as_slice());
+
         // Construct a table of interrupt line initiializers
         $crate::array_item_from_fn! {
             const INTERRUPT_LINE_INITS:
@@ -181,7 +186,9 @@ macro_rules! build {
                 &KERNEL_STATE
             }
 
-            // TODO: interrupt handlers
+            const INTERRUPT_HANDLERS: &'static cfg::InterruptHandlerTable = &cfg::InterruptHandlerTable {
+                storage: &INTERRUPT_HANDLER_TABLE,
+            };
 
             const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
                 _phantom: Init::INIT,
