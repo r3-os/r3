@@ -75,7 +75,7 @@ impl fmt::Display for CfgError {
 }
 
 /// The precomputed parameters for the tickless implementation of
-/// [`r3::kernel::PortTimer`].
+/// [`r3_kernel::PortTimer`].
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct TicklessCfg {
     /// The integral part of the number of hardware ticks per microseconds.
@@ -362,7 +362,7 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 };
 
 /// The stateless and tickless implementation of
-/// [`r3::kernel::PortTimer`].
+/// [`r3_kernel::PortTimer`].
 ///
 /// The stateless algorithm is chosen if the hardware ticks and OS ticks “line
 /// up” periodically with a period shorter than the representable ranges of both
@@ -391,7 +391,7 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 pub struct TicklessStatelessCore;
 
 /// The internal state of the tickless implementation of
-/// [`r3::kernel::PortTimer`].
+/// [`r3_kernel::PortTimer`].
 #[derive(Debug, Copy, Clone)]
 pub struct TicklessStateCore<Subticks> {
     /// The OS tick count at the reference point.
