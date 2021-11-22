@@ -10,6 +10,14 @@ pub struct ComptimeVec<T: Copy> {
 
 const MAX_LEN: usize = 256;
 
+impl<T: Copy> Copy for ComptimeVec<T> {}
+
+impl<T: Copy> Clone for ComptimeVec<T> {
+    fn clone(&self) -> Self {
+        self.map(Clone::clone)
+    }
+}
+
 impl<T: Copy> ComptimeVec<T> {
     pub const fn new() -> Self {
         Self {
