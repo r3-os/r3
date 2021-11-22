@@ -10,7 +10,7 @@ use r3::{
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, task, KernelTraits};
 
 unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
-    fn task_define(
+    fn task_define<Properties: ~const r3::bag::Bag>(
         &mut self,
         TaskDescriptor {
             phantom: _,
@@ -20,7 +20,7 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
             priority,
             stack_size,
         }: TaskDescriptor<Self::System>,
-        properties: impl r3::bag::Bag,
+        properties: Properties,
     ) -> task::TaskId {
         // FIXME: `Option::unwrap_or` isn't `const fn` yet
         let mut stack = task::StackHunk::auto(if let Some(x) = stack_size { x } else { 0 });

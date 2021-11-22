@@ -7,14 +7,14 @@ use r3::kernel::{
 use crate::{cfg::CfgBuilder, event_group, klock::CpuLockCell, wait, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgEventGroup for CfgBuilder<Traits> {
-    fn event_group_define(
+    fn event_group_define<Properties: ~const r3::bag::Bag>(
         &mut self,
         EventGroupDescriptor {
             phantom: _,
             initial_bits,
             queue_order,
         }: EventGroupDescriptor<Self::System>,
-        _properties: impl r3::bag::Bag,
+        _properties: Properties,
     ) -> event_group::EventGroupId {
         let inner = &mut self.inner;
 

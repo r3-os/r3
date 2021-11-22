@@ -7,7 +7,7 @@ use r3::kernel::{
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, semaphore, wait, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgSemaphore for CfgBuilder<Traits> {
-    fn semaphore_define(
+    fn semaphore_define<Properties: ~const r3::bag::Bag>(
         &mut self,
         SemaphoreDescriptor {
             phantom: _,
@@ -15,7 +15,7 @@ unsafe impl<Traits: KernelTraits> const CfgSemaphore for CfgBuilder<Traits> {
             maximum,
             queue_order,
         }: SemaphoreDescriptor<Self::System>,
-        _properties: impl r3::bag::Bag,
+        _properties: Properties,
     ) -> semaphore::SemaphoreId {
         let inner = &mut self.inner;
 

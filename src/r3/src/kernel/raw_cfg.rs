@@ -36,10 +36,10 @@ pub unsafe trait CfgBase {
 }
 
 pub unsafe trait CfgTask: CfgBase {
-    fn task_define(
+    fn task_define<Properties: ~const Bag>(
         &mut self,
         descriptor: TaskDescriptor<Self::System>,
-        properties: impl Bag,
+        properties: Properties,
     ) -> <Self::System as raw::KernelBase>::TaskId;
 }
 
@@ -58,10 +58,10 @@ pub unsafe trait CfgEventGroup: CfgBase
 where
     Self::System: raw::KernelEventGroup,
 {
-    fn event_group_define(
+    fn event_group_define<Properties: ~const Bag>(
         &mut self,
         descriptor: EventGroupDescriptor<Self::System>,
-        properties: impl Bag,
+        properties: Properties,
     ) -> <Self::System as raw::KernelEventGroup>::EventGroupId;
 }
 
@@ -77,10 +77,10 @@ pub unsafe trait CfgMutex: CfgBase
 where
     Self::System: raw::KernelMutex,
 {
-    fn mutex_define(
+    fn mutex_define<Properties: ~const Bag>(
         &mut self,
         descriptor: MutexDescriptor<Self::System>,
-        properties: impl Bag,
+        properties: Properties,
     ) -> <Self::System as raw::KernelMutex>::MutexId;
 }
 
@@ -95,10 +95,10 @@ pub unsafe trait CfgSemaphore: CfgBase
 where
     Self::System: raw::KernelSemaphore,
 {
-    fn semaphore_define(
+    fn semaphore_define<Properties: ~const Bag>(
         &mut self,
         descriptor: SemaphoreDescriptor<Self::System>,
-        properties: impl Bag,
+        properties: Properties,
     ) -> <Self::System as raw::KernelSemaphore>::SemaphoreId;
 }
 
@@ -115,10 +115,10 @@ pub unsafe trait CfgTimer: CfgBase
 where
     Self::System: raw::KernelTimer,
 {
-    fn timer_define(
+    fn timer_define<Properties: ~const Bag>(
         &mut self,
         descriptor: TimerDescriptor<Self::System>,
-        properties: impl Bag,
+        properties: Properties,
     ) -> <Self::System as raw::KernelTimer>::TimerId;
 }
 
@@ -137,10 +137,10 @@ pub unsafe trait CfgInterruptLine: CfgBase
 where
     Self::System: raw::KernelInterruptLine,
 {
-    fn interrupt_line_define(
+    fn interrupt_line_define<Properties: ~const Bag>(
         &mut self,
         descriptor: InterruptLineDescriptor<Self::System>,
-        properties: impl Bag,
+        properties: Properties,
     );
 }
 

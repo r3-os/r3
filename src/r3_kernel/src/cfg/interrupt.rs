@@ -6,7 +6,7 @@ use r3::kernel::{
 use crate::{cfg::CfgBuilder, interrupt, KernelTraits};
 
 unsafe impl<Traits: KernelTraits> const CfgInterruptLine for CfgBuilder<Traits> {
-    fn interrupt_line_define(
+    fn interrupt_line_define<Properties: ~const r3::bag::Bag>(
         &mut self,
         InterruptLineDescriptor {
             phantom: _,
@@ -15,7 +15,7 @@ unsafe impl<Traits: KernelTraits> const CfgInterruptLine for CfgBuilder<Traits> 
             start,
             enabled,
         }: InterruptLineDescriptor<Self::System>,
-        _properties: impl r3::bag::Bag,
+        _properties: Properties,
     ) {
         self.inner.interrupt_lines.push(CfgBuilderInterruptLine {
             line,

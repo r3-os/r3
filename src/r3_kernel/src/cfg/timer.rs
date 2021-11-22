@@ -7,7 +7,7 @@ use r3::{
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, timeout, timer, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
-    fn timer_define(
+    fn timer_define<Properties: ~const r3::bag::Bag>(
         &mut self,
         TimerDescriptor {
             phantom: _,
@@ -17,7 +17,7 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
             active,
             start,
         }: TimerDescriptor<Self::System>,
-        _properties: impl r3::bag::Bag,
+        _properties: Properties,
     ) -> timer::TimerId {
         let inner = &mut self.inner;
 

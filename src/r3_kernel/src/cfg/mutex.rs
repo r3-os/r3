@@ -7,13 +7,13 @@ use r3::kernel::{
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, mutex, wait, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgMutex for CfgBuilder<Traits> {
-    fn mutex_define(
+    fn mutex_define<Properties: ~const r3::bag::Bag>(
         &mut self,
         MutexDescriptor {
             phantom: _,
             protocol,
         }: MutexDescriptor<Self::System>,
-        properties: impl r3::bag::Bag,
+        properties: Properties,
     ) -> mutex::MutexId {
         let inner = &mut self.inner;
 

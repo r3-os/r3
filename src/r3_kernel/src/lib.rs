@@ -5,6 +5,7 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(generic_const_exprs)]
+#![feature(const_refs_to_cell)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(specialization)]
