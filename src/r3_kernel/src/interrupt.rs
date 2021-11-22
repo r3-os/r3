@@ -9,9 +9,12 @@ use r3::{
     utils::Init,
 };
 
-use crate::{klock, KernelTraits, Port, System};
+use crate::{klock, KernelTraits, PortInterrupts, System};
 
 unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelInterruptLine for System<Traits> {
+    const MANAGED_INTERRUPT_PRIORITY_RANGE: core::ops::Range<InterruptPriority> =
+        <Traits as PortInterrupts>::MANAGED_INTERRUPT_PRIORITY_RANGE;
+
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn interrupt_line_set_priority(
         this: InterruptNum,
