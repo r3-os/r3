@@ -227,7 +227,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
         array_item_from_fn! {
             const STARTUP_HOOKS: [hook::StartupHookAttr; _] =
                 (0..STATIC_PARAMS.startup_hooks.len())
-                    .map(|i| STATIC_PARAMS.startup_hooks.get(i));
+                    .map(|i| *STATIC_PARAMS.startup_hooks.get(i));
         }
 
         // Consturct a table of combined second-level interrupt handlers
@@ -240,9 +240,9 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
         struct Handlers;
         impl interrupt::CfgInterruptHandlerList for Handlers {
             type NumHandlers = U<NUM_INTERRUPT_HANDLERS>;
-            const HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] = &INTERRUPT_HANDLERS;
+            const HANDLERS: &'static [interrupt::CfgInterruptHandler] = &INTERRUPT_HANDLERS;
         }
-        const INTERRUPT_HANDLERS_SIZED: [Option<interrupt::InterruptHandlerFn>;
+        const INTERRUPT_HANDLERS_COMBINED: [Option<interrupt::InterruptHandlerFn>;
             NUM_INTERRUPT_LINES] = unsafe {
             // Safety: (1) We are `build!`, so it's okay to call this.
             //         (2) `INTERRUPT_HANDLERS` contains at least
@@ -260,7 +260,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
             const STARTUP_HOOKS: &'static [hook::StartupHookAttr] = &STARTUP_HOOKS;
 
             const INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
-                &INTERRUPT_HANDLERS;
+                &INTERRUPT_HANDLERS_COMBINED;
 
             #[inline(always)]
             fn hunk_pool_ptr() -> *mut u8 {
