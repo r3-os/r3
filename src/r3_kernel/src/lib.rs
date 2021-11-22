@@ -22,6 +22,18 @@
 )]
 #![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)
 
+// `array_item_from_fn!` requires `MaybeUninit`.
+#[doc(hidden)]
+pub extern crate core;
+
+// `build!` requires `ArrayVec`
+#[doc(hidden)]
+pub extern crate arrayvec;
+
+// `build!` requires `r3`
+#[doc(hidden)]
+pub extern crate r3;
+
 pub mod utils;
 
 #[cfg(feature = "priority_boost")]

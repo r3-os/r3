@@ -51,7 +51,7 @@ pub mod for_times;
 
 mod aligned_storage;
 mod init;
-mod mem;
+pub mod mem;
 mod rawcell;
 mod zeroinit;
 pub use aligned_storage::*;

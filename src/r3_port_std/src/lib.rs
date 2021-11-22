@@ -48,6 +48,9 @@ mod utils;
 pub extern crate r3;
 /// Used by `use_port!`
 #[doc(hidden)]
+pub extern crate r3_kernel;
+/// Used by `use_port!`
+#[doc(hidden)]
 pub use std::sync::atomic::{AtomicBool, Ordering};
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -726,8 +729,10 @@ macro_rules! use_port {
             use super::$sys;
             use $crate::r3::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-                PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
-                TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
+                PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
+            };
+            use $crate::r3_kernel::{
+                Port, TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
             use $crate::{State, TaskState, PortInstance};
 

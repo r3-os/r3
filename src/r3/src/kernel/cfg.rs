@@ -76,6 +76,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
             startup_hooks: self.startup_hooks.map(hook::CfgStartupHook::to_attr),
             hunk_pool_len: self.hunk_pool_len,
             hunk_pool_align: self.hunk_pool_align,
+            interrupt_handlers: self.interrupt_handlers,
         }
     }
 
@@ -173,6 +174,7 @@ pub struct KernelStaticParams<System> {
     pub startup_hooks: ComptimeVec<hook::StartupHookAttr>,
     pub hunk_pool_len: usize,
     pub hunk_pool_align: usize,
+    pub interrupt_handlers: ComptimeVec<interrupt::CfgInterruptHandler>,
 }
 
 /// Associates static data to a system type.
@@ -204,13 +206,13 @@ impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T {
 /// Implement [`KernelStatic`] on the given system type `$Ty` using the given
 /// `$params: `[`KernelStaticParams`] to associate static data with it.
 ///
-/// This macro produces `static` items and a `KernelStatic` implementation for
-/// `$Ty`. It doesn't support generics.
+/// This macro produces `static` items and a `KernelStatic<$System>`
+/// implementation for `$Ty`. It doesn't support generics.
 pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $(,)?) {
     const _: () = {
         use $crate::{
             kernel::{cfg, hook, interrupt},
-            utils::{for_each::U, AlignedStorage, Init, RawCell},
+            utils::{for_times::U, AlignedStorage, Init, RawCell},
         };
 
         const STATIC_PARAMS: cfg::KernelStaticParams<$System> = $params;
@@ -221,7 +223,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
         > = Init::INIT;
 
         // Construct a table of startup hooks
-        $crate::array_item_from_fn! {
+        array_item_from_fn! {
             const STARTUP_HOOKS: [hook::StartupHookAttr; _] =
                 (0..STATIC_PARAMS.startup_hooks.len())
                     .map(|i| STATIC_PARAMS.startup_hooks.get(i));
@@ -229,8 +231,8 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
 
         // Consturct a table of combined second-level interrupt handlers
         const INTERRUPT_HANDLERS: [interrupt::CfgInterruptHandler; {
-            CFG.interrupt_handlers.len()
-        }] = CFG.interrupt_handlers.to_array();
+            STATIC_PARAMS.interrupt_handlers.len()
+        }] = STATIC_PARAMS.interrupt_handlers.to_array();
         const NUM_INTERRUPT_HANDLERS: usize = INTERRUPT_HANDLERS.len();
         const NUM_INTERRUPT_LINES: usize =
             interrupt::num_required_interrupt_line_slots(&INTERRUPT_HANDLERS);
@@ -239,14 +241,13 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
             type NumHandlers = U<NUM_INTERRUPT_HANDLERS>;
             const HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] = &INTERRUPT_HANDLERS;
         }
-        const INTERRUPT_HANDLERS_SIZED: interrupt::InterruptHandlerTable<
-            [Option<InterruptHandlerFn>; NUM_INTERRUPT_LINES],
-        > = unsafe {
+        const INTERRUPT_HANDLERS_SIZED: [Option<interrupt::InterruptHandlerFn>;
+            NUM_INTERRUPT_LINES] = unsafe {
             // Safety: (1) We are `build!`, so it's okay to call this.
             //         (2) `INTERRUPT_HANDLERS` contains at least
             //             `NUM_INTERRUPT_HANDLERS` elements.
             interrupt::new_interrupt_handler_table::<
-                $sys,
+                $System,
                 U<NUM_INTERRUPT_LINES>,
                 Handlers,
                 NUM_INTERRUPT_LINES,
@@ -254,18 +255,11 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
             >()
         };
 
-        // Construct a table of interrupt line initiializers
-        $crate::array_item_from_fn! {
-            const INTERRUPT_LINE_INITS:
-                [InterruptLineInit<$sys>; _] =
-                    (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines.get(i).to_init());
-        }
-
         impl $crate::kernel::cfg::KernelStatic for $Ty {
             const STARTUP_HOOKS: &'static [hook::StartupHookAttr] = &STARTUP_HOOKS;
 
             const INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
-                &INTERRUPT_HANDInterruptHandlerFnLERS;
+                &INTERRUPT_HANDLERS;
 
             #[inline(always)]
             fn hunk_pool_ptr() -> *mut u8 {
@@ -274,3 +268,25 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
         }
     };
 }
+
+macro array_item_from_fn($(
+    $static_or_const:tt $out:ident: [$ty:ty; _] = (0..$len:expr).map(|$var:ident| $map:expr);
+)*) {$(
+    $static_or_const $out: [$ty; { $len }] = {
+        use $crate::{core::mem::MaybeUninit, utils::mem};
+        let mut values: [MaybeUninit<$ty>; { $len }] = mem::uninit_array();
+        let mut i = 0;
+        while i < $len {
+            values[i] = MaybeUninit::<$ty>::new({
+                let $var = i;
+                $map
+            });
+            i += 1;
+        }
+
+        // Safety:  The memory layout of `[MaybeUninit<$ty>; $len]` is
+        // identical to `[$ty; $len]`. We initialized all elements, so it's
+        // safe to reinterpret that range as `[$ty; $len]`.
+        unsafe { mem::transmute(values) }
+    };
+)*}

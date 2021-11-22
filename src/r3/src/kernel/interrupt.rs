@@ -658,7 +658,8 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
     }
 }
 
-/// Construct `InterruptHandlerTable`. Only meant to be used by `build!`
+/// Construct a table of combined second-level interrupt handlers. Only meant to
+/// be used by `attach_static!`
 #[doc(hidden)]
 pub const unsafe fn new_interrupt_handler_table<
     System: raw::KernelBase,

@@ -16,21 +16,24 @@ mod task;
 mod timer;
 pub use self::{event_group::*, interrupt::*, mutex::*, semaphore::*, task::*, timer::*};
 
-/// Attach [a configuration function] to a "system" type by implementing
-/// [`KernelCfg2`].
+/// Attach [a configuration function][1] to a [kernel trait type][2] by
+/// implementing [`KernelCfg2`].
 ///
-/// [a configuration function]: crate#static-configuration
+/// [1]: r3#static-configuration
+/// [2]: crate#the-kernel-trait-type
 /// [`KernelCfg2`]: crate::kernel::KernelCfg2
 #[macro_export]
 macro_rules! build {
-    ($sys:ty, $configure:expr => $id_map_ty:ty) => {{
+    // `$configure: ~const Fn(&mut Cfg<impl ~const CfgBase<System =
+    // r3_kernel::System<$Traits>>) -> $IdMap`
+    ($Traits:ty, $configure:expr => $IdMap:ty) => {{
         use $crate::{
+            r3,
             cfg::{
-                CfgBuilder, CfgBuilderInner, CfgBuilderInterruptHandler, InterruptHandlerFn,
-                InterruptHandlerTable,
+                CfgBuilder, CfgBuilderInner,
             },
             EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
-            KernelCfg2, Port, StartupHookAttr, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
+            KernelCfg2, Port, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
             TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
             arrayvec::ArrayVec,
             utils::{
@@ -38,31 +41,48 @@ macro_rules! build {
             },
         };
 
-        // `$configure` produces two values: a `CfgBuilder` and an ID map
-        // (custom type). We need the first one to be `const` so that we can
-        // calculate the values of generic parameters based on its contents.
-        const CFG: CfgBuilderInner<$sys> = get_cfg();
+        type System = $crate::System<$Traits>;
 
-        const fn get_cfg() -> CfgBuilderInner<$sys> {
-            // FIXME: Unable to do this inside a `const` item because of
-            //        <https://github.com/rust-lang/rust/pull/72934>
-
+        const fn build_cfg_pre() -> r3::kernel::cfg::KernelStaticParams<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
-            let mut cfg = unsafe { CfgBuilder::new() };
+            let mut my_cfg = unsafe { CfgBuilder::new() };
+            let mut cfg = r3::kernel::cfg::Cfg::new(&mut my_cfg);
             $configure(&mut cfg);
-            cfg.finalize();
-            cfg.into_inner()
+
+            // Get `KernelStaticParams`, which is necessary for the later phases
+            // of the finalization. Throw away `my_cfg` for now.
+            cfg.finish_pre()
         }
 
-        // The second value can be just `let`
-        // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
-        const fn id_map() -> $id_map_ty {
-            // FIXME: Unable to do this inside a `const` item because of
-            //        <https://github.com/rust-lang/rust/pull/72934>
-            //        This is also why `$id_map_ty` has to be given.
+        // Implement `KernelStatic` on `$Traits` using the information
+        // collected in the first part of the finalization
+        r3::kernel::cfg::attach_static!(
+            build_cfg_pre(),
+            impl KernelStatic<System> for $Traits,
+        );
 
-            $configure(&mut unsafe { CfgBuilder::new() })
+        // The later part of the finalization continues using the
+        // `KernelStatic` implementation
+        const fn build_cfg_post() -> (CfgBuilderInner<$Traits>, $IdMap) {
+            // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
+            let mut my_cfg = unsafe { CfgBuilder::new() };
+            let mut cfg = r3::kernel::cfg::Cfg::new(&mut my_cfg);
+            let id_map = $configure(&mut cfg);
+
+            // Throw away the returned `KernelStaticParams` because we already
+            // have one and used it for the first phase
+            cfg.finish_pre();
+
+            // Complete the finalization. This makes the final changes to
+            // `my_cfg`
+            cfg.finish_interrupt();
+            cfg.finish_post();
+
+            (my_cfg, id_map)
         }
+
+        const CFG_OUTPUT: (CfgBuilderInner<$Traits>, $IdMap) = build_cfg_post();
+        const CFG: CfgBuilderInner<$Traits> = CFG_OUTPUT.0;
 
         // Set up task priority levels
         type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;
@@ -74,15 +94,15 @@ macro_rules! build {
         // Task ready queue
         type TaskReadyBitmap = FixedPrioBitmap<{ CFG.num_task_priority_levels }>;
         type TaskReadyQueue = readyqueue::BitmapQueue<
-            $sys,
-            <$sys as PortThreading>::PortTaskState,
-            <$sys as KernelCfg1>::TaskPriority,
+            $Traits,
+            <$Traits as PortThreading>::PortTaskState,
+            <$Traits as KernelCfg1>::TaskPriority,
             TaskReadyBitmap,
             { CFG.num_task_priority_levels }
         >;
 
         // Safety: We are `build!`, so it's okay to `impl` this
-        unsafe impl KernelCfg1 for $sys {
+        unsafe impl KernelCfg1 for $Traits {
             const NUM_TASK_PRIORITY_LEVELS: usize = CFG.num_task_priority_levels;
             type TaskPriority = TaskPriority;
             type TaskReadyQueue = TaskReadyQueue;
@@ -91,40 +111,40 @@ macro_rules! build {
 
         // Instantiiate task structures
         $crate::array_item_from_fn! {
-            const TASK_ATTR_POOL: [TaskAttr<$sys>; _] =
+            const TASK_ATTR_POOL: [TaskAttr<$Traits>; _] =
                 (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
             static TASK_CB_POOL:
-                [TaskCb<$sys>; _] =
+                [TaskCb<$Traits>; _] =
                     (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR_POOL[i]));
         }
 
         // Instantiiate event group structures
         $crate::array_item_from_fn! {
             static EVENT_GROUP_CB_POOL:
-                [EventGroupCb<$sys>; _] =
+                [EventGroupCb<$Traits>; _] =
                     (0..CFG.event_groups.len()).map(|i| CFG.event_groups.get(i).to_state());
         }
 
         // Instantiiate mutex structures
         $crate::array_item_from_fn! {
             static MUTEX_CB_POOL:
-                [MutexCb<$sys>; _] =
+                [MutexCb<$Traits>; _] =
                     (0..CFG.mutexes.len()).map(|i| CFG.mutexes.get(i).to_state());
         }
 
         // Instantiiate semaphore structures
         $crate::array_item_from_fn! {
             static SEMAPHORE_CB_POOL:
-                [SemaphoreCb<$sys>; _] =
+                [SemaphoreCb<$Traits>; _] =
                     (0..CFG.semaphores.len()).map(|i| CFG.semaphores.get(i).to_state());
         }
 
         // Instantiiate timer structures
         $crate::array_item_from_fn! {
-            const TIMER_ATTR_POOL: [TimerAttr<$sys>; _] =
+            const TIMER_ATTR_POOL: [TimerAttr<$Traits>; _] =
                 (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_attr());
             static TIMER_CB_POOL:
-                [TimerCb<$sys>; _] =
+                [TimerCb<$Traits>; _] =
                     (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_state(&TIMER_ATTR_POOL[i], i));
         }
 
@@ -133,55 +153,25 @@ macro_rules! build {
             Init::INIT;
 
         // Instantiate the global state
-        type KernelState = State<$sys>;
+        type KernelState = State<$Traits>;
         static KERNEL_STATE: KernelState = State::INIT;
-
-        // Consturct a table of combined second-level interrupt handlers
-        const INTERRUPT_HANDLERS: [CfgBuilderInterruptHandler; { CFG.interrupt_handlers.len() }] =
-            CFG.interrupt_handlers.to_array();
-        const NUM_INTERRUPT_HANDLERS: usize = INTERRUPT_HANDLERS.len();
-        const NUM_INTERRUPT_LINES: usize =
-            $crate::kernel::cfg::num_required_interrupt_line_slots(&INTERRUPT_HANDLERS);
-        struct Handlers;
-        impl $crate::kernel::cfg::CfgBuilderInterruptHandlerList for Handlers {
-            type NumHandlers = U<NUM_INTERRUPT_HANDLERS>;
-            const HANDLERS: &'static [CfgBuilderInterruptHandler] = &INTERRUPT_HANDLERS;
-        }
-        const INTERRUPT_HANDLERS_SIZED: InterruptHandlerTable<
-            [Option<InterruptHandlerFn>; NUM_INTERRUPT_LINES],
-        > = unsafe {
-            // Safety: (1) We are `build!`, so it's okay to call this.
-            //         (2) `INTERRUPT_HANDLERS` contains at least
-            //             `NUM_INTERRUPT_HANDLERS` elements.
-            $crate::kernel::cfg::new_interrupt_handler_table::<
-                $sys,
-                U<NUM_INTERRUPT_LINES>,
-                Handlers,
-                NUM_INTERRUPT_LINES,
-                NUM_INTERRUPT_HANDLERS,
-            >()
-        };
 
         // Construct a table of interrupt line initiializers
         $crate::array_item_from_fn! {
             const INTERRUPT_LINE_INITS:
-                [InterruptLineInit<$sys>; _] =
+                [InterruptLineInit; _] =
                     (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines.get(i).to_init());
-        }
-
-        // Construct a table of startup hooks
-        $crate::array_item_from_fn! {
-            const STARTUP_HOOKS:
-                [StartupHookAttr; _] =
-                    (0..CFG.startup_hooks.len()).map(|i| CFG.startup_hooks.get(i).to_attr());
         }
 
         // Calculate the required storage of the timeout heap
         const TIMEOUT_HEAP_LEN: usize = CFG.tasks.len() + CFG.timers.len();
-        type TimeoutHeap = ArrayVec<TimeoutRef<$sys>, TIMEOUT_HEAP_LEN>;
+        type TimeoutHeap = ArrayVec<TimeoutRef<$Traits>, TIMEOUT_HEAP_LEN>;
+
+        #[inline]
+        unsafe fn no_startup_hook() {}
 
         // Safety: We are `build!`, so it's okay to `impl` this
-        unsafe impl KernelCfg2 for $sys {
+        unsafe impl KernelCfg2 for $Traits {
             type TimeoutHeap = TimeoutHeap;
 
             #[inline(always)]
@@ -189,14 +179,18 @@ macro_rules! build {
                 &KERNEL_STATE
             }
 
-            const INTERRUPT_HANDLERS: &'static InterruptHandlerTable = &INTERRUPT_HANDLERS_SIZED;
+            // TODO: interrupt handlers
 
             const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
                 _phantom: Init::INIT,
                 line_inits: &INTERRUPT_LINE_INITS,
             };
 
-            const STARTUP_HOOKS: &'static [StartupHookAttr] = &STARTUP_HOOKS;
+            const STARTUP_HOOK: unsafe fn() = if let Some(x) = CFG.startup_hook {
+                x
+            } else {
+                no_startup_hook
+            };
 
             #[inline(always)]
             fn hunk_pool_ptr() -> *mut u8 {
@@ -204,32 +198,32 @@ macro_rules! build {
             }
 
             #[inline(always)]
-            fn task_cb_pool() -> &'static [TaskCb<$sys>] {
+            fn task_cb_pool() -> &'static [TaskCb<$Traits>] {
                 &TASK_CB_POOL
             }
 
             #[inline(always)]
-            fn event_group_cb_pool() -> &'static [EventGroupCb<$sys>] {
+            fn event_group_cb_pool() -> &'static [EventGroupCb<$Traits>] {
                 &EVENT_GROUP_CB_POOL
             }
 
             #[inline(always)]
-            fn mutex_cb_pool() -> &'static [MutexCb<$sys>] {
+            fn mutex_cb_pool() -> &'static [MutexCb<$Traits>] {
                 &MUTEX_CB_POOL
             }
 
             #[inline(always)]
-            fn semaphore_cb_pool() -> &'static [SemaphoreCb<$sys>] {
+            fn semaphore_cb_pool() -> &'static [SemaphoreCb<$Traits>] {
                 &SEMAPHORE_CB_POOL
             }
 
             #[inline(always)]
-            fn timer_cb_pool() -> &'static [TimerCb<$sys>] {
+            fn timer_cb_pool() -> &'static [TimerCb<$Traits>] {
                 &TIMER_CB_POOL
             }
         }
 
-        id_map()
+        CFG_OUTPUT.1
     }};
 }
 
