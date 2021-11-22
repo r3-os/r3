@@ -1,4 +1,4 @@
-//! Checks that [`KernelStatic::INTERRUPT_HANDLERS`] contains `None` for the
+//! Checks that [`KernelStatic::CFG_INTERRUPT_HANDLERS`] contains `None` for the
 //! elements corresponding to interrupt lines that have no registered interrupt
 //! handlers.
 use core::marker::PhantomData;
@@ -47,8 +47,8 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
 }
 
 fn hook_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
-    let handlers = <System<Traits> as KernelStatic>::INTERRUPT_HANDLERS;
-    log::debug!("INTERRUPT_HANDLERS = {:#?}", handlers);
+    let handlers = <System<Traits> as KernelStatic>::CFG_INTERRUPT_HANDLERS;
+    log::debug!("CFG_INTERRUPT_HANDLERS = {:#?}", handlers);
     assert_eq!(handlers.len(), 8);
     assert_eq!(handlers[0], None);
     assert_eq!(handlers[1], None);

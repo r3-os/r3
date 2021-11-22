@@ -84,7 +84,7 @@ impl<System: cfg::KernelStatic> Hunk<System> {
     /// Get a raw pointer to the hunk's contents.
     #[inline]
     pub fn as_ptr(self) -> *mut u8 {
-        System::hunk_pool_ptr().wrapping_add(self.start)
+        System::cfg_hunk_pool_ptr().wrapping_add(self.start)
     }
 }
 

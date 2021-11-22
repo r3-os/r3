@@ -110,7 +110,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         let mut i = 0;
         while i < self.interrupt_lines.len() {
             let interrupt_line = self.interrupt_lines.get(i);
-            let start = C::System::INTERRUPT_HANDLERS[interrupt_line.num];
+            let start = C::System::CFG_INTERRUPT_HANDLERS[interrupt_line.num];
             self.raw.interrupt_line_define(
                 raw_cfg::InterruptLineDescriptor {
                     phantom: Init::INIT,
@@ -158,7 +158,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
 
         #[inline(always)]
         fn startup_hook<System: KernelStatic>() {
-            for startup_hook in System::STARTUP_HOOKS.iter() {
+            for startup_hook in System::CFG_STARTUP_HOOKS.iter() {
                 (startup_hook.start)(startup_hook.param);
             }
         }
@@ -183,9 +183,9 @@ pub struct KernelStaticParams<System> {
 /// implemented externally. Use [`attach_static!`] or [`DelegateKernelStatic`]
 /// to implement this trait.
 pub trait KernelStatic<System = Self> {
-    const STARTUP_HOOKS: &'static [hook::StartupHookAttr];
-    const INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>];
-    fn hunk_pool_ptr() -> *mut u8;
+    const CFG_STARTUP_HOOKS: &'static [hook::StartupHookAttr];
+    const CFG_INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>];
+    fn cfg_hunk_pool_ptr() -> *mut u8;
 }
 
 pub trait DelegateKernelStatic<System> {
@@ -193,13 +193,13 @@ pub trait DelegateKernelStatic<System> {
 }
 
 impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T {
-    const STARTUP_HOOKS: &'static [hook::StartupHookAttr] = T::Target::STARTUP_HOOKS;
-    const INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
-        T::Target::INTERRUPT_HANDLERS;
+    const CFG_STARTUP_HOOKS: &'static [hook::StartupHookAttr] = T::Target::CFG_STARTUP_HOOKS;
+    const CFG_INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
+        T::Target::CFG_INTERRUPT_HANDLERS;
 
     #[inline(always)]
-    fn hunk_pool_ptr() -> *mut u8 {
-        T::Target::hunk_pool_ptr()
+    fn cfg_hunk_pool_ptr() -> *mut u8 {
+        T::Target::cfg_hunk_pool_ptr()
     }
 }
 
@@ -257,13 +257,13 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
         };
 
         impl $crate::kernel::cfg::KernelStatic<$System> for $Ty {
-            const STARTUP_HOOKS: &'static [hook::StartupHookAttr] = &STARTUP_HOOKS;
+            const CFG_STARTUP_HOOKS: &'static [hook::StartupHookAttr] = &STARTUP_HOOKS;
 
-            const INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
+            const CFG_INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
                 &INTERRUPT_HANDLERS_COMBINED;
 
             #[inline(always)]
-            fn hunk_pool_ptr() -> *mut u8 {
+            fn cfg_hunk_pool_ptr() -> *mut u8 {
                 HUNK_POOL.get() as *mut u8
             }
         }
