@@ -78,7 +78,7 @@ macro_rules! build {
             cfg.finish_interrupt();
             cfg.finish_post();
 
-            (my_cfg, id_map)
+            (my_cfg.into_inner(), id_map)
         }
 
         const CFG_OUTPUT: (CfgBuilderInner<$Traits>, $IdMap) = build_cfg_post();
