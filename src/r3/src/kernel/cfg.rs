@@ -206,18 +206,19 @@ impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T {
 ///
 /// This macro produces `static` items and a `KernelStatic` implementation for
 /// `$Ty`. It doesn't support generics.
-pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty) {
-    const _: () => {
+pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $(,)?) {
+    const _: () = {
         use $crate::{
-            kernel::{hook, cfg, interrupt},
-            utils::{AlignedStorage, RawCell, Init, for_each::U},
+            kernel::{cfg, hook, interrupt},
+            utils::{for_each::U, AlignedStorage, Init, RawCell},
         };
 
         const STATIC_PARAMS: cfg::KernelStaticParams<$System> = $params;
 
         // Instantiate hunks
-        static HUNK_POOL: RawCell<AlignedStorage<
-            { STATIC_PARAMS.hunk_pool_len }, { STATIC_PARAMS.hunk_pool_align }>> = Init::INIT;
+        static HUNK_POOL: RawCell<
+            AlignedStorage<{ STATIC_PARAMS.hunk_pool_len }, { STATIC_PARAMS.hunk_pool_align }>,
+        > = Init::INIT;
 
         // Construct a table of startup hooks
         $crate::array_item_from_fn! {
@@ -227,17 +228,16 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty) 
         }
 
         // Consturct a table of combined second-level interrupt handlers
-        const INTERRUPT_HANDLERS:
-            [interrupt::CfgInterruptHandler; { CFG.interrupt_handlers.len() }] =
-                CFG.interrupt_handlers.to_array();
+        const INTERRUPT_HANDLERS: [interrupt::CfgInterruptHandler; {
+            CFG.interrupt_handlers.len()
+        }] = CFG.interrupt_handlers.to_array();
         const NUM_INTERRUPT_HANDLERS: usize = INTERRUPT_HANDLERS.len();
         const NUM_INTERRUPT_LINES: usize =
             interrupt::num_required_interrupt_line_slots(&INTERRUPT_HANDLERS);
         struct Handlers;
         impl interrupt::CfgInterruptHandlerList for Handlers {
             type NumHandlers = U<NUM_INTERRUPT_HANDLERS>;
-            const HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
-                &INTERRUPT_HANDLERS;
+            const HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] = &INTERRUPT_HANDLERS;
         }
         const INTERRUPT_HANDLERS_SIZED: interrupt::InterruptHandlerTable<
             [Option<InterruptHandlerFn>; NUM_INTERRUPT_LINES],
@@ -265,7 +265,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty) 
             const STARTUP_HOOKS: &'static [hook::StartupHookAttr] = &STARTUP_HOOKS;
 
             const INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
-                    &INTERRUPT_HANDInterruptHandlerFnLERS;
+                &INTERRUPT_HANDInterruptHandlerFnLERS;
 
             #[inline(always)]
             fn hunk_pool_ptr() -> *mut u8 {
