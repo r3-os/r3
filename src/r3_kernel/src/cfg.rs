@@ -48,6 +48,7 @@ macro_rules! build {
             let mut my_cfg = unsafe { CfgBuilder::new() };
             let mut cfg = r3::kernel::cfg::Cfg::new(&mut my_cfg);
             $configure(&mut cfg);
+            CfgBuilder::finalize_in_cfg(&mut cfg);
 
             // Get `KernelStaticParams`, which is necessary for the later phases
             // of the finalization. Throw away `my_cfg` for now.
@@ -68,6 +69,7 @@ macro_rules! build {
             let mut my_cfg = unsafe { CfgBuilder::new() };
             let mut cfg = r3::kernel::cfg::Cfg::new(&mut my_cfg);
             let id_map = $configure(&mut cfg);
+            CfgBuilder::finalize_in_cfg(&mut cfg);
 
             // Throw away the returned `KernelStaticParams` because we already
             // have one and used it for the first phase
@@ -314,10 +316,7 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
 
     /// Apply post-processing before [`r3::kernel::Cfg`] is finalized.
     #[doc(hidden)]
-    pub const fn finalize_in_cfg(cfg: &mut r3::kernel::Cfg<Self>)
-    where
-        Traits: KernelStatic,
-    {
+    pub const fn finalize_in_cfg(cfg: &mut r3::kernel::Cfg<Self>) {
         // Create hunks for task stacks.
         let mut i = 0;
         let mut tasks = &mut cfg.raw().inner.tasks;
