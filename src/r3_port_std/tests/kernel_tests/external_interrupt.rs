@@ -1,9 +1,9 @@
 //! Pends an interrupt from an external thread.
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
-    prelude::*,
+    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task},
 };
+use r3_kernel::System;
 use r3_test_suite::kernel_tests::Driver;
 use std::{
     sync::atomic::{AtomicBool, Ordering},
@@ -13,15 +13,23 @@ use std::{
 
 use r3_port_std::PortInstance;
 
-pub struct App<System> {
+pub trait SupportedSystemTraits: PortInstance {}
+impl<T: PortInstance> SupportedSystemTraits for T {}
+
+pub struct App<System: traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic> {
     int: Option<InterruptLine<System>>,
     done: Hunk<System, AtomicBool>,
 }
 
-impl<System: PortInstance> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<Traits: SupportedSystemTraits> App<System<Traits>> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System<Traits>>
+            + ~const traits::CfgInterruptLine
+            + ~const traits::CfgTask,
+    {
         Task::build()
-            .start(task_body1::<System, D>)
+            .start(task_body1::<Traits, D>)
             .priority(1)
             .active(true)
             .finish(b);
@@ -31,7 +39,7 @@ impl<System: PortInstance> App<System> {
         {
             InterruptHandler::build()
                 .line(int_line)
-                .start(isr::<System, D>)
+                .start(isr::<Traits, D>)
                 .finish(b);
 
             Some(
@@ -51,7 +59,7 @@ impl<System: PortInstance> App<System> {
     }
 }
 
-fn task_body1<System: PortInstance, D: Driver<App<System>>>(_: usize) {
+fn task_body1<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -75,6 +83,6 @@ fn task_body1<System: PortInstance, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
     D::app().done.store(true, Ordering::Relaxed);
 }

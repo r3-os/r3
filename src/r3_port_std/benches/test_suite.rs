@@ -54,7 +54,8 @@ macro_rules! instantiate_kernel_tests {
             use r3_test_suite::kernel_benchmarks;
             use $path as test_case;
 
-            r3_port_std::use_port!(unsafe struct System);
+            type System = r3_kernel::System<SystemTraits>;
+            r3_port_std::use_port!(unsafe struct SystemTraits);
 
             struct Driver;
             static TEST_UTIL: super::KernelTestUtil = super::KernelTestUtil::new();
@@ -79,7 +80,7 @@ macro_rules! instantiate_kernel_tests {
             }
 
             static COTTAGE: test_case::App<System> =
-                r3::build!(System, test_case::App::new::<Driver> => test_case::App<System>);
+                r3::build!(SystemTraits, test_case::App::new::<Driver> => test_case::App<System>);
 
             pub fn run() {
                 TEST_UTIL.run(|| {
