@@ -270,6 +270,8 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
     };
 }
 
+// FIXME: A false `unused_macros`; it's actually used by `attach_static!`
+#[allow(unused_macros)]
 macro array_item_from_fn($(
     $static_or_const:tt $out:ident: [$ty:ty; _] = (0..$len:expr).map(|$var:ident| $map:expr);
 )*) {$(
