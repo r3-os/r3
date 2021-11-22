@@ -29,6 +29,7 @@
 #![deny(unsupported_naked_functions)]
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]
+#![doc = include!("../doc/cfg_traits.rs")] // `![cfg_traits]`
 #![cfg_attr(
     feature = "_full",
     doc = r#"<style type="text/css">.disabled-feature-warning { display: none; }</style>"#
