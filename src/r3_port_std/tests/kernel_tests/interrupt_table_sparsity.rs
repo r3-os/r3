@@ -1,7 +1,8 @@
-//! Checks that [`InterruptHandlerTable::get`] returns `None` for interrupt
-//! lines that have no registered interrupt handlers.
+//! Checks that [`KernelStatic::INTERRUPT_HANDLERS`] contains `None` for the
+//! elements corresponding to interrupt lines that have no registered interrupt
+//! handlers.
 use core::marker::PhantomData;
-use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine, StartupHook};
+use r3::kernel::{cfg::KernelStatic, traits, Cfg, InterruptHandler, InterruptLine, StartupHook};
 use r3_kernel::System;
 use r3_test_suite::kernel_tests::Driver;
 
@@ -46,15 +47,16 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
 }
 
 fn hook_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
-    log::debug!("INTERRUPT_HANDLERS = {:#?}", System::INTERRUPT_HANDLERS);
-    assert_eq!(System::INTERRUPT_HANDLERS.get(0), None);
-    assert_eq!(System::INTERRUPT_HANDLERS.get(1), None);
-    assert!(System::INTERRUPT_HANDLERS.get(2).is_some());
-    assert!(System::INTERRUPT_HANDLERS.get(3).is_some());
-    assert_eq!(System::INTERRUPT_HANDLERS.get(4), None);
-    assert!(System::INTERRUPT_HANDLERS.get(5).is_some());
-    assert_eq!(System::INTERRUPT_HANDLERS.get(6), None);
-    assert!(System::INTERRUPT_HANDLERS.get(7).is_some());
-    assert_eq!(System::INTERRUPT_HANDLERS.get(8), None);
+    let handlers = <System<Traits> as KernelStatic>::INTERRUPT_HANDLERS;
+    log::debug!("INTERRUPT_HANDLERS = {:#?}", handlers);
+    assert_eq!(handlers.len(), 8);
+    assert_eq!(handlers[0], None);
+    assert_eq!(handlers[1], None);
+    assert!(handlers[2].is_some());
+    assert!(handlers[3].is_some());
+    assert_eq!(handlers[4], None);
+    assert!(handlers[5].is_some());
+    assert_eq!(handlers[6], None);
+    assert!(handlers[7].is_some());
     D::success();
 }

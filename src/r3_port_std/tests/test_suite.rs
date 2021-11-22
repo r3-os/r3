@@ -20,9 +20,9 @@ impl KernelTestUtil {
         }
     }
 
-    fn success<System: PortInstance>(&self) {
+    fn success<Traits: PortInstance>(&self) {
         self.is_successful.store(true, Ordering::Relaxed);
-        r3_port_std::shutdown::<System>();
+        r3_port_std::shutdown::<Traits>();
     }
 
     fn fail(&self) {
@@ -57,7 +57,8 @@ macro_rules! instantiate_kernel_tests {
 
             $( { $($tt)* }, )*
 
-            // Port-specific tests
+            // Port-specific tests, which cover `r3` and `r3_kernel` as
+            // well as `r3_port_std`
             { path: crate::kernel_tests::external_interrupt, name_ident: external_interrupt, },
             { path: crate::kernel_tests::interrupt_table_sparsity, name_ident: interrupt_table_sparsity, },
             { path: crate::kernel_tests::stack_align, name_ident: stack_align, },
@@ -83,7 +84,7 @@ macro_rules! instantiate_kernel_tests {
                 }
 
                 fn success() {
-                    TEST_UTIL.success::<System>();
+                    TEST_UTIL.success::<SystemTraits>();
                 }
 
                 fn fail() {

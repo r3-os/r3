@@ -33,8 +33,8 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
 }
 
 fn task_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
-    let expected_alignment = System::STACK_ALIGN;
-    for task_cb in System::task_cb_pool() {
+    let expected_alignment = <Traits as r3_kernel::PortThreading>::STACK_ALIGN;
+    for task_cb in <Traits as r3_kernel::KernelCfg2>::task_cb_pool() {
         let stack = task_cb.attr.stack.as_ptr();
         let start = stack as *mut u8;
         let end = start.wrapping_add(stack.len());

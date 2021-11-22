@@ -18,9 +18,9 @@ impl KernelTestUtil {
         }
     }
 
-    fn success<System: PortInstance>(&self) {
+    fn success<Traits: PortInstance>(&self) {
         self.is_successful.store(true, Ordering::Relaxed);
-        r3_port_std::shutdown::<System>();
+        r3_port_std::shutdown::<Traits>();
     }
 
     fn run(&self, func: impl FnOnce()) {
@@ -66,11 +66,11 @@ macro_rules! instantiate_kernel_tests {
                 }
 
                 fn success() {
-                    TEST_UTIL.success::<System>();
+                    TEST_UTIL.success::<SystemTraits>();
                 }
 
                 fn performance_time() -> u32 {
-                    port_std_impl::PORT_STATE.tick_count::<System>()
+                    port_std_impl::PORT_STATE.tick_count::<SystemTraits>()
                 }
 
                 const PERFORMANCE_TIME_UNIT: &'static str = "μs";
@@ -84,7 +84,7 @@ macro_rules! instantiate_kernel_tests {
 
             pub fn run() {
                 TEST_UTIL.run(|| {
-                    port_std_impl::PORT_STATE.port_boot::<System>();
+                    port_std_impl::PORT_STATE.port_boot::<SystemTraits>();
                 });
             }
         })*
