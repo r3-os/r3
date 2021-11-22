@@ -49,12 +49,12 @@ pub(super) fn unboost_priority<Traits: KernelTraits>() -> Result<(), BoostPriori
         // Acquire CPU Lock after checking other states so that
         // `drop_in_place(&mut lock)` doesn't get emitted twice
         let lock = klock::lock_cpu()?;
-        Ttraits::state()
+        Traits::state()
             .priority_boost
             .store(false, Ordering::Relaxed);
 
         // Check pending preemption
-        task::unlock_cpu_and_check_preemption::<System>(lock);
+        task::unlock_cpu_and_check_preemption::<Traits>(lock);
         Ok(())
     }
 }

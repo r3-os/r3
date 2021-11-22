@@ -138,12 +138,6 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    #[cfg(feature = "priority_boost")]
-    fn boost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
-        state::boost_priority::<Traits>()
-    }
-
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn unboost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
         state::unboost_priority::<Traits>()
     }
@@ -239,6 +233,14 @@ unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> 
         priority: usize,
     ) -> Result<(), r3::kernel::SetTaskPriorityError> {
         Self::task_set_priority(this, priority)
+    }
+}
+
+#[cfg(feature = "priority_boost")]
+unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    fn boost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
+        state::boost_priority::<Traits>()
     }
 }
 
