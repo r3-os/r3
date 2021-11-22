@@ -89,7 +89,7 @@
 //! ```
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task},
+    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
 };
 
 use super::Driver;

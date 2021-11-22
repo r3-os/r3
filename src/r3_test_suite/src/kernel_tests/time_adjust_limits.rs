@@ -3,7 +3,7 @@
 //! [`adjust_time`]: r3::kernel::Kernel::adjust_time
 use r3::{
     hunk::Hunk,
-    kernel::{traits, AdjustTimeError, Cfg, Task},
+    kernel::{prelude::*, traits, AdjustTimeError, Cfg, Task},
     time::Duration,
 };
 

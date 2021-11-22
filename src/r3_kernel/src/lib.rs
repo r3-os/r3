@@ -111,7 +111,7 @@ impl<Traits: KernelStatic<System<Traits>>> DelegateKernelStatic<System<Traits>> 
 
 unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     #[inline]
-    fn acquire_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
+    fn raw_acquire_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
         // Safety: `try_enter_cpu_lock` is only meant to be called by
         //         the kernel
         if unsafe { Traits::try_enter_cpu_lock() } {
@@ -122,7 +122,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     }
 
     #[inline]
-    unsafe fn release_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
+    unsafe fn raw_release_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
         if !Traits::is_cpu_lock_active() {
             Err(r3::kernel::CpuLockError::BadContext)
         } else {
@@ -133,49 +133,49 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     }
 
     #[inline]
-    fn has_cpu_lock() -> bool {
+    fn raw_has_cpu_lock() -> bool {
         Traits::is_cpu_lock_active()
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn unboost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
+    unsafe fn raw_unboost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
         state::unboost_priority::<Traits>()
     }
 
     #[inline]
     #[cfg(feature = "priority_boost")]
-    fn is_priority_boost_active() -> bool {
+    fn raw_is_priority_boost_active() -> bool {
         Traits::state().priority_boost.load(Ordering::Relaxed)
     }
 
     #[inline]
     #[cfg(not(feature = "priority_boost"))]
-    fn is_priority_boost_active() -> bool {
+    fn raw_is_priority_boost_active() -> bool {
         false
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn set_time(time: Time) -> Result<(), r3::kernel::TimeError> {
+    fn raw_set_time(time: Time) -> Result<(), r3::kernel::TimeError> {
         timeout::set_system_time::<Traits>(time)
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn exit_task() -> Result<!, r3::kernel::ExitTaskError> {
+    unsafe fn raw_exit_task() -> Result<!, r3::kernel::ExitTaskError> {
         // Safety: Just forwarding the function call
         unsafe { task::exit_current_task::<Traits>() }
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn park() -> Result<(), r3::kernel::ParkError> {
+    fn raw_park() -> Result<(), r3::kernel::ParkError> {
         task::park_current_task::<Traits>()
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn park_timeout(timeout: Duration) -> Result<(), r3::kernel::ParkTimeoutError> {
+    fn raw_park_timeout(timeout: Duration) -> Result<(), r3::kernel::ParkTimeoutError> {
         task::park_current_task_timeout::<Traits>(timeout)
     }
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn sleep(timeout: Duration) -> Result<(), r3::kernel::SleepError> {
+    fn raw_sleep(timeout: Duration) -> Result<(), r3::kernel::SleepError> {
         task::put_current_task_on_sleep_timeout::<Traits>(timeout)
     }
 
@@ -187,39 +187,43 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     /// Note that printing this object might consume a large amount of stack
     /// space.
     #[inline]
-    fn debug() -> Self::DebugPrinter {
+    fn raw_debug() -> Self::DebugPrinter {
         KernelDebugPrinter(PhantomData)
     }
 
     type TaskId = task::TaskId;
 
     #[inline]
-    fn task_current() -> Result<Option<Self::TaskId>, r3::kernel::GetCurrentTaskError> {
+    fn raw_task_current() -> Result<Option<Self::TaskId>, r3::kernel::GetCurrentTaskError> {
         Self::task_current()
     }
 
     #[inline]
-    unsafe fn task_activate(this: Self::TaskId) -> Result<(), r3::kernel::ActivateTaskError> {
+    unsafe fn raw_task_activate(this: Self::TaskId) -> Result<(), r3::kernel::ActivateTaskError> {
         Self::task_activate(this)
     }
 
     #[inline]
-    unsafe fn task_interrupt(this: Self::TaskId) -> Result<(), r3::kernel::InterruptTaskError> {
+    unsafe fn raw_task_interrupt(this: Self::TaskId) -> Result<(), r3::kernel::InterruptTaskError> {
         Self::task_interrupt(this)
     }
 
     #[inline]
-    unsafe fn task_unpark_exact(this: Self::TaskId) -> Result<(), r3::kernel::UnparkExactError> {
+    unsafe fn raw_task_unpark_exact(
+        this: Self::TaskId,
+    ) -> Result<(), r3::kernel::UnparkExactError> {
         Self::task_unpark_exact(this)
     }
 
     #[inline]
-    unsafe fn task_priority(this: Self::TaskId) -> Result<usize, r3::kernel::GetTaskPriorityError> {
+    unsafe fn raw_task_priority(
+        this: Self::TaskId,
+    ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
         Self::task_priority(this)
     }
 
     #[inline]
-    unsafe fn task_effective_priority(
+    unsafe fn raw_task_effective_priority(
         this: Self::TaskId,
     ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
         Self::task_effective_priority(this)
@@ -228,7 +232,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
 
 unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> {
     #[inline]
-    unsafe fn task_set_priority(
+    unsafe fn raw_task_set_priority(
         this: Self::TaskId,
         priority: usize,
     ) -> Result<(), r3::kernel::SetTaskPriorityError> {
@@ -239,7 +243,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> 
 #[cfg(feature = "priority_boost")]
 unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn boost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
+    fn raw_boost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
         state::boost_priority::<Traits>()
     }
 }
@@ -247,14 +251,14 @@ unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
 #[cfg(feature = "system_time")]
 unsafe impl<Traits: KernelTraits> raw::KernelTime for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn time() -> Result<Time, r3::kernel::TimeError> {
+    fn raw_time() -> Result<Time, r3::kernel::TimeError> {
         timeout::system_time::<Traits>()
     }
 }
 
 unsafe impl<Traits: KernelTraits> raw::KernelAdjustTime for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn adjust_time(delta: Duration) -> Result<(), r3::kernel::AdjustTimeError> {
+    fn raw_adjust_time(delta: Duration) -> Result<(), r3::kernel::AdjustTimeError> {
         timeout::adjust_system_and_event_time::<Traits>(delta)
     }
 }

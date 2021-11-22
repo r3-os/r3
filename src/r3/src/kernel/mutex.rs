@@ -333,7 +333,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
     pub fn is_locked(self) -> Result<bool, QueryMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::mutex_is_locked(self.0) }
+        unsafe { System::raw_mutex_is_locked(self.0) }
     }
 
     /// Unlock the mutex.
@@ -344,7 +344,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
     pub fn unlock(self) -> Result<(), UnlockMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::mutex_unlock(self.0) }
+        unsafe { System::raw_mutex_unlock(self.0) }
     }
 
     /// Acquire the mutex, blocking the current thread until it is able to do
@@ -364,7 +364,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
     pub fn lock(self) -> Result<(), LockMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::mutex_lock(self.0) }
+        unsafe { System::raw_mutex_lock(self.0) }
     }
 
     /// [`lock`](Self::lock) with timeout.
@@ -372,7 +372,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
     pub fn lock_timeout(self, timeout: Duration) -> Result<(), LockMutexTimeoutError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::mutex_lock_timeout(self.0, timeout) }
+        unsafe { System::raw_mutex_lock_timeout(self.0, timeout) }
     }
 
     /// Non-blocking version of [`lock`](Self::lock). Returns
@@ -387,7 +387,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
     pub fn try_lock(self) -> Result<(), TryLockMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::mutex_try_lock(self.0) }
+        unsafe { System::raw_mutex_try_lock(self.0) }
     }
 
     /// Mark the state protected by the mutex as consistent.
@@ -401,7 +401,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
     pub fn mark_consistent(self) -> Result<(), MarkConsistentMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::mutex_mark_consistent(self.0) }
+        unsafe { System::raw_mutex_mark_consistent(self.0) }
     }
 }
 

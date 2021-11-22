@@ -2,7 +2,7 @@
 //! miscellaneous properties of such methods.
 use core::marker::PhantomData;
 use r3::{
-    kernel::{traits, Cfg, StartupHook, Task},
+    kernel::{prelude::*, traits, Cfg, StartupHook, Task},
     time::{Duration, Time},
 };
 

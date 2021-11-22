@@ -15,7 +15,8 @@
 use r3::{
     hunk::Hunk,
     kernel::{
-        traits, Cfg, EventGroup, EventGroupWaitFlags, QueueOrder, Task, WaitEventGroupTimeoutError,
+        prelude::*, traits, Cfg, EventGroup, EventGroupWaitFlags, QueueOrder, Task,
+        WaitEventGroupTimeoutError,
     },
     time::Duration,
 };

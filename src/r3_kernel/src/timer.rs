@@ -26,7 +26,7 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
     type TimerId = TimerId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn timer_start(this: TimerId) -> Result<(), StartTimerError> {
+    unsafe fn raw_timer_start(this: TimerId) -> Result<(), StartTimerError> {
         let mut lock = lock_cpu::<Traits>()?;
         let timer_cb = Self::timer_cb(this)?;
         start_timer(lock.borrow_mut(), timer_cb);
@@ -34,7 +34,7 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn timer_stop(this: TimerId) -> Result<(), StopTimerError> {
+    unsafe fn raw_timer_stop(this: TimerId) -> Result<(), StopTimerError> {
         let mut lock = lock_cpu::<Traits>()?;
         let timer_cb = Self::timer_cb(this)?;
         stop_timer(lock.borrow_mut(), timer_cb);
@@ -42,7 +42,7 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn timer_set_delay(
+    unsafe fn raw_timer_set_delay(
         this: TimerId,
         delay: Option<Duration>,
     ) -> Result<(), SetTimerDelayError> {
@@ -58,7 +58,7 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn timer_set_period(
+    unsafe fn raw_timer_set_period(
         this: TimerId,
         period: Option<Duration>,
     ) -> Result<(), SetTimerPeriodError> {

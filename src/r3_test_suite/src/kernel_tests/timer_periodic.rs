@@ -15,7 +15,7 @@
 //! ```
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Task, Timer},
+    kernel::{prelude::*, traits, Cfg, Task, Timer},
     time::Duration,
 };
 

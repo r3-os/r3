@@ -137,14 +137,14 @@ impl<System: raw::KernelBase> Task<System> {
     /// scheduling on return (whether this happens or not is unspecified).
     pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
         // Safety: "Constructing a `Task` for a current task is allowed."
-        System::task_current().map(|x| x.map(|id| unsafe { Self::from_id(id) }))
+        System::raw_task_current().map(|x| x.map(|id| unsafe { Self::from_id(id) }))
     }
 
     /// Start the execution of the task.
     pub fn activate(self) -> Result<(), ActivateTaskError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::task_activate(self.0) }
+        unsafe { System::raw_task_activate(self.0) }
     }
 
     /// Interrupt any ongoing wait operations undertaken by the task.
@@ -158,7 +158,7 @@ impl<System: raw::KernelBase> Task<System> {
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::task_interrupt(self.0) }
+        unsafe { System::raw_task_interrupt(self.0) }
     }
 
     /// Make the task's token available, unblocking [`Kernel::park`] now or in
@@ -193,7 +193,7 @@ impl<System: raw::KernelBase> Task<System> {
     pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::task_unpark_exact(self.0) }
+        unsafe { System::raw_task_unpark_exact(self.0) }
     }
 
     /// Set the task's base priority.
@@ -219,7 +219,7 @@ impl<System: raw::KernelBase> Task<System> {
     {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::task_set_priority(self.0, priority) }
+        unsafe { System::raw_task_set_priority(self.0, priority) }
     }
 
     /// Get the task's base priority.
@@ -229,7 +229,7 @@ impl<System: raw::KernelBase> Task<System> {
     pub fn priority(self) -> Result<usize, GetTaskPriorityError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::task_priority(self.0) }
+        unsafe { System::raw_task_priority(self.0) }
     }
 
     /// Get the task's effective priority.
@@ -245,7 +245,7 @@ impl<System: raw::KernelBase> Task<System> {
     pub fn effective_priority(self) -> Result<usize, GetTaskPriorityError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::task_effective_priority(self.0) }
+        unsafe { System::raw_task_effective_priority(self.0) }
     }
 }
 

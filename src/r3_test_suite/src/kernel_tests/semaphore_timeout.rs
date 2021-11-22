@@ -14,7 +14,7 @@
 //!
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Semaphore, Task, WaitSemaphoreTimeoutError},
+    kernel::{prelude::*, traits, Cfg, Semaphore, Task, WaitSemaphoreTimeoutError},
     time::Duration,
 };
 

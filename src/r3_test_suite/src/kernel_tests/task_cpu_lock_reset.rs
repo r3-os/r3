@@ -1,5 +1,5 @@
 //! Checks that CPU Lock is released when a task completes.
-use r3::kernel::{traits, Cfg, Task};
+use r3::kernel::{prelude::*, traits, Cfg, Task};
 
 use super::Driver;
 

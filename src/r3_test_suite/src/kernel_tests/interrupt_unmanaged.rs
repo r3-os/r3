@@ -1,7 +1,7 @@
 //! Makes sure that CPU Lock doesn't mask unmanaged interrupts.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task},
+    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
 };
 
 use super::Driver;

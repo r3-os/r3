@@ -1,6 +1,6 @@
 //! Launches multiple tasks, each of which calls `sleep` repeatedly.
 use r3::{
-    kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, Task},
+    kernel::{prelude::*, traits, Cfg, EventGroup, EventGroupWaitFlags, Task},
     time::{Duration, Time},
 };
 

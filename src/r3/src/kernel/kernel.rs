@@ -270,23 +270,23 @@ impl<T: raw::KernelBase> Kernel for T {
 
     #[inline]
     fn debug() -> <Self as Kernel>::DebugPrinter {
-        <T as raw::KernelBase>::debug()
+        <T as raw::KernelBase>::raw_debug()
     }
 
     #[inline]
     fn acquire_cpu_lock() -> Result<(), CpuLockError> {
-        <T as raw::KernelBase>::acquire_cpu_lock()
+        <T as raw::KernelBase>::raw_acquire_cpu_lock()
     }
 
     #[inline]
     unsafe fn release_cpu_lock() -> Result<(), CpuLockError> {
         // Safety: Just forwarding the calls
-        unsafe { <T as raw::KernelBase>::release_cpu_lock() }
+        unsafe { <T as raw::KernelBase>::raw_release_cpu_lock() }
     }
 
     #[inline]
     fn has_cpu_lock() -> bool {
-        <T as raw::KernelBase>::has_cpu_lock()
+        <T as raw::KernelBase>::raw_has_cpu_lock()
     }
 
     #[inline]
@@ -294,23 +294,23 @@ impl<T: raw::KernelBase> Kernel for T {
     where
         Self: raw::KernelBoostPriority,
     {
-        <T as raw::KernelBoostPriority>::boost_priority()
+        <T as raw::KernelBoostPriority>::raw_boost_priority()
     }
 
     #[inline]
     unsafe fn unboost_priority() -> Result<(), BoostPriorityError> {
         // Safety: Just forwarding the calls
-        unsafe { <T as raw::KernelBase>::unboost_priority() }
+        unsafe { <T as raw::KernelBase>::raw_unboost_priority() }
     }
 
     #[inline]
     fn is_priority_boost_active() -> bool {
-        <T as raw::KernelBase>::is_priority_boost_active()
+        <T as raw::KernelBase>::raw_is_priority_boost_active()
     }
 
     #[inline]
     fn set_time(time: Time) -> Result<(), TimeError> {
-        <T as raw::KernelBase>::set_time(time)
+        <T as raw::KernelBase>::raw_set_time(time)
     }
 
     #[inline]
@@ -318,7 +318,7 @@ impl<T: raw::KernelBase> Kernel for T {
     where
         Self: raw::KernelTime,
     {
-        <T as raw::KernelTime>::time()
+        <T as raw::KernelTime>::raw_time()
     }
 
     #[inline]
@@ -326,27 +326,27 @@ impl<T: raw::KernelBase> Kernel for T {
     where
         Self: raw::KernelAdjustTime,
     {
-        <T as raw::KernelAdjustTime>::adjust_time(delta)
+        <T as raw::KernelAdjustTime>::raw_adjust_time(delta)
     }
 
     #[inline]
     unsafe fn exit_task() -> Result<!, ExitTaskError> {
         // Safety: Just forwarding the calls
-        unsafe { <T as raw::KernelBase>::exit_task() }
+        unsafe { <T as raw::KernelBase>::raw_exit_task() }
     }
 
     #[inline]
     fn park() -> Result<(), ParkError> {
-        <T as raw::KernelBase>::park()
+        <T as raw::KernelBase>::raw_park()
     }
 
     #[inline]
     fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError> {
-        <T as raw::KernelBase>::park_timeout(timeout)
+        <T as raw::KernelBase>::raw_park_timeout(timeout)
     }
 
     #[inline]
     fn sleep(duration: Duration) -> Result<(), SleepError> {
-        <T as raw::KernelBase>::sleep(duration)
+        <T as raw::KernelBase>::raw_sleep(duration)
     }
 }

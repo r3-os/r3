@@ -1,7 +1,7 @@
 //! Activates a higher-priority task.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Task},
+    kernel::{prelude::*, traits, Cfg, Task},
 };
 
 use super::Driver;

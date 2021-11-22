@@ -116,7 +116,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     ) -> Result<(), SetInterruptLinePriorityError> {
         // Safety: `InterruptLine` represents a permission to access the
         //         referenced object.
-        unsafe { System::interrupt_line_set_priority(self.0, value) }
+        unsafe { System::raw_interrupt_line_set_priority(self.0, value) }
     }
 
     /// Enable the interrupt line.
@@ -124,7 +124,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     pub fn enable(self) -> Result<(), EnableInterruptLineError> {
         // Safety: `InterruptLine` represents a permission to access the
         //         referenced object.
-        unsafe { System::interrupt_line_enable(self.0) }
+        unsafe { System::raw_interrupt_line_enable(self.0) }
     }
 
     /// Disable the interrupt line.
@@ -132,7 +132,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     pub fn disable(self) -> Result<(), EnableInterruptLineError> {
         // Safety: `InterruptLine` represents a permission to access the
         //         referenced object.
-        unsafe { System::interrupt_line_disable(self.0) }
+        unsafe { System::raw_interrupt_line_disable(self.0) }
     }
 
     /// Set the pending flag of the interrupt line.
@@ -140,7 +140,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     pub fn pend(self) -> Result<(), PendInterruptLineError> {
         // Safety: `InterruptLine` represents a permission to access the
         //         referenced object.
-        unsafe { System::interrupt_line_pend(self.0) }
+        unsafe { System::raw_interrupt_line_pend(self.0) }
     }
 
     /// Clear the pending flag of the interrupt line.
@@ -148,7 +148,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     pub fn clear(self) -> Result<(), ClearInterruptLineError> {
         // Safety: `InterruptLine` represents a permission to access the
         //         referenced object.
-        unsafe { System::interrupt_line_clear(self.0) }
+        unsafe { System::raw_interrupt_line_clear(self.0) }
     }
 
     /// Read the pending flag of the interrupt line.
@@ -156,7 +156,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     pub fn is_pending(self) -> Result<bool, QueryInterruptLineError> {
         // Safety: `InterruptLine` represents a permission to access the
         //         referenced object.
-        unsafe { System::interrupt_line_is_pending(self.0) }
+        unsafe { System::raw_interrupt_line_is_pending(self.0) }
     }
 }
 
@@ -606,11 +606,11 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
 
                     // Relinquish CPU Lock before calling the next handler
                     use raw::KernelBase;
-                    if T::System::has_cpu_lock() {
+                    if T::System::raw_has_cpu_lock() {
                         // Safety: CPU Lock active, we have the ownership
                         // of the current CPU Lock (because a previously
                         // called handler left it active)
-                        let _ = unsafe { T::System::release_cpu_lock() };
+                        let _ = unsafe { T::System::raw_release_cpu_lock() };
                     }
 
                     // Call the next proto combined handler

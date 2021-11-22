@@ -28,14 +28,14 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelMutex for System<Traits
     type MutexId = MutexId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn mutex_is_locked(this: MutexId) -> Result<bool, QueryMutexError> {
+    unsafe fn raw_mutex_is_locked(this: MutexId) -> Result<bool, QueryMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
         let mutex_cb = Self::mutex_cb(this)?;
         Ok(mutex_cb.owning_task.get(&*lock).is_some())
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn mutex_unlock(this: MutexId) -> Result<(), UnlockMutexError> {
+    unsafe fn raw_mutex_unlock(this: MutexId) -> Result<(), UnlockMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
         let mutex_cb = Self::mutex_cb(this)?;
@@ -44,7 +44,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelMutex for System<Traits
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn mutex_lock(this: MutexId) -> Result<(), LockMutexError> {
+    unsafe fn raw_mutex_lock(this: MutexId) -> Result<(), LockMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
         let mutex_cb = Self::mutex_cb(this)?;
@@ -53,7 +53,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelMutex for System<Traits
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn mutex_lock_timeout(
+    unsafe fn raw_mutex_lock_timeout(
         this: MutexId,
         timeout: Duration,
     ) -> Result<(), LockMutexTimeoutError> {
@@ -66,7 +66,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelMutex for System<Traits
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn mutex_try_lock(this: MutexId) -> Result<(), TryLockMutexError> {
+    unsafe fn raw_mutex_try_lock(this: MutexId) -> Result<(), TryLockMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_task_context::<Traits>()?;
         let mutex_cb = Self::mutex_cb(this)?;
@@ -75,7 +75,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelMutex for System<Traits
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn mutex_mark_consistent(this: MutexId) -> Result<(), MarkConsistentMutexError> {
+    unsafe fn raw_mutex_mark_consistent(this: MutexId) -> Result<(), MarkConsistentMutexError> {
         let mut lock = klock::lock_cpu::<Traits>()?;
         let mutex_cb = Self::mutex_cb(this)?;
 

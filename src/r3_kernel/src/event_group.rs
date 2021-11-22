@@ -28,7 +28,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
     type EventGroupId = EventGroupId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn event_group_set(
+    unsafe fn raw_event_group_set(
         this: EventGroupId,
         bits: EventGroupBits,
     ) -> Result<(), UpdateEventGroupError> {
@@ -39,7 +39,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn event_group_clear(
+    unsafe fn raw_event_group_clear(
         this: EventGroupId,
         bits: EventGroupBits,
     ) -> Result<(), UpdateEventGroupError> {
@@ -50,14 +50,16 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn event_group_get(this: EventGroupId) -> Result<EventGroupBits, GetEventGroupError> {
+    unsafe fn raw_event_group_get(
+        this: EventGroupId,
+    ) -> Result<EventGroupBits, GetEventGroupError> {
         let lock = klock::lock_cpu::<Traits>()?;
         let event_group_cb = Self::event_group_cb(this)?;
         Ok(event_group_cb.bits.get(&*lock))
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn event_group_wait(
+    unsafe fn raw_event_group_wait(
         this: EventGroupId,
         bits: EventGroupBits,
         flags: EventGroupWaitFlags,
@@ -70,7 +72,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn event_group_wait_timeout(
+    unsafe fn raw_event_group_wait_timeout(
         this: EventGroupId,
         bits: EventGroupBits,
         flags: EventGroupWaitFlags,
@@ -85,7 +87,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn event_group_poll(
+    unsafe fn raw_event_group_poll(
         this: EventGroupId,
         bits: EventGroupBits,
         flags: EventGroupWaitFlags,

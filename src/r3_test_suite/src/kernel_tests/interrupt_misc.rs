@@ -1,6 +1,8 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
-use r3::kernel::{self, traits, Cfg, InterruptHandler, InterruptLine, StartupHook, Task};
+use r3::kernel::{
+    self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StartupHook, Task,
+};
 
 use super::Driver;
 

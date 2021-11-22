@@ -1,7 +1,7 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
 use core::num::NonZeroUsize;
-use r3::kernel::{traits, Cfg, StartupHook, Task};
+use r3::kernel::{prelude::*, traits, Cfg, StartupHook, Task};
 use wyhash::WyHash;
 
 use super::Driver;

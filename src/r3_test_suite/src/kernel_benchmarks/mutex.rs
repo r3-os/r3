@@ -1,7 +1,7 @@
 //! The common part of `mutex_*`. See [`super::mutex_none`] for a sequence
 //! diagram.
 use core::marker::PhantomData;
-use r3::kernel::{traits, Cfg, Mutex, MutexProtocol, Task};
+use r3::kernel::{prelude::*, traits, Cfg, Mutex, MutexProtocol, Task};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;

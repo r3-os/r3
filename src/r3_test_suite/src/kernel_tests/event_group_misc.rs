@@ -1,7 +1,7 @@
 //! Validates error codes returned by event group manipulation methods. Also,
 //! checks miscellaneous properties of `EventGroup`.
 use core::num::NonZeroUsize;
-use r3::kernel::{traits, Cfg, EventGroup, Task};
+use r3::kernel::{prelude::*, traits, Cfg, EventGroup, Task};
 use wyhash::WyHash;
 
 use super::Driver;

@@ -1,6 +1,6 @@
 use core::ops::Range;
 use r3::{
-    kernel::{traits, TimeError},
+    kernel::{prelude::*, traits, TimeError},
     time::{Duration, Time},
 };
 
@@ -44,7 +44,7 @@ impl<T: traits::KernelBase + traits::KernelBoostPriority> KernelBoostPriorityExt
     #[inline]
     #[track_caller]
     fn boost_priority(_: BoostPriorityCapability) -> Result<(), r3::kernel::BoostPriorityError> {
-        <Self as traits::KernelBoostPriority>::boost_priority()
+        <Self as Kernel>::boost_priority()
     }
 }
 
@@ -96,7 +96,7 @@ pub trait KernelTimeExt: traits::KernelBase {
     #[inline]
     #[track_caller]
     fn sleep_ms(x: u32) {
-        Self::sleep(Duration::from_millis(x as _)).unwrap();
+        <Self as Kernel>::sleep(Duration::from_millis(x as _)).unwrap();
     }
 }
 
@@ -114,6 +114,6 @@ impl<T: traits::KernelBase + traits::KernelTime> KernelTimeExt for T {
     const TIME_CAPABILITY: Option<TimeCapability> = Some(TimeCapability);
 
     fn time(_: TimeCapability) -> Result<Time, TimeError> {
-        <Self as traits::KernelTime>::time()
+        <Self as traits::Kernel>::time()
     }
 }

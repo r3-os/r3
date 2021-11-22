@@ -1,6 +1,6 @@
 //! Checks the return codes of disallowed system calls made in an interrupt
 //! context.
-use r3::kernel::{self, traits, Cfg, InterruptHandler, InterruptLine, Task};
+use r3::kernel::{self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task};
 
 use super::Driver;
 use crate::utils::conditional::KernelBoostPriorityExt;

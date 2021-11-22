@@ -93,28 +93,28 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     pub fn drain(self) -> Result<(), DrainSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::semaphore_drain(self.0) }
+        unsafe { System::raw_semaphore_drain(self.0) }
     }
 
     /// Get the number of permits currently held by the semaphore.
     pub fn get(self) -> Result<SemaphoreValue, GetSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::semaphore_get(self.0) }
+        unsafe { System::raw_semaphore_get(self.0) }
     }
 
     /// Release `count` permits, returning them to the semaphore.
     pub fn signal(self, count: SemaphoreValue) -> Result<(), SignalSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::semaphore_signal(self.0, count) }
+        unsafe { System::raw_semaphore_signal(self.0, count) }
     }
 
     /// Release a permit, returning it to the semaphore.
     pub fn signal_one(self) -> Result<(), SignalSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::semaphore_signal_one(self.0) }
+        unsafe { System::raw_semaphore_signal_one(self.0) }
     }
 
     /// Acquire a permit, potentially blocking the calling thread until one is
@@ -138,14 +138,14 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     pub fn wait_one(self) -> Result<(), WaitSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::semaphore_wait_one(self.0) }
+        unsafe { System::raw_semaphore_wait_one(self.0) }
     }
 
     /// [`wait_one`](Self::wait_one) with timeout.
     pub fn wait_one_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::semaphore_wait_one_timeout(self.0, timeout) }
+        unsafe { System::raw_semaphore_wait_one_timeout(self.0, timeout) }
     }
 
     /// Non-blocking version of [`wait_one`](Self::wait_one). Returns
@@ -154,7 +154,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     pub fn poll_one(self) -> Result<(), PollSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::semaphore_poll_one(self.0) }
+        unsafe { System::raw_semaphore_poll_one(self.0) }
     }
 }
 

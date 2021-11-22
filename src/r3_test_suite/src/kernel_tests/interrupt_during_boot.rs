@@ -1,7 +1,7 @@
 //! Checks that an interrupt cannot preempt the main thread.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, StartupHook},
+    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StartupHook},
 };
 
 use super::Driver;

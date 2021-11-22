@@ -16,7 +16,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelInterruptLine for Syste
         <Traits as PortInterrupts>::MANAGED_INTERRUPT_PRIORITY_RANGE;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn interrupt_line_set_priority(
+    unsafe fn raw_interrupt_line_set_priority(
         this: InterruptNum,
         value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
@@ -33,31 +33,35 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelInterruptLine for Syste
     }
 
     #[inline]
-    unsafe fn interrupt_line_enable(this: InterruptNum) -> Result<(), EnableInterruptLineError> {
+    unsafe fn raw_interrupt_line_enable(
+        this: InterruptNum,
+    ) -> Result<(), EnableInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { Traits::enable_interrupt_line(this) }
     }
 
     #[inline]
-    unsafe fn interrupt_line_disable(this: InterruptNum) -> Result<(), EnableInterruptLineError> {
+    unsafe fn raw_interrupt_line_disable(
+        this: InterruptNum,
+    ) -> Result<(), EnableInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { Traits::disable_interrupt_line(this) }
     }
 
     #[inline]
-    unsafe fn interrupt_line_pend(this: InterruptNum) -> Result<(), PendInterruptLineError> {
+    unsafe fn raw_interrupt_line_pend(this: InterruptNum) -> Result<(), PendInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { Traits::pend_interrupt_line(this) }
     }
 
     #[inline]
-    unsafe fn interrupt_line_clear(this: InterruptNum) -> Result<(), ClearInterruptLineError> {
+    unsafe fn raw_interrupt_line_clear(this: InterruptNum) -> Result<(), ClearInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
         unsafe { Traits::clear_interrupt_line(this) }
     }
 
     #[inline]
-    unsafe fn interrupt_line_is_pending(
+    unsafe fn raw_interrupt_line_is_pending(
         this: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
         // Safety: We are the kernel, so it's okay to call `Port`'s methods
@@ -127,7 +131,7 @@ impl<Traits: KernelTraits> InterruptAttr<Traits> {
                 }
             }
             if line_init.flags.contains(InterruptLineInitFlags::ENABLE) {
-                unsafe { System::<Traits>::interrupt_line_enable(line_init.line).unwrap() };
+                unsafe { System::<Traits>::raw_interrupt_line_enable(line_init.line).unwrap() };
             }
         }
     }

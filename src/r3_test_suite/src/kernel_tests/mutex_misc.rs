@@ -4,7 +4,9 @@ use arrayvec::ArrayVec;
 use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task},
+    kernel::{
+        prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task,
+    },
     time::Duration,
 };
 use wyhash::WyHash;

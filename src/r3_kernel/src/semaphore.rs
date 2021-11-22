@@ -28,7 +28,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     type SemaphoreId = SemaphoreId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn semaphore_drain(this: SemaphoreId) -> Result<(), DrainSemaphoreError> {
+    unsafe fn raw_semaphore_drain(this: SemaphoreId) -> Result<(), DrainSemaphoreError> {
         let mut lock = klock::lock_cpu::<Traits>()?;
         let semaphore_cb = Self::semaphore_cb(this)?;
         semaphore_cb.value.replace(&mut *lock, 0);
@@ -36,14 +36,14 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn semaphore_get(this: SemaphoreId) -> Result<SemaphoreValue, GetSemaphoreError> {
+    unsafe fn raw_semaphore_get(this: SemaphoreId) -> Result<SemaphoreValue, GetSemaphoreError> {
         let lock = klock::lock_cpu::<Traits>()?;
         let semaphore_cb = Self::semaphore_cb(this)?;
         Ok(semaphore_cb.value.get(&*lock))
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn semaphore_signal(
+    unsafe fn raw_semaphore_signal(
         this: SemaphoreId,
         count: SemaphoreValue,
     ) -> Result<(), SignalSemaphoreError> {
@@ -52,12 +52,12 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
         signal(semaphore_cb, lock, count)
     }
 
-    unsafe fn semaphore_signal_one(this: SemaphoreId) -> Result<(), SignalSemaphoreError> {
-        unsafe { Self::semaphore_signal(this, 1) }
+    unsafe fn raw_semaphore_signal_one(this: SemaphoreId) -> Result<(), SignalSemaphoreError> {
+        unsafe { Self::raw_semaphore_signal(this, 1) }
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn semaphore_wait_one(this: SemaphoreId) -> Result<(), WaitSemaphoreError> {
+    unsafe fn raw_semaphore_wait_one(this: SemaphoreId) -> Result<(), WaitSemaphoreError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
         let semaphore_cb = Self::semaphore_cb(this)?;
@@ -66,7 +66,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn semaphore_wait_one_timeout(
+    unsafe fn raw_semaphore_wait_one_timeout(
         this: SemaphoreId,
         timeout: Duration,
     ) -> Result<(), WaitSemaphoreTimeoutError> {
@@ -79,7 +79,7 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn semaphore_poll_one(this: SemaphoreId) -> Result<(), PollSemaphoreError> {
+    unsafe fn raw_semaphore_poll_one(this: SemaphoreId) -> Result<(), PollSemaphoreError> {
         let lock = klock::lock_cpu::<Traits>()?;
         let semaphore_cb = Self::semaphore_cb(this)?;
 

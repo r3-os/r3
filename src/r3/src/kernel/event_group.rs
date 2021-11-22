@@ -96,7 +96,7 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     pub fn set(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::event_group_set(self.0, bits) }
+        unsafe { System::raw_event_group_set(self.0, bits) }
     }
 
     /// Clear the specified bits.
@@ -104,7 +104,7 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     pub fn clear(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::event_group_clear(self.0, bits) }
+        unsafe { System::raw_event_group_clear(self.0, bits) }
     }
 
     /// Get the currently set bits.
@@ -112,7 +112,7 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     pub fn get(self) -> Result<EventGroupBits, GetEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::event_group_get(self.0) }
+        unsafe { System::raw_event_group_get(self.0) }
     }
 
     /// Wait for all or any of the specified bits to be set. Optionally, clear
@@ -133,7 +133,7 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     ) -> Result<EventGroupBits, WaitEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::event_group_wait(self.0, bits, flags) }
+        unsafe { System::raw_event_group_wait(self.0, bits, flags) }
     }
 
     /// [`wait`](Self::wait) with timeout.
@@ -146,7 +146,7 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     ) -> Result<EventGroupBits, WaitEventGroupTimeoutError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::event_group_wait_timeout(self.0, bits, flags, timeout) }
+        unsafe { System::raw_event_group_wait_timeout(self.0, bits, flags, timeout) }
     }
 
     /// Non-blocking version of [`wait`](Self::wait). Returns immediately with
@@ -160,7 +160,7 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     ) -> Result<EventGroupBits, PollEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::event_group_poll(self.0, bits, flags) }
+        unsafe { System::raw_event_group_poll(self.0, bits, flags) }
     }
 }
 

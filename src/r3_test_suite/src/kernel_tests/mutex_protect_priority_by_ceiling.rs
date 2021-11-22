@@ -2,7 +2,7 @@
 //! successfully prevents unbounded priority inversion.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Mutex, MutexProtocol, Task},
+    kernel::{prelude::*, traits, Cfg, Mutex, MutexProtocol, Task},
     time::Duration,
 };
 

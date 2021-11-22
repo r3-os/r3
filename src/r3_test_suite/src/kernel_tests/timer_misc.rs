@@ -2,7 +2,7 @@
 use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
-    kernel::{self, traits, Cfg, Task, Timer},
+    kernel::{self, prelude::*, traits, Cfg, Task, Timer},
     time::{Duration, Time},
 };
 use wyhash::WyHash;

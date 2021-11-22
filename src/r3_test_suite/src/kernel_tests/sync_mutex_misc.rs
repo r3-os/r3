@@ -2,7 +2,7 @@
 use assert_matches::assert_matches;
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task},
+    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
     sync::mutex::{self, Mutex},
 };
 

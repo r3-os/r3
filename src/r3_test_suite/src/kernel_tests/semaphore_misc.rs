@@ -1,7 +1,7 @@
 //! Validates error codes returned by semaphore manipulation methods. Also,
 //! checks miscellaneous properties of `Semaphore`.
 use core::num::NonZeroUsize;
-use r3::kernel::{traits, Cfg, Semaphore, Task};
+use r3::kernel::{prelude::*, traits, Cfg, Semaphore, Task};
 use wyhash::WyHash;
 
 use super::Driver;

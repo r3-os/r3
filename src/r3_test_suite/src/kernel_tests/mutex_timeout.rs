@@ -20,7 +20,7 @@
 //!
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, LockMutexTimeoutError, Mutex, Task},
+    kernel::{prelude::*, traits, Cfg, LockMutexTimeoutError, Mutex, Task},
     time::Duration,
 };
 

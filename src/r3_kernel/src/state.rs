@@ -17,7 +17,7 @@ pub(super) fn expect_task_context<Traits: KernelTraits>() -> Result<(), BadConte
 
 /// If the current context is not waitable, return `Err(BadContext)`.
 pub(super) fn expect_waitable_context<Traits: KernelTraits>() -> Result<(), BadContextError> {
-    if !Traits::is_task_context() || System::<Traits>::is_priority_boost_active() {
+    if !Traits::is_task_context() || System::<Traits>::raw_is_priority_boost_active() {
         Err(BadContextError::BadContext)
     } else {
         Ok(())
@@ -29,7 +29,7 @@ pub(super) fn expect_waitable_context<Traits: KernelTraits>() -> Result<(), BadC
 pub(super) fn boost_priority<Traits: KernelTraits>() -> Result<(), BoostPriorityError> {
     if Traits::is_cpu_lock_active()
         || !Traits::is_task_context()
-        || System::<Traits>::is_priority_boost_active()
+        || System::<Traits>::raw_is_priority_boost_active()
     {
         Err(BoostPriorityError::BadContext)
     } else {
@@ -43,7 +43,7 @@ pub(super) fn boost_priority<Traits: KernelTraits>() -> Result<(), BoostPriority
 /// Implements `Kernel::unboost_priority`.
 #[cfg(feature = "priority_boost")]
 pub(super) fn unboost_priority<Traits: KernelTraits>() -> Result<(), BoostPriorityError> {
-    if !Traits::is_task_context() || !System::<Traits>::is_priority_boost_active() {
+    if !Traits::is_task_context() || !System::<Traits>::raw_is_priority_boost_active() {
         Err(BoostPriorityError::BadContext)
     } else {
         // Acquire CPU Lock after checking other states so that

@@ -17,7 +17,7 @@
 //!           │ │                 ┊                  ┊     ┘
 //! ```
 //!
-use r3::kernel::{traits, Cfg, Task};
+use r3::kernel::{prelude::*, traits, Cfg, Task};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;

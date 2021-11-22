@@ -425,7 +425,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     pub fn start(self) -> Result<(), StartTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::timer_start(self.0) }
+        unsafe { System::raw_timer_start(self.0) }
     }
 
     /// Stop the timer (transition it into the Dormant state).
@@ -434,7 +434,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     pub fn stop(self) -> Result<(), StopTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::timer_stop(self.0) }
+        unsafe { System::raw_timer_stop(self.0) }
     }
 
     /// Set the duration before the next tick.
@@ -447,7 +447,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     pub fn set_delay(self, delay: Option<Duration>) -> Result<(), SetTimerDelayError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::timer_set_delay(self.0, delay) }
+        unsafe { System::raw_timer_set_delay(self.0, delay) }
     }
 
     /// Set the timer period, which is a quantity to be added to the timer's
@@ -457,7 +457,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     pub fn set_period(self, period: Option<Duration>) -> Result<(), SetTimerPeriodError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::timer_set_period(self.0, period) }
+        unsafe { System::raw_timer_set_period(self.0, period) }
     }
 }
 

@@ -496,7 +496,7 @@ pub(super) fn unlock_cpu_and_check_preemption<Traits: KernelTraits>(
 ) {
     // If Priority Boost is active, treat the currently running task as the
     // highest-priority task.
-    if System::<Traits>::is_priority_boost_active() {
+    if System::<Traits>::raw_is_priority_boost_active() {
         debug_assert_eq!(
             *Traits::state()
                 .running_task(lock.borrow_mut())
@@ -543,7 +543,7 @@ pub(super) fn choose_next_running_task<Traits: KernelTraits>(
 ) {
     // If Priority Boost is active, treat the currently running task as the
     // highest-priority task.
-    if System::<Traits>::is_priority_boost_active() {
+    if System::<Traits>::raw_is_priority_boost_active() {
         // Blocking system calls aren't allowed when Priority Boost is active
         debug_assert_eq!(
             *Traits::state()
