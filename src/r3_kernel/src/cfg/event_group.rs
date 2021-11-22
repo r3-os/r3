@@ -6,7 +6,7 @@ use r3::kernel::{
 
 use crate::{cfg::CfgBuilder, event_group, klock::CpuLockCell, wait, KernelTraits, Port};
 
-unsafe impl<Traits: KernelTraits> CfgEventGroup for CfgBuilder<Traits> {
+unsafe impl<Traits: KernelTraits> const CfgEventGroup for CfgBuilder<Traits> {
     fn event_group_define(
         &mut self,
         EventGroupDescriptor {
