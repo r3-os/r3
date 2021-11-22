@@ -4,18 +4,38 @@ use arrayvec::ArrayVec;
 use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task},
-    prelude::*,
+    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task},
     time::Duration,
 };
 use wyhash::WyHash;
 
 use super::Driver;
-use crate::utils::SeqTracker;
+use crate::utils::{conditional::KernelBoostPriorityExt, SeqTracker};
 
 const N: usize = 4;
 
-pub struct App<System> {
+// TODO: Somehow remove the `NonZeroUsize` bound
+pub trait SupportedSystem:
+    traits::KernelBase
+    + traits::KernelTaskSetPriority
+    + traits::KernelMutex<MutexId = NonZeroUsize>
+    + traits::KernelInterruptLine
+    + traits::KernelStatic
+    + KernelBoostPriorityExt
+{
+}
+impl<
+        T: traits::KernelBase
+            + traits::KernelTaskSetPriority
+            + traits::KernelMutex<MutexId = NonZeroUsize>
+            + traits::KernelInterruptLine
+            + traits::KernelStatic
+            + KernelBoostPriorityExt,
+    > SupportedSystem for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     task2: Task<System>,
     task3: Task<System>,
     int: Option<InterruptLine<System>>,
@@ -23,8 +43,14 @@ pub struct App<System> {
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgMutex
+            + ~const traits::CfgInterruptLine,
+    {
         Task::build()
             .start(task1_body::<System, D>)
             .priority(2)
@@ -79,7 +105,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
 
     app.seq.expect_and_replace(0, 1);
@@ -130,10 +156,9 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     );
     unsafe { System::release_cpu_lock().unwrap() };
 
-    #[cfg(feature = "priority_boost")]
-    {
+    if let Some(caps) = System::BOOST_PRIORITY_CAPABILITY {
         // Disallowed in a task, non-waitable context
-        System::boost_priority().unwrap();
+        System::boost_priority(caps).unwrap();
         assert_eq!(m1.unlock(), Err(r3::kernel::UnlockMutexError::BadContext));
         assert_eq!(m1.lock(), Err(r3::kernel::LockMutexError::BadContext));
         assert_eq!(
@@ -368,7 +393,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     app.task2.activate().unwrap();
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
     let [m1, ..] = app.m;
 
@@ -402,7 +427,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
     let [_, m2, ..] = app.m;
 
@@ -413,7 +438,7 @@ fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     m2.lock().unwrap();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
     let [m1, ..] = app.m;
 

@@ -1,21 +1,33 @@
 //! Sets and polls an event group in an interrupt handler.
-use r3::{
-    kernel::{
-        cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, InterruptHandler, InterruptLine,
-        PollEventGroupError, StartupHook, WaitEventGroupError,
-    },
-    prelude::*,
+use r3::kernel::{
+    traits, Cfg, EventGroup, EventGroupWaitFlags, InterruptHandler, InterruptLine,
+    PollEventGroupError, StartupHook, WaitEventGroupError,
 };
 
 use super::Driver;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelEventGroup + traits::KernelInterruptLine
+{
+}
+impl<T: traits::KernelBase + traits::KernelEventGroup + traits::KernelInterruptLine> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
     eg: EventGroup<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgEventGroup
+            + ~const traits::CfgInterruptLine,
+    {
         let eg = EventGroup::build().finish(b);
 
         StartupHook::build()
@@ -45,7 +57,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -58,7 +70,7 @@ fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     int.pend().unwrap();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let eg = D::app().eg;
 
     assert_eq!(

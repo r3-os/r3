@@ -16,21 +16,26 @@
 //!
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, Task},
-    prelude::*,
+    kernel::{traits, Cfg, Task},
 };
 
 use super::Driver;
 use crate::utils::{time::KernelTimeExt, SeqTracker};
 
-pub struct App<System> {
+pub trait SupportedSystem: traits::KernelBase + traits::KernelStatic + KernelTimeExt {}
+impl<T: traits::KernelBase + traits::KernelStatic + KernelTimeExt> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     task2: Task<System>,
     task3: Task<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         Task::build()
             .start(task1_body::<System, D>)
             .priority(3)
@@ -51,7 +56,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
     System::set_time_ms(0);
     D::app().task2.activate().unwrap();
@@ -64,7 +69,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(4, 5);
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
     // Start sleeping at system time 0ms
@@ -78,7 +83,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
 
     // Start sleeping at system time 0ms

@@ -2,19 +2,34 @@
 //! miscellaneous properties of such methods.
 use core::marker::PhantomData;
 use r3::{
-    kernel::{cfg::CfgBuilder, StartupHook, Task},
-    prelude::*,
+    kernel::{traits, Cfg, StartupHook, Task},
     time::{Duration, Time},
 };
 
 use super::Driver;
 
-pub struct App<System> {
+#[cfg(feature = "system_time")]
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelAdjustTime + traits::KernelTime
+{
+}
+#[cfg(feature = "system_time")]
+impl<T: traits::KernelBase + traits::KernelAdjustTime + traits::KernelTime> SupportedSystem for T {}
+
+#[cfg(not(feature = "system_time"))]
+pub trait SupportedSystem: traits::KernelBase + traits::KernelAdjustTime {}
+#[cfg(not(feature = "system_time"))]
+impl<T: traits::KernelBase + traits::KernelAdjustTime> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         StartupHook::build()
             .start(startup_hook::<System, D>)
             .finish(b);
@@ -30,7 +45,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Not a task context
     #[cfg(feature = "system_time")]
     assert_eq!(System::time(), Err(r3::kernel::TimeError::BadContext));
@@ -49,7 +64,7 @@ fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     );
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     #[cfg(feature = "system_time")]
     let now = {
         let now = System::time().unwrap();

@@ -1,18 +1,28 @@
 //! Checks the return codes of disallowed system calls made in a boot context.
 use core::marker::PhantomData;
-use r3::{
-    kernel::{self, cfg::CfgBuilder, StartupHook},
-    prelude::*,
-};
+use r3::kernel::{self, traits, Cfg, StartupHook};
 
 use super::Driver;
 
-pub struct App<System> {
+#[cfg(feature = "priority_boost")]
+pub trait SupportedSystem: traits::KernelBase + traits::KernelBoostPriority {}
+#[cfg(feature = "priority_boost")]
+impl<T: traits::KernelBase + traits::KernelBoostPriority> SupportedSystem for T {}
+
+#[cfg(not(feature = "priority_boost"))]
+pub trait SupportedSystem: traits::KernelBase {}
+#[cfg(not(feature = "priority_boost"))]
+impl<T: traits::KernelBase> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         StartupHook::build().start(hook::<System, D>).finish(b);
 
         App {
@@ -21,7 +31,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert!(System::has_cpu_lock());
 
     // Disallowed in a non-task context

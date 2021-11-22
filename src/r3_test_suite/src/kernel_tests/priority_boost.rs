@@ -1,18 +1,28 @@
 //! Activates and deactivates Priority Boost.
 use core::marker::PhantomData;
-use r3::{
-    kernel::{cfg::CfgBuilder, Task},
-    prelude::*,
-};
+use r3::kernel::{traits, Cfg, Task};
 
 use super::Driver;
 
-pub struct App<System> {
+#[cfg(feature = "priority_boost")]
+pub trait SupportedSystem: traits::KernelBase + traits::KernelBoostPriority {}
+#[cfg(feature = "priority_boost")]
+impl<T: traits::KernelBase + traits::KernelBoostPriority> SupportedSystem for T {}
+
+#[cfg(not(feature = "priority_boost"))]
+pub trait SupportedSystem: traits::KernelBase {}
+#[cfg(not(feature = "priority_boost"))]
+impl<T: traits::KernelBase> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(0)
@@ -26,7 +36,7 @@ impl<System: Kernel> App<System> {
 }
 
 #[cfg(feature = "priority_boost")]
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert!(!System::is_priority_boost_active());
 
     // Activate Priority Boost
@@ -79,7 +89,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 }
 
 #[cfg(not(feature = "priority_boost"))]
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Priority Boost is always inactive when it's statically disabled
     assert!(!System::is_priority_boost_active());
 

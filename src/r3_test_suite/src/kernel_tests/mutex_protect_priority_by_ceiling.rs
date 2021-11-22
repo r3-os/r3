@@ -2,15 +2,17 @@
 //! successfully prevents unbounded priority inversion.
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, Mutex, MutexProtocol, Task},
-    prelude::*,
+    kernel::{traits, Cfg, Mutex, MutexProtocol, Task},
     time::Duration,
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem: traits::KernelBase + traits::KernelMutex + traits::KernelStatic {}
+impl<T: traits::KernelBase + traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     task0: Task<System>,
     task1: Task<System>,
     task2: Task<System>,
@@ -18,8 +20,13 @@ pub struct App<System> {
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgMutex,
+    {
         let task0 = Task::build()
             .start(task0_body::<System, D>)
             .priority(0)
@@ -47,7 +54,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task0_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task0_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
     D::app().task1.activate().unwrap();
 
@@ -59,7 +66,7 @@ fn task0_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().mtx.unlock().unwrap();
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(4, 5);
 
     // Enter a busy loop, indefinitely blocking priority 2.
@@ -68,7 +75,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(D::app().task2.effective_priority().unwrap(), 2);
     assert_eq!(D::app().task2.priority().unwrap(), 2);
 

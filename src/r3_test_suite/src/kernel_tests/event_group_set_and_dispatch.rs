@@ -1,20 +1,33 @@
 //! Sets an event group, waking up a task.
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Task},
-    prelude::*,
+    kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, Task},
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelEventGroup + traits::KernelStatic
+{
+}
+impl<T: traits::KernelBase + traits::KernelEventGroup + traits::KernelStatic> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     eg: EventGroup<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgEventGroup,
+    {
         Task::build()
             .start(task1_body::<System, D>)
             .priority(2)
@@ -43,7 +56,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(3, 4);
 
     D::app().eg.set(0b1111).unwrap(); // unblocks `task2`, `task3`, and `task4`
@@ -55,7 +68,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
 
     D::app().eg.wait(0b01, EventGroupWaitFlags::CLEAR).unwrap(); // start waiting, switching to `task3`
@@ -64,7 +77,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // unblocks `task3`
 }
 
-fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
     D::app().eg.wait(0b10, EventGroupWaitFlags::CLEAR).unwrap(); // start waiting, switching to `task4`
@@ -73,7 +86,7 @@ fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // unblocks `task4`
 }
 
-fn task4_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task4_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
 
     D::app().eg.wait(0b1100, EventGroupWaitFlags::ALL).unwrap(); // start waiting, switching to `task1`

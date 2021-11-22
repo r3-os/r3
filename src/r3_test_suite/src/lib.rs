@@ -1,6 +1,9 @@
+#![feature(const_transmute_copy)]
 #![feature(const_fn_trait_bound)]
+#![feature(const_refs_to_cell)]
 #![feature(const_option)]
 #![feature(const_mut_refs)]
+#![feature(const_trait_impl)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(decl_macro)]
@@ -354,7 +357,7 @@ pub mod kernel_benchmarks {
 
     /// The interface provided by [`use_benchmark_in_kernel_benchmark!`] and
     /// consumed by an inner app.
-    trait Bencher<System, App> {
+    trait Bencher<System: crate::utils::benchmark::SupportedSystem, App> {
         /// Get a reference to `App` of the inner app.
         fn app() -> &'static App;
 
@@ -382,33 +385,39 @@ pub mod kernel_benchmarks {
     #[allow(unused_macros)]
     macro_rules! use_benchmark_in_kernel_benchmark {
         {
-            pub unsafe struct App<System> {
+            $( #[cfg_bounds( $($tt:tt)* )] )?
+            pub unsafe struct App<System: $SystemBounds:path> {
                 inner: $inner_ty:ty,
             }
         } => {
             use crate::kernel_benchmarks::Driver;
             use crate::utils::benchmark;
 
-            pub struct App<System> {
+            pub struct App<System: benchmark::SupportedSystem + $SystemBounds> {
                 benchmark: benchmark::BencherCottage<System>,
                 inner: $inner_ty,
             }
 
             struct MyBencherOptions<System, D>(core::marker::PhantomData<(System, D)>);
 
-            impl<System: r3::kernel::Kernel> App<System> {
-                pub const fn new<D: Driver<Self>>(
-                    b: &mut r3::kernel::cfg::CfgBuilder<System>,
-                ) -> Self {
+            impl<System: benchmark::SupportedSystem + $SystemBounds> App<System> {
+                pub const fn new<C, D: Driver<Self>>(
+                    b: &mut r3::kernel::Cfg<C>,
+                ) -> Self
+                where
+                    C: ~const r3::kernel::traits::CfgBase<System = System> +
+                       ~const r3::kernel::traits::CfgTask,
+                    $( C: $($tt)* )?
+                {
                     App {
-                        benchmark: benchmark::configure::<System, MyBencherOptions<System, D>>(b),
-                        inner: <$inner_ty>::new::<MyBencherOptions<System, D>>(b),
+                        benchmark: benchmark::configure::<C, System, MyBencherOptions<System, D>>(b),
+                        inner: <$inner_ty>::new::<C, MyBencherOptions<System, D>>(b),
                     }
                 }
             }
 
             /// benchmark framework → app
-            unsafe impl<System: r3::kernel::Kernel, D: Driver<App<System>>>
+            unsafe impl<System: benchmark::SupportedSystem + $SystemBounds, D: Driver<App<System>>>
                 benchmark::BencherOptions<System> for MyBencherOptions<System, D>
             {
                 fn cottage() -> &'static benchmark::BencherCottage<System> {
@@ -431,7 +440,7 @@ pub mod kernel_benchmarks {
             }
 
             /// app → benchmark framework
-            impl<System: r3::kernel::Kernel, D: Driver<App<System>>>
+            impl<System: benchmark::SupportedSystem + $SystemBounds, D: Driver<App<System>>>
                 crate::kernel_benchmarks::Bencher<System, $inner_ty> for MyBencherOptions<System, D>
             {
                 fn app() -> &'static $inner_ty {
@@ -526,7 +535,8 @@ pub mod kernel_benchmarks {
         [$]
         (mod mutex_ceiling {}, "mutex_ceiling"),
         (mod mutex_none {}, "mutex_none"),
-        (mod port {}, "port"),
+        // TODO: `port` is specific to `r3_kernel`
+        // (mod port {}, "port"),
         (mod semaphore {}, "semaphore"),
         (mod task_lifecycle {}, "task_lifecycle"),
         (mod timer_start {}, "timer_start"),

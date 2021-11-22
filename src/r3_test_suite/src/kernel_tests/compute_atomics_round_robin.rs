@@ -94,8 +94,7 @@ use core::{
 };
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, Task, Timer},
-    prelude::*,
+    kernel::{traits, Cfg, Task, Timer},
     time::Duration,
     utils::Init,
 };
@@ -104,15 +103,33 @@ use super::Driver;
 
 const NUM_TASKS: usize = 2;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelTimer + traits::KernelStatic
+{
+}
+impl<
+        T: traits::KernelBase
+            + traits::KernelTaskSetPriority
+            + traits::KernelTimer
+            + traits::KernelStatic,
+    > SupportedSystem for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     timer: Timer<System>,
     tasks: [Task<System>; NUM_TASKS],
     judge_task: Task<System>,
     state: Hunk<System, State>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgTimer,
+    {
         let timer = Timer::build()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(10))
@@ -187,7 +204,7 @@ impl Init for SchedState {
     };
 }
 
-fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
+fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize) {
     let App { state, .. } = D::app();
 
     let mut local_counter = Wrapping(0usize);
@@ -219,7 +236,7 @@ fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
     }
 }
 
-fn judge_task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn judge_task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { state, .. } = D::app();
 
     let counter = state.counter.load(Ordering::Relaxed);
@@ -242,7 +259,7 @@ fn judge_task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn timer_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App {
         state,
         tasks,

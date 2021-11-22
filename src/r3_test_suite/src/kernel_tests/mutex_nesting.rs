@@ -1,18 +1,29 @@
 //! Locks multiple mutexes and makes sure the current task's effective priority
 //! is updated correctly.
-use r3::{
-    kernel::{cfg::CfgBuilder, Mutex, MutexProtocol, Task},
-    prelude::*,
-};
+use r3::kernel::{traits, Cfg, Mutex, MutexProtocol, Task};
 
 use super::Driver;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelMutex
+{
+}
+impl<T: traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelMutex> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     m: [Mutex<System>; 4],
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgMutex,
+    {
         b.num_task_priority_levels(16);
 
         Task::build()
@@ -32,7 +43,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { m } = D::app();
 
     let cur_task: Task<System> = Task::current().unwrap().unwrap();

@@ -1,12 +1,15 @@
 //! The common part of `mutex_*`. See [`super::mutex_none`] for a sequence
 //! diagram.
 use core::marker::PhantomData;
-use r3::kernel::{cfg::CfgBuilder, Kernel, Mutex, MutexProtocol, Task};
+use r3::kernel::{traits, Cfg, Mutex, MutexProtocol, Task};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;
 
-pub(super) struct AppInner<System, Options> {
+pub trait SupportedSystem: crate::utils::benchmark::SupportedSystem + traits::KernelMutex {}
+impl<T: crate::utils::benchmark::SupportedSystem + traits::KernelMutex> SupportedSystem for T {}
+
+pub(super) struct AppInner<System: SupportedSystem, Options> {
     task1: Task<System>,
     mtx: Mutex<System>,
     _phantom: PhantomData<Options>,
@@ -34,9 +37,14 @@ const I_LOCK: Interval = "lock mutex";
 const I_UNLOCK_DISPATCHING: Interval = "unlock mutex with dispatch";
 const I_UNLOCK: Interval = "unlock mutex";
 
-impl<System: Kernel, Options: MutexBenchmarkOptions> AppInner<System, Options> {
+impl<System: SupportedSystem, Options: MutexBenchmarkOptions> AppInner<System, Options> {
     /// Used by `use_benchmark_in_kernel_benchmark!`
-    pub(super) const fn new<B: Bencher<System, Self>>(b: &mut CfgBuilder<System>) -> Self {
+    pub(super) const fn new<C, B: Bencher<System, Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgMutex,
+    {
         let task1 = Task::build()
             .start(task1_body::<System, Options, B>)
             .priority(1)
@@ -66,7 +74,7 @@ impl<System: Kernel, Options: MutexBenchmarkOptions> AppInner<System, Options> {
 }
 
 fn task1_body<
-    System: Kernel,
+    System: SupportedSystem,
     Options: MutexBenchmarkOptions,
     B: Bencher<System, AppInner<System, Options>>,
 >(

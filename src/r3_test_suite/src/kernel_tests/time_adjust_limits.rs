@@ -3,21 +3,46 @@
 //! [`adjust_time`]: r3::kernel::Kernel::adjust_time
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, AdjustTimeError, Task, TIME_USER_HEADROOM},
-    prelude::*,
+    kernel::{traits, AdjustTimeError, Cfg, Task},
     time::Duration,
 };
 
 use super::Driver;
 use crate::utils::{time::KernelTimeExt, SeqTracker};
 
-pub struct App<System> {
+// TODO: This test is specific to `r3_kernel`. Should be moved somewhere else?
+// Or include `TIME_USER_HEADROOM` in `r3`?
+const USER_HEADROOM: u32 = 1 << 29;
+const TIME_USER_HEADROOM: Duration = Duration::from_micros(USER_HEADROOM as i32);
+
+pub trait SupportedSystem:
+    traits::KernelBase
+    + traits::KernelAdjustTime
+    + traits::KernelBoostPriority
+    + traits::KernelStatic
+    + KernelTimeExt
+{
+}
+impl<
+        T: traits::KernelBase
+            + traits::KernelAdjustTime
+            + traits::KernelBoostPriority
+            + traits::KernelStatic
+            + KernelTimeExt,
+    > SupportedSystem for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     task2: Task<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         Task::build()
             .start(task1_body::<System, D>)
             .priority(3)
@@ -34,7 +59,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
     D::app().task2.activate().unwrap();
     D::app().seq.expect_and_replace(2, 3);
@@ -82,7 +107,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     unsafe { System::unboost_priority().unwrap() };
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 
     // Create a timeout scheduled at 1000ms

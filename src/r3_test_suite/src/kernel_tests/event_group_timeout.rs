@@ -15,23 +15,35 @@
 use r3::{
     hunk::Hunk,
     kernel::{
-        cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, QueueOrder, Task,
-        WaitEventGroupTimeoutError,
+        traits, Cfg, EventGroup, EventGroupWaitFlags, QueueOrder, Task, WaitEventGroupTimeoutError,
     },
-    prelude::*,
     time::Duration,
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelEventGroup + traits::KernelStatic
+{
+}
+impl<T: traits::KernelBase + traits::KernelEventGroup + traits::KernelStatic> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     eg: EventGroup<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgEventGroup,
+    {
         Task::build()
             .start(task0_body::<System, D>)
             .priority(2)
@@ -50,7 +62,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task0_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task0_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
     System::sleep(Duration::from_millis(300)).unwrap();
     // `task0` goes into sleep. `task1` wakes up first.
@@ -64,7 +76,7 @@ fn task0_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
 
     assert_eq!(

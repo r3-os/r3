@@ -1,21 +1,33 @@
 //! Validates error codes returned by event group manipulation methods. Also,
 //! checks miscellaneous properties of `EventGroup`.
 use core::num::NonZeroUsize;
-use r3::{
-    kernel::{cfg::CfgBuilder, EventGroup, Task},
-    prelude::*,
-};
+use r3::kernel::{traits, Cfg, EventGroup, Task};
 use wyhash::WyHash;
 
 use super::Driver;
 
-pub struct App<System> {
+// TODO: Somehow remove the `NonZeroUsize` bound
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelEventGroup<EventGroupId = NonZeroUsize>
+{
+}
+impl<T: traits::KernelBase + traits::KernelEventGroup<EventGroupId = NonZeroUsize>> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     eg1: EventGroup<System>,
     eg2: EventGroup<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgEventGroup,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(2)
@@ -28,7 +40,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // `PartialEq`
     let app = D::app();
     assert_ne!(app.eg1, app.eg2);

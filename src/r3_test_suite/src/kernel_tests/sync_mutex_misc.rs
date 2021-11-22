@@ -2,23 +2,41 @@
 use assert_matches::assert_matches;
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
-    prelude::*,
+    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task},
     sync::mutex::{self, Mutex},
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelInterruptLine + traits::KernelMutex + traits::KernelStatic
+{
+}
+impl<
+        T: traits::KernelBase
+            + traits::KernelInterruptLine
+            + traits::KernelMutex
+            + traits::KernelStatic,
+    > SupportedSystem for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
     eg1: Mutex<System, u32>,
     eg2: Mutex<System, u32>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgInterruptLine
+            + ~const traits::CfgMutex,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(2)
@@ -52,7 +70,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
 
     app.seq.expect_and_replace(0, 1);
@@ -104,7 +122,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
 
     app.seq.expect_and_replace(1, 2);

@@ -1,20 +1,30 @@
 //! Launches multiple tasks, each of which calls `sleep` repeatedly.
 use r3::{
-    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Task},
-    prelude::*,
+    kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, Task},
     time::{Duration, Time},
 };
 
 use super::Driver;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelTime + traits::KernelEventGroup
+{
+}
+impl<T: traits::KernelBase + traits::KernelTime + traits::KernelEventGroup> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     done: EventGroup<System>,
 }
 
 const TASKS: &[usize] = &[300, 150, 300, 750, 170];
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgEventGroup,
+    {
         let mut i = 0;
         // FIXME: Work-around for `for` being unsupported in `const fn`
         while i < TASKS.len() {
@@ -39,7 +49,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(i: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
     let delay = Duration::from_millis(TASKS[i] as _);
 
     for i in 0.. {
@@ -73,7 +83,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(i: usize) {
     D::app().done.set(1 << i).unwrap();
 }
 
-fn completion_task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn completion_task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Wait until all tasks run to completion
     D::app()
         .done

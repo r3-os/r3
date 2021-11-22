@@ -4,6 +4,7 @@ use r3::utils::Init;
 
 pub(crate) mod benchmark;
 pub(crate) mod compute;
+pub(crate) mod conditional;
 mod sort;
 pub(crate) mod time;
 mod trig;
