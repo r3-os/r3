@@ -28,7 +28,7 @@ _full = []
 num-integer = { version = "0.1.42", default-features = false }
 num-traits = { version = "0.2.11", default-features = false }
 pin-utils = { version = "0.1.0" }
-svgbobdoc = { version = "0.3.0-alpha.1" }
+svgbobdoc = { version = "0.3.0-alpha.2" }
 tokenlock = { version = "0.3.4", default-features = false }
 arrayvec = { version = "0.7.1", default-features = false }
 bitflags = { version = "1.2.1" }

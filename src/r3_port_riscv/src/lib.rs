@@ -11,6 +11,7 @@
 #![deny(unsupported_naked_functions)]
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]
+#![doc = include!("../doc/interrupts.rs")] // `![interrupts]`
 #![no_std]
 use core::ops::Range;
 use r3::kernel::{
