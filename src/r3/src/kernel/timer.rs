@@ -422,6 +422,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     /// Start the timer (transition it into the Active state).
     ///
     /// This method has no effect if the timer is already in the Active state.
+    #[inline]
     pub fn start(self) -> Result<(), StartTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
@@ -431,6 +432,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     /// Stop the timer (transition it into the Dormant state).
     ///
     /// This method has no effect if the timer is already in the Dormant state.
+    #[inline]
     pub fn stop(self) -> Result<(), StopTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
@@ -444,6 +446,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     /// following the activation.
     ///
     /// `None` means infinity (the timer will never fire).
+    #[inline]
     pub fn set_delay(self, delay: Option<Duration>) -> Result<(), SetTimerDelayError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
@@ -454,6 +457,7 @@ impl<System: raw::KernelTimer> Timer<System> {
     /// absolute arrival time on every tick.
     ///
     /// `None` means infinity.
+    #[inline]
     pub fn set_period(self, period: Option<Duration>) -> Result<(), SetTimerPeriodError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.

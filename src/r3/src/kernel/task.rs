@@ -135,12 +135,14 @@ impl<System: raw::KernelBase> Task<System> {
     /// deferred until the control returns to a task, but the current interrupt
     /// handler could be interrupted by another interrrupt, which might do
     /// scheduling on return (whether this happens or not is unspecified).
+    #[inline]
     pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
         // Safety: "Constructing a `Task` for a current task is allowed."
         System::raw_task_current().map(|x| x.map(|id| unsafe { Self::from_id(id) }))
     }
 
     /// Start the execution of the task.
+    #[inline]
     pub fn activate(self) -> Result<(), ActivateTaskError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
@@ -155,6 +157,7 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
     /// [`WaitTimeoutError::Interrupted`]: crate::kernel::WaitTimeoutError::Interrupted
+    #[inline]
     pub fn interrupt(self) -> Result<(), InterruptTaskError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
@@ -171,6 +174,7 @@ impl<System: raw::KernelBase> Task<System> {
     /// If the task is currently being blocked by `Kernel::park`, the token will
     /// be immediately consumed. Otherwise, it will be consumed on a next call
     /// to `Kernel::park`.
+    #[inline]
     pub fn unpark(self) -> Result<(), UnparkError> {
         match self.unpark_exact() {
             Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
@@ -190,6 +194,7 @@ impl<System: raw::KernelBase> Task<System> {
     /// If the task is currently being blocked by `Kernel::park`, the token will
     /// be immediately consumed. Otherwise, it will be consumed on a next call
     /// to `Kernel::park`.
+    #[inline]
     pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
@@ -213,6 +218,7 @@ impl<System: raw::KernelBase> Task<System> {
     /// return [`SetTaskPriorityError::BadObjectState`].
     ///
     /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
+    #[inline]
     pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError>
     where
         System: raw::KernelTaskSetPriority,
@@ -226,6 +232,7 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// The task shouldn't be in the Dormant state. Otherwise, this method will
     /// return [`GetTaskPriorityError::BadObjectState`].
+    #[inline]
     pub fn priority(self) -> Result<usize, GetTaskPriorityError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
@@ -242,6 +249,7 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// The task shouldn't be in the Dormant state. Otherwise, this method will
     /// return [`GetTaskPriorityError::BadObjectState`].
+    #[inline]
     pub fn effective_priority(self) -> Result<usize, GetTaskPriorityError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.

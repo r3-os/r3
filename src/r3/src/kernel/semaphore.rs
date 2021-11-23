@@ -90,6 +90,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     }
 
     /// Remove all permits held by the semaphore.
+    #[inline]
     pub fn drain(self) -> Result<(), DrainSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
@@ -97,6 +98,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     }
 
     /// Get the number of permits currently held by the semaphore.
+    #[inline]
     pub fn get(self) -> Result<SemaphoreValue, GetSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
@@ -104,6 +106,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     }
 
     /// Release `count` permits, returning them to the semaphore.
+    #[inline]
     pub fn signal(self, count: SemaphoreValue) -> Result<(), SignalSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
@@ -111,6 +114,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     }
 
     /// Release a permit, returning it to the semaphore.
+    #[inline]
     pub fn signal_one(self) -> Result<(), SignalSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
@@ -135,6 +139,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     /// > The support for multi-wait is relatively rare among operating systems.
     /// > It's not supported by POSIX, RTEMS, TOPPERS, VxWorks, nor Win32. The
     /// > rare exception is μT-Kernel.
+    #[inline]
     pub fn wait_one(self) -> Result<(), WaitSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
@@ -142,6 +147,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     }
 
     /// [`wait_one`](Self::wait_one) with timeout.
+    #[inline]
     pub fn wait_one_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
@@ -151,6 +157,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     /// Non-blocking version of [`wait_one`](Self::wait_one). Returns
     /// immediately with [`PollSemaphoreError::Timeout`] if the unblocking
     /// condition is not satisfied.
+    #[inline]
     pub fn poll_one(self) -> Result<(), PollSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
