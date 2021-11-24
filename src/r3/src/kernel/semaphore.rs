@@ -29,7 +29,7 @@ pub use raw::SemaphoreValue;
 /// > operating system.
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
-pub struct Semaphore<System: raw::KernelSemaphore>(System::SemaphoreId);
+pub struct Semaphore<System: raw::KernelSemaphore>(System::RawSemaphoreId);
 
 impl<System: raw::KernelSemaphore> Clone for Semaphore<System> {
     fn clone(&self) -> Self {
@@ -63,7 +63,7 @@ impl<System: raw::KernelSemaphore> fmt::Debug for Semaphore<System> {
 }
 
 impl<System: raw::KernelSemaphore> Semaphore<System> {
-    /// Construct a `Semaphore` from `SemaphoreId`.
+    /// Construct a `Semaphore` from `RawSemaphoreId`.
     ///
     /// # Safety
     ///
@@ -72,12 +72,12 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     /// manipulated except by its creator. This is usually prevented by making
     /// `Semaphore` an opaque handle, but this safeguard can be circumvented by
     /// this method.
-    pub const unsafe fn from_id(id: System::SemaphoreId) -> Self {
+    pub const unsafe fn from_id(id: System::RawSemaphoreId) -> Self {
         Self(id)
     }
 
-    /// Get the raw `SemaphoreId` value representing this semaphore.
-    pub const fn id(self) -> System::SemaphoreId {
+    /// Get the raw `RawSemaphoreId` value representing this semaphore.
+    pub const fn id(self) -> System::RawSemaphoreId {
         self.0
     }
 }

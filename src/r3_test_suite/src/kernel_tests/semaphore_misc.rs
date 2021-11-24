@@ -8,10 +8,10 @@ use super::Driver;
 
 // TODO: Somehow remove the `NonZeroUsize` bound
 pub trait SupportedSystem:
-    traits::KernelBase + traits::KernelSemaphore<SemaphoreId = NonZeroUsize>
+    traits::KernelBase + traits::KernelSemaphore<RawSemaphoreId = NonZeroUsize>
 {
 }
-impl<T: traits::KernelBase + traits::KernelSemaphore<SemaphoreId = NonZeroUsize>> SupportedSystem
+impl<T: traits::KernelBase + traits::KernelSemaphore<RawSemaphoreId = NonZeroUsize>> SupportedSystem
     for T
 {
 }

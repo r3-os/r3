@@ -23,7 +23,7 @@ impl<Traits: KernelTraits> System<Traits> {
 }
 
 unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
-    type TimerId = TimerId;
+    type RawTimerId = TimerId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_timer_start(this: TimerId) -> Result<(), StartTimerError> {

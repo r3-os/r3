@@ -16,7 +16,7 @@ use crate::utils::{
 // TODO: Somehow remove the `NonZeroUsize` bound
 pub trait SupportedSystem:
     traits::KernelBase
-    + traits::KernelTimer<TimerId = NonZeroUsize>
+    + traits::KernelTimer<RawTimerId = NonZeroUsize>
     + traits::KernelStatic
     + KernelBoostPriorityExt
     + KernelTimeExt
@@ -24,7 +24,7 @@ pub trait SupportedSystem:
 }
 impl<
         T: traits::KernelBase
-            + traits::KernelTimer<TimerId = NonZeroUsize>
+            + traits::KernelTimer<RawTimerId = NonZeroUsize>
             + traits::KernelStatic
             + KernelBoostPriorityExt
             + KernelTimeExt,

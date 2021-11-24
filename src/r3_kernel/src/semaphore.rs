@@ -25,7 +25,7 @@ impl<Traits: KernelTraits> System<Traits> {
 }
 
 unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Traits> {
-    type SemaphoreId = SemaphoreId;
+    type RawSemaphoreId = SemaphoreId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_semaphore_drain(this: SemaphoreId) -> Result<(), DrainSemaphoreError> {

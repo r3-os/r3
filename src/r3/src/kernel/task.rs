@@ -62,7 +62,7 @@ use crate::utils::{Init, PhantomInvariant};
 /// [activated]: Task::activate
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
-pub struct Task<System: raw::KernelBase>(System::TaskId);
+pub struct Task<System: raw::KernelBase>(System::RawTaskId);
 
 impl<System: raw::KernelBase> Clone for Task<System> {
     #[inline]
@@ -98,7 +98,7 @@ impl<System: raw::KernelBase> fmt::Debug for Task<System> {
 }
 
 impl<System: raw::KernelBase> Task<System> {
-    /// Construct a `Task` from `TaskId`.
+    /// Construct a `Task` from `RawTaskId`.
     ///
     /// # Safety
     ///
@@ -110,12 +110,12 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// Constructing a `Task` for a current task is allowed. This can be safely
     /// done by [`Task::current`].
-    pub const unsafe fn from_id(id: System::TaskId) -> Self {
+    pub const unsafe fn from_id(id: System::RawTaskId) -> Self {
         Self(id)
     }
 
-    /// Get the raw `TaskId` value representing this task.
-    pub const fn id(self) -> System::TaskId {
+    /// Get the raw `RawTaskId` value representing this task.
+    pub const fn id(self) -> System::RawTaskId {
         self.0
     }
 }

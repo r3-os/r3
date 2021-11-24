@@ -266,7 +266,7 @@ mod private {
 }
 
 impl<T: raw::KernelBase> Kernel for T {
-    type DebugPrinter = <Self as raw::KernelBase>::DebugPrinter;
+    type DebugPrinter = <Self as raw::KernelBase>::RawDebugPrinter;
 
     #[inline]
     fn debug() -> <Self as Kernel>::DebugPrinter {

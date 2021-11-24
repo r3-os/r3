@@ -263,7 +263,7 @@ pub use raw::MutexProtocol;
 ///
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
-pub struct Mutex<System: raw::KernelMutex>(System::MutexId);
+pub struct Mutex<System: raw::KernelMutex>(System::RawMutexId);
 
 impl<System: raw::KernelMutex> Clone for Mutex<System> {
     #[inline]
@@ -300,7 +300,7 @@ impl<System: raw::KernelMutex> fmt::Debug for Mutex<System> {
 }
 
 impl<System: raw::KernelMutex> Mutex<System> {
-    /// Construct a `Mutex` from `MutexId`.
+    /// Construct a `Mutex` from `RawMutexId`.
     ///
     /// # Safety
     ///
@@ -310,13 +310,13 @@ impl<System: raw::KernelMutex> Mutex<System> {
     /// `Mutex` an opaque handle, but this safeguard can be circumvented by
     /// this method.
     #[inline]
-    pub const unsafe fn from_id(id: System::MutexId) -> Self {
+    pub const unsafe fn from_id(id: System::RawMutexId) -> Self {
         Self(id)
     }
 
-    /// Get the raw `MutexId` value representing this mutex.
+    /// Get the raw `RawMutexId` value representing this mutex.
     #[inline]
-    pub const fn id(self) -> System::MutexId {
+    pub const fn id(self) -> System::RawMutexId {
         self.0
     }
 }

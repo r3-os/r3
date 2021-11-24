@@ -20,7 +20,7 @@ const N: usize = 4;
 pub trait SupportedSystem:
     traits::KernelBase
     + traits::KernelTaskSetPriority
-    + traits::KernelMutex<MutexId = NonZeroUsize>
+    + traits::KernelMutex<RawMutexId = NonZeroUsize>
     + traits::KernelInterruptLine
     + traits::KernelStatic
     + KernelBoostPriorityExt
@@ -29,7 +29,7 @@ pub trait SupportedSystem:
 impl<
         T: traits::KernelBase
             + traits::KernelTaskSetPriority
-            + traits::KernelMutex<MutexId = NonZeroUsize>
+            + traits::KernelMutex<RawMutexId = NonZeroUsize>
             + traits::KernelInterruptLine
             + traits::KernelStatic
             + KernelBoostPriorityExt,

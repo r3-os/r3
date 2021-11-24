@@ -8,11 +8,11 @@ use super::Driver;
 
 // TODO: Somehow remove the `NonZeroUsize` bound
 pub trait SupportedSystem:
-    traits::KernelBase + traits::KernelEventGroup<EventGroupId = NonZeroUsize>
+    traits::KernelBase + traits::KernelEventGroup<RawEventGroupId = NonZeroUsize>
 {
 }
-impl<T: traits::KernelBase + traits::KernelEventGroup<EventGroupId = NonZeroUsize>> SupportedSystem
-    for T
+impl<T: traits::KernelBase + traits::KernelEventGroup<RawEventGroupId = NonZeroUsize>>
+    SupportedSystem for T
 {
 }
 

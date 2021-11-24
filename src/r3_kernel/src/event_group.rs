@@ -25,7 +25,7 @@ impl<Traits: KernelTraits> System<Traits> {
 }
 
 unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<Traits> {
-    type EventGroupId = EventGroupId;
+    type RawEventGroupId = EventGroupId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_event_group_set(

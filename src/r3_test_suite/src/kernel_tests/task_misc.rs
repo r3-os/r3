@@ -8,11 +8,11 @@ use super::Driver;
 
 // TODO: Somehow remove the `NonZeroUsize` bound
 pub trait SupportedSystem:
-    traits::KernelBase<TaskId = NonZeroUsize> + traits::KernelTaskSetPriority
+    traits::KernelBase<RawTaskId = NonZeroUsize> + traits::KernelTaskSetPriority
 {
 }
-impl<T: traits::KernelBase<TaskId = NonZeroUsize> + traits::KernelTaskSetPriority> SupportedSystem
-    for T
+impl<T: traits::KernelBase<RawTaskId = NonZeroUsize> + traits::KernelTaskSetPriority>
+    SupportedSystem for T
 {
 }
 

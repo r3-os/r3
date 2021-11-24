@@ -179,7 +179,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
         task::put_current_task_on_sleep_timeout::<Traits>(timeout)
     }
 
-    type DebugPrinter = KernelDebugPrinter<Traits>;
+    type RawDebugPrinter = KernelDebugPrinter<Traits>;
 
     /// Get an object that implements [`Debug`](fmt::Debug) for dumping the
     /// current kernel state.
@@ -187,44 +187,48 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     /// Note that printing this object might consume a large amount of stack
     /// space.
     #[inline]
-    fn raw_debug() -> Self::DebugPrinter {
+    fn raw_debug() -> Self::RawDebugPrinter {
         KernelDebugPrinter(PhantomData)
     }
 
-    type TaskId = task::TaskId;
+    type RawTaskId = task::TaskId;
 
     #[inline]
-    fn raw_task_current() -> Result<Option<Self::TaskId>, r3::kernel::GetCurrentTaskError> {
+    fn raw_task_current() -> Result<Option<Self::RawTaskId>, r3::kernel::GetCurrentTaskError> {
         Self::task_current()
     }
 
     #[inline]
-    unsafe fn raw_task_activate(this: Self::TaskId) -> Result<(), r3::kernel::ActivateTaskError> {
+    unsafe fn raw_task_activate(
+        this: Self::RawTaskId,
+    ) -> Result<(), r3::kernel::ActivateTaskError> {
         Self::task_activate(this)
     }
 
     #[inline]
-    unsafe fn raw_task_interrupt(this: Self::TaskId) -> Result<(), r3::kernel::InterruptTaskError> {
+    unsafe fn raw_task_interrupt(
+        this: Self::RawTaskId,
+    ) -> Result<(), r3::kernel::InterruptTaskError> {
         Self::task_interrupt(this)
     }
 
     #[inline]
     unsafe fn raw_task_unpark_exact(
-        this: Self::TaskId,
+        this: Self::RawTaskId,
     ) -> Result<(), r3::kernel::UnparkExactError> {
         Self::task_unpark_exact(this)
     }
 
     #[inline]
     unsafe fn raw_task_priority(
-        this: Self::TaskId,
+        this: Self::RawTaskId,
     ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
         Self::task_priority(this)
     }
 
     #[inline]
     unsafe fn raw_task_effective_priority(
-        this: Self::TaskId,
+        this: Self::RawTaskId,
     ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
         Self::task_effective_priority(this)
     }
@@ -233,7 +237,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
 unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> {
     #[inline]
     unsafe fn raw_task_set_priority(
-        this: Self::TaskId,
+        this: Self::RawTaskId,
         priority: usize,
     ) -> Result<(), r3::kernel::SetTaskPriorityError> {
         Self::task_set_priority(this, priority)

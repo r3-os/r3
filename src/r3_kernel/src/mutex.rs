@@ -25,7 +25,7 @@ impl<Traits: KernelTraits> System<Traits> {
 }
 
 unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelMutex for System<Traits> {
-    type MutexId = MutexId;
+    type RawMutexId = MutexId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_mutex_is_locked(this: MutexId) -> Result<bool, QueryMutexError> {

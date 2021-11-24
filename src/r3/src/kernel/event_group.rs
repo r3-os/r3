@@ -26,7 +26,7 @@ pub use raw::{EventGroupBits, EventGroupWaitFlags};
 /// > event set (RTEMS, assigned to each task), Eventflag (μITRON4.0)
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
-pub struct EventGroup<System: raw::KernelEventGroup>(System::EventGroupId);
+pub struct EventGroup<System: raw::KernelEventGroup>(System::RawEventGroupId);
 
 impl<System: raw::KernelEventGroup> Clone for EventGroup<System> {
     #[inline]
@@ -63,7 +63,7 @@ impl<System: raw::KernelEventGroup> fmt::Debug for EventGroup<System> {
 }
 
 impl<System: raw::KernelEventGroup> EventGroup<System> {
-    /// Construct a `EventGroup` from `EventGroupId`.
+    /// Construct a `EventGroup` from `RawEventGroupId`.
     ///
     /// # Safety
     ///
@@ -73,13 +73,13 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     /// `EventGroup` an opaque handle, but this safeguard can be circumvented by
     /// this method.
     #[inline]
-    pub const unsafe fn from_id(id: System::EventGroupId) -> Self {
+    pub const unsafe fn from_id(id: System::RawEventGroupId) -> Self {
         Self(id)
     }
 
-    /// Get the raw `EventGroupId` value representing this event group.
+    /// Get the raw `RawEventGroupId` value representing this event group.
     #[inline]
-    pub const fn id(self) -> System::EventGroupId {
+    pub const fn id(self) -> System::RawEventGroupId {
         self.0
     }
 }

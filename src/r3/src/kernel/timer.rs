@@ -359,7 +359,7 @@ use crate::{
 ///
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
-pub struct Timer<System: raw::KernelTimer>(System::TimerId);
+pub struct Timer<System: raw::KernelTimer>(System::RawTimerId);
 
 impl<System: raw::KernelTimer> Clone for Timer<System> {
     fn clone(&self) -> Self {
@@ -393,7 +393,7 @@ impl<System: raw::KernelTimer> fmt::Debug for Timer<System> {
 }
 
 impl<System: raw::KernelTimer> Timer<System> {
-    /// Construct a `Timer` from `TimerId`.
+    /// Construct a `Timer` from `RawTimerId`.
     ///
     /// # Safety
     ///
@@ -402,12 +402,12 @@ impl<System: raw::KernelTimer> Timer<System> {
     /// manipulated except by its creator. This is usually prevented by making
     /// `Timer` an opaque handle, but this safeguard can be circumvented by
     /// this method.
-    pub const unsafe fn from_id(id: System::TimerId) -> Self {
+    pub const unsafe fn from_id(id: System::RawTimerId) -> Self {
         Self(id)
     }
 
-    /// Get the raw `TimerId` value representing this timer.
-    pub const fn id(self) -> System::TimerId {
+    /// Get the raw `RawTimerId` value representing this timer.
+    pub const fn id(self) -> System::RawTimerId {
         self.0
     }
 }

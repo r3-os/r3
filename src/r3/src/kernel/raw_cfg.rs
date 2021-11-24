@@ -40,7 +40,7 @@ pub unsafe trait CfgTask: CfgBase {
         &mut self,
         descriptor: TaskDescriptor<Self::System>,
         properties: Properties,
-    ) -> <Self::System as raw::KernelBase>::TaskId;
+    ) -> <Self::System as raw::KernelBase>::RawTaskId;
 }
 
 /// The basic properties of a task.
@@ -62,7 +62,7 @@ where
         &mut self,
         descriptor: EventGroupDescriptor<Self::System>,
         properties: Properties,
-    ) -> <Self::System as raw::KernelEventGroup>::EventGroupId;
+    ) -> <Self::System as raw::KernelEventGroup>::RawEventGroupId;
 }
 
 /// The basic properties of an event group.
@@ -81,7 +81,7 @@ where
         &mut self,
         descriptor: MutexDescriptor<Self::System>,
         properties: Properties,
-    ) -> <Self::System as raw::KernelMutex>::MutexId;
+    ) -> <Self::System as raw::KernelMutex>::RawMutexId;
 }
 
 /// The basic properties of a mutex.
@@ -99,7 +99,7 @@ where
         &mut self,
         descriptor: SemaphoreDescriptor<Self::System>,
         properties: Properties,
-    ) -> <Self::System as raw::KernelSemaphore>::SemaphoreId;
+    ) -> <Self::System as raw::KernelSemaphore>::RawSemaphoreId;
 }
 
 /// The basic properties of a semaphore.
@@ -119,7 +119,7 @@ where
         &mut self,
         descriptor: TimerDescriptor<Self::System>,
         properties: Properties,
-    ) -> <Self::System as raw::KernelTimer>::TimerId;
+    ) -> <Self::System as raw::KernelTimer>::RawTimerId;
 }
 
 /// The basic properties of a timer.
