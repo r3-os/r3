@@ -61,7 +61,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
         return;
     };
 
-    let managed_range = System::MANAGED_INTERRUPT_PRIORITY_RANGE;
+    let managed_range = System::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE;
 
     // `set_priority` is disallowed in a boot context
     assert_eq!(
@@ -99,7 +99,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
         return;
     };
 
-    let managed_range = System::MANAGED_INTERRUPT_PRIORITY_RANGE;
+    let managed_range = System::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE;
 
     if managed_range.end > managed_range.start {
         for pri in managed_range.clone() {

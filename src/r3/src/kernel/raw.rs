@@ -459,7 +459,7 @@ pub unsafe trait KernelInterruptLine: KernelBase {
     ///
     /// [managed]: crate#interrupt-handling-framework
     #[allow(clippy::reversed_empty_ranges)] // on purpose
-    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
+    const RAW_MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
 
     /// The list of interrupt lines which are considered [managed].
     ///
@@ -469,7 +469,7 @@ pub unsafe trait KernelInterruptLine: KernelBase {
     /// doesn't support changing interrupt line priorities.
     ///
     /// [managed]: crate#interrupt-handling-framework
-    const MANAGED_INTERRUPT_LINES: &'static [InterruptNum] = &[];
+    const RAW_MANAGED_INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
     /// Implements [`InterruptLine::set_priority`][1].
     ///

@@ -86,7 +86,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
         value: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
         // Deny unmanaged priority
-        if !System::MANAGED_INTERRUPT_PRIORITY_RANGE.contains(&value) {
+        if !System::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE.contains(&value) {
             return Err(SetInterruptLinePriorityError::BadParam);
         }
 
@@ -408,7 +408,7 @@ impl CfgInterruptLineInfo {
     /// that falls within a managed range.
     const fn is_initially_managed<System: raw::KernelInterruptLine>(&self) -> bool {
         if let Some(priority) = self.priority {
-            let range = System::MANAGED_INTERRUPT_PRIORITY_RANGE;
+            let range = System::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE;
             priority >= range.start && priority < range.end
         } else {
             false
@@ -446,7 +446,7 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: raw::KernelInt
         }
 
         let is_line_assumed_managed = {
-            let lines = System::MANAGED_INTERRUPT_LINES;
+            let lines = System::RAW_MANAGED_INTERRUPT_LINES;
             let mut i = 0;
             loop {
                 if i < lines.len() {
