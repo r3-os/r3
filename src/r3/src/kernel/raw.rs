@@ -163,6 +163,11 @@ pub unsafe trait KernelTaskSetPriority: KernelBase {
 ///
 /// See [the module documentation](self).
 pub unsafe trait KernelAdjustTime: KernelBase {
+    /// Implements [`Kernel::time_user_headroom`][1].
+    ///
+    /// [1]: crate::kernel::Kernel::time_user_headroom
+    const RAW_TIME_USER_HEADROOM: Duration = Duration::from_secs(1);
+
     /// Implements [`Kernel::adjust_time`][1].
     ///
     /// [1]: crate::kernel::Kernel::adjust_time

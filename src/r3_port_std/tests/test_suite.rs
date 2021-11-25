@@ -93,6 +93,7 @@ macro_rules! instantiate_kernel_tests {
 
                 const INTERRUPT_LINES: &'static [InterruptNum] = &[0, 1, 2, 3];
                 const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0, 4];
+                const TIME_USER_HEADROOM_IS_EXACT: bool = true;
             }
 
             static COTTAGE: test_case::App<System> =

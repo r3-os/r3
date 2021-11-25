@@ -10,11 +10,6 @@ use r3::{
 use super::Driver;
 use crate::utils::{conditional::KernelTimeExt, SeqTracker};
 
-// TODO: This test is specific to `r3_kernel`. Should be moved somewhere else?
-// Or include `TIME_USER_HEADROOM` in `r3`?
-const USER_HEADROOM: u32 = 1 << 29;
-const TIME_USER_HEADROOM: Duration = Duration::from_micros(USER_HEADROOM as i32);
-
 pub trait SupportedSystem:
     traits::KernelBase
     + traits::KernelAdjustTime
@@ -66,13 +61,20 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
     System::boost_priority().unwrap();
 
-    // `system_time += TIME_USER_HEADROOM + 1300ms`, which should fail because
-    // `task2`'s timeout would be late by `300ms`
-    log::debug!("system_time += TIME_USER_HEADROOM + 1300ms (should fail)");
-    assert_eq!(
-        System::adjust_time(TIME_USER_HEADROOM + Duration::from_millis(1300)),
-        Err(AdjustTimeError::BadObjectState),
-    );
+    let time_user_headroom = System::time_user_headroom();
+
+    // `time_user_headroom` must be at least one second
+    assert!(time_user_headroom >= Duration::from_secs(1));
+
+    if D::TIME_USER_HEADROOM_IS_EXACT {
+        // `system_time += time_user_headroom + 1300ms`, which should fail because
+        // `task2`'s timeout would be late by `300ms`
+        log::debug!("system_time += time_user_headroom + 1300ms (should fail)");
+        assert_eq!(
+            System::adjust_time(time_user_headroom + Duration::from_millis(1300)),
+            Err(AdjustTimeError::BadObjectState),
+        );
+    }
 
     // `system_time += 500ms`, which should succeed because
     // `task2`'s timeout will not be late
@@ -89,18 +91,20 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     log::debug!("system_time -= 700ms");
     System::adjust_time(Duration::from_millis(-700)).unwrap();
 
-    // `system_time -= TIME_USER_HEADROOM`, which should fail because the
-    // frontier would be away by `700ms + TIME_USER_HEADROOM`
-    log::debug!("system_time -= TIME_USER_HEADROOM (should fail)");
-    assert_eq!(
-        System::adjust_time(Duration::from_millis(-TIME_USER_HEADROOM.as_millis())),
-        Err(AdjustTimeError::BadObjectState),
-    );
+    if D::TIME_USER_HEADROOM_IS_EXACT {
+        // `system_time -= time_user_headroom`, which should fail because the
+        // frontier would be away by `700ms + time_user_headroom`
+        log::debug!("system_time -= time_user_headroom (should fail)");
+        assert_eq!(
+            System::adjust_time(Duration::from_millis(-time_user_headroom.as_millis())),
+            Err(AdjustTimeError::BadObjectState),
+        );
+    }
 
-    // `system_time -= TIME_USER_HEADROOM - 900ms`, which should succeed because the frontier will be
-    // only away by `TIME_USER_HEADROOM - 200ms`
-    log::debug!("system_time -= TIME_USER_HEADROOM - 900ms");
-    System::adjust_time(TIME_USER_HEADROOM - Duration::from_millis(900)).unwrap();
+    // `system_time -= time_user_headroom - 900ms`, which should succeed because the frontier will be
+    // only away by `time_user_headroom - 200ms`
+    log::debug!("system_time -= time_user_headroom - 900ms");
+    System::adjust_time(time_user_headroom - Duration::from_millis(900)).unwrap();
 
     D::app().seq.expect_and_replace(3, 4);
 

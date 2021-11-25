@@ -261,6 +261,8 @@ unsafe impl<Traits: KernelTraits> raw::KernelTime for System<Traits> {
 }
 
 unsafe impl<Traits: KernelTraits> raw::KernelAdjustTime for System<Traits> {
+    const RAW_TIME_USER_HEADROOM: Duration = TIME_USER_HEADROOM;
+
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     fn raw_adjust_time(delta: Duration) -> Result<(), r3::kernel::AdjustTimeError> {
         timeout::adjust_system_and_event_time::<Traits>(delta)

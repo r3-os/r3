@@ -41,6 +41,17 @@ pub mod kernel_tests {
         /// Signal to the test runner that a test has failed.
         fn fail();
 
+        /// Indicates whether [`Kernel::time_user_headroom`][1] is exact and
+        /// [`Kernel::adjust_time`][2] will deterministically fail if the limit
+        /// is exceeded.
+        ///
+        /// Setting this to `true` enables additional tests that can catch bugs
+        /// in a kernel timing mechanism.
+        ///
+        /// [1]: r3::kernel::Kernel::time_user_headroom
+        /// [2]: r3::kernel::Kernel::adjust_time
+        const TIME_USER_HEADROOM_IS_EXACT: bool = false;
+
         /// The list of interrupt lines that can be used by test programs.
         ///
         ///  - The list can have an arbitrary number of elements. Some tests

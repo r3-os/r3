@@ -163,6 +163,24 @@ pub trait Kernel: private::Sealed {
     where
         Self: raw::KernelTime;
 
+    /// The extent of how overdue a timed event can be made or how far a timed
+    /// event can be delayed past `Duration::MAX` by a call to [`adjust_time`].
+    ///
+    /// This must be greater than or equal to one second. It might report a
+    /// smaller number than the actual limit, for example, because the kernel
+    /// might use a time representation wider than `Duration`.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Rationale:** Although it was intended to be an associated constant,
+    /// > trait bounds could not be applied to an associated constant due to the
+    /// > lack of compiler support.
+    ///
+    /// [`adjust_time`]: Self::adjust_time
+    fn time_user_headroom() -> Duration
+    where
+        Self: raw::KernelAdjustTime;
+
     /// Move the current [system time] forward or backward by the specified
     /// amount.
     ///
@@ -180,8 +198,8 @@ pub trait Kernel: private::Sealed {
     /// events, adjustment in this direction is unbounded. Otherwise, let
     /// `t` be the relative arrival time (in relation to the current time) of
     /// the earliest outstanding time event.
-    /// If `t - delta < -`[`TIME_USER_HEADROOM`] (i.e., if the adjustment would
-    /// make the event overdue by more than `TIME_USER_HEADROOM`), the check
+    /// If `t - delta < -`[`time_user_headroom`] (i.e., if the adjustment would
+    /// make the event overdue by more than `time_user_headroom`), the check
     /// will fail.
     ///
     /// The events made overdue by the call will be processed when the port
@@ -222,7 +240,7 @@ pub trait Kernel: private::Sealed {
     /// </center>
     ///
     /// Let `frontier` be the current relative time of the frontier (in relation
-    /// to the current time). If `frontier - delta > `[`TIME_USER_HEADROOM`]
+    /// to the current time). If `frontier - delta > `[`time_user_headroom`]
     /// (i.e., if the adjustment would move the frontier too far away), the
     /// check will fail.
     ///
@@ -235,7 +253,14 @@ pub trait Kernel: private::Sealed {
     /// > such as an intrinsic interrupt latency, insufficient timer resolution,
     /// > and uses of CPU Lock. This means the minimum value of `t` in the above
     /// > explanation is not `0` but a somewhat smaller value. The consequence
-    /// > is that `delta` can never reliably be `>= TIME_USER_HEADROOM`.
+    /// > is that `delta` can never reliably be `>= time_user_headroom`.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Notes:** As noted in its documentation, `time_user_headroom` merely
+    /// > defines the lower bound of a kernel's tolerance. Some kernel
+    /// > implementations might be more lenient and accept an adjustment request
+    /// > even under a circumstance where the above check fails.
     ///
     /// <div class="admonition-follows"></div>
     ///
@@ -260,6 +285,8 @@ pub trait Kernel: private::Sealed {
     /// > Also, the gap between the current time and the frontier is completely
     /// > in control of the code that calls `adjust_time`, making the behavior
     /// > more predictable.
+    ///
+    /// [`time_user_headroom`]: Self::time_user_headroom
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>
     where
         Self: raw::KernelAdjustTime;
@@ -367,6 +394,14 @@ impl<T: raw::KernelBase> Kernel for T {
     }
 
     #[inline]
+    fn time_user_headroom() -> Duration
+    where
+        Self: raw::KernelAdjustTime,
+    {
+        <T as raw::KernelAdjustTime>::RAW_TIME_USER_HEADROOM
+    }
+
+    #[inline]
     fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>
     where
         Self: raw::KernelAdjustTime,
@@ -395,3 +430,5 @@ impl<T: raw::KernelBase> Kernel for T {
         <T as raw::KernelBase>::raw_sleep(duration)
     }
 }
+
+// ----------------------------------------------------------------------------
