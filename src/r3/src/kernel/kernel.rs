@@ -15,6 +15,51 @@ use crate::{
 /// from the [`raw`] module. However, this trait is covered under a stronger
 /// semver guarantee as it's an application-facing API. (TODO: Link to the
 /// relevant portion of the document)
+///
+/// This trait intentionally doesn't include [`raw::KernelBase`] as its
+/// supertrait. It's incorrect to constrain a system type by this trait. See the
+/// examples below.
+///
+/// # Examples
+///
+/// ```
+/// use r3::kernel::{prelude::*, traits, Task, ParkError, BoostPriorityError};
+///
+/// fn park_while<System>(mut f: impl FnMut() -> bool) -> Result<(), ParkError>
+/// where
+///     System: traits::KernelBase,
+/// {
+///     while f() {
+///         System::park()?;
+///     }
+///     Ok(())
+/// }
+///
+/// // note: this function is not unwind-safe
+/// fn with_priority_boost<System>(f: impl FnOnce())
+///     -> Result<(), BoostPriorityError>
+/// where
+///     System: traits::KernelBase + traits::KernelBoostPriority,
+/// {
+///     System::boost_priority()?;
+///     f();
+///     unsafe { System::unboost_priority() }
+/// }
+/// ```
+///
+/// Don't constrain a system type by this trait:
+///
+/// ```compile_fail,E0277
+/// # use r3::kernel::{traits, Task};
+/// fn current_task<System>() -> Task<System>
+/// where
+///     System: traits::Kernel,
+/// {
+///     // ERROR: `System` doesn't implement `traits::KernelBase`
+///     Task::current().unwrap().unwrap()
+/// }
+/// ```
+#[doc = include_str!("../common.md")]
 pub trait Kernel: private::Sealed {
     type DebugPrinter: fmt::Debug + Send + Sync;
 
