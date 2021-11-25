@@ -1,6 +1,6 @@
 use core::ops::Range;
 use r3::{
-    kernel::{prelude::*, traits, TimeError},
+    kernel::{traits, Kernel, TimeError},
     time::{Duration, Time},
 };
 
