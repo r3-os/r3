@@ -124,8 +124,6 @@ macro_rules! vec_position {
 
 #[cfg(test)]
 mod tests {
-    use core::assert_matches::assert_matches;
-
     use super::*;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
@@ -154,16 +152,17 @@ mod tests {
     }
 
     #[test]
-    fn map() {
+    fn as_slice() {
         const fn array() {
             let mut x = ComptimeVec::new();
             x.push(1);
             x.push(2);
             x.push(3);
             let slice = x.as_slice();
-            assert_matches!(slice, [1, 2, 3]);
+            // FIXME: `assert_matches!` is not usable in `const fn` yet
+            assert!(matches!(slice, [1, 2, 3]));
         }
-        const _: () = array();
+        array();
     }
 
     #[test]
