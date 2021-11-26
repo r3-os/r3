@@ -26,29 +26,29 @@ impl GicRegs {
     /// `GicOptions` should be configured correctly and the memory-mapped
     /// registers should be accessible.
     #[inline(always)]
-    pub unsafe fn from_system<System: GicOptions>() -> Self {
+    pub unsafe fn from_system_traits<Traits: GicOptions>() -> Self {
         Self {
             distributor: unsafe {
-                &*(System::GIC_DISTRIBUTOR_BASE as *const gic_regs::GicDistributor)
+                &*(Traits::GIC_DISTRIBUTOR_BASE as *const gic_regs::GicDistributor)
             },
-            cpu_interface: unsafe { &*(System::GIC_CPU_BASE as *const gic_regs::GicCpuInterface) },
+            cpu_interface: unsafe { &*(Traits::GIC_CPU_BASE as *const gic_regs::GicCpuInterface) },
         }
     }
 }
 
 /// Implements [`crate::InterruptController::init`].
-pub fn init<System: Gic>() {
+pub fn init<Traits: Gic>() {
     let GicRegs {
         distributor,
         cpu_interface,
-    } = System::gic_regs();
+    } = Traits::gic_regs();
 
     // Disable the distributor
     distributor
         .CTLR
         .modify(gic_regs::GICD_CTLR::Enable::Disable);
 
-    let num_lines = System::num_interrupt_lines();
+    let num_lines = Traits::num_interrupt_lines();
 
     // Disable all interrupt lines
     for r in &distributor.ICENABLE[0..(num_lines + 31) / 32] {
@@ -74,8 +74,8 @@ pub fn init<System: Gic>() {
     cpu_interface.PMR.set(0xff);
 
     // Deactivate any active interrupts
-    while let Some(x) = acknowledge_interrupt::<System>() {
-        end_interrupt::<System>(x);
+    while let Some(x) = acknowledge_interrupt::<Traits>() {
+        end_interrupt::<Traits>(x);
     }
 
     // Allocate all priority bits for group priority
@@ -92,8 +92,8 @@ pub fn init<System: Gic>() {
 
 /// Implements [`crate::InterruptController::acknowledge_interrupt`].
 #[inline]
-pub fn acknowledge_interrupt<System: Gic>() -> Option<InterruptNum> {
-    let cpu_interface = System::gic_regs().cpu_interface;
+pub fn acknowledge_interrupt<Traits: Gic>() -> Option<InterruptNum> {
+    let cpu_interface = Traits::gic_regs().cpu_interface;
     let raw = cpu_interface.IAR.get();
     let interrupt_id = raw & 0x3ff;
     if interrupt_id == 0x3ff {
@@ -105,19 +105,19 @@ pub fn acknowledge_interrupt<System: Gic>() -> Option<InterruptNum> {
 
 /// Implements [`crate::InterruptController::end_interrupt`].
 #[inline]
-pub fn end_interrupt<System: Gic>(num: InterruptNum) {
-    let cpu_interface = System::gic_regs().cpu_interface;
+pub fn end_interrupt<Traits: Gic>(num: InterruptNum) {
+    let cpu_interface = Traits::gic_regs().cpu_interface;
     cpu_interface.EOIR.set(num as _);
 }
 
 /// Implements [`r3::kernel::PortInterrupts::set_interrupt_line_priority`].
-pub fn set_interrupt_line_priority<System: Gic>(
+pub fn set_interrupt_line_priority<Traits: Gic>(
     line: InterruptNum,
     priority: InterruptPriority,
 ) -> Result<(), SetInterruptLinePriorityError> {
-    let distributor = System::gic_regs().distributor;
+    let distributor = Traits::gic_regs().distributor;
 
-    if line >= System::num_interrupt_lines() || priority < 0 || priority > 255 {
+    if line >= Traits::num_interrupt_lines() || priority < 0 || priority > 255 {
         return Err(SetInterruptLinePriorityError::BadParam);
     }
 
@@ -127,13 +127,13 @@ pub fn set_interrupt_line_priority<System: Gic>(
 }
 
 /// Implements [`r3::kernel::PortInterrupts::enable_interrupt_line`].
-pub fn enable_interrupt_line<System: Gic>(
+pub fn enable_interrupt_line<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+    let distributor = Traits::gic_regs().distributor;
 
     // SGI (line `0..16`) does not support enabling/disabling.
-    if line < 16 || line >= System::num_interrupt_lines() {
+    if line < 16 || line >= Traits::num_interrupt_lines() {
         return Err(EnableInterruptLineError::BadParam);
     }
 
@@ -143,13 +143,13 @@ pub fn enable_interrupt_line<System: Gic>(
 }
 
 /// Implements [`r3::kernel::PortInterrupts::disable_interrupt_line`].
-pub fn disable_interrupt_line<System: Gic>(
+pub fn disable_interrupt_line<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+    let distributor = Traits::gic_regs().distributor;
 
     // SGI (line `0..16`) does not support enabling/disabling.
-    if line < 16 || line >= System::num_interrupt_lines() {
+    if line < 16 || line >= Traits::num_interrupt_lines() {
         return Err(EnableInterruptLineError::BadParam);
     }
 
@@ -159,10 +159,10 @@ pub fn disable_interrupt_line<System: Gic>(
 }
 
 /// Implements [`r3::kernel::PortInterrupts::pend_interrupt_line`].
-pub fn pend_interrupt_line<System: Gic>(line: InterruptNum) -> Result<(), PendInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+pub fn pend_interrupt_line<Traits: Gic>(line: InterruptNum) -> Result<(), PendInterruptLineError> {
+    let distributor = Traits::gic_regs().distributor;
 
-    if line >= System::num_interrupt_lines() {
+    if line >= Traits::num_interrupt_lines() {
         return Err(PendInterruptLineError::BadParam);
     } else if line < 16 {
         distributor.SPENDSGIR[line].set(1);
@@ -174,12 +174,12 @@ pub fn pend_interrupt_line<System: Gic>(line: InterruptNum) -> Result<(), PendIn
 }
 
 /// Implements [`r3::kernel::PortInterrupts::clear_interrupt_line`].
-pub fn clear_interrupt_line<System: Gic>(
+pub fn clear_interrupt_line<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<(), ClearInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+    let distributor = Traits::gic_regs().distributor;
 
-    if line >= System::num_interrupt_lines() {
+    if line >= Traits::num_interrupt_lines() {
         return Err(ClearInterruptLineError::BadParam);
     } else if line < 16 {
         distributor.CPENDSGIR[line].set(1);
@@ -191,12 +191,12 @@ pub fn clear_interrupt_line<System: Gic>(
 }
 
 /// Implements [`r3::kernel::PortInterrupts::is_interrupt_line_pending`].
-pub fn is_interrupt_line_pending<System: Gic>(
+pub fn is_interrupt_line_pending<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<bool, QueryInterruptLineError> {
-    let distributor = System::gic_regs().distributor;
+    let distributor = Traits::gic_regs().distributor;
 
-    if line >= System::num_interrupt_lines() {
+    if line >= Traits::num_interrupt_lines() {
         return Err(QueryInterruptLineError::BadParam);
     }
 

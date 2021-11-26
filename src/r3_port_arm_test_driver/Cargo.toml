@@ -34,6 +34,7 @@ output-semihosting = [
 [dependencies]
 r3_support_rza1 = { path = "../r3_support_rza1", optional = true, features = ["semver-exempt"] }
 r3_port_arm = { path = "../r3_port_arm", optional = true }
+r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
 arm_semihosting = { path = "../arm_semihosting", optional = true }
 r3 = { path = "../r3", optional = true }
 

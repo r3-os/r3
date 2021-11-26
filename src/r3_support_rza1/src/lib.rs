@@ -7,6 +7,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
+#![feature(const_trait_impl)]
 #![feature(asm)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
@@ -15,6 +16,10 @@
 /// Used by `use_os_timer!`
 #[doc(hidden)]
 pub extern crate r3;
+
+/// Used by `use_os_timer!`
+#[doc(hidden)]
+pub extern crate r3_kernel;
 
 /// Used by `use_os_timer!`
 #[doc(hidden)]

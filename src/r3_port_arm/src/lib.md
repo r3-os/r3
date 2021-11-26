@@ -51,7 +51,7 @@ As far as kernel timing is concerned, there is no universal solution for a Corte
 
 # Interrupt Controller
 
-Your system type should be combined with an interrupt controller driver by implementing [`PortInterrupts`] and [`InterruptController`]. Most systems are equipped with Arm Generic Interrupt Controller (GIC), whose driver is provided by [`use_gic!`].
+Your kernel trait type should be combined with an interrupt controller driver by implementing [`PortInterrupts`] and [`InterruptController`]. Most systems are equipped with Arm Generic Interrupt Controller (GIC), whose driver is provided by [`use_gic!`].
 
 The maximum possible range of valid interrupt numbers is `0..1020` (the upper bound varies across implementations). The range is statically partitioned as follows:
 
@@ -61,7 +61,7 @@ The maximum possible range of valid interrupt numbers is `0..1020` (the upper bo
 
 The valid priority range is `0..255`. All priorities are [*managed*] - unmanaged interrupts aren't supported yet.
 
-The GIC driver exposes additional operations on interrupt lines through [`Gic`] implemented on your system type.
+The GIC driver exposes additional operations on interrupt lines through [`Gic`] implemented on your kernel trait type.
 
 [`PortInterrupts`]: r3::kernel::PortInterrupts
 [*managed*]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE

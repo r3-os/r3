@@ -7,6 +7,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(naked_functions)]
+#![feature(const_trait_impl)]
 #![feature(asm)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
@@ -33,8 +34,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum,
-            cfg::CfgBuilder};
+        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum, Cfg};
         #[cfg(feature = "kernel_benchmarks")]
         use r3_test_suite::kernel_benchmarks;
         #[cfg(feature = "kernel_tests")]
@@ -54,18 +54,19 @@ macro_rules! instantiate_test {
             panic!("test failed");
         }
 
-        port::use_port!(unsafe struct System);
-        port::use_startup!(unsafe System);
+        type System = r3_kernel::System<SystemTraits>;
+        port::use_port!(unsafe struct SystemTraits);
+        port::use_startup!(unsafe SystemTraits);
         #[cfg(any(feature = "board-realview_pbx_a9", feature = "board-rza1"))]
-        port::use_gic!(unsafe impl PortInterrupts for System);
+        port::use_gic!(unsafe impl PortInterrupts for SystemTraits);
         #[cfg(feature = "board-realview_pbx_a9")]
-        port::use_sp804!(unsafe impl PortTimer for System);
+        port::use_sp804!(unsafe impl PortTimer for SystemTraits);
         #[cfg(feature = "board-rza1")]
-        r3_support_rza1::use_os_timer!(unsafe impl PortTimer for System);
+        r3_support_rza1::use_os_timer!(unsafe impl PortTimer for SystemTraits);
 
-        impl port::ThreadingOptions for System {}
+        impl port::ThreadingOptions for SystemTraits {}
 
-        impl port::StartupOptions for System {
+        impl port::StartupOptions for SystemTraits {
             #[cfg(feature = "board-realview_pbx_a9")]
             const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
                 port::MemoryMapSection::new(0x0100_0000..0x0140_0000, 0x0100_0000)
@@ -96,26 +97,26 @@ macro_rules! instantiate_test {
         }
 
         #[cfg(feature = "board-realview_pbx_a9")]
-        impl port::GicOptions for System {
+        impl port::GicOptions for SystemTraits {
             const GIC_DISTRIBUTOR_BASE: usize = 0x1f001000;
             const GIC_CPU_BASE: usize = 0x1f000100;
         }
 
         #[cfg(feature = "board-rza1")]
-        impl port::GicOptions for System {
+        impl port::GicOptions for SystemTraits {
             const GIC_DISTRIBUTOR_BASE: usize = 0xe8201000;
             const GIC_CPU_BASE: usize = 0xe8202000;
         }
 
         #[cfg(feature = "board-realview_pbx_a9")]
-        impl port::Sp804Options for System {
+        impl port::Sp804Options for SystemTraits {
             const SP804_BASE: usize = 0x10011000;
             const FREQUENCY: u64 = 1_000_000;
             const INTERRUPT_NUM: InterruptNum = 36;
         }
 
         #[cfg(feature = "board-rza1")]
-        impl r3_support_rza1::OsTimerOptions for System {
+        impl r3_support_rza1::OsTimerOptions for SystemTraits {
             const FREQUENCY: u64 = 33_333_000;
         }
 
@@ -162,13 +163,15 @@ macro_rules! instantiate_test {
         }
 
         static COTTAGE: test_case::App<System> =
-            r3::build!(System, configure_app => test_case::App<System>);
+            r3_kernel::build!(SystemTraits, configure_app => test_case::App<System>);
 
-        const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+        const fn configure_app(
+            b: &mut Cfg<r3_kernel::cfg::CfgBuilder<SystemTraits>>
+        ) -> test_case::App<System> {
             #[cfg(feature = "board-realview_pbx_a9")]
-            System::configure_sp804(b);
+            SystemTraits::configure_sp804(b);
             #[cfg(feature = "board-rza1")]
-            System::configure_os_timer(b);
+            SystemTraits::configure_os_timer(b);
 
             // Start PMU cycle counter
             #[cfg(feature = "kernel_benchmarks")]
@@ -191,7 +194,7 @@ macro_rules! instantiate_test {
                 logger_rza1_uart::init();
             }).finish(b);
 
-            test_case::App::new::<Driver>(b)
+            test_case::App::new::<_, Driver>(b)
         }
     };
 

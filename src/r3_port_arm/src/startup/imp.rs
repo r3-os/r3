@@ -10,7 +10,7 @@ struct VectorTable {
 }
 
 impl VectorTable {
-    const fn new<System: EntryPoint>() -> Self {
+    const fn new<Traits: EntryPoint>() -> Self {
         Self {
             // trampolines[N]:
             //      ldr pc, [pc, #24]   ; targets + N * 4
@@ -23,7 +23,7 @@ impl VectorTable {
                 prefetch_abort_handler,
                 data_abort_handler,
                 unhandled_exception_handler,
-                System::IRQ_ENTRY,
+                Traits::IRQ_ENTRY,
                 fiq_handler,
             ],
         }
@@ -31,7 +31,7 @@ impl VectorTable {
 }
 
 #[naked]
-pub extern "C" fn start<System: EntryPoint + StartupOptions>() {
+pub extern "C" fn start<Traits: EntryPoint + StartupOptions>() {
     unsafe {
         // Set the stack pointer before calling Rust code
         asm!("
@@ -60,13 +60,13 @@ pub extern "C" fn start<System: EntryPoint + StartupOptions>() {
 
             b {reset_handler1}
             ",
-            reset_handler1 = sym reset_handler1::<System>,
+            reset_handler1 = sym reset_handler1::<Traits>,
             options(noreturn),
         );
     }
 }
 
-extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
+extern "C" fn reset_handler1<Traits: EntryPoint + StartupOptions>() {
     arm::SCTLR.modify(
         // Disable data and unified caches
         arm::SCTLR::C::Disable +
@@ -118,7 +118,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
     }
 
     // Configure MMU
-    let page_table_ptr = (&System::PAGE_TABLE) as *const _ as usize;
+    let page_table_ptr = (&Traits::PAGE_TABLE) as *const _ as usize;
     arm::TTBCR.write(
         // Only use `TTBR0`
         arm::TTBCR::N.val(0) +
@@ -160,7 +160,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
         // Enable MMU
         arm::SCTLR::M::Enable +
         // Specify the vector table base address
-        if System::VECTOR_HIGH {
+        if Traits::VECTOR_HIGH {
             arm::SCTLR::V::High
         } else {
             arm::SCTLR::V::Low
@@ -189,7 +189,7 @@ extern "C" fn reset_handler1<System: EntryPoint + StartupOptions>() {
         r0::zero_bss(&mut __sbss, &mut __ebss);
     }
 
-    unsafe { System::start() };
+    unsafe { Traits::start() };
 }
 
 // FIXME: `pub` in these functions is to work around an ICE issue

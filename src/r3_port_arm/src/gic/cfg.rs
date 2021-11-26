@@ -8,8 +8,8 @@ use tock_registers::{
 use super::{gic_regs, imp::GicRegs};
 
 /// Implement [`PortInterrupts`], [`InterruptController`], and [`Gic`] on
-/// the given system type using the General Interrupt Controller (GIC) on the
-/// target.
+/// the given kernel trait type using the General Interrupt Controller (GIC) on
+/// the target.
 /// **Requires [`GicOptions`].**
 ///
 /// [`PortInterrupts`]: r3::kernel::PortInterrupts
@@ -23,27 +23,28 @@ use super::{gic_regs, imp::GicRegs};
 ///
 #[macro_export]
 macro_rules! use_gic {
-    (unsafe impl PortInterrupts for $sys:ty) => {
+    (unsafe impl PortInterrupts for $Traits:ty) => {
         const _: () = {
             use $crate::{
                 core::ops::Range,
                 gic::imp,
                 r3::kernel::{
                     ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
-                    InterruptPriority, PendInterruptLineError, PortInterrupts,
-                    QueryInterruptLineError, SetInterruptLinePriorityError,
+                    InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
+                    SetInterruptLinePriorityError,
                 },
+                r3_kernel::PortInterrupts,
                 Gic, InterruptController,
             };
 
-            unsafe impl Gic for $sys {
+            unsafe impl Gic for $Traits {
                 #[inline(always)]
                 fn gic_regs() -> imp::GicRegs {
-                    unsafe { imp::GicRegs::from_system::<Self>() }
+                    unsafe { imp::GicRegs::from_system_traits::<Self>() }
                 }
             }
 
-            unsafe impl PortInterrupts for $sys {
+            unsafe impl PortInterrupts for $Traits {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..255;
 
                 #[inline]
@@ -90,7 +91,7 @@ macro_rules! use_gic {
                 }
             }
 
-            impl InterruptController for $sys {
+            impl InterruptController for $Traits {
                 #[inline]
                 unsafe fn init() {
                     imp::init::<Self>()

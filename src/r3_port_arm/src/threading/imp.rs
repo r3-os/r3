@@ -1,21 +1,21 @@
 use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 use memoffset::offset_of;
 use r3::{
-    kernel::{Port, PortToKernel, TaskCb},
-    prelude::*,
+    kernel::traits,
     utils::{Init, ZeroInit},
 };
+use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
 use r3_portkit::sym::{sym_static, SymStaticExt};
 
 use super::cfg::{InterruptController, ThreadingOptions, Timer};
 
-/// Implemented on a system type by [`use_port!`].
+/// Implemented on a kernel trait type by [`use_port!`].
 ///
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_port!`].
 pub unsafe trait PortInstance:
-    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController + Timer
+    KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController + Timer
 {
     sym_static!(static PORT_STATE: SymStatic<State> = zeroed!());
 
@@ -58,29 +58,29 @@ impl Init for TaskState {
 }
 
 impl State {
-    pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
-        unsafe { self.enter_cpu_lock::<System>() };
+    pub unsafe fn port_boot<Traits: PortInstance>(&self) -> ! {
+        unsafe { self.enter_cpu_lock::<Traits>() };
 
-        unsafe { *self.running_task_ptr.get() = System::state().running_task_ptr() as *mut () };
-
-        // Safety: We are the port, so it's okay to call this
-        unsafe { <System as InterruptController>::init() };
+        unsafe { *self.running_task_ptr.get() = Traits::state().running_task_ptr() as *mut () };
 
         // Safety: We are the port, so it's okay to call this
-        unsafe { <System as Timer>::init() };
+        unsafe { <Traits as InterruptController>::init() };
 
         // Safety: We are the port, so it's okay to call this
-        unsafe { <System as PortToKernel>::boot() };
+        unsafe { <Traits as Timer>::init() };
+
+        // Safety: We are the port, so it's okay to call this
+        unsafe { <Traits as PortToKernel>::boot() };
     }
 
-    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
-        debug_assert!(self.is_cpu_lock_active::<System>());
+    pub unsafe fn dispatch_first_task<Traits: PortInstance>(&'static self) -> ! {
+        debug_assert!(self.is_cpu_lock_active::<Traits>());
 
         unsafe {
             asm!("
                 mov r0, sp
 
-                # Switch to System mode
+                # Switch to Traits mode
                 cps #0x1f
 
                 # `dispatch` needs stack
@@ -92,7 +92,7 @@ impl State {
                 b {push_second_level_state_and_dispatch}.dispatch
                 ",
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
                 in("r1") self.main_stack.get(),
                 options(noreturn),
             );
@@ -100,8 +100,8 @@ impl State {
     }
 
     #[inline(never)] // avoid symbol collision with `YieldReturn`
-    pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
-        if !self.is_task_context::<System>() {
+    pub unsafe fn yield_cpu<Traits: PortInstance>(&'static self) {
+        if !self.is_task_context::<Traits>() {
             unsafe { self.dispatch_pending.get().write_volatile(true) };
             return;
         }
@@ -134,7 +134,7 @@ impl State {
             0:        # YieldReturn
                 ",
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
                 out("r2") _,
                 out("r3") _,
             );
@@ -164,13 +164,13 @@ impl State {
     ///  - This function may overwrite any contents in the main stack.
     ///
     #[naked]
-    unsafe extern "C" fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
-        extern "C" fn choose_and_get_next_task<System: PortInstance>(
-        ) -> Option<&'static TaskCb<System>> {
+    unsafe extern "C" fn push_second_level_state_and_dispatch<Traits: PortInstance>() -> ! {
+        extern "C" fn choose_and_get_next_task<Traits: PortInstance>(
+        ) -> Option<&'static TaskCb<Traits>> {
             // Safety: CPU Lock active
-            unsafe { System::choose_running_task() };
+            unsafe { Traits::choose_running_task() };
 
-            unsafe { *System::state().running_task_ptr() }
+            unsafe { *Traits::state().running_task_ptr() }
         }
 
         unsafe {
@@ -251,11 +251,11 @@ impl State {
                 pop {{r0-r3, r12, lr}}
                 rfeia sp!
             ",
-                choose_and_get_next_task = sym choose_and_get_next_task::<System>,
+                choose_and_get_next_task = sym choose_and_get_next_task::<Traits>,
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
-                idle_task = sym Self::idle_task::<System>,
-                PORT_STATE = sym System::PORT_STATE,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
+                idle_task = sym Self::idle_task::<Traits>,
+                PORT_STATE = sym Traits::PORT_STATE,
                 OFFSET_RUNNING_TASK_PTR = const Self::OFFSET_RUNNING_TASK_PTR,
                 OFFSET_MAIN_STACK = const Self::OFFSET_MAIN_STACK,
                 options(noreturn),
@@ -267,7 +267,7 @@ impl State {
     /// is set. Otherwise, branch to `pop_first_level_state` (thus skipping the
     /// saving/restoration of second-level states).
     #[naked]
-    unsafe extern "C" fn push_second_level_state_and_dispatch_shortcutting<System: PortInstance>(
+    unsafe extern "C" fn push_second_level_state_and_dispatch_shortcutting<Traits: PortInstance>(
     ) -> ! {
         unsafe {
             asm!("
@@ -300,9 +300,9 @@ impl State {
                 b {push_second_level_state_and_dispatch}
             ",
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
-                idle_task = sym Self::idle_task::<System>,
-                PORT_STATE = sym System::PORT_STATE,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
+                idle_task = sym Self::idle_task::<Traits>,
+                PORT_STATE = sym Traits::PORT_STATE,
                 OFFSET_DISPATCH_PENDING = const Self::OFFSET_DISPATCH_PENDING,
                 options(noreturn),
             );
@@ -317,10 +317,10 @@ impl State {
     /// # Safety
     ///
     ///  - The processor should be in System mode (task context).
-    ///  - `*System::state().running_task_ptr()` should be `None`.
+    ///  - `*Traits::state().running_task_ptr()` should be `None`.
     ///
     #[naked]
-    unsafe extern "C" fn idle_task<System: PortInstance>() -> ! {
+    unsafe extern "C" fn idle_task<Traits: PortInstance>() -> ! {
         unsafe {
             asm!(
                 "
@@ -338,9 +338,9 @@ impl State {
         }
     }
 
-    pub unsafe fn exit_and_dispatch<System: PortInstance>(
+    pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
         &'static self,
-        _task: &'static TaskCb<System>,
+        _task: &'static TaskCb<Traits>,
     ) -> ! {
         unsafe {
             asm!(
@@ -349,26 +349,26 @@ impl State {
                 b {push_second_level_state_and_dispatch}.dispatch
                 ",
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
                 options(noreturn),
             );
         }
     }
 
     #[inline(always)]
-    pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
+    pub unsafe fn enter_cpu_lock<Traits: PortInstance>(&self) {
         // TODO: support unmanaged interrupts
         unsafe { asm!("cpsid i") };
     }
 
     #[inline(always)]
-    pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
+    pub unsafe fn leave_cpu_lock<Traits: PortInstance>(&'static self) {
         unsafe { asm!("cpsie i") };
     }
 
-    pub unsafe fn initialize_task_state<System: PortInstance>(
+    pub unsafe fn initialize_task_state<Traits: PortInstance>(
         &self,
-        task: &'static TaskCb<System>,
+        task: &'static TaskCb<Traits>,
     ) {
         let stack = task.attr.stack.as_ptr();
         let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<u32>;
@@ -393,7 +393,8 @@ impl State {
             first_level[4] = MaybeUninit::new(0x12121212);
         }
         // LR: The return address
-        first_level[5] = MaybeUninit::new(System::exit_task as usize as u32);
+        first_level[5] =
+            MaybeUninit::new(<System<Traits> as traits::KernelBase>::raw_exit_task as usize as u32);
         // PC: The entry point
         first_level[6] = MaybeUninit::new(task.attr.entry_point as usize as u32);
         // CPSR: System mode
@@ -423,14 +424,14 @@ impl State {
     }
 
     #[inline(always)]
-    pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
+    pub fn is_cpu_lock_active<Traits: PortInstance>(&self) -> bool {
         let cpsr: u32;
         unsafe { asm!("mrs {}, cpsr", out(reg) cpsr) };
         (cpsr & (1 << 7)) != 0
     }
 
     #[inline(always)]
-    pub fn is_task_context<System: PortInstance>(&self) -> bool {
+    pub fn is_task_context<Traits: PortInstance>(&self) -> bool {
         let cpsr: u32;
         unsafe { asm!("mrs {}, cpsr", out(reg) cpsr) };
         (cpsr & 0xf) == 0xf // System mode
@@ -438,7 +439,7 @@ impl State {
 
     /// Implements [`crate::EntryPoint::irq_entry`]
     #[naked]
-    pub unsafe extern "C" fn irq_entry<System: PortInstance>() -> ! {
+    pub unsafe extern "C" fn irq_entry<Traits: PortInstance>() -> ! {
         unsafe {
             asm!("
                 # Adjust `lr_irq` to get the preferred return address. (The
@@ -584,32 +585,32 @@ impl State {
                 # second-level state of the next task.
                 b {push_second_level_state_and_dispatch_shortcutting}
                 ",
-                handle_irq = sym Self::handle_irq::<System>,
+                handle_irq = sym Self::handle_irq::<Traits>,
                 push_second_level_state_and_dispatch_shortcutting =
-                    sym Self::push_second_level_state_and_dispatch_shortcutting::<System>,
+                    sym Self::push_second_level_state_and_dispatch_shortcutting::<Traits>,
                 options(noreturn),
             );
         }
     }
 
-    unsafe fn handle_irq<System: PortInstance>() {
+    unsafe fn handle_irq<Traits: PortInstance>() {
         // Safety: We are the port, so it's okay to call this
-        if let Some(line) = unsafe { System::acknowledge_interrupt() } {
+        if let Some(line) = unsafe { Traits::acknowledge_interrupt() } {
             // Now that we have signaled the acknowledgement of the current
             // exception, we can start accepting nested exceptions.
             unsafe { asm!("cpsie i") };
 
-            if let Some(handler) = System::INTERRUPT_HANDLERS.get(line) {
+            if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(line) {
                 // Safety: The first-level interrupt handler is the only code
                 //         allowed to call this
                 unsafe { handler() };
             }
 
             // Safety: We are the port, so it's okay to call this
-            unsafe { System::end_interrupt(line) };
+            unsafe { Traits::end_interrupt(line) };
         }
     }
 }
 
 /// Used by `use_port!`
-pub const fn validate<System: PortInstance>() {}
+pub const fn validate<Traits: PortInstance>() {}
