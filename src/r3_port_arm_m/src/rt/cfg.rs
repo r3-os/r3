@@ -1,8 +1,8 @@
 /// Generate entry points for [`::cortex_m_rt`]. **Requires [`EntryPoint`]
-/// and [`Kernel`] to be implemented.**
+/// and [`KernelTraits`] to be implemented.**
 ///
 /// [`EntryPoint`]: crate::EntryPoint
-/// [`Kernel`]: r3::kernel::Kernel
+/// [`KernelTraits`]: r3::kernel::KernelTraits
 ///
 /// This macro registers the following items:
 ///
@@ -13,16 +13,16 @@
 ///
 #[macro_export]
 macro_rules! use_rt {
-    (unsafe $sys:ty) => {
+    (unsafe $Traits:ty) => {
         const _: () = {
             use $crate::{
-                r3::kernel::KernelCfg2, rt::imp::ExceptionTrampoline, EntryPoint, INTERRUPT_SYSTICK,
+                r3_kernel::KernelCfg2, rt::imp::ExceptionTrampoline, EntryPoint, INTERRUPT_SYSTICK,
             };
 
             #[link_section = ".vector_table.interrupts"]
             #[no_mangle]
             static __INTERRUPTS: $crate::rt::imp::InterruptHandlerTable =
-                $crate::rt::imp::make_interrupt_handler_table::<$sys>();
+                $crate::rt::imp::make_interrupt_handler_table::<$Traits>();
 
             #[$crate::cortex_m_rt::entry]
             fn main() -> ! {
@@ -41,7 +41,7 @@ macro_rules! use_rt {
                     );
                 }
 
-                // `<$sys as EntryPoint>::HANDLE_PEND_SV` contains the address of the PendSV
+                // `<$Traits as EntryPoint>::HANDLE_PEND_SV` contains the address of the PendSV
                 // handler. Ideally we would like to simply assign the symbol address like the
                 // following:
                 //
@@ -57,14 +57,15 @@ macro_rules! use_rt {
                 //
                 #[link_section = ".text"]
                 static PEND_SV_TRAMPOLINE: ExceptionTrampoline =
-                    ExceptionTrampoline::new(<$sys as EntryPoint>::HANDLE_PEND_SV);
+                    ExceptionTrampoline::new(<$Traits as EntryPoint>::HANDLE_PEND_SV);
 
-                unsafe { <$sys as EntryPoint>::start() };
+                unsafe { <$Traits as EntryPoint>::start() };
             }
 
             #[$crate::cortex_m_rt::exception]
             fn SysTick() {
-                if let Some(x) = <$sys as KernelCfg2>::INTERRUPT_HANDLERS.get(INTERRUPT_SYSTICK) {
+                if let Some(x) = <$Traits as KernelCfg2>::INTERRUPT_HANDLERS.get(INTERRUPT_SYSTICK)
+                {
                     // Safety: It's a first-level interrupt handler here. CPU Lock inactive
                     unsafe { x() };
                 }

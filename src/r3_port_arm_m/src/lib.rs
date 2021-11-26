@@ -10,6 +10,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(slice_ptr_len)]
 #![feature(naked_functions)]
+#![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![doc = include_str!("./lib.md")]
@@ -52,6 +53,9 @@ pub extern crate core;
 /// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate r3;
+/// Used by `use_port!`
+#[doc(hidden)]
+pub extern crate r3_kernel;
 /// Used by `use_port!`
 #[doc(hidden)]
 #[cfg(target_os = "none")]
