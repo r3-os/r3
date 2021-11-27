@@ -43,10 +43,11 @@ macro_rules! use_plic {
                 core::ops::Range,
                 plic::{imp, plic_regs},
                 r3::kernel::{
-                    cfg::CfgBuilder, ClearInterruptLineError, EnableInterruptLineError,
-                    InterruptNum, InterruptPriority, PendInterruptLineError, PortInterrupts,
-                    QueryInterruptLineError, SetInterruptLinePriorityError,
+                    traits, Cfg, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
+                    InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
+                    SetInterruptLinePriorityError,
                 },
+                r3_kernel::{PortInterrupts, System},
                 InterruptController, Plic, PlicOptions,
             };
 
@@ -57,8 +58,11 @@ macro_rules! use_plic {
             }
 
             impl $Traits {
-                pub const fn configure_plic(b: &mut CfgBuilder<Self>) {
-                    imp::configure::<Self>(b)
+                pub const fn configure_plic<C>(b: &mut Cfg<C>)
+                where
+                    C: ~const traits::CfgInterruptLine<System = System<Self>>,
+                {
+                    imp::configure::<_, Self>(b)
                 }
             }
 
