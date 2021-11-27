@@ -15,6 +15,9 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelInterruptLine for Syste
     const RAW_MANAGED_INTERRUPT_PRIORITY_RANGE: core::ops::Range<InterruptPriority> =
         <Traits as PortInterrupts>::MANAGED_INTERRUPT_PRIORITY_RANGE;
 
+    const RAW_MANAGED_INTERRUPT_LINES: &'static [InterruptNum] =
+        <Traits as PortInterrupts>::MANAGED_INTERRUPT_LINES;
+
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_interrupt_line_set_priority(
         this: InterruptNum,

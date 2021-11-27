@@ -5,39 +5,42 @@
 //! GPIO pins 0 and 1 must not be driven externally.
 use core::sync::atomic::Ordering;
 use r3::kernel::{
-    cfg::CfgBuilder, ClearInterruptLineError, InterruptHandler, InterruptNum, Kernel,
-    PendInterruptLineError,
+    traits, Cfg, ClearInterruptLineError, InterruptHandler, InterruptNum, PendInterruptLineError,
 };
 
 #[macro_export]
 macro_rules! use_interrupt_e310x {
-    (unsafe impl InterruptController for $sys:ty) => {
+    (unsafe impl InterruptController for $Traits:ty) => {
         const _: () = {
             use core::ops::Range;
             use r3::kernel::{
-                cfg::CfgBuilder, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
+                traits, Cfg, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
                 InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
                 SetInterruptLinePriorityError,
             };
+            use r3_kernel::System;
             use r3_port_riscv::{
                 plic::{imp, plic_regs},
                 InterruptController, Plic, PlicOptions,
             };
 
-            unsafe impl Plic for $sys {
+            unsafe impl Plic for $Traits {
                 fn plic_regs() -> &'static plic_regs::Plic {
-                    unsafe { &*(<$sys as PlicOptions>::PLIC_BASE as *const plic_regs::Plic) }
+                    unsafe { &*(<$Traits as PlicOptions>::PLIC_BASE as *const plic_regs::Plic) }
                 }
             }
 
-            impl $sys {
-                pub const fn configure_interrupt(b: &mut CfgBuilder<Self>) {
-                    imp::configure::<Self>(b);
+            impl $Traits {
+                pub const fn configure_interrupt<C>(b: &mut Cfg<C>)
+                where
+                    C: ~const traits::CfgInterruptLine<System = System<Self>>,
+                {
+                    imp::configure::<_, Self>(b);
                     crate::interrupt_e310x::configure(b);
                 }
             }
 
-            impl PlicOptions for System {
+            impl PlicOptions for $Traits {
                 const MAX_PRIORITY: InterruptPriority = 7;
                 const MAX_NUM: InterruptNum = 127;
                 const PLIC_BASE: usize = 0x0c00_0000;
@@ -48,7 +51,7 @@ macro_rules! use_interrupt_e310x {
                 const USE_NESTING: bool = true;
             }
 
-            impl InterruptController for $sys {
+            impl InterruptController for $Traits {
                 #[inline]
                 unsafe fn init() {
                     imp::init::<Self>();
@@ -56,7 +59,7 @@ macro_rules! use_interrupt_e310x {
                 }
 
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
-                    0..(<$sys as PlicOptions>::MAX_PRIORITY + 1);
+                    0..(<$Traits as PlicOptions>::MAX_PRIORITY + 1);
 
                 #[inline]
                 unsafe fn set_interrupt_line_priority(
@@ -157,7 +160,11 @@ pub(crate) const INTERRUPT_GPIO1: InterruptNum =
     r3_port_riscv::INTERRUPT_PLATFORM_START + e310x::Interrupt::GPIO1 as InterruptNum;
 
 /// The configuration function.
-pub(crate) const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) -> () {
+pub(crate) const fn configure<C>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgInterruptLine,
+    C::System: traits::KernelInterruptLine,
+{
     // Automatically clear the interrupt line when an interrupt is taken
     unsafe {
         InterruptHandler::build()

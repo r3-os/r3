@@ -1,13 +1,13 @@
 use core::{cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice};
 use r3::{
     kernel::{
-        cfg::InterruptHandlerFn, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
-        InterruptPriority, PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
-        SetInterruptLinePriorityError, TaskCb,
+        interrupt::{InterruptHandlerFn, InterruptNum},
+        traits, ClearInterruptLineError, EnableInterruptLineError, InterruptPriority,
+        PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
     },
-    prelude::*,
     utils::Init,
 };
+use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
 use r3_portkit::pptext::pp_asm;
 
 use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
@@ -261,7 +261,7 @@ const MSTATUS_PART_MASK: usize = mstatus::FS_1;
 ///
 /// Only meant to be implemented by [`use_port!`].
 pub unsafe trait PortInstance:
-    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController
+    KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController
 {
     fn port_state() -> &'static State;
 
@@ -315,8 +315,8 @@ impl Init for TaskState {
 }
 
 impl State {
-    pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
-        unsafe { self.enter_cpu_lock::<System>() };
+    pub unsafe fn port_boot<Traits: PortInstance>(&self) -> ! {
+        unsafe { self.enter_cpu_lock::<Traits>() };
 
         // Enable FPU
         if cfg!(target_feature = "f") {
@@ -325,14 +325,14 @@ impl State {
         }
 
         // Safety: We are the port, so it's okay to call this
-        unsafe { <System as InterruptController>::init() };
+        unsafe { <Traits as InterruptController>::init() };
 
         // Enable local interrupts
         {
             let mut clear_set = [0usize; 2];
-            clear_set[System::USE_INTERRUPT_SOFTWARE as usize] |= mie::MSIE;
-            clear_set[System::USE_INTERRUPT_TIMER as usize] |= mie::MTIE;
-            clear_set[System::USE_INTERRUPT_EXTERNAL as usize] |= mie::MEIE;
+            clear_set[Traits::USE_INTERRUPT_SOFTWARE as usize] |= mie::MSIE;
+            clear_set[Traits::USE_INTERRUPT_TIMER as usize] |= mie::MTIE;
+            clear_set[Traits::USE_INTERRUPT_EXTERNAL as usize] |= mie::MEIE;
             if clear_set[0] != 0 {
                 mie::clear(clear_set[0]);
             }
@@ -342,11 +342,11 @@ impl State {
         }
 
         // Safety: We are the port, so it's okay to call this
-        unsafe { <System as PortToKernel>::boot() };
+        unsafe { <Traits as PortToKernel>::boot() };
     }
 
-    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
-        debug_assert!(self.is_cpu_lock_active::<System>());
+    pub unsafe fn dispatch_first_task<Traits: PortInstance>(&'static self) -> ! {
+        debug_assert!(self.is_cpu_lock_active::<Traits>());
 
         // We are going to dispatch the first task and enable interrupts, so
         // set `INTERRUPT_NESTING` to `-1`, indicating that there are no active
@@ -368,7 +368,7 @@ impl State {
                 ",
                 MAIN_STACK = sym MAIN_STACK,
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
                 MPIE = const mstatus::MPIE,
                 options(noreturn),
             );
@@ -376,8 +376,8 @@ impl State {
     }
 
     #[inline]
-    pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
-        if !self.is_task_context::<System>() {
+    pub unsafe fn yield_cpu<Traits: PortInstance>(&'static self) {
+        if !self.is_task_context::<Traits>() {
             unsafe { DISPATCH_PENDING = true };
         } else {
             // `yield_cpu_in_task` does not clobber any registers except
@@ -386,7 +386,7 @@ impl State {
                 asm!("
                     call {yield_cpu_in_task}
                     ",
-                    yield_cpu_in_task = sym Self::yield_cpu_in_task::<System>,
+                    yield_cpu_in_task = sym Self::yield_cpu_in_task::<Traits>,
                     out("ra") _,
                 );
             }
@@ -394,7 +394,7 @@ impl State {
     }
 
     #[naked]
-    unsafe extern "C" fn yield_cpu_in_task<System: PortInstance>() {
+    unsafe extern "C" fn yield_cpu_in_task<Traits: PortInstance>() {
         unsafe {
             pp_asm!("
             "   crate::threading::imp::asm_inc::define_load_store!()              "
@@ -479,7 +479,7 @@ impl State {
                 tail {push_second_level_state_and_dispatch}.not_shortcutting
                 ",
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
                 MIE = const mstatus::MIE,
                 FS_1 = const mstatus::FS_1,
                 X_SIZE = const X_SIZE,
@@ -538,26 +538,26 @@ impl State {
     ///  - The current task must not be the idle task.
     ///
     #[naked]
-    unsafe extern "C" fn push_second_level_state_and_dispatch<System: PortInstance>() -> ! {
+    unsafe extern "C" fn push_second_level_state_and_dispatch<Traits: PortInstance>() -> ! {
         #[repr(C)]
         struct A0A1<S, T>(S, T);
 
-        extern "C" fn choose_and_get_next_task<System: PortInstance>(
-        ) -> A0A1<MaybeUninit<usize>, Option<&'static TaskCb<System>>> {
+        extern "C" fn choose_and_get_next_task<Traits: PortInstance>(
+        ) -> A0A1<MaybeUninit<usize>, Option<&'static TaskCb<Traits>>> {
             // Safety: CPU Lock active
-            unsafe { System::choose_running_task() };
+            unsafe { Traits::choose_running_task() };
 
             A0A1(MaybeUninit::uninit(), unsafe {
-                *System::state().running_task_ptr()
+                *Traits::state().running_task_ptr()
             })
         }
 
-        extern "C" fn get_running_task<System: PortInstance>(
+        extern "C" fn get_running_task<Traits: PortInstance>(
             a0: usize,
-        ) -> A0A1<usize, Option<&'static TaskCb<System>>> {
+        ) -> A0A1<usize, Option<&'static TaskCb<Traits>>> {
             A0A1(
                 a0, // preserve `a0`
-                unsafe { *System::state().running_task_ptr() },
+                unsafe { *Traits::state().running_task_ptr() },
             )
         }
 
@@ -869,9 +869,9 @@ impl State {
                 j 3b
                 ",
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
-                choose_and_get_next_task = sym choose_and_get_next_task::<System>,
-                get_running_task = sym get_running_task::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
+                choose_and_get_next_task = sym choose_and_get_next_task::<Traits>,
+                get_running_task = sym get_running_task::<Traits>,
                 MAIN_STACK = sym MAIN_STACK,
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
                 MPP_M = const mstatus::MPP_M,
@@ -886,9 +886,9 @@ impl State {
         }
     }
 
-    pub unsafe fn exit_and_dispatch<System: PortInstance>(
+    pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
         &'static self,
-        _task: &'static TaskCb<System>,
+        _task: &'static TaskCb<Traits>,
     ) -> ! {
         unsafe {
             asm!("
@@ -899,30 +899,30 @@ impl State {
                 ",
                 MIE = const mstatus::MIE,
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
                 options(noreturn, nostack),
             );
         }
     }
 
     #[inline(always)]
-    pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
+    pub unsafe fn enter_cpu_lock<Traits: PortInstance>(&self) {
         mstatus::clear_i::<{ mstatus::MIE }>();
     }
 
     #[inline(always)]
-    pub unsafe fn try_enter_cpu_lock<System: PortInstance>(&self) -> bool {
+    pub unsafe fn try_enter_cpu_lock<Traits: PortInstance>(&self) -> bool {
         (mstatus::fetch_clear_i::<{ mstatus::MIE }>() & mstatus::MIE) != 0
     }
 
     #[inline(always)]
-    pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
+    pub unsafe fn leave_cpu_lock<Traits: PortInstance>(&'static self) {
         mstatus::set_i::<{ mstatus::MIE }>();
     }
 
-    pub unsafe fn initialize_task_state<System: PortInstance>(
+    pub unsafe fn initialize_task_state<Traits: PortInstance>(
         &self,
-        task: &'static TaskCb<System>,
+        task: &'static TaskCb<Traits>,
     ) {
         let stack = task.attr.stack.as_ptr();
         let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<usize>;
@@ -950,7 +950,8 @@ impl State {
         };
 
         // ra: The return address
-        first_level[0] = MaybeUninit::new(System::exit_task as usize as usize);
+        first_level[0] =
+            MaybeUninit::new(<System<Traits> as traits::KernelBase>::raw_exit_task as usize);
         // t0-t2: Uninitialized
         if preload_all {
             first_level[1] = preload_val(0x05);
@@ -1018,15 +1019,15 @@ impl State {
     }
 
     #[inline(always)]
-    pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
+    pub fn is_cpu_lock_active<Traits: PortInstance>(&self) -> bool {
         (mstatus::read() & mstatus::MIE) == 0
     }
 
-    pub fn is_task_context<System: PortInstance>(&self) -> bool {
+    pub fn is_task_context<Traits: PortInstance>(&self) -> bool {
         unsafe { INTERRUPT_NESTING < 0 }
     }
 
-    pub fn set_interrupt_line_priority<System: PortInstance>(
+    pub fn set_interrupt_line_priority<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
         priority: InterruptPriority,
@@ -1035,12 +1036,12 @@ impl State {
             Err(SetInterruptLinePriorityError::BadParam)
         } else {
             // Safety: We are delegating the call in the intended way
-            unsafe { <System as InterruptController>::set_interrupt_line_priority(num, priority) }
+            unsafe { <Traits as InterruptController>::set_interrupt_line_priority(num, priority) }
         }
     }
 
     #[inline]
-    pub fn enable_interrupt_line<System: PortInstance>(
+    pub fn enable_interrupt_line<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
@@ -1049,12 +1050,12 @@ impl State {
             Err(EnableInterruptLineError::BadParam)
         } else {
             // Safety: We are delegating the call in the intended way
-            unsafe { <System as InterruptController>::enable_interrupt_line(num) }
+            unsafe { <Traits as InterruptController>::enable_interrupt_line(num) }
         }
     }
 
     #[inline]
-    pub fn disable_interrupt_line<System: PortInstance>(
+    pub fn disable_interrupt_line<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
@@ -1063,12 +1064,12 @@ impl State {
             Err(EnableInterruptLineError::BadParam)
         } else {
             // Safety: We are delegating the call in the intended way
-            unsafe { <System as InterruptController>::disable_interrupt_line(num) }
+            unsafe { <Traits as InterruptController>::disable_interrupt_line(num) }
         }
     }
 
     #[inline]
-    pub fn pend_interrupt_line<System: PortInstance>(
+    pub fn pend_interrupt_line<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), PendInterruptLineError> {
@@ -1079,12 +1080,12 @@ impl State {
             Err(PendInterruptLineError::BadParam)
         } else {
             // Safety: We are delegating the call in the intended way
-            unsafe { <System as InterruptController>::pend_interrupt_line(num) }
+            unsafe { <Traits as InterruptController>::pend_interrupt_line(num) }
         }
     }
 
     #[inline]
-    pub fn clear_interrupt_line<System: PortInstance>(
+    pub fn clear_interrupt_line<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), ClearInterruptLineError> {
@@ -1095,12 +1096,12 @@ impl State {
             Err(ClearInterruptLineError::BadParam)
         } else {
             // Safety: We are delegating the call in the intended way
-            unsafe { <System as InterruptController>::clear_interrupt_line(num) }
+            unsafe { <Traits as InterruptController>::clear_interrupt_line(num) }
         }
     }
 
     #[inline]
-    pub fn is_interrupt_line_pending<System: PortInstance>(
+    pub fn is_interrupt_line_pending<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
@@ -1108,13 +1109,13 @@ impl State {
             Ok((mip::read() & (mip::MSIP << (num * 4))) != 0)
         } else {
             // Safety: We are delegating the call in the intended way
-            unsafe { <System as InterruptController>::is_interrupt_line_pending(num) }
+            unsafe { <Traits as InterruptController>::is_interrupt_line_pending(num) }
         }
     }
 
     /// Implements [`crate::EntryPoint::exception_handler`].
     #[naked]
-    pub unsafe extern "C" fn exception_handler<System: PortInstance>() -> ! {
+    pub unsafe extern "C" fn exception_handler<Traits: PortInstance>() -> ! {
         const FRAME_SIZE: usize = if cfg!(target_feature = "f") {
             // [background_sp, mstatus]
             X_SIZE * 2
@@ -1414,10 +1415,10 @@ impl State {
                 mv a2, x0
                 j 4b        # → SwitchToMainStack
                 ",
-                handle_interrupt = sym Self::handle_interrupt::<System>,
+                handle_interrupt = sym Self::handle_interrupt::<Traits>,
                 handle_exception = sym instemu::handle_exception,
                 push_second_level_state_and_dispatch =
-                    sym Self::push_second_level_state_and_dispatch::<System>,
+                    sym Self::push_second_level_state_and_dispatch::<Traits>,
                 INTERRUPT_NESTING = sym INTERRUPT_NESTING,
                 RESERVATION_ADDR_VALUE = sym instemu::RESERVATION_ADDR_VALUE,
                 MAIN_STACK = sym MAIN_STACK,
@@ -1432,10 +1433,10 @@ impl State {
         }
     }
 
-    unsafe fn handle_interrupt<System: PortInstance>() {
-        let all_local_interrupts = [0, mie::MSIE][System::USE_INTERRUPT_SOFTWARE as usize]
-            | [0, mie::MTIE][System::USE_INTERRUPT_TIMER as usize]
-            | [0, mie::MEIE][System::USE_INTERRUPT_EXTERNAL as usize];
+    unsafe fn handle_interrupt<Traits: PortInstance>() {
+        let all_local_interrupts = [0, mie::MSIE][Traits::USE_INTERRUPT_SOFTWARE as usize]
+            | [0, mie::MTIE][Traits::USE_INTERRUPT_TIMER as usize]
+            | [0, mie::MEIE][Traits::USE_INTERRUPT_EXTERNAL as usize];
 
         // `M[EST]IE` is used to simulate execution priority levels.
         //
@@ -1493,9 +1494,9 @@ impl State {
 
         // Check the pending flags and call the respective handlers in the
         // descending order of priority.
-        if System::USE_INTERRUPT_EXTERNAL && (old_mie & mie::MEIE) != 0 {
+        if Traits::USE_INTERRUPT_EXTERNAL && (old_mie & mie::MEIE) != 0 {
             // Safety: `USE_INTERRUPT_EXTERNAL == true`
-            let handler = System::INTERRUPT_EXTERNAL_HANDLER
+            let handler = Traits::INTERRUPT_EXTERNAL_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
             while (mip & mip::MEIP) != 0 {
@@ -1509,12 +1510,12 @@ impl State {
             mie_pending = mie::MEIE;
         }
 
-        if System::USE_INTERRUPT_SOFTWARE && (old_mie & mie::MSIE) != 0 {
+        if Traits::USE_INTERRUPT_SOFTWARE && (old_mie & mie::MSIE) != 0 {
             // Safety: `USE_INTERRUPT_SOFTWARE == true`
-            let handler = System::INTERRUPT_SOFTWARE_HANDLER
+            let handler = Traits::INTERRUPT_SOFTWARE_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
-            if System::USE_INTERRUPT_EXTERNAL {
+            if Traits::USE_INTERRUPT_EXTERNAL {
                 debug_assert_eq!(mie_pending, mie::MEIE);
                 mie::set(mie::MEIE);
             } else {
@@ -1532,15 +1533,15 @@ impl State {
             mie_pending = mie::MSIE;
         }
 
-        if System::USE_INTERRUPT_TIMER && (old_mie & mie::MTIE) != 0 {
+        if Traits::USE_INTERRUPT_TIMER && (old_mie & mie::MTIE) != 0 {
             // Safety: `USE_INTERRUPT_TIMER == true`
-            let handler = System::INTERRUPT_TIMER_HANDLER
+            let handler = Traits::INTERRUPT_TIMER_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
-            if System::USE_INTERRUPT_SOFTWARE {
+            if Traits::USE_INTERRUPT_SOFTWARE {
                 debug_assert_eq!(mie_pending, mie::MSIE);
                 mie::set(mie::MSIE);
-            } else if System::USE_INTERRUPT_EXTERNAL {
+            } else if Traits::USE_INTERRUPT_EXTERNAL {
                 debug_assert_eq!(mie_pending, mie::MEIE);
                 mie::set(mie::MEIE);
             } else {
@@ -1567,4 +1568,4 @@ impl State {
 }
 
 /// Used by `use_port!`
-pub const fn validate<System: PortInstance>() {}
+pub const fn validate<Traits: PortInstance>() {}

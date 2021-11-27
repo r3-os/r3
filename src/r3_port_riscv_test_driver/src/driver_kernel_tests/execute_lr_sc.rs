@@ -1,10 +1,7 @@
 //! Executes LR and SC instructions with various parameters. This test will
 //! exercise the emulation code (`emulate-lr-sc`) on some targets.
 use core::{marker::PhantomData, mem::MaybeUninit, ptr::addr_of_mut};
-use r3::{
-    kernel::{cfg::CfgBuilder, StartupHook, Task},
-    prelude::*,
-};
+use r3::kernel::{prelude::*, traits, Cfg, StartupHook, Task};
 use r3_portkit::pptext::pp_asm;
 use r3_test_suite::kernel_tests::Driver;
 
@@ -12,8 +9,11 @@ pub struct App<System> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: traits::KernelBase> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         StartupHook::build()
             .start(startup_hook_body::<System, D>)
             .finish(b);
@@ -30,12 +30,12 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn startup_hook_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn startup_hook_body<System: traits::KernelBase, D: Driver<App<System>>>(_: usize) {
     log::debug!("calling do_test from a startup hook");
     unsafe { do_test::<System>() };
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: traits::KernelBase, D: Driver<App<System>>>(_: usize) {
     log::debug!("calling do_test from a task");
     unsafe {
         System::acquire_cpu_lock().unwrap();
@@ -190,7 +190,7 @@ global_asm!(
 const X_SIZE: usize = core::mem::size_of::<usize>();
 
 #[cfg(not(target_feature = "a"))]
-unsafe fn do_test<System: Kernel>() {
+unsafe fn do_test<System: traits::KernelBase>() {
     log::warn!("The 'A' extension is disabled, skipping the test");
 }
 
@@ -200,7 +200,7 @@ unsafe fn do_test<System: Kernel>() {
 ///
 /// Interrupts must be disabled.
 #[cfg(target_feature = "a")]
-unsafe fn do_test<System: Kernel>() {
+unsafe fn do_test<System: traits::KernelBase>() {
     macro exec($code:literal, |$st:ident| $behavior:expr) {
         log::trace!("{}", $code);
         unsafe {

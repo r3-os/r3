@@ -3,8 +3,8 @@ use r3::kernel::{InterruptNum, InterruptPriority};
 
 use super::plic_regs;
 
-/// Implement [`InterruptController`] and [`Plic`] on the given system type
-/// using the Platform-Level Interrupt Controller (PLIC) on the target.
+/// Implement [`InterruptController`] and [`Plic`] on the given kernel trait
+/// type using the Platform-Level Interrupt Controller (PLIC) on the target.
 /// **Requires [`PlicOptions`].**
 ///
 /// [`InterruptController`]: crate::InterruptController
@@ -37,7 +37,7 @@ use super::plic_regs;
 ///
 #[macro_export]
 macro_rules! use_plic {
-    (unsafe impl InterruptController for $sys:ty) => {
+    (unsafe impl InterruptController for $Traits:ty) => {
         const _: () = {
             use $crate::{
                 core::ops::Range,
@@ -50,26 +50,26 @@ macro_rules! use_plic {
                 InterruptController, Plic, PlicOptions,
             };
 
-            unsafe impl Plic for $sys {
+            unsafe impl Plic for $Traits {
                 fn plic_regs() -> &'static plic_regs::Plic {
-                    unsafe { &*(<$sys as PlicOptions>::PLIC_BASE as *const plic_regs::Plic) }
+                    unsafe { &*(<$Traits as PlicOptions>::PLIC_BASE as *const plic_regs::Plic) }
                 }
             }
 
-            impl $sys {
+            impl $Traits {
                 pub const fn configure_plic(b: &mut CfgBuilder<Self>) {
                     imp::configure::<Self>(b)
                 }
             }
 
-            impl InterruptController for $sys {
+            impl InterruptController for $Traits {
                 #[inline]
                 unsafe fn init() {
                     imp::init::<Self>()
                 }
 
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
-                    0..(<$sys as PlicOptions>::MAX_PRIORITY + 1);
+                    0..(<$Traits as PlicOptions>::MAX_PRIORITY + 1);
 
                 #[inline]
                 unsafe fn set_interrupt_line_priority(

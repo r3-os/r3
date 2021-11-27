@@ -7,6 +7,7 @@
 #![feature(const_option)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![doc = include_str!("./lib.md")]
@@ -22,6 +23,10 @@ use r3::kernel::{
 /// Used by macros
 #[doc(hidden)]
 pub extern crate r3;
+
+/// Used by macros
+#[doc(hidden)]
+pub extern crate r3_kernel;
 
 /// Used by macros
 #[doc(hidden)]

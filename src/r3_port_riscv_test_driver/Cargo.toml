@@ -55,6 +55,7 @@ board-maix = []
 [dependencies]
 r3_port_riscv = { path = "../r3_port_riscv", optional = true }
 r3_portkit = { path = "../r3_portkit", optional = true }
+r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
 r3 = { path = "../r3", optional = true }
 
 rtt-target = { version = "0.2.0", optional = true }

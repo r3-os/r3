@@ -1880,6 +1880,7 @@ dependencies = [
  "log",
  "nb 1.0.0",
  "r3",
+ "r3_kernel",
  "r3_port_riscv",
  "r3_portkit",
  "r3_test_suite",
