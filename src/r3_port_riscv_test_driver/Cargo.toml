@@ -55,7 +55,6 @@ board-maix = []
 [dependencies]
 r3_port_riscv = { path = "../r3_port_riscv", optional = true }
 r3_portkit = { path = "../r3_portkit", optional = true }
-r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
 r3 = { path = "../r3", optional = true }
 
 rtt-target = { version = "0.2.0", optional = true }
@@ -73,13 +72,20 @@ riscv_0p5 = { version = "0.5.0", package = "riscv", optional = true, features = 
 log = { version = "0.4.8", optional = true }
 nb = { version = "1.0.0", optional = true }
 
+[dependencies.r3_kernel]
+path = "../r3_kernel"
+features = [
+    # enable all of the kernel optional features
+    "full",
+]
+
 [dependencies.r3_test_suite]
 path = "../r3_test_suite"
 default-features = false
 features = [
     # compile the test case specified by `R3_TEST`
     "tests_selective",
-    # enable all of the kernel optional features
+    # use all kernel optional features known by `r3_test_suite`
     "full",
 ]
 optional = true
