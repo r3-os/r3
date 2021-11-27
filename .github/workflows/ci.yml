@@ -127,7 +127,7 @@ jobs:
         run: |
           features='${{ matrix.features }}'
           if [ "$features" ]; then
-            features="--features r3_test_suite/$features"
+            features="--features r3_test_suite/$features --features r3_kernel/$features"
           fi
           echo "features_param=$features" >> $GITHUB_ENV
 
