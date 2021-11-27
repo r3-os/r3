@@ -1,8 +1,6 @@
 //! Activates and deactivates Priority Boost.
 use core::marker::PhantomData;
-#[cfg(feature = "priority_boost")]
-use r3::kernel::prelude::*;
-use r3::kernel::{traits, Cfg, Task};
+use r3::kernel::{prelude::*, traits, Cfg, Task};
 
 use super::Driver;
 
