@@ -5,9 +5,7 @@
 use crate::usb::UsbBus;
 use core::cell::RefCell;
 use cortex_m::{interrupt, singleton};
-use r3::kernel::{
-    cfg::CfgBuilder, InterruptHandler, InterruptLine, InterruptNum, Kernel, StartupHook,
-};
+use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine, InterruptNum, StartupHook};
 use usb_device::{
     bus::UsbBusAllocator,
     device::{UsbDevice, UsbDeviceBuilder, UsbVidPid},
@@ -73,7 +71,11 @@ pub trait Options: 'static + Send + Sync {
 
 /// Add a USB serial device to the system and register it as the destination of
 /// the standard output ([`crate::stdout`]).
-pub const fn configure<System: Kernel, TOptions: Options>(b: &mut CfgBuilder<System>) {
+pub const fn configure<C, TOptions: Options>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
+    C::System: traits::KernelInterruptLine,
+{
     StartupHook::build()
         .start(|_| {
             let p = unsafe { rp2040::Peripherals::steal() };
