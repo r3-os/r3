@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 r3_port_std = { path = "../../src/r3_port_std" }
-r3_kernel = { path = "../../src/r3_kernel" }
-r3 = { path = "../../src/r3", features = ["system_time"] }
+r3_kernel = { path = "../../src/r3_kernel", features = ["system_time"] }
+r3 = { path = "../../src/r3" }
 
 log = { version = "0.4.8" }
