@@ -222,6 +222,7 @@ fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize
 
             #[cfg(not(target_has_atomic = "ptr"))]
             () => {
+                use r3::kernel::prelude::*;
                 System::acquire_cpu_lock().unwrap();
                 state.counter.store(
                     state.counter.load(Ordering::Relaxed).wrapping_add(1),
