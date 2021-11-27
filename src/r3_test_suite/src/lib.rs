@@ -11,6 +11,7 @@
 #![feature(cell_update)]
 #![feature(cfg_target_has_atomic)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::eq_op)] // we want to test `PartialEq` implementations
 #![deny(unsupported_naked_functions)]

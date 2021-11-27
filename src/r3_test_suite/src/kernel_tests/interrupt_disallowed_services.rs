@@ -1,5 +1,6 @@
 //! Checks the return codes of disallowed system calls made in an interrupt
 //! context.
+use core::assert_matches::assert_matches;
 use r3::kernel::{self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task};
 
 use super::Driver;
@@ -68,13 +69,25 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
 fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Disallowed in a non-task context
-    assert_eq!(
+    if let &[priority, ..] = D::INTERRUPT_PRIORITIES {
+        assert_eq!(
+            D::app().int.unwrap().set_priority(priority),
+            Err(kernel::SetInterruptLinePriorityError::BadContext),
+        );
+        assert_eq!(
+            unsafe { D::app().int.unwrap().set_priority_unchecked(priority) },
+            Err(kernel::SetInterruptLinePriorityError::BadContext),
+        );
+    }
+    assert_matches!(
         D::app().int.unwrap().set_priority(1),
-        Err(kernel::SetInterruptLinePriorityError::BadContext),
+        Err(kernel::SetInterruptLinePriorityError::BadContext
+            | kernel::SetInterruptLinePriorityError::BadParam),
     );
-    assert_eq!(
+    assert_matches!(
         unsafe { D::app().int.unwrap().set_priority_unchecked(1) },
-        Err(kernel::SetInterruptLinePriorityError::BadContext),
+        Err(kernel::SetInterruptLinePriorityError::BadContext
+            | kernel::SetInterruptLinePriorityError::BadParam),
     );
     if let Some(cap) = System::BOOST_PRIORITY_CAPABILITY {
         assert_eq!(
