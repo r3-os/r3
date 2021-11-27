@@ -77,9 +77,10 @@ pub type Id = NonZeroUsize;
 
 /// Wraps a provided [trait type][1] `Traits` to instantiate a kernel. This type
 /// implements the traits from [`r3::kernel::raw`], making it usable as a
-/// kernel, if `Traits` implements appropriate traits.
+/// kernel, if `Traits` implements some appropriate traits, which consequently
+/// make it implement [`KernelTraits`].
 ///
-/// [1]: crate#the-kernrel-trait-type
+/// [1]: crate#the-kernel-trait-type
 pub struct System<Traits>(PhantomData<Traits>);
 
 impl<Traits> Clone for System<Traits> {
@@ -95,6 +96,15 @@ impl<Traits> core::fmt::Debug for System<Traits> {
         f.write_str("System")
     }
 }
+
+/// The instantiation of [`r3::kernel::Cfg`] used by [`build!`] to configure
+/// a kernel. `CfgBuilder<...>` in this alias Implements
+/// [`~const`]` `[`raw_cfg::CfgBase`]`<`[`System`]`<Traits>>` and many other
+/// `raw_cfg` traits.
+///
+/// [`~const`]: https://github.com/rust-lang/rust/issues/77463
+/// [`raw_cfg::CfgBase`]: r3::kernel::raw_cfg::CfgBase
+pub type Cfg<'c, Traits> = r3::kernel::Cfg<'c, cfg::CfgBuilder<Traits>>;
 
 /// Represents a complete [kernel trait type][1].
 ///

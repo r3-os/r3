@@ -22,7 +22,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use r3::kernel::{InterruptNum, InterruptPriority, StartupHook, Cfg};
+        use r3::kernel::{InterruptNum, InterruptPriority, StartupHook};
         #[cfg(feature = "kernel_benchmarks")]
         use r3_test_suite::kernel_benchmarks;
         #[cfg(feature = "kernel_tests")]
@@ -137,9 +137,7 @@ macro_rules! instantiate_test {
         static COTTAGE: test_case::App<System> =
             r3_kernel::build!(SystemTraits, configure_app => test_case::App<System>);
 
-        const fn configure_app(
-            b: &mut Cfg<r3_kernel::cfg::CfgBuilder<SystemTraits>>
-        ) -> test_case::App<System> {
+        const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> test_case::App<System> {
             // Configure DWT for performance measurement
             #[cfg(feature = "kernel_benchmarks")]
             #[cfg(not(feature = "board-rp_pico"))]

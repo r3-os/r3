@@ -34,7 +34,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum, Cfg};
+        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum};
         #[cfg(feature = "kernel_benchmarks")]
         use r3_test_suite::kernel_benchmarks;
         #[cfg(feature = "kernel_tests")]
@@ -165,9 +165,7 @@ macro_rules! instantiate_test {
         static COTTAGE: test_case::App<System> =
             r3_kernel::build!(SystemTraits, configure_app => test_case::App<System>);
 
-        const fn configure_app(
-            b: &mut Cfg<r3_kernel::cfg::CfgBuilder<SystemTraits>>
-        ) -> test_case::App<System> {
+        const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> test_case::App<System> {
             #[cfg(feature = "board-realview_pbx_a9")]
             SystemTraits::configure_sp804(b);
             #[cfg(feature = "board-rza1")]

@@ -5,7 +5,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 use r3::{
-    kernel::{prelude::*, traits, Cfg, Task},
+    kernel::{prelude::*, traits, Task},
     prelude::*,
     sync::Mutex,
 };
@@ -22,10 +22,7 @@ struct Objects {
 
 const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
-const fn configure_app<C>(b: &mut Cfg<C>) -> Objects
-where
-    C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask + ~const traits::CfgMutex,
-{
+const fn configure_app(b: &mut r3_kernel::Cfg<'_, SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
     let task1 = Task::build()

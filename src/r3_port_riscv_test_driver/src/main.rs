@@ -49,7 +49,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum, Cfg};
+        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum};
         #[cfg(feature = "kernel_tests")]
         use r3_test_suite::kernel_tests;
         #[cfg(feature = "kernel_benchmarks")]
@@ -183,7 +183,7 @@ macro_rules! instantiate_test {
         static COTTAGE: test_case::App<System> =
             r3_kernel::build!(SystemTraits, configure_app => test_case::App<System>);
 
-        const fn configure_app(b: &mut Cfg<r3_kernel::cfg::CfgBuilder<SystemTraits>>) -> test_case::App<System> {
+        const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> test_case::App<System> {
             // Initialize the clock
             #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
             StartupHook::build().start(|_| {
