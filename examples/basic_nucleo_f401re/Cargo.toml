@@ -10,8 +10,8 @@ publish = false
 # target-specific section.
 [target."cfg(target_os = \"none\")".dependencies]
 r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
-r3_kernel = { path = "../../src/r3_kernel" }
-r3 = { path = "../../src/r3", features = ["system_time"] }
+r3_kernel = { path = "../../src/r3_kernel", features = ["system_time"] }
+r3 = { path = "../../src/r3" }
 
 panic-rtt-target = { version = "0.1.0", features = ["cortex-m"] }
 nucleo-f401re = { version = "0.4.1" }
