@@ -81,5 +81,7 @@ pub mod time;
 /// The prelude module.
 pub mod prelude {
     #[doc(no_inline)]
+    pub use crate::kernel::prelude::*;
+    #[doc(no_inline)]
     pub use crate::utils::Init;
 }
