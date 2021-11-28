@@ -13,11 +13,6 @@ repository = "https://github.com/r3-os/r3"
 [features]
 default = []
 
-# TODO: Remove these - they now belong to `r3_kernel`
-inline_syscall = []
-priority_boost = []
-system_time = []
-
 # Enable the diagram rendering by svgbob
 doc = ["svgbobdoc/enable"]
 

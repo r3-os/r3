@@ -15,13 +15,15 @@ default = ["tests_all", "full"]
 tests_all = []
 tests_selective = []
 
-# The kernel's optional features
+# The kernel features to be used by the test suite. E.g., if `system_time` is
+# set, the tests will require `System: raw::KernelTime` and use it to introduce
+# additional assertions.
 full = [
     "priority_boost",
     "system_time",
 ]
-priority_boost = ["r3/priority_boost"]
-system_time = ["r3/system_time"]
+priority_boost = []
+system_time = []
 
 [dependencies]
 r3 = { version = "0.1.0", path = "../r3" }
