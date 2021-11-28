@@ -16,7 +16,7 @@ fn panic(info: &PanicInfo) -> ! {
             r3_support_rp2040::sprintln!("{}", info);
 
             loop {
-                r3_support_rp2040::usbstdio::poll::<crate::core0::System>();
+                r3_support_rp2040::usbstdio::poll::<crate::core0::SystemTraits>();
             }
         }
         1 => {

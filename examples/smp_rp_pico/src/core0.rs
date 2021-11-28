@@ -1,5 +1,5 @@
 use r3::{
-    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, InterruptNum, StartupHook, Task},
+    kernel::{InterruptHandler, InterruptLine, InterruptNum, StartupHook, Task},
     prelude::*,
     sync::Mutex,
 };
@@ -9,19 +9,20 @@ use r3_support_rp2040 as support_rp2040;
 // --------------------------------------------------------------------------
 // Target-specific configuration
 
-port::use_port!(unsafe pub struct System);
-port::use_rt!(unsafe System);
-port::use_systick_tickful!(unsafe impl PortTimer for System);
+type System = r3_kernel::System<SystemTraits>;
+port::use_port!(unsafe pub struct SystemTraits);
+port::use_rt!(unsafe SystemTraits);
+port::use_systick_tickful!(unsafe impl PortTimer for SystemTraits);
 
-impl port::ThreadingOptions for System {}
+impl port::ThreadingOptions for SystemTraits {}
 
-impl port::SysTickOptions for System {
+impl port::SysTickOptions for SystemTraits {
     // "The timer uses a one microsecond reference that is generated in the
     // Watchdog (see Section 4.7.2) which comes from clk_ref."
     const FREQUENCY: u64 = 1_000_000;
 }
 
-impl support_rp2040::usbstdio::Options for System {
+impl support_rp2040::usbstdio::Options for SystemTraits {
     fn handle_input(s: &[u8]) {
         if s == b"\r" || s == b"\n" {
             support_rp2040::sprint!("\n");
@@ -41,14 +42,16 @@ impl support_rp2040::usbstdio::Options for System {
 
 #[derive(Debug)]
 struct Objects {
+    #[allow(dead_code)]
     task1: Task<System>,
     task2: Task<System>,
+    #[allow(dead_code)]
     mutex1: Mutex<System, u32>,
 }
 
-const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
-const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
     StartupHook::build()
@@ -80,9 +83,9 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         })
         .finish(b);
 
-    support_rp2040::usbstdio::configure::<System, System>(b);
+    support_rp2040::usbstdio::configure::<_, SystemTraits>(b);
 
-    System::configure_systick(b);
+    SystemTraits::configure_systick(b);
 
     let task1 = Task::build()
         .start(task1_body)

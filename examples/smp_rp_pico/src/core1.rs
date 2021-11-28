@@ -1,19 +1,17 @@
 use core::fmt;
-use r3::{
-    kernel::{cfg::CfgBuilder, Task},
-    prelude::*,
-};
+use r3::kernel::{prelude::*, Task};
 use r3_port_arm_m as port;
 
 // --------------------------------------------------------------------------
 // Target-specific configuration
 
-port::use_port!(unsafe struct System);
-port::use_systick_tickful!(unsafe impl PortTimer for System);
+type System = r3_kernel::System<SystemTraits>;
+port::use_port!(unsafe struct SystemTraits);
+port::use_systick_tickful!(unsafe impl PortTimer for SystemTraits);
 
-impl port::ThreadingOptions for System {}
+impl port::ThreadingOptions for SystemTraits {}
 
-impl port::SysTickOptions for System {
+impl port::SysTickOptions for SystemTraits {
     // "The timer uses a one microsecond reference that is generated in the
     // Watchdog (see Section 4.7.2) which comes from clk_ref."
     const FREQUENCY: u64 = 1_000_000;
@@ -82,7 +80,7 @@ pub unsafe fn core1_launch(sio: &rp2040::sio::RegisterBlock, psm: &rp2040::psm::
 }
 
 unsafe extern "C" fn core1_entry() -> ! {
-    unsafe { <System as port::EntryPoint>::start() }
+    unsafe { <SystemTraits as port::EntryPoint>::start() }
 }
 
 #[repr(C, align(128))]
@@ -100,7 +98,7 @@ static CORE1_VECTOR_TABLE: VectorTable<[unsafe extern "C" fn(); 48]> = {
     let mut table = [unhandled as _; 48];
 
     let mut i = 0;
-    let kernel_handler_table = <System as r3::kernel::KernelCfg2>::INTERRUPT_HANDLERS;
+    let kernel_handler_table = <SystemTraits as r3_kernel::KernelCfg2>::INTERRUPT_HANDLERS;
     while i < 48 {
         if let Some(handler) = kernel_handler_table.get(i) {
             table[i] = handler;
@@ -113,7 +111,7 @@ static CORE1_VECTOR_TABLE: VectorTable<[unsafe extern "C" fn(); 48]> = {
     // but the default implementation of `ThreadingOptions::interrupt_stack_top`
     // will pick up this value from VTOR.
     table[0] = _core1_stack_start;
-    table[14] = <System as port::EntryPoint>::HANDLE_PEND_SV;
+    table[14] = <SystemTraits as port::EntryPoint>::HANDLE_PEND_SV;
 
     VectorTable(table)
 };
@@ -171,15 +169,16 @@ pub fn write_fmt(core1: Core1, args: fmt::Arguments<'_>) {
 
 #[derive(Debug)]
 struct Objects {
+    #[allow(dead_code)]
     task1: Task<System>,
 }
 
-const _COTTAGE: Objects = r3::build!(System, configure_app => Objects);
+const _COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
-const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    System::configure_systick(b);
+    SystemTraits::configure_systick(b);
 
     let task1 = Task::build()
         .start(task1_body)
