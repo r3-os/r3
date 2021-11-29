@@ -11,12 +11,14 @@ use crate::utils::{Init, PhantomInvariant};
 
 /// Represents a single task in a system.
 ///
-/// This type is ABI-compatible with [`Id`].
+/// This type is ABI-compatible with `System::`[`RawTaskId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** Present in almost every real-time
 /// > operating system.
+///
+/// [`RawTaskId`]: raw::KernelBase::RawTaskId
 ///
 /// # Task States
 ///
@@ -121,7 +123,7 @@ impl<System: raw::KernelBase> Task<System> {
 }
 
 impl<System: raw::KernelBase> Task<System> {
-    /// Construct a `CfgTaskBuilder` to define a mutex in [a configuration
+    /// Construct a `TaskDefiner` to define a mutex in [a configuration
     /// function](crate#static-configuration).
     pub const fn build() -> TaskDefiner<System> {
         TaskDefiner::new()
@@ -164,7 +166,7 @@ impl<System: raw::KernelBase> Task<System> {
         unsafe { System::raw_task_interrupt(self.0) }
     }
 
-    /// Make the task's token available, unblocking [`Kernel::park`] now or in
+    /// Make the task's token available, unblocking [`Kernel::park`][] now or in
     /// the future.
     ///
     /// If the token is already available, this method will return without doing
@@ -174,6 +176,8 @@ impl<System: raw::KernelBase> Task<System> {
     /// If the task is currently being blocked by `Kernel::park`, the token will
     /// be immediately consumed. Otherwise, it will be consumed on a next call
     /// to `Kernel::park`.
+    ///
+    /// [`Kernel::park`]: crate::kernel::Kernel::park
     #[inline]
     pub fn unpark(self) -> Result<(), UnparkError> {
         match self.unpark_exact() {
@@ -194,6 +198,8 @@ impl<System: raw::KernelBase> Task<System> {
     /// If the task is currently being blocked by `Kernel::park`, the token will
     /// be immediately consumed. Otherwise, it will be consumed on a next call
     /// to `Kernel::park`.
+    ///
+    /// [`Kernel::park`]: crate::kernel::Kernel::park
     #[inline]
     pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
         // Safety: `Task` represents a permission to access the
@@ -205,11 +211,11 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// A task's base priority is used to calculate its [effective priority].
     /// Tasks with lower effective priorities execute first. The base priority
-    /// is reset to the initial value specified by [`CfgTaskBuilder::priority`]
+    /// is reset to the initial value specified by [`TaskDefiner::priority`]
     /// upon activation.
     ///
     /// [effective priority]: Self::effective_priority
-    /// [`CfgTaskBuilder::priority`]: crate::kernel::cfg::CfgTaskBuilder::priority
+    /// [`TaskDefiner::priority`]: crate::kernel::task::TaskDefiner::priority
     ///
     /// The value must be in range `0..`[`num_task_priority_levels`]. Otherwise,
     /// this method will return [`SetTaskPriorityError::BadParam`].
@@ -217,7 +223,7 @@ impl<System: raw::KernelBase> Task<System> {
     /// The task shouldn't be in the Dormant state. Otherwise, this method will
     /// return [`SetTaskPriorityError::BadObjectState`].
     ///
-    /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
+    /// [`num_task_priority_levels`]: crate::kernel::Cfg::num_task_priority_levels
     #[inline]
     pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError>
     where
@@ -314,7 +320,7 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
     /// lower priority values execute first. The value must be in range
     /// `0..`[`num_task_priority_levels`].
     ///
-    /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
+    /// [`num_task_priority_levels`]: crate::kernel::Cfg::num_task_priority_levels
     pub const fn priority(self, priority: usize) -> Self {
         Self {
             priority: Some(priority),
@@ -380,7 +386,9 @@ impl<System: cfg::KernelStatic> StackHunk<System> {
         Self(hunk)
     }
 
-    /// Get the contained [`Hunk`].
+    /// Get the referenced [`Hunk`].
+    ///
+    /// [`Hunk`]: crate::kernel::Hunk
     #[inline]
     pub const fn hunk(self) -> super::Hunk<System> {
         self.0

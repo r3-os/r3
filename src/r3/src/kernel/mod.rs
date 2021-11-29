@@ -1,4 +1,8 @@
 //! The kernel interface.
+//!
+//! Not to be confused with [`r3_kernel`][], a kernel implementation.
+//!
+//! [`r3_kernel`]: https://crates.io/crates/r3_kernel
 
 pub mod cfg;
 mod error;

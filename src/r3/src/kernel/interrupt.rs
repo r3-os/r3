@@ -79,7 +79,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     /// from happening and returns [`SetInterruptLinePriorityError::BadParam`]
     /// if the operation is unsafe.
     ///
-    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [a managed range]: crate::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
     #[inline(never)]
     pub fn set_priority(
         self,
@@ -97,7 +97,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     /// Set the priority of the interrupt line without checking if the new
     /// priority falls within [a managed range].
     ///
-    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [a managed range]: crate::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
     /// # Safety
     ///
@@ -326,7 +326,7 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
     ///
     /// This should not be confused with [an interrupt line's priority].
     ///
-    /// [an interrupt line's priority]: CfgInterruptLineBuilder::priority
+    /// [an interrupt line's priority]: InterruptLineDefiner::priority
     pub const fn priority(self, priority: i32) -> Self {
         Self { priority, ..self }
     }
@@ -339,7 +339,7 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
     /// all of its attached interrupt handlers are marked as
     /// unmanaged-safe.
     ///
-    /// [a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [a managed range]: crate::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
     /// # Safety
     ///

@@ -16,7 +16,7 @@ pub use raw::{EventGroupBits, EventGroupWaitFlags};
 /// An event group is a set of bits that can be updated and waited for to be
 /// set.
 ///
-/// This type is ABI-compatible with [`Id`].
+/// This type is ABI-compatible with `System::`[`RawEventGroupId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
@@ -24,6 +24,8 @@ pub use raw::{EventGroupBits, EventGroupWaitFlags};
 /// > event group (FreeRTOS), event group (Freescale MQX), `EventFlags` (Mbed
 /// > OS), events (OSEK/VDX, assigned to each extended task), event (RT-Thread),
 /// > event set (RTEMS, assigned to each task), Eventflag (μITRON4.0)
+///
+/// [`RawEventGroupId`]: raw::KernelEventGroup::RawEventGroupId
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
 pub struct EventGroup<System: raw::KernelEventGroup>(System::RawEventGroupId);

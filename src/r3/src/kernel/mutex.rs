@@ -13,7 +13,7 @@ pub use raw::MutexProtocol;
 
 /// Represents a single mutex in a system.
 ///
-/// This type is ABI-compatible with [`Id`].
+/// This type is ABI-compatible with `System::`[`RawMutexId`][].
 ///
 /// Mutexes are similar to binary semaphores (semaphores restricted to one
 /// permit at maximum) but differ in some ways, such as the inclusion of a
@@ -24,17 +24,17 @@ pub use raw::MutexProtocol;
 /// a mutex cannot be locked (even with a non-blocking operation) in a
 /// [non-task context], where there is no task to hold the mutex.
 ///
-/// [non-task context]: crate#contexts
-///
 /// See [`r3::sync::Mutex`] for a thread-safe container that uses this
 /// `Mutex` internally to protect shared data from concurrent access.
-///
-/// [`r3::sync::Mutex`]: crate::sync::Mutex`
 ///
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** Present in many general-purpose and
 /// > real-time operating systems.
+///
+/// [`RawMutexId`]: raw::KernelMutex::RawMutexId
+/// [non-task context]: crate#contexts
+/// [`r3::sync::Mutex`]: crate::sync::Mutex`
 ///
 /// # Examples
 ///
@@ -142,12 +142,11 @@ pub use raw::MutexProtocol;
 /// `Mutex` supports [the immediate priority ceiling protocol] to avoid
 /// unbounded [priority inversion].
 ///
-/// A locking protocol can be chosen by [`MutexDefiner::protocol`].
-/// Additional information can be found at [`MutexProtocol`].
+/// A locking protocol can be chosen by [`MutexDefiner::protocol`][].
+/// Additional information can be found at [`MutexProtocol`][].
 ///
 /// [the immediate priority ceiling protocol]: https://en.wikipedia.org/wiki/Priority_ceiling_protocol
 /// [priority inversion]: https://en.wikipedia.org/wiki/Priority_inversion
-/// [`MutexDefiner::protocol`]: crate::kernel::cfg::MutexDefiner::protocol
 ///
 /// <div class="admonition-follows"></div>
 ///

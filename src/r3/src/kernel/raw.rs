@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// A group of traits that must be implemented by kernel object ID types,
-/// including [`KernelBase::TaskId`].
+/// including [`KernelBase::RawTaskId`].
 pub trait Id: fmt::Debug + Copy + Eq + Ord + Hash {}
 impl<T: ?Sized + fmt::Debug + Copy + Eq + Ord + Hash> Id for T {}
 
@@ -340,7 +340,7 @@ pub enum MutexProtocol {
     ///
     /// The value must be in range `0..`[`num_task_priority_levels`].
     ///
-    /// [`num_task_priority_levels`]: crate::kernel::cfg::CfgBuilder::num_task_priority_levels
+    /// [`num_task_priority_levels`]: crate::kernel::Cfg::num_task_priority_levels
     /// [the immediate priority ceiling protocol]: https://en.wikipedia.org/wiki/Priority_ceiling_protocol
     Ceiling(usize),
 }
@@ -401,9 +401,9 @@ pub unsafe trait KernelSemaphore: KernelBase {
 }
 
 /// Unsigned integer type representing the number of permits held by a
-/// [semaphore].
+/// [semaphore][].
 ///
-/// [semaphore]: Semaphore
+/// [semaphore]: crate::kernel::Semaphore
 ///
 /// <div class="admonition-follows"></div>
 ///

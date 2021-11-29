@@ -309,7 +309,7 @@ pub trait Kernel: private::Sealed {
     unsafe fn exit_task() -> Result<!, ExitTaskError>;
 
     /// Put the current task into the Waiting state until the task's token is
-    /// made available by [`Task::unpark`]. The token is initially absent when
+    /// made available by [`Task::unpark`][]. The token is initially absent when
     /// the task is activated.
     ///
     /// The token will be consumed when this method returns successfully.
@@ -317,6 +317,7 @@ pub trait Kernel: private::Sealed {
     /// This system service may block. Therefore, calling this method is not
     /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
     ///
+    /// [`Task::unpark`]: crate::kernel::Task::unpark
     /// [a non-waitable context]: crate#contexts
     fn park() -> Result<(), ParkError>;
 

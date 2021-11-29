@@ -21,12 +21,14 @@ pub use raw::SemaphoreValue;
 /// semaphore is called the semaphore's *value* and represented by
 /// [`SemaphoreValue`].
 ///
-/// This type is ABI-compatible with [`Id`].
+/// This type is ABI-compatible with `System::`[`RawSemaphoreId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** Present in almost every real-time
 /// > operating system.
+///
+/// [`RawSemaphoreId`]: raw::KernelSemaphore::RawSemaphoreId
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
 pub struct Semaphore<System: raw::KernelSemaphore>(System::RawSemaphoreId);

@@ -13,12 +13,14 @@ use crate::{
 
 /// Represents a single timer in a system.
 ///
-/// This type is ABI-compatible with [`Id`].
+/// This type is ABI-compatible with `System::`[`RawTimerId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** A similar concept exists in almost
 /// > every operating system.
+///
+/// [`RawTimerId`]: raw::KernelTimer::RawTimerId
 ///
 /// <div class="toc-header"></div>
 ///
@@ -117,11 +119,10 @@ use crate::{
 /// second worth of calls no matter what.*
 /// If a periodic timer's callback function couldn't complete within the
 /// timer's period, the timer latency would steadily increase until it reaches
-/// the point where various internal assumptions (such as
-/// [`TIME_HARD_HEADROOM`]) get broken. While the system is processing overdue
-/// calls, the timer interrupt handler will not return. Some port timer drivers
-/// (most notably the Arm-M tickful SysTick driver) have much lower tolerance
-/// for this.
+/// the point where various internal assumptions get broken. While the system is
+/// processing overdue calls, the timer interrupt handler might not return. Some
+/// kernel timer drivers (most notably the Arm-M tickful SysTick driver) have
+/// much lower tolerance for this.
 /// To avoid this catastrophic situation, an application should take the
 /// precautions shown below:
 ///
@@ -135,7 +136,6 @@ use crate::{
 ///
 ///  - Keep your target platform's performance characteristics in your mind.
 ///
-/// [`TIME_HARD_HEADROOM`]: crate::kernel::TIME_HARD_HEADROOM
 /// [activated]: crate::kernel::Task::activate
 /// [unparked]: crate::kernel::Task::unpark
 ///

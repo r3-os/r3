@@ -28,7 +28,7 @@ pub struct Definer<System, T, InitTag> {
 ///  - Mutexes must be unlocked in a lock-reverse order. [`MutexGuard`]`::drop`
 ///    will panic if this is violated.
 ///
-/// [`r3::mutex::Mutex`]: crate::mutex::Mutex
+/// [`r3::kernel::Mutex`]: crate::kernel::Mutex
 pub struct Mutex<System, T>
 where
     System: traits::KernelMutex + traits::KernelStatic,
@@ -94,7 +94,7 @@ pub enum LockError<Guard> {
     /// [`Ceiling`] and the current task's priority is higher than the
     /// mutex's priority ceiling.
     ///
-    /// [`Ceiling`]: crate::mutex::MutexProtocol::Ceiling
+    /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
     BadParam = LockMutexError::BadParam as i8,
     /// The previous owning task exited while holding the mutex lock. *The
     /// current task shall hold the mutex lock*, but is up to make the
@@ -130,7 +130,7 @@ pub enum TryLockError<Guard> {
     /// [`Ceiling`] and the current task's priority is higher than the
     /// mutex's priority ceiling.
     ///
-    /// [`Ceiling`]: crate::mutex::MutexProtocol::Ceiling
+    /// [`Ceiling`]: crate::kernel::MutexProtocol::Ceiling
     BadParam = TryLockMutexError::BadParam as i8,
     /// The previous owning task exited while holding the mutex lock. *The
     /// current task shall hold the mutex lock*, but is up to make the

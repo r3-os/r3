@@ -142,7 +142,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     ///
     /// The finalization is divided as such so that `finish_post` can use the
     /// result of [`attach_static!`], which is derived from the product of
-    /// [`finish_pre`].
+    /// [`Self::finish_pre`].
     pub const fn finish_post(self)
     where
         C: ~const raw_cfg::CfgBase,
