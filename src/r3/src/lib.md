@@ -11,13 +11,9 @@ body.theme-ayu h1 img:nth-of-type(2) { filter: contrast(2) invert(90%) sepia(50%
 R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
 
 - **All kernel objects are defined statically** for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.
-- The kernel and its configurator **don't require an external build tool or a specialized procedural macro**, maintaining transparency.
-- The kernel is written in a target-independent way. The target-specific portion (called *a port*) is provided as a separate crate, which an application chooses and **combines with the kernel using the trait system**.
+- A kernel and its configurator **don't require an external build tool or a specialized procedural macro**, maintaining transparency and inter-crate composability.
+- The kernel API is **not tied to a specific kernel implementation**. Kernels are provided as separate crates, one of which an application chooses and instantiates using the trait system.
 - Leverages Rust's type safety for access control of kernel objects. Safe code can't access an object that it doesn't own.
-
-<div class="admonition-follows"></div>
-
-> **This documentation is work in progress!** It hasn't yet been updated for the recently introduced split between the kernel API (`r3`) and implementation (`r3_kernel`).
 
 <!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
 <div class="admonition-follows"></div>
@@ -26,8 +22,8 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 <div class="toc-header"></div>
 
 - [Note to Application Developers](#note-to-application-developers)
-- [Configuring the Kernel](#configuring-the-kernel)
-    - [Trait-based Composition](#trait-based-composition)
+- [Defining a System](#defining-a-system)
+    - [System Type](#system-type)
     - [Static Configuration](#static-configuration)
 - [System States](#system-states)
 - [Threads](#threads)
@@ -48,156 +44,52 @@ The implementation code heavily relies on constant propagation, dead code elimin
 opt-level = 2
 ```
 
-# Configuring the Kernel
+# Defining a System
 
-## Trait-based Composition
+## System Type
 
-The R3 RTOS utilizes Rust's trait system to allow system designers to construct a system in a modular way.
+The R3 RTOS utilizes Rust's trait system to allow system designers to construct a system in a modular way. An R3 application is built around a marker type called a **system type**. It implements various traits, whose implementations are provided by a kernel implementation, such as [`r3_kernel`], to provide a basic kernel API and encapsulate the kernel's configuration, such as resource allocation for kernel objects. The application and higher-level wrappers interact with the kernel through these trait implementations.
 
-An application crate uses the following macros to realize each part of the system:
+<span class="center">![trait_binding]</span>
 
- - A port-provided macro like **`r3_xxx_port::use_port!`** (named in this way by convention) instantiates port-specfific items.
- - **[`r3::build!`]** instantiates the kernel and kernel-private static data based on the kernel configuration supplied in the form of **[a configuration function]**.
+A system type at least implements [`r3::kernel::raw::KernelBase`][] (see [the parent module][] for a full listing). The exact way of instantiating a system type is specific to each kernel implementation, but the usual way is that it provides a generic type with a type parameter taking references to a product of [static configuration][] as well as other customization options.
 
-```rust,ignore
-r3_port_std::use_port!(unsafe struct System);
-
-struct Objects { /* ... */ }
-const fn configure_app(_: &mut CfgBuilder<System>) -> Objects { /* ... */ }
-
-const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
-```
-
-These macros generate various `impl`s interconnected under a complex relationship, with an ultimate goal of building a working system.
-
-<span class="center">![cfg_traits]</span>
-
-[`r3::build!`]: crate::build
-[a configuration function]: #static-configuration
-
-### `use_port!` → System Type
-
-The composition process revolves around an application-defined type called a **system type**. The first thing to do is to define a system type. It could be defined directly, but instead, it's defined by `use_port!` purely for convenience. A system type is named `System` by convention.
-
-```rust,ignore
-r3_xxx_port::use_port!(unsafe struct System);
-
-// ----- The above macro invocation expands to: -----
-struct System;
-```
-
-### `use_port!` → `impl Port`
-
-The first important role of `use_port!` is to implement the trait [`Port`] on the system type. `Port` describes the properties of the target hardware and provides target-dependent low-level functions such as a context switcher. `use_port!` can define `static` items to store internal state data (this would be inconvenient and messy without a macro).
-
-`Port` is actually a group of several supertraits (such as [`PortThreading`]), each of which can be implemented in a separate location.
-
-```rust,ignore
-r3_xxx_port::use_port!(unsafe struct System);
-
-// ----- The above macro invocation also produces: -----
-unsafe impl r3::PortThreading for System { /* ... */ }
-unsafe impl r3::PortInterrupts for System { /* ... */ }
-unsafe impl r3::PortTimer for System { /* ... */ }
-
-// `Port` gets implemented automatically when
-// all required supertraits are implemented.
-```
-
-The job of `use_port!` doesn't end here, but before we move on, we must first explain what `build!` does.
-
-[`Port`]: crate::kernel::Port
-[`PortThreading`]: crate::kernel::PortThreading
-
-### `build!` → `impl KernelCfgN`
-
-`build!` assembles a database of statically defined kernel objects using a supplied [configuration function]. Using this database, it does things such as determining the optimal data type to represent all allowed task priority values and defining `static` items to store kernel-private data structures such as task control blocks. The result is attached to a supplied system type by implementing [`KernelCfg1`] and [`KernelCfg2`] on it.
-
-```rust,ignore
-static COTTAGE: Objects = r3::build!(System, configure_app => Objects);
-
-// ----- The above macro invocation produces: -----
-static COTTAGE: Objects = {
-    use r3::kernel::TaskCb;
-
-    const CFG: /* ... */ = {
-        let mut cfg = r3::kernel::cfg::CfgBuilder::new();
-        configure_app(&mut cfg);
-        cfg
-    };
-
-    static TASK_CB_POOL: [TaskCb<System>; _] = /* ... */;
-
-    // Things needed by both of `Port` and `KernelCfg2` should live in
-    // `KernelCfg1` because `Port` cannot refer to an associated item defined
-    // by `KernelCfg2`.
-    unsafe impl r3::kernel::KernelCfg1 for System {
-        type TaskPriority = /* ... */;
-    }
-
-    // Things dependent on data types defined by `Port` should live in
-    // `KernelCfg2`.
-    unsafe impl r3::kernel::KernelCfg2 for System {
-        fn task_cb_pool() -> &'static [TaskCb<System>] {
-            &TASK_CB_POOL
-        }
-        /* ... */
-    }
-
-    // Make the generated object IDs available to the application
-    configure_app(&mut r3::kernel::cfg::CfgBuilder::new())
-};
-```
-
-[configuration function]: #static-configuration
-[`KernelCfg1`]: crate::kernel::KernelCfg1
-[`KernelCfg2`]: crate::kernel::KernelCfg2
-
-### `impl Kernel`
-
-The traits introduced so far are enough to instantiate the target-independent portion of the RTOS kernel. To reflect this, [`Kernel`] and [`PortToKernel`] are automatically implemented on the system type by a blanket `impl`.
-
-```rust,ignore
-impl<System: Port + KernelCfg1 + KernelCfg2> Kernel for System { /* ... */ }
-impl<System: Kernel> PortToKernel for System { /* ... */ }
-```
-
-[`Kernel`]: crate::kernel::Kernel
-[`PortToKernel`]: crate::kernel::PortToKernel
-
-### `use_port!` → Entry Points
-
-The remaining task of `use_port!` is to generate entry points to the kernel. The most important one is for booting the kernel. The other ones are [interrupt handlers].
-
-```rust,ignore
-r3_xxx_port::use_port!(unsafe struct System);
-
-// ----- The above macro invocation lastly produces: -----
-fn main() {
-    <System as r3::kernel::PortToKernel>::boot();
-}
-```
-
-[interrupt handlers]: (#interrupt-handling-framework)
+[`r3_kernel`]: ../r3_kernel/index.html
+[`r3::kernel::raw::KernelBase`]: crate::kernel::raw::KernelBase
+[the parent module]: crate::kernel::raw
+[static configuration]: #static-configuration
 
 ## Static Configuration
 
-Kernel objects are created in a **configuration function** having the signature `const fn (&mut `[`CfgBuilder`]`) -> T` (+ optional `self` and trailing extra parameters). The code generated by [`build!`] calls the supplied **top-level configuration function** (at compile time) to collect information such as a set of kernel objects that need to be instantiated. This information is used to implement [`KernelCfg1`] and [`KernelCfg2`] on a given system type. At the same time, this process also produces handles to the defined kernel objects (such as [`Task`]), which can be returned from a configuration function directly or packaged in a user-defined container type. `build!` returns the evaluation result of the top-level configuration function. By storing this in a `const` variable, the application code can access the kernel objects defined in the configuration function.
+An embedded system is designed to serve a particular purpose, so it's often possible to predict many aspects of its operation, such as how many kernel objects of each kind are going to be used and how much memory is allocated in ROM and RAM. The process of collecting such information and specializing a kernel for a particular application is called **static configuration**.
+
+Kernel objects are **defined** (we use this specific word for static creation) in a **configuration function** having the signature `for<C> const fn (&mut `[`r3::kernel::Cfg`][]`<C>, ...) -> T where C: `[`r3::kernel::raw_cfg::CfgBase`][]. For each system type, an application provides a **top-level configuration function**, which defines all kernel objects belonging to that system type. A kernel-provided **build macro** processes its output (which mainly involves defining `static` items to store the state of all defined kernel objects) and somehow associates it with the system type.
+
+<span class="center">![static_cfg]</span>
+
+The configuration process assigns handles, such as [`Task`][], to the defined kernel objects, which can be returned by a configuration function and passed over up to the build macro, which returns it to the caller. By storing it in a `const` item, application code can access the defined kernel objects from everywhere.
 
 <!-- FIXME: When <https://github.com/rust-lang/cargo/issues/4242> is resolved,
             the following code block will be doc-testable  -->
 
 ```rust,ignore
-r3_port_std::use_port!(unsafe struct System);
+type System = r3_kernel::System<SystemTraits>;
+r3_port_std::use_port!(unsafe struct SystemTraits);
 
 struct Objects { task: Task<System> }
 
-const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
+// Does the following things:
+//  - Creates control blocks for the kernel objects defined in `configure_app`.
+//  - Associates them to `SystemTraits` using trait implementations.
+//  - Assigns the output of `configure_app`, containing the defined object
+//    handles, to a `COTTAGE`, making it available globally.
+const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
 // This is the top-level configuration function
 const fn configure_app<C>(b: &mut Cfg<C>) -> Objects
 where
-    C: ~const traits::CfgTask<System = System>,
+    C: ~const traits::CfgBase<System = System>
+     + ~const traits::CfgTask,
 {
     b.num_task_priority_levels(4);
     let task = Task::build()
@@ -210,12 +102,11 @@ fn task_body(_: usize) {
 }
 ```
 
-[`CfgBuilder`]: crate::kernel::cfg::CfgBuilder
-[`KernelCfg1`]: crate::kernel::KernelCfg1
-[`KernelCfg2`]: crate::kernel::KernelCfg2
+[`r3::kernel::Cfg`]: crate::kernel::Cfg
+[`r3::kernel::raw_cfg::CfgBase`]: crate::kernel::raw_cfg::CfgBase
 [`Task`]: crate::kernel::Task
 
-Configuration functions are highly composable as they can call other configuration functions in turn. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, making them behave in a meaningful way as a whole, and expose a whole new, higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`kernel::Mutex`]`<System>` (a low-level mutex object) and a [`hunk::Hunk`]`<System, UnsafeCell<T>>` (a typed hunk), which in turn is built on top of [`kernel::Hunk`]`<System>` (a low-level untyped hunk).
+Configuration functions are highly composable as they can make nested calls to other configuration functions. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, encapsulate them, and expose a higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`kernel::Mutex`]`<System>` (a low-level mutex object) and a [`hunk::Hunk`]`<System, UnsafeCell<T>>` (a typed hunk), which in turn is built on top of [`kernel::Hunk`]`<System>` (a low-level untyped hunk).
 
 ```rust
 # #![feature(const_fn_trait_bound)]
@@ -255,8 +146,6 @@ mod m {
 [`hunk::Hunk`]: crate::hunk::Hunk
 [mutex object]: crate::sync::Mutex
 
-The constructors of kernel objects are configuration functions by themselves, but they are different from normal configuration functions in that they can actually mutate the contents of `CfgBuilder` (which `build!` will use to create kernel structures in the final form), ultimately shaping the outcome of the configuration process. Therefore, they are the smallest building blocks of configuration functions.
-
 # System States
 
 A system can be in some of the system states described in this section at any point.
@@ -287,12 +176,11 @@ An **(execution) thread** is a sequence of instructions executed by a processor.
 
 The properties of threads such as how and when they are created and whether they can block or not are specific to each thread type.
 
-The initial thread that starts up the kernel (by calling [`PortToKernel::boot`]) is called the **main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel requests the port to dispatch the first task.
+The initial thread that starts up the kernel is called the **main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel dispatches the first task.
 
-[`PortToKernel::boot`]: crate::kernel::PortToKernel::boot
 [**startup hooks**]: crate::kernel::StartupHook
 
-A **[first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`InterruptHandler`]) as well as the callback functions of **timers** ([`Timer`]) through a port timer driver and the kernel timing core.
+A **[first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`InterruptHandler`]) as well as the callback functions of **timers** ([`Timer`]) through a timer driver and the kernel timing core.
 
 [first-level interrupt handler]: #interrupt-handling-framework
 [`InterruptHandler`]: crate::kernel::InterruptHandler
@@ -301,8 +189,8 @@ A **[first-level interrupt handler]** starts execution in its own thread in resp
 A **task** ([`Task`]) is the kernel object that can create a thread whose execution is controlled by application code. Each task encapsulates a variety of state data necessary for the execution and scheduling of the associated thread, such as [a stack region] to store local variables and activation frames, the current [priority], the [parking] state of the task, and a memory region used to save the state of CPU registers when the task is blocked or preempted. The associated thread can be started by **[activating]** that task. A task-based thread can make blocking system calls, which will temporarily block the execution of the thread until certain conditions are met. Task-based threads can be preempted by any kind of thread.
 
 [`Task`]: crate::kernel::Task
-[a stack region]: crate::kernel::cfg::CfgTaskBuilder::stack_size
-[priority]: crate::kernel::cfg::CfgTaskBuilder::priority
+[a stack region]: crate::kernel::task::TaskDefiner::stack_size
+[priority]: crate::kernel::task::TaskDefiner::priority
 [parking]: crate::kernel::Task::unpark
 [activating]: crate::kernel::Task::activate
 
@@ -345,9 +233,9 @@ The benefits of providing a standardized interface for interrupts include: (1) i
 
 An interrupt request is delivered to a processor by sending a hardware signal to an interrupt controller through an **interrupt line**. It's possible that more than one interrupt source is connected to a single interrupt line. Upon receiving an interrupt request, the interrupt controller translates the interrupt line to an **interrupt number** and transfers the control to the **first-level interrupt handler** associated with that interrupt number.
 
-Each interrupt line has configurable attributes such as an **interrupt priority**. An application can instruct the kernel to configure them at boot time by [`CfgInterruptLineBuilder`] or at runtime by [`InterruptLine`]. The interpretation of interrupt priority values is up to a port, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time or allowing a higher-priority interrupt handler to preempt another.
+Each interrupt line has configurable attributes such as an **interrupt priority**. An application can instruct the kernel to configure them at boot time by [`InterruptLineDefiner`] or at runtime by [`InterruptLine`]. The interpretation of interrupt priority values is up to a port, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time or allowing a higher-priority interrupt handler to preempt another.
 
-[`CfgInterruptLineBuilder`]: crate::kernel::cfg::CfgInterruptLineBuilder
+[`InterruptLineDefiner`]: crate::kernel::interrupt::InterruptLineDefiner
 [`InterruptLine`]: crate::kernel::InterruptLine
 
 The kernel occasionally disables interrupts by activating CPU Lock. The additional interrupt latency introduced by this can pose a problem for time-sensitive applications. To resolve this problem, a port may implement CPU Lock in a way that doesn't disable interrupt lines with a certain priority value and higher. Such priority values and the first-/second-level interrupt handlers for such interrupt lines are said to be **unmanaged**. The behavior of system calls inside unmanaged interrupt handlers is undefined. Interrupt handlers that aren't unmanaged are said to be **managed**.
@@ -358,10 +246,10 @@ Interrupt handlers execute with CPU Lock inactive and may return with CPU Lock e
 
 The behavior of system calls is undefined inside an unmanaged interrupt handler. The property of being protected from programming errors caused by making system calls inside an unmanaged interrupt handler is called **unmanaged safety**. Most system services are not marked as `unsafe`, so in order to ensure unmanaged safety, safe code shouldn't be allowed to register an interrupt handler that potentially executes as an unmanaged interrupt handler. On the other hand, the number of `unsafe` blocks in application code should be minimized in common use cases. To meet this goal, this framework employs several safeguards: (1) Interrupt handlers can be [explicitly marked] as **unmanaged-safe** (safe to use as an unmanaged interrupt handler), but this requires an `unsafe` block. (2) An interrupt line must be initialized with a priority value that falls within [a managed range] if it has a non-unmanaged-safe interrupt handler. (3) When [changing] the priority of an interrupt line, the new priority must be in a managed range. It's possible to [bypass] this check, but this requires an `unsafe` block.
 
-[explicitly marked]: crate::kernel::cfg::CfgInterruptHandlerBuilder::unmanaged
+[explicitly marked]: crate::kernel::interrupt::InterruptHandlerDefiner::unmanaged
 [changing]: crate::kernel::InterruptLine::set_priority
 [bypass]: crate::kernel::InterruptLine::set_priority_unchecked
-[a managed range]: crate::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+[a managed range]: crate::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
 
 <div class="admonition-follows"></div>
 
@@ -389,16 +277,7 @@ Another way to update the system time is to move it forward or back by a specifi
 
 [`adjust_time`]: crate::kernel::Kernel::adjust_time
 
-The kernel timing is driven by a **port timer driver**, which is part of a port. The kernel and the driver communicate through the traits [`PortTimer`]​ (kernel → driver) and [`PortToKernel`]​ (driver → kernel).
-
-[`PortTimer`]: crate::kernel::PortTimer
-[`PortToKernel`]: crate::kernel::PortToKernel
-
-The kernel expects that timer interrupts are handled in a timely manner. The resilience against overdue timer interrupts is limited by two factors: (1) [`PortTimer::MAX_TICK_COUNT`]` - `[`PortTimer::MAX_TIMEOUT`], representing the headroom of port-timer timeouts below the timer counter's representable range. Violating this will cause the kernel to lose track of time. (2) [`TIME_HARD_HEADROOM`], representing how overdue timed events can be before the internal represention of their arrival times wraps around and the timing algorithm starts exhibiting an incorrect behavior. **The application is responsible for ensuring these limitations are not exceeded**, e.g., by avoiding holding CPU Lock for a prolonged period of time.
-
-[`PortTimer::MAX_TICK_COUNT`]: crate::kernel::PortTimer::MAX_TICK_COUNT
-[`PortTimer::MAX_TIMEOUT`]: crate::kernel::PortTimer::MAX_TIMEOUT
-[`TIME_HARD_HEADROOM`]: crate::kernel::TIME_HARD_HEADROOM
+The kernel expects that timer interrupts are handled in a timely manner. The resilience against overdue timer interrupts is kernel-specific, and once it's exceeded, the kernel timing algorithm will start exhibiting an incorrect behavior. **The application is responsible for ensuring these limitations are not exceeded**, e.g., by avoiding holding CPU Lock for a prolonged period of time.
 
 <div class="admonition-follows"></div>
 
@@ -676,14 +555,6 @@ Kernel {
 # Cargo Features
 
 - **`chrono`**: Enables conversion between our [duration] and [timetamp] types and `::chrono`'s types.
-- **`inline_syscall`**: Allows (but does not force) inlining for all application-facing methods. Enabling this feature might lower the latency of system calls but there are the following downsides: (1) The decision of inlining is driven by the compiler's built-in heuristics, which takes many factors into consideration. Therefore, the performance improvement (or deterioration) varies unpredictably depending on the global structure of your application and the compiler version used, making it harder to design the system to meet real-time requirements. (2) Inlining increases the code working set size and can make the code run even slower. This is especially likely to happen on an execute-in-place (XIP) system with low-speed code memory such as an SPI flash.
-
-## Kernel Features
-
-Enabling the following features might affect the kernel's runtime peformance and memory usage.
-
-- **`priority_boost`**: Enables [Priority Boost].
-- **`system_time`**: Enables the tracking of a global system time.
 
 [duration]: crate::time::Duration
 [timetamp]: crate::time::Time
