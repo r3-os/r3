@@ -507,7 +507,7 @@ impl State {
     ///     - Update SP to point to the main stack. In this case, **this
     ///       procedure may overwrite any contents in the main stack.**
     ///  - **`dispatch:`** (alternate entry point)
-    ///  - Call [`r3::kernel::PortToKernel::choose_running_task`].
+    ///  - Call [`r3_kernel::PortToKernel::choose_running_task`].
     ///  - Restore SP from the next scheduled task's `TaskState`.
     ///  - If there's no task to schedule, branch to the idle task loop.
     ///  - Pop the second-level state of the next scheduled task.

@@ -56,7 +56,7 @@ pub mod rt {
     pub mod imp;
 }
 
-/// The [`r3::kernel::PortThreading`] implementation.
+/// The [`r3_kernel::PortThreading`] implementation.
 #[doc(hidden)]
 pub mod threading {
     pub mod cfg;
@@ -107,7 +107,7 @@ pub trait Timer {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
-    /// [`PortToKernel::boot`]: r3::kernel::PortToKernel::boot
+    /// [`PortToKernel::boot`]: r3_kernel::PortToKernel::boot
     ///
     /// # Safety
     ///
@@ -125,7 +125,7 @@ pub trait InterruptController {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
-    /// [`PortToKernel::boot`]: r3::kernel::PortToKernel::boot
+    /// [`PortToKernel::boot`]: r3_kernel::PortToKernel::boot
     ///
     /// # Safety
     ///
@@ -146,7 +146,7 @@ pub trait InterruptController {
     /// The provided interrupt number must be greater than or equal to
     /// [`INTERRUPT_PLATFORM_START`].
     ///
-    /// [`PortInterrupts::set_interrupt_line_priority`]: r3::kernel::PortInterrupts::set_interrupt_line_priority
+    /// [`PortInterrupts::set_interrupt_line_priority`]: r3_kernel::PortInterrupts::set_interrupt_line_priority
     ///
     /// # Safety
     ///
@@ -164,7 +164,7 @@ pub trait InterruptController {
     /// The provided interrupt number must be greater than or equal to
     /// [`INTERRUPT_PLATFORM_START`].
     ///
-    /// [`PortInterrupts::enable_interrupt_line`]: r3::kernel::PortInterrupts::enable_interrupt_line
+    /// [`PortInterrupts::enable_interrupt_line`]: r3_kernel::PortInterrupts::enable_interrupt_line
     ///
     /// # Safety
     ///
@@ -179,7 +179,7 @@ pub trait InterruptController {
     /// The provided interrupt number must be greater than or equal to
     /// [`INTERRUPT_PLATFORM_START`].
     ///
-    /// [`PortInterrupts::disable_interrupt_line`]: r3::kernel::PortInterrupts::disable_interrupt_line
+    /// [`PortInterrupts::disable_interrupt_line`]: r3_kernel::PortInterrupts::disable_interrupt_line
     ///
     /// # Safety
     ///
@@ -194,7 +194,7 @@ pub trait InterruptController {
     /// The provided interrupt number must be greater than or equal to
     /// [`INTERRUPT_PLATFORM_START`].
     ///
-    /// [`PortInterrupts::pend_interrupt_line`]: r3::kernel::PortInterrupts::pend_interrupt_line
+    /// [`PortInterrupts::pend_interrupt_line`]: r3_kernel::PortInterrupts::pend_interrupt_line
     ///
     /// # Safety
     ///
@@ -209,7 +209,7 @@ pub trait InterruptController {
     /// The provided interrupt number must be greater than or equal to
     /// [`INTERRUPT_PLATFORM_START`].
     ///
-    /// [`PortInterrupts::clear_interrupt_line`]: r3::kernel::PortInterrupts::clear_interrupt_line
+    /// [`PortInterrupts::clear_interrupt_line`]: r3_kernel::PortInterrupts::clear_interrupt_line
     ///
     /// # Safety
     ///
@@ -224,7 +224,7 @@ pub trait InterruptController {
     /// The provided interrupt number must be greater than or equal to
     /// [`INTERRUPT_PLATFORM_START`].
     ///
-    /// [`PortInterrupts::is_interrupt_line_pending`]: r3::kernel::PortInterrupts::is_interrupt_line_pending
+    /// [`PortInterrupts::is_interrupt_line_pending`]: r3_kernel::PortInterrupts::is_interrupt_line_pending
     ///
     /// # Safety
     ///

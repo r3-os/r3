@@ -93,7 +93,7 @@ pub fn init<Traits: TimerInstance>() {
     }
 }
 
-/// Implements [`r3::kernel::PortTimer::tick_count`]
+/// Implements [`r3_kernel::PortTimer::tick_count`]
 ///
 /// # Safety
 ///
@@ -108,7 +108,7 @@ pub unsafe fn tick_count<Traits: TimerInstance>() -> UTicks {
     tstate.tick_count(tcfg, hw_tick_count)
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick`]
+/// Implements [`r3_kernel::PortTimer::pend_tick`]
 ///
 /// # Safety
 ///
@@ -118,7 +118,7 @@ pub unsafe fn pend_tick<Traits: TimerInstance>() {
     Traits::mtimecmp_reg32()[1].set(0);
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick_after`]
+/// Implements [`r3_kernel::PortTimer::pend_tick_after`]
 ///
 /// # Safety
 ///

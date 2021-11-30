@@ -6,7 +6,7 @@ use r3::kernel::InterruptNum;
 /// implements [`Timer`] on the system type.
 /// **Requires [`TimerOptions`].**
 ///
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortTimer`]: r3_kernel::PortTimer
 /// [`Timer`]: crate::Timer
 ///
 /// You should do the following:

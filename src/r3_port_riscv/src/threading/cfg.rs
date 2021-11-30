@@ -20,8 +20,8 @@ pub trait ThreadingOptions {}
 /// [`PortInterrupts`], and [`EntryPoint`].
 /// **Requires [`ThreadingOptions`] and [`InterruptController`].**
 ///
-/// [`PortThreading`]: r3::kernel::PortThreading
-/// [`PortInterrupts`]: r3::kernel::PortInterrupts
+/// [`PortThreading`]: r3_kernel::PortThreading
+/// [`PortInterrupts`]: r3_kernel::PortInterrupts
 /// [`EntryPoint`]: crate::EntryPoint
 /// [`InterruptController`]: crate::InterruptController
 #[macro_export]
