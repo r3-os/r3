@@ -6,7 +6,7 @@ use r3::kernel::{InterruptNum, InterruptPriority};
 /// kernel trait type.
 /// **Requires [`OsTimerOptions`] and [`Gic`].**
 ///
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortTimer`]: r3_kernel::PortTimer
 /// [`Timer`]: r3_port_arm::Timer
 /// [`Gic`]: r3_port_arm::Gic
 ///

@@ -49,7 +49,7 @@ where
         .finish(b);
 }
 
-/// Implements [`crate::Timer::init`]
+/// Implements [`r3_port_arm::Timer::init`]
 #[inline]
 pub fn init<System: OsTimerInstance>() {
     let ostm = System::ostm_regs();
@@ -96,7 +96,7 @@ fn hw_tick_count<System: OsTimerInstance>() -> u32 {
     System::ostm_regs().cnt.read().bits()
 }
 
-/// Implements [`r3::kernel::PortTimer::tick_count`]
+/// Implements [`r3_kernel::PortTimer::tick_count`]
 ///
 /// # Safety
 ///
@@ -111,7 +111,7 @@ pub unsafe fn tick_count<System: OsTimerInstance>() -> UTicks {
     tstate.tick_count(tcfg, hw_tick_count)
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick`]
+/// Implements [`r3_kernel::PortTimer::pend_tick`]
 ///
 /// # Safety
 ///
@@ -121,7 +121,7 @@ pub unsafe fn pend_tick<Traits: OsTimerInstance>() {
     let _ = InterruptLine::<System<Traits>>::from_num(Traits::INTERRUPT_OSTM).pend();
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick_after`]
+/// Implements [`r3_kernel::PortTimer::pend_tick_after`]
 ///
 /// # Safety
 ///
