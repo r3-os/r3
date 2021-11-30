@@ -265,7 +265,7 @@ pub struct TaskCb<
     ///  - In a `Ready` state, this forms the linked list headed by
     ///    [`State::task_ready_queue`].
     ///
-    /// [`State::task_ready_queue`]: crate::kernel::State::task_ready_queue
+    /// [`State::task_ready_queue`]: crate::State::task_ready_queue
     pub(super) ready_queue_data: TaskReadyQueueData,
 
     /// The wait state of the task.

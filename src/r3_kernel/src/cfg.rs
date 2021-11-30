@@ -21,7 +21,7 @@ pub use self::{event_group::*, interrupt::*, mutex::*, semaphore::*, task::*, ti
 ///
 /// [1]: r3#static-configuration
 /// [2]: crate#kernel-trait-type
-/// [`KernelCfg2`]: crate::kernel::KernelCfg2
+/// [`KernelCfg2`]: crate::KernelCfg2
 #[macro_export]
 macro_rules! build {
     // `$configure: ~const Fn(&mut Cfg<impl ~const CfgBase<System =

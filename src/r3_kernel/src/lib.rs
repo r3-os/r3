@@ -394,11 +394,10 @@ pub unsafe trait PortThreading: KernelCfg1 + KernelStatic<System<Self>> {
     /// Both ends of stack regions are aligned by `STACK_ALIGN`. It's
     /// automatically enforced by the kernel configurator for automatically
     /// allocated stack regions (this applies to tasks created without
-    /// [`stack_hunk`]). The kernel configurator does not check the alignemnt
+    /// [`StackHunk`]). The kernel configurator does not check the alignemnt
     /// for manually-allocated stack regions.
     ///
-    /// [`stack_hunk`]: crate::kernel::cfg::CfgTaskBuilder::stack_hunk
-    /// [`StackHunk`]: crate::kernel::StackHunk
+    /// [`StackHunk`]: r3::kernel::task::StackHunk
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
 
     /// Transfer the control to the dispatcher, discarding the current

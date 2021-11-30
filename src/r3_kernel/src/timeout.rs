@@ -4,12 +4,11 @@
 //!
 //! There are two kinds of absolute time values used by this system.
 //!
-//! **A system time** corresponds to the value of [`Kernel::time`]. This is
-//! affected by both of [`Kernel::set_time`] and [`Kernel::adjust_time`].
+//! **A system time** corresponds to the value of [`raw_time`]. This is
+//! affected by both of [`raw_set_time`] and [`raw_adjust_time`].
 //!
-//! On the other hand, **an event time** is only affected by
-//! [`Kernel::adjust_time`]. *Time* usually refers to this kind of time unless
-//! specified otherwise.
+//! On the other hand, **an event time** is only affected by [`raw_adjust_time`].
+//! *Time* usually refers to this kind of time unless specified otherwise.
 //!
 //! # Ticks
 //!
@@ -96,8 +95,8 @@
 //! We need to cap the amount of backward time adjustment so that
 //! timeouts won't move past the critical point (from left).
 //! We use the frontier-based method to enforce this in lieu of checking every
-//! outstanding timeout for reasons explained in [`Kernel::adjust_time`].
-//! The frontier (a concept used in the definition of [`Kernel::adjust_time`])
+//! outstanding timeout for reasons explained in [`raw_adjust_time`].
+//! The frontier (a concept used in the definition of [`raw_adjust_time`])
 //! is a mobile point on the line that moves in the same way as the original
 //! definition - it represents the most advanced CET the system has ever
 //! observed. Timeouts are always created in relative to CET. This means the
@@ -125,6 +124,9 @@
 //!     CET         enqueueable       user headroom
 //! ```
 //!
+//! [`raw_time`]: r3::kernel::raw::KernelTime::raw_time
+//! [`raw_set_time`]: r3::kernel::raw::KernelBase::raw_set_time
+//! [`raw_adjust_time`]: r3::kernel::raw::KernelAdjustTime::raw_adjust_time
 use core::{fmt, marker::PhantomPinned, pin::Pin, ptr::NonNull};
 use r3::{
     kernel::{AdjustTimeError, TimeError},
@@ -341,9 +343,9 @@ const USER_HEADROOM: Time32 = 1 << 29;
 const HARD_HEADROOM: Time32 = 1 << 30;
 
 /// The extent of how overdue a timed event can be made or how far a timed event
-/// can be delayed past `Duration::MAX` by a call to [`adjust_time`].
+/// can be delayed past `Duration::MAX` by a call to [`raw_adjust_time`].
 ///
-/// [`adjust_time`]: crate::kernel::Kernel::adjust_time
+/// [`raw_adjust_time`]: r3::kernel::raw::KernelAdjustTime::raw_adjust_time
 ///
 /// The value is `1 << 29` microseconds.
 pub const TIME_USER_HEADROOM: Duration = Duration::from_micros(USER_HEADROOM as i32);
@@ -351,7 +353,7 @@ pub const TIME_USER_HEADROOM: Duration = Duration::from_micros(USER_HEADROOM as 
 /// The extent of how overdue the firing of [`timer_tick`] can be without
 /// breaking the kernel timing algorithm.
 ///
-/// [`timer_tick`]: crate::kernel::PortToKernel::timer_tick
+/// [`timer_tick`]: crate::PortToKernel::timer_tick
 ///
 /// The value is `1 << 30` microseconds.
 pub const TIME_HARD_HEADROOM: Duration = Duration::from_micros(HARD_HEADROOM as i32);
