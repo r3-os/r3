@@ -3,11 +3,11 @@
 // exemption. It probably should be in a HAL crate.
 #![cfg(feature = "semver-exempt")]
 
-/// The extension trait for `rza1::SCIFx` (e.g., [`rza1::SCIF0`]).
+/// The extension trait for [`rp2040::UART0`][].
 ///
 /// # Safety
 ///
-/// This is only meant to be implemented on `rza1::SCIFx`.
+/// This is only meant to be implemented on `rp2040::UART0`.
 pub unsafe trait UartExt:
     core::ops::Deref<Target = rp2040::uart0::RegisterBlock> + Sized
 {
