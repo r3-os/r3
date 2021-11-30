@@ -20,7 +20,7 @@
 #[doc = include_str!("../CHANGELOG.md")]
 pub mod _changelog_ {}
 
-/// The [`r3::kernel::PortThreading`] implementation.
+/// The [`r3_kernel::PortThreading`] implementation.
 #[doc(hidden)]
 pub mod threading {
     pub mod cfg;
@@ -36,7 +36,7 @@ pub mod rt {
     pub mod imp;
 }
 
-/// The tickful [`r3::kernel::PortTimer`] implementation based on SysTick.
+/// The tickful [`r3_kernel::PortTimer`] implementation based on SysTick.
 #[doc(hidden)]
 pub mod systick_tickful {
     pub mod cfg;

@@ -2,7 +2,7 @@
 /// and [`KernelTraits`] to be implemented.**
 ///
 /// [`EntryPoint`]: crate::EntryPoint
-/// [`KernelTraits`]: r3::kernel::KernelTraits
+/// [`KernelTraits`]: r3_kernel::KernelTraits
 ///
 /// This macro registers the following items:
 ///

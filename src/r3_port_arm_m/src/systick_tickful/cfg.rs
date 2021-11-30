@@ -37,7 +37,7 @@ pub trait SysTickOptions {
 /// Attach the tickful implementation of [`PortTimer`] that is based on SysTick
 /// to a given kernel trait type.
 ///
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortTimer`]: r3_kernel::PortTimer
 /// [a tickful scheme]: crate#tickful-systick
 ///
 /// You should also do the following:

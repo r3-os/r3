@@ -20,7 +20,7 @@ pub trait ThreadingOptions {
     /// The lower bound of [`MANAGED_INTERRUPT_PRIORITY_RANGE`] is bound to this
     /// value.
     ///
-    /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3_kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
     /// Must be `0` on Armv6-M and Armv8-M Baseline because they don't support
     /// `BASEPRI`.
@@ -81,8 +81,8 @@ pub unsafe trait EntryPoint {
 /// See [the crate-level documentation](crate#kernel-timing) for possible
 /// options.
 ///
-/// [`PortThreading`]: r3::kernel::PortThreading
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortThreading`]: r3_kernel::PortThreading
+/// [`PortTimer`]: r3_kernel::PortTimer
 ///
 /// # Safety
 ///
