@@ -247,7 +247,9 @@ pub unsafe trait KernelEventGroup: KernelBase {
 }
 
 bitflags::bitflags! {
-    /// Options for [`EventGroup::wait`].
+    /// Options for [`EventGroup::wait`][1].
+    ///
+    /// [1]: crate::kernel::EventGroup::wait
     pub struct EventGroupWaitFlags: u8 {
         /// Wait for all of the specified bits to be set.
         const ALL = 1 << 0;
