@@ -61,13 +61,13 @@ pub mod kernel_tests {
         ///
         ///  - There must be no duplicates.
         ///
-        ///  - The port must support [`enable_interrupt_line`],
-        ///    [`disable_interrupt_line`], [`pend_interrupt_line`] for all of
-        ///    the specified interrupt lines.
+        ///  - The kernel must support [`InterruptLine::enable`][1],
+        ///    [`InterruptLine::disable`][2], [`InterruptLine::pend`][3] for all
+        ///    of the specified interrupt lines.
         ///
-        /// [`enable_interrupt_line`]: r3::kernel::PortInterrupts::enable_interrupt_line
-        /// [`disable_interrupt_line`]: r3::kernel::PortInterrupts::disable_interrupt_line
-        /// [`pend_interrupt_line`]: r3::kernel::PortInterrupts::pend_interrupt_line
+        /// [1]: r3::kernel::InterruptLine::enable
+        /// [2]: r3::kernel::InterruptLine::disable
+        /// [3]: r3::kernel::InterruptLine::pend
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
         /// Valid managed priority values.
@@ -77,13 +77,13 @@ pub mod kernel_tests {
         ///    least two for all test cases to run.
         ///
         ///  - All elements must be in range
-        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///    [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`].
         ///
         ///  - The elements must be sorted in a descending order of priority.
         ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
         ///    `p[i]` should be high enough to preempt `p[o + 1]`.
         ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
 
         /// Valid unmanaged priority values.
@@ -93,7 +93,7 @@ pub mod kernel_tests {
         ///    least one for all test cases to run.
         ///
         ///  - No elements must be in range
-        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///    [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`].
         ///
         ///  - The elements must be sorted in a descending order of priority.
         ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
@@ -104,7 +104,7 @@ pub mod kernel_tests {
         ///    in [`INTERRUPT_PRIORITIES`], `pri_unmanaged` should be high
         ///    enough to preempt `pri_managed`.
         ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
         /// [`INTERRUPT_PRIORITIES`]: Self::INTERRUPT_PRIORITIES
         ///
         const UNMANAGED_INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
@@ -341,13 +341,13 @@ pub mod kernel_benchmarks {
         ///
         ///  - There must be no duplicates.
         ///
-        ///  - The port must support [`enable_interrupt_line`],
-        ///    [`disable_interrupt_line`], [`pend_interrupt_line`] for all of
-        ///    the specified interrupt lines.
+        ///  - The kernel must support [`InterruptLine::enable`][1],
+        ///    [`InterruptLine::disable`][2], [`InterruptLine::pend`][3] for all
+        ///    of the specified interrupt lines.
         ///
-        /// [`enable_interrupt_line`]: r3::kernel::PortInterrupts::enable_interrupt_line
-        /// [`disable_interrupt_line`]: r3::kernel::PortInterrupts::disable_interrupt_line
-        /// [`pend_interrupt_line`]: r3::kernel::PortInterrupts::pend_interrupt_line
+        /// [1]: r3::kernel::InterruptLine::enable
+        /// [2]: r3::kernel::InterruptLine::disable
+        /// [3]: r3::kernel::InterruptLine::pend
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
         /// Valid priority values.
@@ -357,13 +357,13 @@ pub mod kernel_benchmarks {
         ///    least two for all test cases to run.
         ///
         ///  - All elements must be in range
-        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///    [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`].
         ///
         ///  - The elements must be sorted in a descending order of priority.
         ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
         ///    `p[i]` should be high enough to preempt `p[o + 1]`.
         ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
     }
 
