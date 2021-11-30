@@ -148,7 +148,7 @@ impl State {
     ///     - Push the second-level state.
     ///     - Store SP to the current task's `TaskState`.
     ///  - **`dispatch:`** (alternate entry point)
-    ///     - Call [`r3::kernel::PortToKernel::choose_running_task`].
+    ///     - Call [`r3_kernel::PortToKernel::choose_running_task`].
     ///     - Restore SP from the next scheduled task's `TaskState`.
     ///  - If there's no task to schedule, branch to [`Self::idle_task`].
     ///  - Pop the second-level state of the next scheduled task.

@@ -12,7 +12,7 @@ use super::{gic_regs, imp::GicRegs};
 /// the target.
 /// **Requires [`GicOptions`].**
 ///
-/// [`PortInterrupts`]: r3::kernel::PortInterrupts
+/// [`PortInterrupts`]: r3_kernel::PortInterrupts
 /// [`InterruptController`]: crate::InterruptController
 ///
 /// # Safety

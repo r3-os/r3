@@ -121,7 +121,7 @@ fn hw_tick_count<Traits: Sp804Instance>() -> u32 {
     hw_tick_count
 }
 
-/// Implements [`r3::kernel::PortTimer::tick_count`]
+/// Implements [`r3_kernel::PortTimer::tick_count`]
 ///
 /// # Safety
 ///
@@ -136,7 +136,7 @@ pub unsafe fn tick_count<Traits: Sp804Instance>() -> UTicks {
     tstate.tick_count(tcfg, hw_tick_count)
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick`]
+/// Implements [`r3_kernel::PortTimer::pend_tick`]
 ///
 /// # Safety
 ///
@@ -147,7 +147,7 @@ pub unsafe fn pend_tick<Traits: Sp804Instance>() {
         .unwrap();
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick_after`]
+/// Implements [`r3_kernel::PortTimer::pend_tick_after`]
 ///
 /// # Safety
 ///

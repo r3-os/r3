@@ -110,7 +110,7 @@ pub fn end_interrupt<Traits: Gic>(num: InterruptNum) {
     cpu_interface.EOIR.set(num as _);
 }
 
-/// Implements [`r3::kernel::PortInterrupts::set_interrupt_line_priority`].
+/// Implements [`r3_kernel::PortInterrupts::set_interrupt_line_priority`].
 pub fn set_interrupt_line_priority<Traits: Gic>(
     line: InterruptNum,
     priority: InterruptPriority,
@@ -126,7 +126,7 @@ pub fn set_interrupt_line_priority<Traits: Gic>(
     Ok(())
 }
 
-/// Implements [`r3::kernel::PortInterrupts::enable_interrupt_line`].
+/// Implements [`r3_kernel::PortInterrupts::enable_interrupt_line`].
 pub fn enable_interrupt_line<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
@@ -142,7 +142,7 @@ pub fn enable_interrupt_line<Traits: Gic>(
     Ok(())
 }
 
-/// Implements [`r3::kernel::PortInterrupts::disable_interrupt_line`].
+/// Implements [`r3_kernel::PortInterrupts::disable_interrupt_line`].
 pub fn disable_interrupt_line<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
@@ -158,7 +158,7 @@ pub fn disable_interrupt_line<Traits: Gic>(
     Ok(())
 }
 
-/// Implements [`r3::kernel::PortInterrupts::pend_interrupt_line`].
+/// Implements [`r3_kernel::PortInterrupts::pend_interrupt_line`].
 pub fn pend_interrupt_line<Traits: Gic>(line: InterruptNum) -> Result<(), PendInterruptLineError> {
     let distributor = Traits::gic_regs().distributor;
 
@@ -173,7 +173,7 @@ pub fn pend_interrupt_line<Traits: Gic>(line: InterruptNum) -> Result<(), PendIn
     Ok(())
 }
 
-/// Implements [`r3::kernel::PortInterrupts::clear_interrupt_line`].
+/// Implements [`r3_kernel::PortInterrupts::clear_interrupt_line`].
 pub fn clear_interrupt_line<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<(), ClearInterruptLineError> {
@@ -190,7 +190,7 @@ pub fn clear_interrupt_line<Traits: Gic>(
     Ok(())
 }
 
-/// Implements [`r3::kernel::PortInterrupts::is_interrupt_line_pending`].
+/// Implements [`r3_kernel::PortInterrupts::is_interrupt_line_pending`].
 pub fn is_interrupt_line_pending<Traits: Gic>(
     line: InterruptNum,
 ) -> Result<bool, QueryInterruptLineError> {

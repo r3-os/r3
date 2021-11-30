@@ -7,7 +7,7 @@ pub trait InterruptController {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
-    /// [`PortToKernel::boot`]: r3::kernel::PortToKernel::boot
+    /// [`PortToKernel::boot`]: r3_kernel::PortToKernel::boot
     ///
     /// # Safety
     ///
@@ -36,7 +36,7 @@ pub trait Timer {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
-    /// [`PortToKernel::boot`]: r3::kernel::PortToKernel::boot
+    /// [`PortToKernel::boot`]: r3_kernel::PortToKernel::boot
     ///
     /// # Safety
     ///
@@ -72,7 +72,7 @@ pub trait EntryPoint {
 /// [`EntryPoint`]. **Requires [`ThreadingOptions`], [`InterruptController`],
 /// and [`Timer`].**
 ///
-/// [`PortThreading`]: r3::kernel::PortThreading
+/// [`PortThreading`]: r3_kernel::PortThreading
 #[macro_export]
 macro_rules! use_port {
     (unsafe $vis:vis struct $Traits:ident) => {

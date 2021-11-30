@@ -6,7 +6,7 @@ use r3::kernel::{InterruptNum, InterruptPriority};
 /// also implements [`Timer`] on the kernel trait type.
 /// **Requires [`Sp804Options`].**
 ///
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortTimer`]: r3_kernel::PortTimer
 /// [`Timer`]: crate::Timer
 /// [Arm PrimeCell SP804 Dual Timer]: https://developer.arm.com/documentation/ddi0271/d/
 ///
