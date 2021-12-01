@@ -61,9 +61,9 @@ A system type at least implements [`r3::kernel::raw::KernelBase`][] (see [the pa
 
 ## Static Configuration
 
-An embedded system is designed to serve a particular purpose, so it's often possible to predict many aspects of its operation, such as how many kernel objects of each kind are going to be used and how much memory is allocated in ROM and RAM. The process of collecting such information and specializing a kernel for a particular application is called **static configuration**.
+An embedded system is designed to serve a particular purpose, so it's often possible to predict many aspects of its operation, such as how many kernel objects of each kind are going to be used and how much memory is allocated in ROM and RAM. The process of collecting such information and specializing a kernel for a particular application *at compile time* is called **static configuration**.
 
-Kernel objects are **defined** (we use this specific word for static creation) in a **configuration function** having the signature `for<C> const fn (&mut `[`r3::kernel::Cfg`][]`<C>, ...) -> T where C: `[`r3::kernel::raw_cfg::CfgBase`][]. For each system type, an application provides a **top-level configuration function**, which defines all kernel objects belonging to that system type. A kernel-provided **build macro** processes its output (which mainly involves defining `static` items to store the state of all defined kernel objects) and somehow associates it with the system type.
+Kernel objects are **defined** (we use this specific word for static creation) in a **configuration function** having the signature `for<C> const fn (&mut `[`r3::kernel::Cfg`][]`<C>, ...) -> T where C: `[`~const`][]` `[`r3::kernel::raw_cfg::CfgBase`][]. For each system type, an application provides a **top-level configuration function**, which defines all kernel objects belonging to that system type. A kernel-provided **build macro** processes its output (which mainly involves defining `static` items to store the state of all defined kernel objects) and somehow associates it with the system type.
 
 <span class="center">![static_cfg]</span>
 
@@ -105,6 +105,7 @@ fn task_body(_: usize) {
 [`r3::kernel::Cfg`]: crate::kernel::Cfg
 [`r3::kernel::raw_cfg::CfgBase`]: crate::kernel::raw_cfg::CfgBase
 [`Task`]: crate::kernel::Task
+[`~const`]: https://github.com/rust-lang/rust/issues/77463
 
 Configuration functions are highly composable as they can make nested calls to other configuration functions. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, encapsulate them, and expose a higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`kernel::Mutex`]`<System>` (a low-level mutex object) and a [`hunk::Hunk`]`<System, UnsafeCell<T>>` (a typed hunk), which in turn is built on top of [`kernel::Hunk`]`<System>` (a low-level untyped hunk).
 
