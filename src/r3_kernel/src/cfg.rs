@@ -20,7 +20,7 @@ pub use self::{event_group::*, interrupt::*, mutex::*, semaphore::*, task::*, ti
 /// implementing [`KernelCfg2`].
 ///
 /// [1]: r3#static-configuration
-/// [2]: crate#the-kernel-trait-type
+/// [2]: crate#kernel-trait-type
 /// [`KernelCfg2`]: crate::kernel::KernelCfg2
 #[macro_export]
 macro_rules! build {

@@ -16,6 +16,9 @@ inline_syscall = []
 priority_boost = []
 system_time = []
 
+# Enable the diagram rendering by svgbob
+doc = ["svgbobdoc/enable"]
+
 # Enable all optional kernel features
 full = [
     "priority_boost",
