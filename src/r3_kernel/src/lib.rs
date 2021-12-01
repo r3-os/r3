@@ -16,6 +16,7 @@
 #![feature(const_mut_refs)]
 #![feature(never_type)] // `!`
 #![feature(decl_macro)]
+#![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![doc = include_str!("./lib.md")]
@@ -277,6 +278,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> 
 }
 
 #[cfg(feature = "priority_boost")]
+#[doc(cfg(feature = "priority_boost"))]
 unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     fn raw_boost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
@@ -285,6 +287,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
 }
 
 #[cfg(feature = "system_time")]
+#[doc(cfg(feature = "system_time"))]
 unsafe impl<Traits: KernelTraits> raw::KernelTime for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     fn raw_time() -> Result<Time, r3::kernel::TimeError> {
