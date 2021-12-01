@@ -187,12 +187,121 @@ pub struct KernelStaticParams<System> {
 /// The members of this trait are implementation details and not meant to be
 /// implemented externally. Use [`attach_static!`] or [`DelegateKernelStatic`]
 /// to implement this trait.
+///
+/// # Derivation and Usage
+///
+/// An implementation of this trait is derived from [`Cfg::finish_pre`][]'s
+/// output and consumed by [`Cfg::finish_post`][] through a type parameter. The
+/// following diagram shows the intended data flow.
+///
+/// <center>
+///
+#[doc = svgbobdoc::transform_mdstr!(
+/// ```svgbob
+///                   .--------.
+///                   | Cfg<C> |
+///                   '--------'
+///                       |
+///                       v
+///                "Cfg::finish_pre"
+///                       |
+///            .----------+----------.
+///            |                     |
+///            v                     v
+///       .--------.     .-----------------------.
+///       | Cfg<C> |     | KernelStaticParams<C> |
+///       '--------'     '-----------------------'
+///            |                     |
+///            |                     v
+///            |               "attach_static!"
+///            |                     |
+///            |                     v
+///            |           .-------------------.
+///            |           | impl KernelStatic |
+///            |           |   for C::System   |
+///            |           '-------------------'
+///            v                     |
+///  "Cfg::finish_interrupt"<--------+
+///      "(optional)"                |
+///            |                     |
+///            v                     |
+///     "Cfg::finish_post"<----------+
+///            |                     |
+///            v                     v
+///          .---.             Hunk API, etc.
+///          | C |
+///          '---'
+///            |
+///            v
+///      Kernel-specific
+///   configuration process
+/// ```
+)]
+///
+/// </center>
+///
+#[doc = include_str!("../common.md")]
 pub trait KernelStatic<System = Self> {
     const CFG_STARTUP_HOOKS: &'static [hook::StartupHookAttr];
     const CFG_INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>];
     fn cfg_hunk_pool_ptr() -> *mut u8;
 }
 
+/// The marker trait to generate a forwarding implementation of
+/// [`KernelStatic`][]`<System>`.
+///
+/// This is useful for circumventing [the orphan rules][1]. Suppose we have a
+/// kernel crate `r3_kernel` and an application crate `app`, and `r3_kernel`
+/// provides a system type `System<Traits>`, where `Traits` is a marker type to
+/// be defined in an application crate. For many reasons, `static` items to
+/// store a kernel state can only be defined in `app`, where the concrete form
+/// of the kernel is known. This means `impl KernelStatic for System<Traits>`
+/// has to appear in `app`, but since both `KernelStatic` and `System` are
+/// foreign to `app`, this is not allowed by the orphan rules.
+///
+/// ```rust,ignore
+/// // r3::kernel::cfg
+/// // ========================
+/// trait KernelStatic<System> {}
+///
+/// // r3_kernel
+/// // ========================
+/// struct System<Traits> { /* ... */ }
+///
+/// // app
+/// // ========================
+/// struct Traits;
+/// impl r3::kernel::cfg::KernelStatic<r3_kernel::System<Traits>>
+///     for r3_kernel::System<Traits> {} // E0117
+/// ```
+///
+/// The above example can be fixed by implementing `KernelStatic` on `Traits`
+/// instead and `DelegateKernelStatic` on `System`.
+///
+/// ```rust,ignore
+/// // r3::kernel::cfg
+/// // ========================
+/// trait KernelStatic<System> {}
+/// trait DelegateKernelStatic<System> { type Target; }
+/// impl<T, System> KernelStatic<System> for T
+///     where T: DelegateKernelStatic<System> {}
+///
+/// // r3_kernel
+/// // ========================
+/// struct System<Traits> { /* ... */ }
+/// impl<Traits> DelegateKernelStatic for System<Traits> {
+///     // Inherit `Traits`'s implementation
+///     type Target = Traits;
+/// }
+///
+/// // app
+/// // ========================
+/// struct Traits;
+/// impl r3::kernel::cfg::KernelStatic<r3_kernel::System<Traits>>
+///     for Traits {} // OK
+/// ```
+///
+/// [1]: https://rust-lang.github.io/rfcs/2451-re-rebalancing-coherence.html#concrete-orphan-rules
 pub trait DelegateKernelStatic<System> {
     type Target: KernelStatic<System>;
 }
@@ -213,7 +322,9 @@ impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T {
 /// type `$System`.
 ///
 /// This macro produces `static` items and a `KernelStatic<$System>`
-/// implementation for `$Ty`. It doesn't support generics.
+/// implementation for `$Ty`. It doesn't support generics, which means this
+/// macro should be invoked in an application crate, where the concrete system
+/// type is known.
 pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $(,)?) {
     const _: () = {
         use $crate::{
