@@ -95,11 +95,9 @@ impl<T> HunkIniter<T> for ZeroInitTag {
     }
 }
 
-/// Configuration builder type for [`Hunk`].
+/// The definer (static builder) for [`Hunk`].
 ///
 /// `InitTag` is either [`DefaultInitTag`] or [`ZeroInitTag`].
-///
-/// [`Hunk`]: crate::kernel::Hunk
 #[must_use = "must call `finish()` to complete registration"]
 pub struct HunkDefiner<System, T: ?Sized, InitTag> {
     _phantom: PhantomData<(System, InitTag, T)>,

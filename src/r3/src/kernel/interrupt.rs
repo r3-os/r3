@@ -272,9 +272,7 @@ impl<System: raw::KernelInterruptLine> InterruptLineDefiner<System> {
 
 // ----------------------------------------------------------------------------
 
-/// Configuration builder type for [`InterruptHandler`].
-///
-/// [`InterruptHandler`]: crate::kernel::InterruptHandler
+/// The definer (static builder) for [`InterruptHandler`].
 pub struct InterruptHandlerDefiner<System: raw::KernelInterruptLine> {
     _phantom: PhantomInvariant<System>,
     line: Option<InterruptNum>,

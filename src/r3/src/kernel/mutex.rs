@@ -406,9 +406,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
 
 // ----------------------------------------------------------------------------
 
-/// Configuration builder type for [`Mutex`].
-///
-/// [`Mutex`]: crate::kernel::Mutex
+/// The definer (static builder) for [`Mutex`][].
 #[must_use = "must call `finish()` to complete registration"]
 pub struct MutexDefiner<System> {
     inner: raw_cfg::MutexDescriptor<System>,

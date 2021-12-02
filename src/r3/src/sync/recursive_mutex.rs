@@ -9,7 +9,7 @@ use crate::{
     utils::Init,
 };
 
-/// Configuration builder type for [`RecursiveMutex`].
+/// The definer (static builder) for [`RecursiveMutex`][].
 pub struct Definer<System, T, InitTag> {
     mutex: mutex::MutexDefiner<System>,
     hunk: HunkDefiner<System, MutexInner<T>, InitTag>,

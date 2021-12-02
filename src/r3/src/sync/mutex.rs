@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-/// Configuration builder type for [`Mutex`].
+/// The definer (static builder) for [`Mutex`][].
 pub struct Definer<System, T, InitTag> {
     mutex: mutex::MutexDefiner<System>,
     hunk: HunkDefiner<System, UnsafeCell<T>, InitTag>,
