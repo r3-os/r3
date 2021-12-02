@@ -337,7 +337,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
 
     /// Unlock the mutex.
     ///
-    /// Mutexes must be unlocked in a lock-reverse order, or this method will
+    /// Mutexes must be unlocked in a lock-reverse order, or this method may
     /// return [`UnlockMutexError::BadObjectState`].
     #[inline]
     pub fn unlock(self) -> Result<(), UnlockMutexError> {

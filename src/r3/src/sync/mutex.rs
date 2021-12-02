@@ -26,7 +26,7 @@ pub struct Definer<System, T, InitTag> {
 ///    calling [`Mutex::mark_consistent`].
 ///
 ///  - Mutexes must be unlocked in a lock-reverse order. [`MutexGuard`]`::drop`
-///    will panic if this is violated.
+///    might panic if this is violated.
 ///
 /// [`r3::kernel::Mutex`]: crate::kernel::Mutex
 pub struct Mutex<System, T>
