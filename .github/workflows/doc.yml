@@ -44,6 +44,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3_portkit --all-features }
 
+      - name: Build Documentation for “r3_kernel”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p r3_kernel --all-features }
+
       - name: Build Documentation for “r3”
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3 --all-features }
