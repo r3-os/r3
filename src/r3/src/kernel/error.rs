@@ -778,7 +778,7 @@ define_error! {
     /// [`InterruptLine::set_priority`]: super::InterruptLine::set_priority
     /// [`InterruptLine::set_priority_unchecked`]: super::InterruptLine::set_priority_unchecked
     pub enum SetInterruptLinePriorityError {
-        /// The operation is not supported by the port.
+        /// The operation is not supported by the kernel.
         NotSupported,
         /// CPU Lock is active, or the current context is not [a task context].
         ///
@@ -797,7 +797,7 @@ define_error! {
     /// [`InterruptLine::enable`]: super::InterruptLine::enable
     /// [`InterruptLine::disable`]: super::InterruptLine::disable
     pub enum EnableInterruptLineError {
-        /// The operation is not supported by the port.
+        /// The operation is not supported by the kernel.
         NotSupported,
         /// Enabling or disabling the specified interrupt line is not supported.
         BadParam,
@@ -810,7 +810,7 @@ define_error! {
     ///
     /// [`InterruptLine::pend`]: super::InterruptLine::pend
     pub enum PendInterruptLineError {
-        /// Setting a pending flag is not supported by the port.
+        /// Setting a pending flag is not supported by the kernel.
         NotSupported,
         /// Setting the pending flag of the specified interrupt line is not
         /// supported.
@@ -819,7 +819,7 @@ define_error! {
         /// example, this operation is invalid for an level-triggered interrupt
         /// line.
         ///
-        /// A port is not required to detect this condition.
+        /// A kernel is not required to detect this condition.
         BadObjectState,
     }
 }
@@ -830,7 +830,7 @@ define_error! {
     ///
     /// [`InterruptLine::clear`]: super::InterruptLine::clear
     pub enum ClearInterruptLineError {
-        /// Clearing a pending flag is not supported by the port.
+        /// Clearing a pending flag is not supported by the kernel.
         NotSupported,
         /// Clearing the pending flag of the specified interrupt line is not
         /// supported.
@@ -839,7 +839,7 @@ define_error! {
         /// example, this operation is invalid for an level-triggered interrupt
         /// line.
         ///
-        /// A port is not required to detect this condition.
+        /// A kernel is not required to detect this condition.
         BadObjectState,
     }
 }
@@ -850,7 +850,7 @@ define_error! {
     ///
     /// [`InterruptLine::is_pending`]: super::InterruptLine::is_pending
     pub enum QueryInterruptLineError {
-        /// Reading a pending flag is not supported by the port.
+        /// Reading a pending flag is not supported by the kernel.
         NotSupported,
         /// Reading the pending flag of the specified interrupt line is not
         /// supported.

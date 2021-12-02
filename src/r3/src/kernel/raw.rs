@@ -519,7 +519,7 @@ pub unsafe trait KernelInterruptLine: KernelBase {
 
 /// Numeric value used to identify interrupt lines.
 ///
-/// The meaning of this value is defined by a port and target hardware. They
+/// The meaning of this value is defined by a kernel and target hardware. They
 /// are not necessarily tightly packed from zero.
 pub type InterruptNum = usize;
 

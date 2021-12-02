@@ -143,8 +143,8 @@ pub trait Kernel: private::Sealed {
     /// <div class="admonition-follows"></div>
     ///
     /// > **Rationale:** This restriction originates from μITRON4.0. It's
-    /// > actually unnecessary in the current implementation, but allows
-    /// > headroom for potential changes in the implementation.
+    /// > actually unnecessary in `r3_kernel`'s current implementation, but
+    /// > allows more leeway in a kernel implementation.
     fn set_time(time: Time) -> Result<(), TimeError>;
 
     /// Get the current [system time].
@@ -157,8 +157,8 @@ pub trait Kernel: private::Sealed {
     /// <div class="admonition-follows"></div>
     ///
     /// > **Rationale:** This restriction originates from μITRON4.0. It's
-    /// > actually unnecessary in the current implementation, but allows
-    /// > headroom for potential changes in the implementation.
+    /// > actually unnecessary in `r3_kernel`'s current implementation, but
+    /// > allows more leeway in a kernel implementation.
     fn time() -> Result<Time, TimeError>
     where
         Self: raw::KernelTime;
@@ -202,7 +202,7 @@ pub trait Kernel: private::Sealed {
     /// make the event overdue by more than `time_user_headroom`), the check
     /// will fail.
     ///
-    /// The events made overdue by the call will be processed when the port
+    /// The events made overdue by the call will be processed when the
     /// timer driver announces a new tick. It's unspecified whether this happens
     /// before or after the call returns.
     ///
@@ -295,8 +295,8 @@ pub trait Kernel: private::Sealed {
 
     /// Terminate the current task, putting it into the Dormant state.
     ///
-    /// The kernel (to be precise, the port) makes an implicit call to this
-    /// function when a task entry point function returns.
+    /// The kernel makes an implicit call to this function when a task entry
+    /// point function returns.
     ///
     /// # Safety
     ///
