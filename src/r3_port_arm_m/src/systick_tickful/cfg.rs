@@ -35,15 +35,15 @@ pub trait SysTickOptions {
 }
 
 /// Attach the tickful implementation of [`PortTimer`] that is based on SysTick
-/// to a given system type.
+/// to a given kernel trait type.
 ///
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortTimer`]: r3_kernel::PortTimer
 /// [a tickful scheme]: crate#tickful-systick
 ///
 /// You should also do the following:
 ///
 ///  - Implement [`SysTickOptions`] manually.
-///  - Call `$ty::configure_systick()` in your configuration function.
+///  - Call `$Traits::configure_systick()` in your configuration function.
 ///    See the following example.
 ///
 /// ```rust,ignore
@@ -66,17 +66,18 @@ pub trait SysTickOptions {
 ///
 #[macro_export]
 macro_rules! use_systick_tickful {
-    (unsafe impl PortTimer for $ty:ty) => {
+    (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
             use $crate::r3::{
-                kernel::{cfg::CfgBuilder, PortTimer, UTicks},
+                kernel::{traits, Cfg},
                 utils::Init,
             };
+            use $crate::r3_kernel::{PortTimer, System, UTicks};
             use $crate::systick_tickful::imp;
 
-            static TIMER_STATE: imp::State<$ty> = Init::INIT;
+            static TIMER_STATE: imp::State<$Traits> = Init::INIT;
 
-            impl PortTimer for $ty {
+            impl PortTimer for $Traits {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;
                 const MAX_TIMEOUT: UTicks = u32::MAX;
 
@@ -87,15 +88,19 @@ macro_rules! use_systick_tickful {
             }
 
             // Safety: Only `use_systick_tickful!` is allowed to `impl` this
-            unsafe impl imp::SysTickTickfulInstance for $ty {
+            unsafe impl imp::SysTickTickfulInstance for $Traits {
                 unsafe fn handle_tick() {
                     // Safety: Interrupt context, CPU Lock inactive
                     unsafe { TIMER_STATE.handle_tick::<Self>() };
                 }
             }
 
-            impl $ty {
-                pub const fn configure_systick(b: &mut CfgBuilder<Self>) {
+            impl $Traits {
+                pub const fn configure_systick<C>(b: &mut Cfg<C>)
+                where
+                    C: ~const traits::CfgBase<System = System<Self>>
+                        + ~const traits::CfgInterruptLine,
+                {
                     imp::configure(b);
                 }
             }

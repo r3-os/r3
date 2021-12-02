@@ -2,7 +2,7 @@ use core::{
     panic::PanicInfo,
     sync::atomic::{AtomicBool, Ordering},
 };
-use r3::kernel::{cfg::CfgBuilder, Kernel, StartupHook};
+use r3::kernel::{traits, Cfg, StartupHook};
 use r3_support_rp2040::usbstdio;
 
 /// The separators for our multiplexing protocol
@@ -57,7 +57,11 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-pub const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) {
+pub const fn configure<C>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
+    C::System: traits::KernelInterruptLine,
+{
     StartupHook::build()
         .start(|_| {
             // Set the correct vector table address

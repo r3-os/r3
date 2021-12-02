@@ -1,16 +1,17 @@
 //! The implementation of the SP804 Dual Timer driver.
-use r3::kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, UTicks};
+use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine};
+use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
 use crate::sp804::{cfg::Sp804Options, sp804_regs};
 
-/// Implemented on a system type by [`use_sp804!`].
+/// Implemented on a kernel trait type by [`use_sp804!`].
 ///
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_sp804!`].
-pub unsafe trait Sp804Instance: Kernel + Sp804Options {
+pub unsafe trait Sp804Instance: KernelTraits + Sp804Options {
     // FIXME: Specifying `TicklessCfg::new(...)` here causes a "cycle
     //        detected" error
     const TICKLESS_CFG: TicklessCfg;
@@ -32,23 +33,26 @@ trait Sp804InstanceExt: Sp804Instance {
 impl<T: Sp804Instance> Sp804InstanceExt for T {}
 
 /// The configuration function.
-pub const fn configure<System: Sp804Instance>(b: &mut CfgBuilder<System>) {
+pub const fn configure<C, Traits: Sp804Instance>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgInterruptLine<System = System<Traits>>,
+{
     InterruptLine::build()
-        .line(System::INTERRUPT_NUM)
-        .priority(System::INTERRUPT_PRIORITY)
+        .line(Traits::INTERRUPT_NUM)
+        .priority(Traits::INTERRUPT_PRIORITY)
         .enabled(true)
         .finish(b);
     InterruptHandler::build()
-        .line(System::INTERRUPT_NUM)
-        .start(handle_tick::<System>)
+        .line(Traits::INTERRUPT_NUM)
+        .start(handle_tick::<Traits>)
         .finish(b);
 }
 
 /// Implements [`crate::Timer::init`]
 #[inline]
-pub fn init<System: Sp804Instance>() {
-    let sp804 = System::sp804_regs();
-    let tcfg = System::TICKLESS_CFG;
+pub fn init<Traits: Sp804Instance>() {
+    let sp804 = Traits::sp804_regs();
+    let tcfg = Traits::TICKLESS_CFG;
 
     // Each dual timer unit includes two instances of timer. We use Timer1 to
     // track the current time in real time.
@@ -100,9 +104,9 @@ pub fn init<System: Sp804Instance>() {
     );
 }
 
-fn hw_tick_count<System: Sp804Instance>() -> u32 {
-    let sp804 = System::sp804_regs();
-    let tcfg = System::TICKLESS_CFG;
+fn hw_tick_count<Traits: Sp804Instance>() -> u32 {
+    let sp804 = Traits::sp804_regs();
+    let tcfg = Traits::TICKLESS_CFG;
 
     let value = sp804.Timer1Value.get();
 
@@ -117,44 +121,44 @@ fn hw_tick_count<System: Sp804Instance>() -> u32 {
     hw_tick_count
 }
 
-/// Implements [`r3::kernel::PortTimer::tick_count`]
+/// Implements [`r3_kernel::PortTimer::tick_count`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_sp804!`.
-pub unsafe fn tick_count<System: Sp804Instance>() -> UTicks {
-    let tcfg = &System::TICKLESS_CFG;
+pub unsafe fn tick_count<Traits: Sp804Instance>() -> UTicks {
+    let tcfg = &Traits::TICKLESS_CFG;
 
-    let hw_tick_count = hw_tick_count::<System>();
+    let hw_tick_count = hw_tick_count::<Traits>();
 
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
     tstate.tick_count(tcfg, hw_tick_count)
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick`]
+/// Implements [`r3_kernel::PortTimer::pend_tick`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_sp804!`.
-pub unsafe fn pend_tick<System: Sp804Instance>() {
-    InterruptLine::<System>::from_num(System::INTERRUPT_NUM)
+pub unsafe fn pend_tick<Traits: Sp804Instance>() {
+    InterruptLine::<System<Traits>>::from_num(Traits::INTERRUPT_NUM)
         .pend()
         .unwrap();
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick_after`]
+/// Implements [`r3_kernel::PortTimer::pend_tick_after`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_sp804!`.
-pub unsafe fn pend_tick_after<System: Sp804Instance>(tick_count_delta: UTicks) {
-    let sp804 = System::sp804_regs();
-    let tcfg = &System::TICKLESS_CFG;
+pub unsafe fn pend_tick_after<Traits: Sp804Instance>(tick_count_delta: UTicks) {
+    let sp804 = Traits::sp804_regs();
+    let tcfg = &Traits::TICKLESS_CFG;
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
 
-    let cur_hw_tick_count = hw_tick_count::<System>();
+    let cur_hw_tick_count = hw_tick_count::<Traits>();
     let hw_ticks = tstate
         .mark_reference_and_measure(tcfg, cur_hw_tick_count, tick_count_delta)
         .hw_ticks;
@@ -170,18 +174,18 @@ pub unsafe fn pend_tick_after<System: Sp804Instance>(tick_count_delta: UTicks) {
 }
 
 #[inline]
-fn handle_tick<System: Sp804Instance>(_: usize) {
-    let tcfg = &System::TICKLESS_CFG;
+fn handle_tick<Traits: Sp804Instance>(_: usize) {
+    let tcfg = &Traits::TICKLESS_CFG;
 
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
 
-    let cur_hw_tick_count = hw_tick_count::<System>();
+    let cur_hw_tick_count = hw_tick_count::<Traits>();
     tstate.mark_reference(tcfg, cur_hw_tick_count);
 
     // `timer_tick` will call `pend_tick[_after]`, so it's unnecessary to
     // clear the interrupt flag
 
     // Safety: CPU Lock inactive, an interrupt context
-    unsafe { System::timer_tick() };
+    unsafe { Traits::timer_tick() };
 }

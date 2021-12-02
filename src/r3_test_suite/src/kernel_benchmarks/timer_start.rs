@@ -2,7 +2,7 @@
 use core::mem::MaybeUninit;
 
 use r3::{
-    kernel::{cfg::CfgBuilder, Kernel, Timer},
+    kernel::{traits, Cfg, Timer},
     time::Duration,
 };
 
@@ -10,12 +10,16 @@ use super::Bencher;
 use crate::utils::benchmark::Interval;
 
 use_benchmark_in_kernel_benchmark! {
-    pub unsafe struct App<System> {
+    #[cfg_bounds(~const traits::CfgTimer)]
+    pub unsafe struct App<System: SupportedSystem> {
         inner: AppInner<System>,
     }
 }
 
-struct AppInner<System> {
+pub trait SupportedSystem: crate::utils::benchmark::SupportedSystem + traits::KernelTimer {}
+impl<T: crate::utils::benchmark::SupportedSystem + traits::KernelTimer> SupportedSystem for T {}
+
+struct AppInner<System: SupportedSystem> {
     timers: [Timer<System>; 64],
 }
 
@@ -27,9 +31,14 @@ const I_START_16: Interval = "start the 16th timer";
 const I_START_32: Interval = "start the 32nd timer";
 const I_START_64: Interval = "start the 64th timer";
 
-impl<System: Kernel> AppInner<System> {
+impl<System: SupportedSystem> AppInner<System> {
     /// Used by `use_benchmark_in_kernel_benchmark!`
-    const fn new<B: Bencher<System, Self>>(b: &mut CfgBuilder<System>) -> Self {
+    const fn new<C, B: Bencher<System, Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgTimer,
+    {
         let timers = {
             let mut timers = [MaybeUninit::<Timer<System>>::uninit(); 64];
 
@@ -42,7 +51,7 @@ impl<System: Kernel> AppInner<System> {
 
             // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
             //        it becomes `const fn`
-            unsafe { core::mem::transmute(timers) }
+            unsafe { core::mem::transmute_copy(&timers) }
         };
 
         Self { timers }

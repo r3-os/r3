@@ -1,25 +1,29 @@
 /// The implementation of the Platform-Level Interrupt Controller driver.
 use r3::kernel::{
-    cfg::CfgBuilder, EnableInterruptLineError, InterruptHandler, InterruptNum, InterruptPriority,
-    Kernel, QueryInterruptLineError, SetInterruptLinePriorityError,
+    traits, Cfg, EnableInterruptLineError, InterruptHandler, InterruptNum, InterruptPriority,
+    QueryInterruptLineError, SetInterruptLinePriorityError,
 };
+use r3_kernel::{KernelTraits, System};
 use tock_registers::interfaces::{Readable, Writeable};
 
 use crate::{Plic, INTERRUPT_EXTERNAL, INTERRUPT_PLATFORM_START};
 
 /// The configuration function.
-pub const fn configure<System: Plic + Kernel>(b: &mut CfgBuilder<System>) {
+pub const fn configure<C, Traits: Plic + KernelTraits>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgInterruptLine<System = System<Traits>>,
+{
     InterruptHandler::build()
         .line(INTERRUPT_EXTERNAL)
-        .start(interrupt_handler::<System>)
+        .start(interrupt_handler::<Traits>)
         .finish(b);
 }
 
 /// Implements [`crate::InterruptController::init`].
-pub fn init<System: Plic>() {
-    let plic_regs = System::plic_regs();
-    let ctx = System::CONTEXT;
-    let num_ints = System::MAX_NUM + 1;
+pub fn init<Traits: Plic>() {
+    let plic_regs = Traits::plic_regs();
+    let ctx = Traits::CONTEXT;
+    let num_ints = Traits::MAX_NUM + 1;
 
     // Disable all interrupts
     for i in 0..(num_ints + 31) / 32 {
@@ -28,14 +32,14 @@ pub fn init<System: Plic>() {
 
     // Change the priority thread of the current context
     // to accept all interrupts
-    plic_regs.ctxs[System::CONTEXT].priority_threshold.set(0);
+    plic_regs.ctxs[Traits::CONTEXT].priority_threshold.set(0);
 }
 
 #[inline]
-fn interrupt_handler<System: Plic + Kernel>(_: usize) {
-    if let Some((token, num)) = claim_interrupt::<System>() {
-        if let Some(handler) = System::INTERRUPT_HANDLERS.get(num) {
-            if System::USE_NESTING {
+fn interrupt_handler<Traits: Plic + KernelTraits>(_: usize) {
+    if let Some((token, num)) = claim_interrupt::<Traits>() {
+        if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(num) {
+            if Traits::USE_NESTING {
                 unsafe { riscv::register::mie::set_mext() };
             }
 
@@ -44,36 +48,36 @@ fn interrupt_handler<System: Plic + Kernel>(_: usize) {
             //         a platform interrupt
             unsafe { handler() };
 
-            if System::USE_NESTING {
+            if Traits::USE_NESTING {
                 unsafe { riscv::register::mie::clear_mext() };
             }
         }
 
-        end_interrupt::<System>(token);
+        end_interrupt::<Traits>(token);
     }
 }
 
 type Token = u32;
 
 #[inline]
-fn claim_interrupt<System: Plic>() -> Option<(Token, InterruptNum)> {
-    let plic_regs = System::plic_regs();
+fn claim_interrupt<Traits: Plic>() -> Option<(Token, InterruptNum)> {
+    let plic_regs = Traits::plic_regs();
 
-    let num = plic_regs.ctxs[System::CONTEXT].claim_complete.get();
+    let num = plic_regs.ctxs[Traits::CONTEXT].claim_complete.get();
     if num == 0 {
         return None;
     }
-    if System::USE_NESTING {
+    if Traits::USE_NESTING {
         // Raise the priority threshold to mask the claimed interrupt
-        let old_threshold = plic_regs.ctxs[System::CONTEXT].priority_threshold.get();
+        let old_threshold = plic_regs.ctxs[Traits::CONTEXT].priority_threshold.get();
         let priority = plic_regs.interrupt_priority[num as usize].get();
 
-        plic_regs.ctxs[System::CONTEXT]
+        plic_regs.ctxs[Traits::CONTEXT]
             .priority_threshold
             .set(priority);
 
         // Allow other interrupts to be taken by completing this one
-        plic_regs.ctxs[System::CONTEXT].claim_complete.set(num);
+        plic_regs.ctxs[Traits::CONTEXT].claim_complete.set(num);
 
         Some((
             old_threshold,
@@ -85,27 +89,27 @@ fn claim_interrupt<System: Plic>() -> Option<(Token, InterruptNum)> {
 }
 
 #[inline]
-fn end_interrupt<System: Plic>(token: Token) {
-    let plic_regs = System::plic_regs();
+fn end_interrupt<Traits: Plic>(token: Token) {
+    let plic_regs = Traits::plic_regs();
 
-    if System::USE_NESTING {
-        plic_regs.ctxs[System::CONTEXT]
+    if Traits::USE_NESTING {
+        plic_regs.ctxs[Traits::CONTEXT]
             .priority_threshold
             .set(token);
     } else {
-        plic_regs.ctxs[System::CONTEXT].claim_complete.set(token);
+        plic_regs.ctxs[Traits::CONTEXT].claim_complete.set(token);
     }
 }
 
 /// Implements [`crate::InterruptController::set_interrupt_line_priority`].
-pub fn set_interrupt_line_priority<System: Plic>(
+pub fn set_interrupt_line_priority<Traits: Plic>(
     line: InterruptNum,
     priority: InterruptPriority,
 ) -> Result<(), SetInterruptLinePriorityError> {
-    let plic_regs = System::plic_regs();
+    let plic_regs = Traits::plic_regs();
     let line = line - INTERRUPT_PLATFORM_START;
 
-    if line > System::MAX_NUM || priority < 0 || priority > System::MAX_PRIORITY {
+    if line > Traits::MAX_NUM || priority < 0 || priority > Traits::MAX_PRIORITY {
         return Err(SetInterruptLinePriorityError::BadParam);
     }
 
@@ -114,47 +118,47 @@ pub fn set_interrupt_line_priority<System: Plic>(
 }
 
 /// Implements [`crate::InterruptController::enable_interrupt_line`].
-pub fn enable_interrupt_line<System: Plic>(
+pub fn enable_interrupt_line<Traits: Plic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
-    let plic_regs = System::plic_regs();
+    let plic_regs = Traits::plic_regs();
     let line = line - INTERRUPT_PLATFORM_START;
 
-    if line > System::MAX_NUM {
+    if line > Traits::MAX_NUM {
         return Err(EnableInterruptLineError::BadParam);
     }
 
-    let reg = &plic_regs.interrupt_enable[System::CONTEXT][line / 32];
+    let reg = &plic_regs.interrupt_enable[Traits::CONTEXT][line / 32];
     reg.set(reg.get() | (1u32 << (line % 32)));
 
     Ok(())
 }
 
 /// Implements [`crate::InterruptController::disable_interrupt_line`].
-pub fn disable_interrupt_line<System: Plic>(
+pub fn disable_interrupt_line<Traits: Plic>(
     line: InterruptNum,
 ) -> Result<(), EnableInterruptLineError> {
-    let plic_regs = System::plic_regs();
+    let plic_regs = Traits::plic_regs();
     let line = line - INTERRUPT_PLATFORM_START;
 
-    if line > System::MAX_NUM {
+    if line > Traits::MAX_NUM {
         return Err(EnableInterruptLineError::BadParam);
     }
 
-    let reg = &plic_regs.interrupt_enable[System::CONTEXT][line / 32];
+    let reg = &plic_regs.interrupt_enable[Traits::CONTEXT][line / 32];
     reg.set(reg.get() & !(1u32 << (line % 32)));
 
     Ok(())
 }
 
 /// Implements [`crate::InterruptController::is_interrupt_line_pending`].
-pub fn is_interrupt_line_pending<System: Plic>(
+pub fn is_interrupt_line_pending<Traits: Plic>(
     line: InterruptNum,
 ) -> Result<bool, QueryInterruptLineError> {
-    let plic_regs = System::plic_regs();
+    let plic_regs = Traits::plic_regs();
     let line = line - INTERRUPT_PLATFORM_START;
 
-    if line > System::MAX_NUM {
+    if line > Traits::MAX_NUM {
         return Err(QueryInterruptLineError::BadParam);
     }
 

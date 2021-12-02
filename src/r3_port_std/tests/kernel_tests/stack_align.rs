@@ -1,20 +1,26 @@
 //! Checks that when a stack is automatically allocated, both ends of the
 //! stack region are aligned to a port-specific alignment.
 use core::marker::PhantomData;
-use r3::{
-    kernel::{cfg::CfgBuilder, Task},
-    prelude::*,
-};
+use r3::kernel::{traits, Cfg, Task};
+use r3_kernel::System;
 use r3_test_suite::kernel_tests::Driver;
+
+use r3_port_std::PortInstance;
+
+pub trait SupportedSystemTraits: PortInstance {}
+impl<T: PortInstance> SupportedSystemTraits for T {}
 
 pub struct App<System> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<Traits: SupportedSystemTraits> App<System<Traits>> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgTask,
+    {
         Task::build()
-            .start(task_body::<System, D>)
+            .start(task_body::<Traits, D>)
             .priority(0)
             .active(true)
             .stack_size(4095)
@@ -26,9 +32,9 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    let expected_alignment = System::STACK_ALIGN;
-    for task_cb in System::task_cb_pool() {
+fn task_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
+    let expected_alignment = <Traits as r3_kernel::PortThreading>::STACK_ALIGN;
+    for task_cb in <Traits as r3_kernel::KernelCfg2>::task_cb_pool() {
         let stack = task_cb.attr.stack.as_ptr();
         let start = stack as *mut u8;
         let end = start.wrapping_add(stack.len());

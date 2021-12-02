@@ -1,18 +1,31 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
-use r3::{
-    kernel::{self, cfg::CfgBuilder, InterruptHandler, InterruptLine, StartupHook, Task},
-    prelude::*,
+use r3::kernel::{
+    self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StartupHook, Task,
 };
 
 use super::Driver;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic
+{
+}
+impl<T: traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgInterruptLine,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(0)
@@ -41,14 +54,14 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let int = if let Some(int) = D::app().int {
         int
     } else {
         return;
     };
 
-    let managed_range = System::MANAGED_INTERRUPT_PRIORITY_RANGE;
+    let managed_range = System::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE;
 
     // `set_priority` is disallowed in a boot context
     assert_eq!(
@@ -77,7 +90,7 @@ fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -86,7 +99,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         return;
     };
 
-    let managed_range = System::MANAGED_INTERRUPT_PRIORITY_RANGE;
+    let managed_range = System::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE;
 
     if managed_range.end > managed_range.start {
         for pri in managed_range.clone() {
@@ -157,6 +170,6 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     unreachable!();
 }

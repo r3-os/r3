@@ -1,8 +1,9 @@
 //! Simulates a hardware scheduler.
 use r3::{
-    kernel::{cfg::InterruptHandlerFn, InterruptNum, InterruptPriority, Kernel},
+    kernel::interrupt::{InterruptHandlerFn, InterruptNum, InterruptPriority},
     utils::Init,
 };
+use r3_kernel::KernelTraits;
 use std::collections::{BTreeSet, HashMap};
 
 use crate::{ums, ThreadRole, NUM_INTERRUPT_LINES, THREAD_ROLE};
@@ -45,7 +46,7 @@ impl Init for IntLine {
 pub struct BadIntLineError;
 
 impl SchedState {
-    pub fn new<System: Kernel>() -> Self {
+    pub fn new<Traits: KernelTraits>() -> Self {
         let mut this = Self {
             int_lines: HashMap::new(),
             pended_lines: BTreeSet::new(),
@@ -56,7 +57,7 @@ impl SchedState {
         };
 
         for i in 0..NUM_INTERRUPT_LINES {
-            if let Some(handler) = System::INTERRUPT_HANDLERS.get(i) {
+            if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(i) {
                 this.int_lines.insert(
                     i as InterruptNum,
                     IntLine {

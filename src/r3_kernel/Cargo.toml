@@ -1,0 +1,56 @@
+[package]
+name = "r3_kernel"
+version = "0.0.0"
+authors = ["yvt <i@yvt.jp>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "An RTOS kernel implementing the R3 API"
+categories = ["embedded", "no-std"]
+keywords = ["r3"]
+repository = "https://github.com/r3-os/r3"
+publish = false  # it's not ready yet
+
+[features]
+default = []
+inline_syscall = []
+priority_boost = []
+system_time = []
+
+# Enable the diagram rendering by svgbob
+doc = ["svgbobdoc/enable"]
+
+# Enable all optional kernel features
+full = [
+    "priority_boost",
+    "system_time",
+]
+
+# Displays a "some features are disabled" warning in the documentation
+# when disabled so that the user can know some items are missing because of
+# that.
+_full = []
+
+[dependencies]
+num-integer = { version = "0.1.42", default-features = false }
+num-traits = { version = "0.2.11", default-features = false }
+pin-utils = { version = "0.1.0" }
+svgbobdoc = { version = "0.3.0-alpha.3" }
+tokenlock = { version = "0.3.4", default-features = false }
+arrayvec = { version = "0.7.1", default-features = false }
+bitflags = { version = "1.2.1" }
+chrono = { version = "0.4.13", optional = true, default-features = false }
+either = { version = "1.6.1", default-features = false }
+elain = { version = "0.3.0" }
+
+# FIXME: specify r3 version
+r3 = { path = "../r3" }
+
+[dev-dependencies]
+quickcheck_macros = "1.0.0"
+env_logger = "0.8.4"
+quickcheck = "1.0.3"
+log = "0.4.8"
+
+[package.metadata.docs.rs]
+all-features = true
+targets = []

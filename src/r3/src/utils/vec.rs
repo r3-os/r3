@@ -10,6 +10,14 @@ pub struct ComptimeVec<T: Copy> {
 
 const MAX_LEN: usize = 256;
 
+impl<T: Copy> Copy for ComptimeVec<T> {}
+
+impl<T: Copy> Clone for ComptimeVec<T> {
+    fn clone(&self) -> Self {
+        self.map(Clone::clone)
+    }
+}
+
 impl<T: Copy> ComptimeVec<T> {
     pub const fn new() -> Self {
         Self {
@@ -32,6 +40,7 @@ impl<T: Copy> ComptimeVec<T> {
     }
 
     // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
+    // FIXME: We can use it now
     pub const fn get(&self, i: usize) -> &T {
         assert!(i < self.len(), "out of bounds");
 
@@ -47,6 +56,32 @@ impl<T: Copy> ComptimeVec<T> {
         // Safety: `self.storage[0..self.len]` is initialized, and `i < self.len`
         // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
         unsafe { &mut *(&mut self.storage[i] as *mut _ as *mut T) }
+    }
+
+    /// Return a `ComptimeVec` of the same `len` as `self` with function `f`
+    /// applied to each element in order.
+    pub const fn map<F: ~const FnMut(&T) -> U + Copy, U: Copy>(&self, mut f: F) -> ComptimeVec<U> {
+        let mut out = ComptimeVec::new();
+        let mut i = 0;
+        while i < self.len() {
+            out.push(f(self.get(i)));
+            i += 1;
+        }
+        out
+    }
+
+    // FIXME: Replace this type's several methods with `const Deref<Target = [T]>`
+    /// Borrow the storage as a slice.
+    #[inline]
+    pub const fn as_slice(&self) -> &[T] {
+        // FIXME: Slicing is not `const fn` yet
+        let slice = core::ptr::slice_from_raw_parts(
+            &self.storage as *const _ as *const MaybeUninit<T>,
+            self.len,
+        );
+
+        // Safety: `self.storage[0..self.len]` is initialized
+        unsafe { MaybeUninit::slice_assume_init_ref(&*slice) }
     }
 }
 
@@ -70,6 +105,7 @@ impl<T: Copy> ComptimeVec<T> {
 // FIXME: Waiting for `FnMut` to be usable in `const fn`
 /// An implementation of `$vec.iter().position(|$item| $predicate)` that is
 /// compatible with a const context.
+#[allow(unused_macros)]
 macro_rules! vec_position {
     ($vec:expr, |$item:ident| $predicate:expr) => {{
         let mut i = 0;
@@ -113,6 +149,37 @@ mod tests {
 
         const VEC_VAL: u32 = *VEC.get(0);
         assert_eq!(VEC_VAL, 42);
+    }
+
+    #[test]
+    fn as_slice() {
+        const fn array() {
+            let mut x = ComptimeVec::new();
+            x.push(1);
+            x.push(2);
+            x.push(3);
+            let slice = x.as_slice();
+            // FIXME: `assert_matches!` is not usable in `const fn` yet
+            assert!(matches!(slice, [1, 2, 3]));
+        }
+        array();
+    }
+
+    #[test]
+    fn map() {
+        const fn array() -> [i32; 3] {
+            let mut x = ComptimeVec::new();
+            x.push(1);
+            x.push(2);
+            x.push(3);
+            // FIXME: Closures don't implement `~const Fn`?
+            const fn transform(x: &i32) -> i32 {
+                *x + 1
+            }
+            let y = x.map(transform);
+            y.to_array()
+        }
+        assert_eq!(array(), [2, 3, 4]);
     }
 
     #[test]

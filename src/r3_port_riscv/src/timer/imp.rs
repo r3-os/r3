@@ -1,5 +1,6 @@
 //! The implementation of the RISC-V timer driver.
-use r3::kernel::{cfg::CfgBuilder, InterruptHandler, Kernel, PortToKernel, UTicks};
+use r3::kernel::{traits, Cfg, InterruptHandler};
+use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use tock_registers::{
     interfaces::{Readable, Writeable},
@@ -13,7 +14,7 @@ use crate::timer::cfg::TimerOptions;
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_timer!`].
-pub unsafe trait TimerInstance: Kernel + TimerOptions {
+pub unsafe trait TimerInstance: KernelTraits + TimerOptions {
     // FIXME: Specifying `TicklessCfg::new(...)` here causes a "cycle
     //        detected" error
     const TICKLESS_CFG: TicklessCfg;
@@ -67,64 +68,67 @@ trait TimerInstanceExt: TimerInstance {
 impl<T: TimerInstance> TimerInstanceExt for T {}
 
 /// The configuration function.
-pub const fn configure<System: TimerInstance>(b: &mut CfgBuilder<System>) {
+pub const fn configure<C, Traits: TimerInstance>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgInterruptLine<System = System<Traits>>,
+{
     InterruptHandler::build()
-        .line(System::INTERRUPT_NUM)
-        .start(handle_tick::<System>)
+        .line(Traits::INTERRUPT_NUM)
+        .start(handle_tick::<Traits>)
         .finish(b);
 }
 
 /// Implements [`crate::Timer::init`]
 #[inline]
-pub fn init<System: TimerInstance>() {
-    let tcfg = &System::TICKLESS_CFG;
+pub fn init<Traits: TimerInstance>() {
+    let tcfg = &Traits::TICKLESS_CFG;
 
     // Safety: No context switching during boot
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
 
-    if System::RESET_MTIME {
-        System::mtime_reg32()[0].set(0);
+    if Traits::RESET_MTIME {
+        Traits::mtime_reg32()[0].set(0);
     } else {
-        tstate.reset(tcfg, System::mtime_reg32()[0].get());
+        tstate.reset(tcfg, Traits::mtime_reg32()[0].get());
     }
 }
 
-/// Implements [`r3::kernel::PortTimer::tick_count`]
+/// Implements [`r3_kernel::PortTimer::tick_count`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_timer!`.
-pub unsafe fn tick_count<System: TimerInstance>() -> UTicks {
-    let tcfg = &System::TICKLESS_CFG;
+pub unsafe fn tick_count<Traits: TimerInstance>() -> UTicks {
+    let tcfg = &Traits::TICKLESS_CFG;
 
-    let hw_tick_count = System::mtime_reg32()[0].get();
+    let hw_tick_count = Traits::mtime_reg32()[0].get();
 
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
     tstate.tick_count(tcfg, hw_tick_count)
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick`]
+/// Implements [`r3_kernel::PortTimer::pend_tick`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_timer!`.
-pub unsafe fn pend_tick<System: TimerInstance>() {
-    System::mtimecmp_reg32()[0].set(0);
-    System::mtimecmp_reg32()[1].set(0);
+pub unsafe fn pend_tick<Traits: TimerInstance>() {
+    Traits::mtimecmp_reg32()[0].set(0);
+    Traits::mtimecmp_reg32()[1].set(0);
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick_after`]
+/// Implements [`r3_kernel::PortTimer::pend_tick_after`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_timer!`.
-pub unsafe fn pend_tick_after<System: TimerInstance>(tick_count_delta: UTicks) {
-    let tcfg = &System::TICKLESS_CFG;
+pub unsafe fn pend_tick_after<Traits: TimerInstance>(tick_count_delta: UTicks) {
+    let tcfg = &Traits::TICKLESS_CFG;
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
 
-    let cur_hw_tick_count = System::mtime();
+    let cur_hw_tick_count = Traits::mtime();
     let hw_ticks = tstate
         .mark_reference_and_measure(tcfg, cur_hw_tick_count as u32, tick_count_delta)
         .hw_ticks;
@@ -133,20 +137,20 @@ pub unsafe fn pend_tick_after<System: TimerInstance>(tick_count_delta: UTicks) {
 
     // Since we have CPU Lock, spurious timer interrupts while non-atomically
     // updating `mtimecmp` are acceptable
-    System::mtimecmp_reg32()[0].set(next_hw_tick_count as u32);
-    System::mtimecmp_reg32()[1].set((next_hw_tick_count >> 32) as u32);
+    Traits::mtimecmp_reg32()[0].set(next_hw_tick_count as u32);
+    Traits::mtimecmp_reg32()[1].set((next_hw_tick_count >> 32) as u32);
 }
 
 #[inline]
-fn handle_tick<System: TimerInstance>(_: usize) {
-    let tcfg = &System::TICKLESS_CFG;
+fn handle_tick<Traits: TimerInstance>(_: usize) {
+    let tcfg = &Traits::TICKLESS_CFG;
 
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
 
-    let cur_hw_tick_count = System::mtime_reg32()[0].get();
+    let cur_hw_tick_count = Traits::mtime_reg32()[0].get();
     tstate.mark_reference(tcfg, cur_hw_tick_count);
 
     // Safety: CPU Lock inactive, an interrupt context
-    unsafe { System::timer_tick() };
+    unsafe { Traits::timer_tick() };
 }

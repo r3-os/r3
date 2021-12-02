@@ -1,11 +1,10 @@
 #![allow(clippy::declare_interior_mutable_const)]
 use core::{
     cell::{Cell, RefCell, UnsafeCell},
+    marker::PhantomData,
     mem,
     sync::atomic,
 };
-
-use super::RawCell;
 
 /// Trait for types having a constant default value. This is essentially a
 /// constant version of `Default`.
@@ -26,6 +25,10 @@ impl Init for &'_ str {
 
 impl<T> Init for Option<T> {
     const INIT: Self = None;
+}
+
+impl<T: ?Sized> Init for PhantomData<T> {
+    const INIT: Self = PhantomData;
 }
 
 impl<T: Init, const LEN: usize> Init for [T; LEN] {
@@ -62,10 +65,6 @@ impl<T: Init> Init for Cell<T> {
 
 impl<T: Init> Init for RefCell<T> {
     const INIT: Self = RefCell::new(T::INIT);
-}
-
-impl<T: Init> Init for RawCell<T> {
-    const INIT: Self = RawCell::new(T::INIT);
 }
 
 impl<T: Init, I: Init> Init for tokenlock::TokenLock<T, I> {

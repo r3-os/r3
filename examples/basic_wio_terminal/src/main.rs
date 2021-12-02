@@ -3,6 +3,7 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
 #![feature(let_else)]
+#![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![no_std]
@@ -22,7 +23,7 @@ use core::{
 use cortex_m::{interrupt::Mutex as PrimaskMutex, singleton};
 use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
 use r3::{
-    kernel::{cfg::CfgBuilder, InterruptLine, InterruptNum, Mutex, StartupHook, Task, Timer},
+    kernel::{InterruptLine, InterruptNum, Mutex, StartupHook, Task, Timer},
     prelude::*,
 };
 use spin::Mutex as SpinMutex;
@@ -41,12 +42,13 @@ use wio::{
 // Port configuration
 // -------------------------------------------------------------------------
 
-port::use_port!(unsafe struct System);
-port::use_systick_tickful!(unsafe impl PortTimer for System);
+type System = r3_kernel::System<SystemTraits>;
+port::use_port!(unsafe struct SystemTraits);
+port::use_systick_tickful!(unsafe impl PortTimer for SystemTraits);
 
-impl port::ThreadingOptions for System {}
+impl port::ThreadingOptions for SystemTraits {}
 
-impl port::SysTickOptions for System {
+impl port::SysTickOptions for SystemTraits {
     const FREQUENCY: u64 = 120_000_000; // ??
     const TICK_PERIOD: u32 = Self::FREQUENCY as u32 / 500; // 2ms
 }
@@ -58,7 +60,7 @@ impl port::SysTickOptions for System {
 /// the only option left ot us is to suppress our `__INTERRUPTS`.
 const _: () = {
     use port::{rt::imp::ExceptionTrampoline, EntryPoint, INTERRUPT_SYSTICK};
-    use r3::kernel::KernelCfg2;
+    use r3_kernel::KernelCfg2;
 
     #[cortex_m_rt::entry]
     fn main() -> ! {
@@ -74,14 +76,14 @@ const _: () = {
 
         #[link_section = ".text"]
         static PEND_SV_TRAMPOLINE: ExceptionTrampoline =
-            ExceptionTrampoline::new(<System as EntryPoint>::HANDLE_PEND_SV);
+            ExceptionTrampoline::new(<SystemTraits as EntryPoint>::HANDLE_PEND_SV);
 
-        unsafe { <System as EntryPoint>::start() };
+        unsafe { <SystemTraits as EntryPoint>::start() };
     }
 
     #[cortex_m_rt::exception]
     fn SysTick() {
-        if let Some(x) = <System as KernelCfg2>::INTERRUPT_HANDLERS.get(INTERRUPT_SYSTICK) {
+        if let Some(x) = <SystemTraits as KernelCfg2>::INTERRUPT_HANDLERS.get(INTERRUPT_SYSTICK) {
             // Safety: It's a first-level interrupt handler here. CPU Lock inactive
             unsafe { x() };
         }
@@ -100,10 +102,10 @@ struct Objects {
     usb_interrupt_lines: [InterruptLine<System>; 3],
 }
 
-const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
 /// The top-level configuration function.
-const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
     // Register a hook to initialize hardware
@@ -114,7 +116,7 @@ const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
         .finish(b);
 
     // Register a timer driver initializer
-    System::configure_systick(b);
+    SystemTraits::configure_systick(b);
 
     // Miscellaneous tasks
     let _noisy_task = Task::build()
@@ -644,12 +646,15 @@ fn usb_in_task_body(_: usize) {
 
 mod queue {
     use r3::{
-        kernel::{cfg::CfgBuilder, Kernel, Task},
+        kernel::{traits, Cfg, Kernel, Task},
         sync::mutex::Mutex,
         utils::Init,
     };
 
-    pub struct Queue<System, T> {
+    pub trait SupportedSystem: traits::KernelMutex + traits::KernelStatic {}
+    impl<T: traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
+
+    pub struct Queue<System: SupportedSystem, T> {
         st: Mutex<System, QueueSt<System, T>>,
         reader_lock: Mutex<System, ()>,
         writer_lock: Mutex<System, ()>,
@@ -657,7 +662,7 @@ mod queue {
 
     const CAP: usize = 256;
 
-    struct QueueSt<System, T> {
+    struct QueueSt<System: SupportedSystem, T> {
         buf: [T; CAP],
         read_i: usize,
         len: usize,
@@ -665,7 +670,7 @@ mod queue {
         waiting_writer: Option<Task<System>>,
     }
 
-    impl<System, T: Init> Init for QueueSt<System, T> {
+    impl<System: SupportedSystem, T: Init> Init for QueueSt<System, T> {
         const INIT: Self = Self {
             buf: [T::INIT; CAP],
             read_i: 0,
@@ -675,8 +680,11 @@ mod queue {
         };
     }
 
-    impl<System: Kernel, T: Init + Copy + 'static> Queue<System, T> {
-        pub const fn new(cfg: &mut CfgBuilder<System>) -> Self {
+    impl<System: SupportedSystem, T: Init + Copy + 'static> Queue<System, T> {
+        pub const fn new<C>(cfg: &mut Cfg<C>) -> Self
+        where
+            C: ~const traits::CfgBase<System = System> + ~const traits::CfgMutex,
+        {
             Self {
                 st: Mutex::build().finish(cfg),
                 reader_lock: Mutex::build().finish(cfg),

@@ -1,19 +1,24 @@
 //! Make sure startup hooks are called in the ascending order of priority.
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, StartupHook},
-    prelude::*,
+    kernel::{traits, Cfg, StartupHook},
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem: traits::KernelBase + traits::KernelStatic {}
+impl<T: traits::KernelBase + traits::KernelStatic> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         StartupHook::build()
             .start(hook::<System, D>)
             .param(0)
@@ -116,7 +121,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn hook<System: Kernel, D: Driver<App<System>>>(i: usize) {
+fn hook<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
     log::trace!("hook({})", i);
     D::app().seq.expect_and_replace(i, i + 1);
 

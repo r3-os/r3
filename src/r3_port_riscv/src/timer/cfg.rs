@@ -2,17 +2,17 @@
 use r3::kernel::InterruptNum;
 
 /// Attach the implementation of [`PortTimer`] that is based on the RISC-V timer
-/// (`mtime`/`mtimecfg`) to a given system type. This macro also implements
-/// [`Timer`] on the system type.
+/// (`mtime`/`mtimecfg`) to a given kernel trait type. This macro also
+/// implements [`Timer`] on the system type.
 /// **Requires [`TimerOptions`].**
 ///
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortTimer`]: r3_kernel::PortTimer
 /// [`Timer`]: crate::Timer
 ///
 /// You should do the following:
 ///
-///  - Implement [`TimerOptions`] on the system type `$ty`.
-///  - Call `$ty::configure_timer()` in your configuration function.
+///  - Implement [`TimerOptions`] on the system type `$Traits`.
+///  - Call `$Traits::configure_timer()` in your configuration function.
 ///    See the following example.
 ///
 /// ```rust,ignore
@@ -36,16 +36,17 @@ use r3::kernel::InterruptNum;
 ///
 #[macro_export]
 macro_rules! use_timer {
-    (unsafe impl PortTimer for $ty:ty) => {
+    (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
             use $crate::r3::{
-                kernel::{cfg::CfgBuilder, PortTimer, UTicks},
+                kernel::{traits, Cfg},
                 utils::Init,
             };
+            use $crate::r3_kernel::{PortTimer, System, UTicks};
             use $crate::r3_portkit::tickless;
             use $crate::{timer, Timer, TimerOptions};
 
-            impl PortTimer for $ty {
+            impl PortTimer for $Traits {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;
                 const MAX_TIMEOUT: UTicks = u32::MAX;
 
@@ -65,7 +66,7 @@ macro_rules! use_timer {
                 }
             }
 
-            impl Timer for $ty {
+            impl Timer for $Traits {
                 unsafe fn init() {
                     unsafe { timer::imp::init::<Self>() }
                 }
@@ -73,16 +74,16 @@ macro_rules! use_timer {
 
             const TICKLESS_CFG: tickless::TicklessCfg =
                 match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$ty as TimerOptions>::FREQUENCY,
-                    hw_freq_denom: <$ty as TimerOptions>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$ty as TimerOptions>::HEADROOM,
+                    hw_freq_num: <$Traits as TimerOptions>::FREQUENCY,
+                    hw_freq_denom: <$Traits as TimerOptions>::FREQUENCY_DENOMINATOR,
+                    hw_headroom_ticks: <$Traits as TimerOptions>::HEADROOM,
                     // `mtime` is a 64-bit free-running counter and it is
                     // expensive to create a 32-bit timer with an arbitrary
                     // period out of it.
                     force_full_hw_period: true,
                     // If clearing `mtime` is not allowed, we must record the
                     // starting value of `mtime` by calling `reset`.
-                    resettable: !<$ty as TimerOptions>::RESET_MTIME,
+                    resettable: !<$Traits as TimerOptions>::RESET_MTIME,
                 }) {
                     Ok(x) => x,
                     Err(e) => e.panic(),
@@ -91,7 +92,7 @@ macro_rules! use_timer {
             static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
 
             // Safety: Only `use_timer!` is allowed to `impl` this
-            unsafe impl timer::imp::TimerInstance for $ty {
+            unsafe impl timer::imp::TimerInstance for $Traits {
                 const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
 
                 type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
@@ -101,8 +102,11 @@ macro_rules! use_timer {
                 }
             }
 
-            impl $ty {
-                pub const fn configure_timer(b: &mut CfgBuilder<Self>) {
+            impl $Traits {
+                pub const fn configure_timer<C>(b: &mut Cfg<C>)
+                where
+                    C: ~const traits::CfgInterruptLine<System = System<Self>>,
+                {
                     timer::imp::configure(b);
                 }
             }

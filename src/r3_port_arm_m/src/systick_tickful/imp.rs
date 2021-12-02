@@ -1,11 +1,10 @@
 //! The tickful `PortTimer` implementation based on SysTick.
 use core::cell::UnsafeCell;
 use r3::{
-    kernel::{
-        cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, StartupHook, UTicks,
-    },
+    kernel::{raw, traits, Cfg, InterruptHandler, InterruptLine, StartupHook},
     utils::Init,
 };
+use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickful::{TickfulCfg, TickfulOptions, TickfulState, TickfulStateTrait};
 
 use crate::{SysTickOptions, INTERRUPT_SYSTICK};
@@ -15,7 +14,7 @@ use crate::{SysTickOptions, INTERRUPT_SYSTICK};
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_systick_tickful!`].
-pub unsafe trait SysTickTickfulInstance: Kernel + SysTickOptions {
+pub unsafe trait SysTickTickfulInstance: KernelTraits + SysTickOptions {
     const TICKFUL_CFG: TickfulCfg = if Self::TICK_PERIOD > 0x100_0000 {
         panic!("the tick period measured in cycles must be in range `0..=0x1000000`");
     } else {
@@ -38,23 +37,26 @@ pub unsafe trait SysTickTickfulInstance: Kernel + SysTickOptions {
 }
 
 /// The configuration function.
-pub const fn configure<System: SysTickTickfulInstance>(b: &mut CfgBuilder<System>) -> () {
+pub const fn configure<C, Traits: SysTickTickfulInstance>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgInterruptLine,
+{
     InterruptLine::build()
         .line(INTERRUPT_SYSTICK)
-        .priority(System::INTERRUPT_PRIORITY)
+        .priority(Traits::INTERRUPT_PRIORITY)
         .finish(b);
     InterruptHandler::build()
         .line(INTERRUPT_SYSTICK)
         .start(
             #[inline]
-            |_| unsafe { System::handle_tick() },
+            |_| unsafe { Traits::handle_tick() },
         )
         .finish(b);
 
     StartupHook::build()
         .start(
             #[inline]
-            |_| init(System::TICK_PERIOD),
+            |_| init(Traits::TICK_PERIOD),
         )
         .finish(b);
 }
@@ -73,8 +75,8 @@ fn init(period: u32) {
 // FIXME: “bounds on generic parameters are not enforced in type aliases”
 //        But it's actually required for this to type-check
 #[allow(type_alias_bounds)]
-pub type State<System: SysTickTickfulInstance> =
-    StateCore<TickfulState<{ <System as SysTickTickfulInstance>::TICKFUL_CFG }>>;
+pub type State<Traits: SysTickTickfulInstance> =
+    StateCore<TickfulState<{ <Traits as SysTickTickfulInstance>::TICKFUL_CFG }>>;
 
 pub struct StateCore<TickfulState> {
     inner: UnsafeCell<TickfulState>,
@@ -94,19 +96,19 @@ impl<TickfulState: TickfulStateTrait> StateCore<TickfulState> {
     ///
     /// Interrupt context, CPU Lock inactive
     #[inline]
-    pub unsafe fn handle_tick<System: SysTickTickfulInstance>(&self) {
-        System::acquire_cpu_lock().unwrap();
+    pub unsafe fn handle_tick<Traits: SysTickTickfulInstance>(&self) {
+        <System<Traits> as raw::KernelBase>::raw_acquire_cpu_lock().unwrap();
 
         // Safety: CPU Lock protects it from concurrent access
         let inner = unsafe { &mut *self.inner.get() };
 
-        inner.tick(&System::TICKFUL_CFG);
+        inner.tick(&Traits::TICKFUL_CFG);
 
         // Safety: We own the CPU Lock, we are not in a boot context
-        unsafe { System::release_cpu_lock().unwrap() };
+        unsafe { <System<Traits> as raw::KernelBase>::raw_release_cpu_lock().unwrap() };
 
         // Safety: CPU Lock inactive, an interrupt context
-        unsafe { System::timer_tick() };
+        unsafe { Traits::timer_tick() };
     }
 
     /// Implements `PortTimer::tick_count`.

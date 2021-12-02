@@ -1,29 +1,18 @@
 //! Semaphores
-use core::{fmt, hash, marker::PhantomData};
+use core::{fmt, hash};
 
 use super::{
-    state, task, timeout, utils,
-    wait::{WaitPayload, WaitQueue},
-    BadIdError, DrainSemaphoreError, GetSemaphoreError, Id, Kernel, PollSemaphoreError, Port,
+    raw, raw_cfg, Cfg, DrainSemaphoreError, GetSemaphoreError, PollSemaphoreError, QueueOrder,
     SignalSemaphoreError, WaitSemaphoreError, WaitSemaphoreTimeoutError,
 };
-use crate::{time::Duration, utils::Init};
+use crate::{
+    time::Duration,
+    utils::{Init, PhantomInvariant},
+};
 
-/// Unsigned integer type representing the number of permits held by a
-/// [semaphore].
-///
-/// [semaphore]: Semaphore
-///
-/// <div class="admonition-follows"></div>
-///
-/// > **Rationale:** On the one hand, using a data type with a target-dependent
-/// > size can hurt portability. On the other hand, a fixed-size data type such
-/// > as `u32` can significantly increase the runtime overhead on extremely
-/// > constrained targets such as AVR and MSP430. In addition, many RISC targets
-/// > handle small data types less efficiently. The portability issue shouldn't
-/// > pose a problem in practice.
-#[doc = include_str!("../common.md")]
-pub type SemaphoreValue = usize;
+pub use raw::SemaphoreValue;
+
+// ----------------------------------------------------------------------------
 
 /// Represents a single semaphore in a system.
 ///
@@ -32,33 +21,35 @@ pub type SemaphoreValue = usize;
 /// semaphore is called the semaphore's *value* and represented by
 /// [`SemaphoreValue`].
 ///
-/// This type is ABI-compatible with [`Id`].
+/// This type is ABI-compatible with `System::`[`RawSemaphoreId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** Present in almost every real-time
 /// > operating system.
+///
+/// [`RawSemaphoreId`]: raw::KernelSemaphore::RawSemaphoreId
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
-pub struct Semaphore<System>(Id, PhantomData<System>);
+pub struct Semaphore<System: raw::KernelSemaphore>(System::RawSemaphoreId);
 
-impl<System> Clone for Semaphore<System> {
+impl<System: raw::KernelSemaphore> Clone for Semaphore<System> {
     fn clone(&self) -> Self {
-        Self(self.0, self.1)
+        Self(self.0)
     }
 }
 
-impl<System> Copy for Semaphore<System> {}
+impl<System: raw::KernelSemaphore> Copy for Semaphore<System> {}
 
-impl<System> PartialEq for Semaphore<System> {
+impl<System: raw::KernelSemaphore> PartialEq for Semaphore<System> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl<System> Eq for Semaphore<System> {}
+impl<System: raw::KernelSemaphore> Eq for Semaphore<System> {}
 
-impl<System> hash::Hash for Semaphore<System> {
+impl<System: raw::KernelSemaphore> hash::Hash for Semaphore<System> {
     fn hash<H>(&self, state: &mut H)
     where
         H: hash::Hasher,
@@ -67,14 +58,14 @@ impl<System> hash::Hash for Semaphore<System> {
     }
 }
 
-impl<System> fmt::Debug for Semaphore<System> {
+impl<System: raw::KernelSemaphore> fmt::Debug for Semaphore<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Semaphore").field(&self.0).finish()
     }
 }
 
-impl<System> Semaphore<System> {
-    /// Construct a `Semaphore` from `Id`.
+impl<System: raw::KernelSemaphore> Semaphore<System> {
+    /// Construct a `Semaphore` from `RawSemaphoreId`.
     ///
     /// # Safety
     ///
@@ -83,49 +74,53 @@ impl<System> Semaphore<System> {
     /// manipulated except by its creator. This is usually prevented by making
     /// `Semaphore` an opaque handle, but this safeguard can be circumvented by
     /// this method.
-    pub const unsafe fn from_id(id: Id) -> Self {
-        Self(id, PhantomData)
+    pub const unsafe fn from_id(id: System::RawSemaphoreId) -> Self {
+        Self(id)
     }
 
-    /// Get the raw `Id` value representing this semaphore.
-    pub const fn id(self) -> Id {
+    /// Get the raw `RawSemaphoreId` value representing this semaphore.
+    pub const fn id(self) -> System::RawSemaphoreId {
         self.0
     }
 }
 
-impl<System: Kernel> Semaphore<System> {
-    fn semaphore_cb(self) -> Result<&'static SemaphoreCb<System>, BadIdError> {
-        System::get_semaphore_cb(self.0.get() - 1).ok_or(BadIdError::BadId)
+impl<System: raw::KernelSemaphore> Semaphore<System> {
+    /// Construct a `SemaphoreDefiner` to define a semaphore in [a
+    /// configuration function](crate#static-configuration).
+    pub const fn build() -> SemaphoreDefiner<System> {
+        SemaphoreDefiner::new()
     }
 
     /// Remove all permits held by the semaphore.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn drain(self) -> Result<(), DrainSemaphoreError> {
-        let mut lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
-        semaphore_cb.value.replace(&mut *lock, 0);
-        Ok(())
+        // Safety: `Semaphore` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_semaphore_drain(self.0) }
     }
 
     /// Get the number of permits currently held by the semaphore.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn get(self) -> Result<SemaphoreValue, GetSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
-        Ok(semaphore_cb.value.get(&*lock))
+        // Safety: `Semaphore` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_semaphore_get(self.0) }
     }
 
     /// Release `count` permits, returning them to the semaphore.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn signal(self, count: SemaphoreValue) -> Result<(), SignalSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
-        signal(semaphore_cb, lock, count)
+        // Safety: `Semaphore` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_semaphore_signal(self.0, count) }
     }
 
     /// Release a permit, returning it to the semaphore.
+    #[inline]
     pub fn signal_one(self) -> Result<(), SignalSemaphoreError> {
-        self.signal(1)
+        // Safety: `Semaphore` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_semaphore_signal_one(self.0) }
     }
 
     /// Acquire a permit, potentially blocking the calling thread until one is
@@ -146,162 +141,116 @@ impl<System: Kernel> Semaphore<System> {
     /// > The support for multi-wait is relatively rare among operating systems.
     /// > It's not supported by POSIX, RTEMS, TOPPERS, VxWorks, nor Win32. The
     /// > rare exception is μT-Kernel.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn wait_one(self) -> Result<(), WaitSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        state::expect_waitable_context::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
-
-        wait_one(semaphore_cb, lock)
+        // Safety: `Semaphore` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_semaphore_wait_one(self.0) }
     }
 
     /// [`wait_one`](Self::wait_one) with timeout.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn wait_one_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
-        let time32 = timeout::time32_from_duration(timeout)?;
-        let lock = utils::lock_cpu::<System>()?;
-        state::expect_waitable_context::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
-
-        wait_one_timeout(semaphore_cb, lock, time32)
+        // Safety: `Semaphore` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_semaphore_wait_one_timeout(self.0, timeout) }
     }
 
     /// Non-blocking version of [`wait_one`](Self::wait_one). Returns
     /// immediately with [`PollSemaphoreError::Timeout`] if the unblocking
     /// condition is not satisfied.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn poll_one(self) -> Result<(), PollSemaphoreError> {
-        let lock = utils::lock_cpu::<System>()?;
-        let semaphore_cb = self.semaphore_cb()?;
-
-        poll_one(semaphore_cb, lock)
+        // Safety: `Semaphore` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_semaphore_poll_one(self.0) }
     }
 }
 
-/// *Semaphore control block* - the state data of an event group.
-#[doc(hidden)]
-pub struct SemaphoreCb<System: Port> {
-    pub(super) value: utils::CpuLockCell<System, SemaphoreValue>,
-    pub(super) max_value: SemaphoreValue,
+// ----------------------------------------------------------------------------
 
-    pub(super) wait_queue: WaitQueue<System>,
+/// The definer (static builder) for [`Semaphore`].
+#[must_use = "must call `finish()` to complete registration"]
+pub struct SemaphoreDefiner<System: raw::KernelSemaphore> {
+    _phantom: PhantomInvariant<System>,
+    initial_value: Option<SemaphoreValue>,
+    maximum_value: Option<SemaphoreValue>,
+    queue_order: QueueOrder,
 }
 
-impl<System: Port> Init for SemaphoreCb<System> {
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        value: Init::INIT,
-        max_value: Init::INIT,
-        wait_queue: Init::INIT,
-    };
-}
-
-impl<System: Kernel> fmt::Debug for SemaphoreCb<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("SemaphoreCb")
-            .field("self", &(self as *const _))
-            .field("value", &self.value)
-            .field("max_value", &self.max_value)
-            .field("wait_queue", &self.wait_queue)
-            .finish()
-    }
-}
-
-fn poll_one<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
-) -> Result<(), PollSemaphoreError> {
-    if poll_core(semaphore_cb.value.write(&mut *lock)) {
-        Ok(())
-    } else {
-        Err(PollSemaphoreError::Timeout)
-    }
-}
-
-fn wait_one<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
-) -> Result<(), WaitSemaphoreError> {
-    if poll_core(semaphore_cb.value.write(&mut *lock)) {
-        Ok(())
-    } else {
-        // The current state does not satify the wait condition. In this case,
-        // start waiting. The wake-upper is responsible for using `poll_core`
-        // to complete the effect of the wait operation.
-        semaphore_cb
-            .wait_queue
-            .wait(lock.borrow_mut(), WaitPayload::Semaphore)?;
-
-        Ok(())
-    }
-}
-
-fn wait_one_timeout<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
-    time32: timeout::Time32,
-) -> Result<(), WaitSemaphoreTimeoutError> {
-    if poll_core(semaphore_cb.value.write(&mut *lock)) {
-        Ok(())
-    } else {
-        // The current state does not satify the wait condition. In this case,
-        // start waiting. The wake-upper is responsible for using `poll_core`
-        // to complete the effect of the wait operation.
-        semaphore_cb
-            .wait_queue
-            .wait_timeout(lock.borrow_mut(), WaitPayload::Semaphore, time32)?;
-
-        Ok(())
-    }
-}
-
-/// Check if the current state of a semaphore, `value`, satisfies the wait
-/// condition.
-///
-/// If `value` satisfies the wait condition, this function updates `value` and
-/// returns `true`. Otherwise, it returns `false`.
-#[inline]
-fn poll_core(value: &mut SemaphoreValue) -> bool {
-    if *value > 0 {
-        *value -= 1;
-        true
-    } else {
-        false
-    }
-}
-
-fn signal<System: Kernel>(
-    semaphore_cb: &'static SemaphoreCb<System>,
-    mut lock: utils::CpuLockGuard<System>,
-    mut count: SemaphoreValue,
-) -> Result<(), SignalSemaphoreError> {
-    let value = semaphore_cb.value.get(&*lock);
-
-    if semaphore_cb.max_value - value < count {
-        return Err(SignalSemaphoreError::QueueOverflow);
-    }
-
-    let orig_count = count;
-
-    // This is equivalent to using `wake_up_all_conditional` and calling
-    // `poll_core` for each waiting task, but is (presumably) more efficient
-    while count > 0 {
-        if semaphore_cb.wait_queue.wake_up_one(lock.borrow_mut()) {
-            // We just woke up a task. Give one permit to that task.
-            count -= 1;
-        } else {
-            // There's no more task to wake up; deposit the remaining permits to
-            // the semaphore
-            semaphore_cb.value.replace(&mut *lock, value + count);
-            break;
+impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
+    const fn new() -> Self {
+        Self {
+            _phantom: Init::INIT,
+            initial_value: None,
+            maximum_value: None,
+            queue_order: QueueOrder::TaskPriority,
         }
     }
 
-    // If we woke up at least one task in the process, call
-    // `unlock_cpu_and_check_preemption`
-    if count != orig_count {
-        task::unlock_cpu_and_check_preemption(lock);
+    /// \[**Required**\] Specify the initial semaphore value.
+    ///
+    /// Must be less than or equal to [`maximum`](Self::maximum).
+    pub const fn initial(self, initial: SemaphoreValue) -> Self {
+        assert!(
+            self.initial_value.is_none(),
+            "`initial` is already specified"
+        );
+
+        Self {
+            initial_value: Some(initial),
+            ..self
+        }
     }
 
-    Ok(())
+    /// \[**Required**\] Specify the maximum semaphore value.
+    pub const fn maximum(self, maximum: SemaphoreValue) -> Self {
+        assert!(
+            self.maximum_value.is_none(),
+            "`maximum` is already specified"
+        );
+
+        Self {
+            maximum_value: Some(maximum),
+            ..self
+        }
+    }
+
+    /// Specify how tasks are sorted in the wait queue of the semaphore.
+    /// Defaults to [`QueueOrder::TaskPriority`] when unspecified.
+    pub const fn queue_order(self, queue_order: QueueOrder) -> Self {
+        Self {
+            queue_order,
+            ..self
+        }
+    }
+
+    /// Complete the definition of a semaphore, returning a reference to the
+    /// semaphore.
+    pub const fn finish<C: ~const raw_cfg::CfgSemaphore<System = System>>(
+        self,
+        c: &mut Cfg<C>,
+    ) -> Semaphore<System> {
+        let initial_value = if let Some(x) = self.initial_value {
+            x
+        } else {
+            panic!("`initial` is not specified")
+        };
+        let maximum_value = if let Some(x) = self.maximum_value {
+            x
+        } else {
+            panic!("`maximum` is not specified")
+        };
+
+        let id = c.raw().semaphore_define(
+            raw_cfg::SemaphoreDescriptor {
+                phantom: Init::INIT,
+                initial: initial_value,
+                maximum: maximum_value,
+                queue_order: self.queue_order,
+            },
+            (),
+        );
+        unsafe { Semaphore::from_id(id) }
+    }
 }

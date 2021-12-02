@@ -2,15 +2,13 @@
 //!
 //! **This module is exempt from the API stability guarantee.**
 use crate::{
-    kernel::{
-        task::TaskCb,
-        utils::{CpuLockCell, CpuLockTokenRefMut},
-        Kernel, KernelCfg1, PortThreading,
-    },
+    klock::{CpuLockCell, CpuLockTokenRefMut},
+    task::TaskCb,
     utils::{
         intrusive_list::{Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
         Init, PrioBitmap,
     },
+    KernelCfg1, KernelTraits, PortThreading,
 };
 use core::{fmt, ops::RangeTo};
 use num_traits::ToPrimitive;
@@ -19,14 +17,14 @@ use num_traits::ToPrimitive;
 /// effective priority order.
 ///
 /// This trait is not intended to be implemented on custom types.
-pub trait Queue<System>: Send + Sync + fmt::Debug + Init + 'static + private::Sealed {
+pub trait Queue<Traits>: Send + Sync + fmt::Debug + Init + 'static + private::Sealed {
     type PerTaskData: Send + Sync + fmt::Debug + Init + 'static;
 
     /// Return a flag indicating whether there's a task in Ready state whose
     /// priority is in the specified range.
-    fn has_ready_task_in_priority_range(&self, ctx: Ctx<'_, System>, range: RangeTo<usize>) -> bool
+    fn has_ready_task_in_priority_range(&self, ctx: Ctx<'_, Traits>, range: RangeTo<usize>) -> bool
     where
-        System: Kernel;
+        Traits: KernelTraits;
 
     /// Insert the specified task `task_cb` to the ready queue.
     ///
@@ -39,9 +37,9 @@ pub trait Queue<System>: Send + Sync + fmt::Debug + Init + 'static + private::Se
     ///
     /// This method will cause an undefined behavior if `task_cb` is already
     /// included in the queue.
-    unsafe fn push_back_task(&self, ctx: Ctx<'_, System>, task_cb: &'static TaskCb<System>)
+    unsafe fn push_back_task(&self, ctx: Ctx<'_, Traits>, task_cb: &'static TaskCb<Traits>)
     where
-        System: Kernel;
+        Traits: KernelTraits;
 
     /// Choose the next task to schedule based on `prev_task_priority`, the
     /// priority of the current task (more precisely, the task that would run
@@ -91,11 +89,11 @@ pub trait Queue<System>: Send + Sync + fmt::Debug + Init + 'static + private::Se
     ///
     fn pop_front_task(
         &self,
-        ctx: Ctx<'_, System>,
+        ctx: Ctx<'_, Traits>,
         prev_task_priority: usize,
-    ) -> ScheduleDecision<&'static TaskCb<System>>
+    ) -> ScheduleDecision<&'static TaskCb<Traits>>
     where
-        System: Kernel;
+        Traits: KernelTraits;
 
     /// Reposition the specified task within the ready queue after a change in
     /// its effective priority from `old_effective_priority` to
@@ -116,12 +114,12 @@ pub trait Queue<System>: Send + Sync + fmt::Debug + Init + 'static + private::Se
     /// effective priority that is not identical to `old_effective_priority`.
     unsafe fn reorder_task(
         &self,
-        ctx: Ctx<'_, System>,
-        task_cb: &'static TaskCb<System>,
+        ctx: Ctx<'_, Traits>,
+        task_cb: &'static TaskCb<Traits>,
         effective_priority: usize,
         old_effective_priority: usize,
     ) where
-        System: Kernel;
+        Traits: KernelTraits;
 }
 
 /// Implements [the sealed trait pattern], which prevents [`Queue`] against
@@ -142,13 +140,13 @@ pub enum ScheduleDecision<T> {
 }
 
 /// The context type for [`Queue`].
-pub struct Ctx<'a, System: Kernel> {
-    pub(super) lock: CpuLockTokenRefMut<'a, System>,
+pub struct Ctx<'a, Traits: KernelTraits> {
+    pub(super) lock: CpuLockTokenRefMut<'a, Traits>,
 }
 
-impl<'a, System: Kernel> From<CpuLockTokenRefMut<'a, System>> for Ctx<'a, System> {
+impl<'a, Traits: KernelTraits> From<CpuLockTokenRefMut<'a, Traits>> for Ctx<'a, Traits> {
     #[inline]
-    fn from(lock: CpuLockTokenRefMut<'a, System>) -> Self {
+    fn from(lock: CpuLockTokenRefMut<'a, Traits>) -> Self {
         Self { lock }
     }
 }
@@ -156,7 +154,7 @@ impl<'a, System: Kernel> From<CpuLockTokenRefMut<'a, System>> for Ctx<'a, System
 /// The ready queue implementation that uses a set of queues segregated by the
 /// priorities of contained tasks.
 pub struct BitmapQueue<
-    System: PortThreading,
+    Traits: PortThreading,
     PortTaskState: 'static,
     TaskPriority: 'static,
     Bitmap: 'static,
@@ -167,22 +165,22 @@ pub struct BitmapQueue<
     ///
     /// Invariant: `queues[i].first.is_some() == bitmap.get(i)`
     queues: [CpuLockCell<
-        System,
-        StaticListHead<BitmapQueueTaskCb<System, PortTaskState, TaskPriority>>,
+        Traits,
+        StaticListHead<BitmapQueueTaskCb<Traits, PortTaskState, TaskPriority>>,
     >; LEN],
 
     /// The task ready bitmap, in which each bit indicates whether the
     /// segregated queue corresponding to that bit contains a task or not.
-    bitmap: CpuLockCell<System, Bitmap>,
+    bitmap: CpuLockCell<Traits, Bitmap>,
 }
 
 impl<
-        System: PortThreading,
+        Traits: PortThreading,
         PortTaskState: 'static,
         TaskPriority: 'static,
         Bitmap: 'static + Init,
         const LEN: usize,
-    > Init for BitmapQueue<System, PortTaskState, TaskPriority, Bitmap, LEN>
+    > Init for BitmapQueue<Traits, PortTaskState, TaskPriority, Bitmap, LEN>
 {
     const INIT: Self = Self {
         queues: Init::INIT,
@@ -190,33 +188,33 @@ impl<
     };
 }
 
-type BitmapQueueTaskCb<System, PortTaskState, TaskPriority> = TaskCb<
-    System,
+type BitmapQueueTaskCb<Traits, PortTaskState, TaskPriority> = TaskCb<
+    Traits,
     PortTaskState,
     TaskPriority,
-    BitmapQueuePerTaskData<System, PortTaskState, TaskPriority>,
+    BitmapQueuePerTaskData<Traits, PortTaskState, TaskPriority>,
 >;
 
 pub struct BitmapQueuePerTaskData<
-    System: PortThreading,
+    Traits: PortThreading,
     PortTaskState: 'static,
     TaskPriority: 'static,
 > {
     link: CpuLockCell<
-        System,
-        Option<StaticLink<BitmapQueueTaskCb<System, PortTaskState, TaskPriority>>>,
+        Traits,
+        Option<StaticLink<BitmapQueueTaskCb<Traits, PortTaskState, TaskPriority>>>,
     >,
 }
 
-impl<System: PortThreading, PortTaskState: 'static, TaskPriority: 'static> Init
-    for BitmapQueuePerTaskData<System, PortTaskState, TaskPriority>
+impl<Traits: PortThreading, PortTaskState: 'static, TaskPriority: 'static> Init
+    for BitmapQueuePerTaskData<Traits, PortTaskState, TaskPriority>
 {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self { link: Init::INIT };
 }
 
-impl<System: Kernel, PortTaskState: 'static, TaskPriority: 'static> fmt::Debug
-    for BitmapQueuePerTaskData<System, PortTaskState, TaskPriority>
+impl<Traits: KernelTraits, PortTaskState: 'static, TaskPriority: 'static> fmt::Debug
+    for BitmapQueuePerTaskData<Traits, PortTaskState, TaskPriority>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BitmapQueuePerTaskData")
@@ -243,27 +241,27 @@ macro_rules! list_accessor {
     }};
 }
 
-impl<System: Kernel, Bitmap: PrioBitmap, const LEN: usize> Queue<System>
+impl<Traits: KernelTraits, Bitmap: PrioBitmap, const LEN: usize> Queue<Traits>
     for BitmapQueue<
-        System,
-        <System as PortThreading>::PortTaskState,
-        <System as KernelCfg1>::TaskPriority,
+        Traits,
+        <Traits as PortThreading>::PortTaskState,
+        <Traits as KernelCfg1>::TaskPriority,
         Bitmap,
         LEN,
     >
 where
-    System: KernelCfg1<TaskReadyQueue = Self>,
+    Traits: KernelCfg1<TaskReadyQueue = Self>,
 {
     type PerTaskData = BitmapQueuePerTaskData<
-        System,
-        <System as PortThreading>::PortTaskState,
-        <System as KernelCfg1>::TaskPriority,
+        Traits,
+        <Traits as PortThreading>::PortTaskState,
+        <Traits as KernelCfg1>::TaskPriority,
     >;
 
     #[inline]
     fn has_ready_task_in_priority_range(
         &self,
-        Ctx { lock }: Ctx<'_, System>,
+        Ctx { lock }: Ctx<'_, Traits>,
         range: RangeTo<usize>,
     ) -> bool {
         let highest_task_priority = self.bitmap.read(&*lock).find_set().unwrap_or(usize::MAX);
@@ -273,8 +271,8 @@ where
     #[inline]
     unsafe fn push_back_task(
         &self,
-        Ctx { mut lock }: Ctx<'_, System>,
-        task_cb: &'static TaskCb<System>,
+        Ctx { mut lock }: Ctx<'_, Traits>,
+        task_cb: &'static TaskCb<Traits>,
     ) {
         // Insert the task to a ready queue
         //
@@ -294,9 +292,9 @@ where
     #[inline]
     fn pop_front_task(
         &self,
-        Ctx { mut lock }: Ctx<'_, System>,
+        Ctx { mut lock }: Ctx<'_, Traits>,
         prev_task_priority: usize,
-    ) -> ScheduleDecision<&'static TaskCb<System>> {
+    ) -> ScheduleDecision<&'static TaskCb<Traits>> {
         // The priority of the next task to run
         //
         // Consider the case where `prev_task_priority == usize::MAX`, i.e.,
@@ -346,8 +344,8 @@ where
     #[inline]
     unsafe fn reorder_task(
         &self,
-        Ctx { mut lock }: Ctx<'_, System>,
-        task_cb: &'static TaskCb<System>,
+        Ctx { mut lock }: Ctx<'_, Traits>,
+        task_cb: &'static TaskCb<Traits>,
         effective_priority: usize,
         old_effective_priority: usize,
     ) {
@@ -382,15 +380,15 @@ where
 }
 
 impl<
-        System: Kernel,
+        Traits: KernelTraits,
         PortTaskState: 'static,
         TaskPriority: 'static,
         Bitmap: 'static + fmt::Debug,
         const LEN: usize,
-    > fmt::Debug for BitmapQueue<System, PortTaskState, TaskPriority, Bitmap, LEN>
+    > fmt::Debug for BitmapQueue<Traits, PortTaskState, TaskPriority, Bitmap, LEN>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Ok(lock) = super::utils::lock_cpu() {
+        if let Ok(lock) = super::klock::lock_cpu() {
             let lock = core::cell::RefCell::new(lock);
             let lock = &lock; // capture-by-reference in the closure below
 
@@ -424,15 +422,15 @@ impl<
     }
 }
 
-impl<System: Kernel, Bitmap: PrioBitmap, const LEN: usize> private::Sealed
+impl<Traits: KernelTraits, Bitmap: PrioBitmap, const LEN: usize> private::Sealed
     for BitmapQueue<
-        System,
-        <System as PortThreading>::PortTaskState,
-        <System as KernelCfg1>::TaskPriority,
+        Traits,
+        <Traits as PortThreading>::PortTaskState,
+        <Traits as KernelCfg1>::TaskPriority,
         Bitmap,
         LEN,
     >
 where
-    System: KernelCfg1<TaskReadyQueue = Self>,
+    Traits: KernelCfg1<TaskReadyQueue = Self>,
 {
 }

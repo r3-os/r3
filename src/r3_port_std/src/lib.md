@@ -6,23 +6,30 @@ Simulator for running [`::r3`] on a hosted environment
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_trait_impl)]
 
 // Require `unsafe` even in `unsafe fn` - highly recommended
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use r3::kernel::{Task, cfg::CfgBuilder};
+use r3::kernel::{Task, Cfg, traits};
 
 // Use the simulator port. This macro generates `fn main()`.
-r3_port_std::use_port!(unsafe struct System);
+r3_port_std::use_port!(unsafe struct SystemTraits);
 
-const COTTAGE: () = r3::build!(System, configure_app => ());
+const COTTAGE: () = r3_kernel::build!(SystemTraits, configure_app => ());
 
-const fn configure_app(b: &mut CfgBuilder<System>) -> () {
+// Name your system type
+type System = r3_kernel::System<SystemTraits>;
+
+const fn configure_app<C>(cfg: &mut Cfg<C>) -> ()
+where
+    C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+{
     Task::build()
         .start(task_body)
         .priority(1)
         .active(true)
-        .finish(b);
+        .finish(cfg);
 }
 
 fn task_body(_: usize) {

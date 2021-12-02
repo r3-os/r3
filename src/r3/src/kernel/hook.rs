@@ -1,34 +1,53 @@
-use core::marker::PhantomData;
+//! Hooks
+use super::{raw, raw_cfg, Cfg};
+use crate::utils::{ComptimeVec, Init, PhantomInvariant};
 
-use crate::{
-    kernel::{cfg::CfgBuilder, startup, Port},
-    utils::ComptimeVec,
-};
+// TODO: Other types of hooks
 
-impl<System: Port> startup::StartupHook<System> {
-    /// Construct a `CfgStartupHookBuilder` to register a startup hook in
+/// Represents a registered startup hook in a system.
+///
+/// There are no operations defined for startup hooks, so this type
+/// is only used for static configuration.
+///
+/// Startup hooks execute during the boot process with [CPU Lock] active, after
+/// initializing kernel structures and before scheduling the first task.
+///
+/// [CPU Lock]: crate#system-states
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Relation to Other Specifications:** `StartupHook` (AUTOSAR OS,
+/// > OSEK/VDX), last function (TI-RTOS), initialization routine (μITRON4.0).
+///
+#[doc = include_str!("../common.md")]
+pub struct StartupHook<System: raw::KernelBase>(PhantomInvariant<System>);
+
+impl<System: raw::KernelBase> StartupHook<System> {
+    /// Construct a `StartupHookDefiner` to register a startup hook in
     /// [a configuration function](crate#static-configuration).
-    pub const fn build() -> CfgStartupHookBuilder<System> {
-        CfgStartupHookBuilder::new()
+    pub const fn build() -> StartupHookDefiner<System> {
+        StartupHookDefiner::new()
+    }
+
+    const fn new() -> Self {
+        Self(Init::INIT)
     }
 }
 
-/// Configuration builder type for [`StartupHook`].
-///
-/// [`StartupHook`]: crate::kernel::StartupHook
+/// The definer (static builder) for [`StartupHook`].
 #[must_use = "must call `finish()` to complete registration"]
-pub struct CfgStartupHookBuilder<System> {
-    _phantom: PhantomData<System>,
+pub struct StartupHookDefiner<System> {
+    _phantom: PhantomInvariant<System>,
     start: Option<fn(usize)>,
     param: usize,
     priority: i32,
     unchecked: bool,
 }
 
-impl<System: Port> CfgStartupHookBuilder<System> {
+impl<System: raw::KernelBase> StartupHookDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: PhantomData,
+            _phantom: Init::INIT,
             start: None,
             param: 0,
             priority: 0,
@@ -78,15 +97,17 @@ impl<System: Port> CfgStartupHookBuilder<System> {
 
     /// Complete the registration of a startup hook, returning an `StartupHook`
     /// object.
-    pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> startup::StartupHook<System> {
-        let inner = &mut cfg.inner;
-
+    pub const fn finish<C: ~const raw_cfg::CfgBase<System = System>>(
+        self,
+        cfg: &mut Cfg<C>,
+    ) -> StartupHook<System> {
         if self.priority < 0 && !self.unchecked {
             panic!("negative priority is unsafe and should be unlocked by `unchecked`");
         }
 
-        let order = inner.startup_hooks.len();
-        inner.startup_hooks.push(CfgBuilderStartupHook {
+        let startup_hooks = &mut cfg.startup_hooks;
+        let order = startup_hooks.len();
+        startup_hooks.push(CfgStartupHook {
             // FIXME: Work-around for `Option::expect` being not `const fn`
             start: if let Some(x) = self.start {
                 x
@@ -98,13 +119,12 @@ impl<System: Port> CfgStartupHookBuilder<System> {
             order,
         });
 
-        startup::StartupHook::new()
+        StartupHook::new()
     }
 }
 
-#[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CfgBuilderStartupHook {
+pub(crate) struct CfgStartupHook {
     start: fn(usize),
     param: usize,
     priority: i32,
@@ -113,7 +133,7 @@ pub struct CfgBuilderStartupHook {
 }
 
 /// Sort startup hooks by (priority, order).
-pub(super) const fn sort_hooks(startup_hooks: &mut ComptimeVec<CfgBuilderStartupHook>) {
+pub(crate) const fn sort_hooks(startup_hooks: &mut ComptimeVec<CfgStartupHook>) {
     sort_unstable_by!(
         startup_hooks.len(),
         |i| startup_hooks.get_mut(i),
@@ -125,9 +145,29 @@ pub(super) const fn sort_hooks(startup_hooks: &mut ComptimeVec<CfgBuilderStartup
     );
 }
 
-impl CfgBuilderStartupHook {
-    pub const fn to_attr(&self) -> startup::StartupHookAttr {
-        startup::StartupHookAttr {
+/// A startup hook.
+///
+/// This type isn't technically public but needs to be `pub` so that it can be
+/// referred to by [`KernelStatic`].
+///
+/// [`KernelStatic`]: crate::kernel::cfg::KernelStatic
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct StartupHookAttr {
+    pub(super) start: fn(usize),
+    pub(super) param: usize,
+}
+
+impl Init for StartupHookAttr {
+    const INIT: Self = Self {
+        start: |_| {},
+        param: 0,
+    };
+}
+
+impl CfgStartupHook {
+    pub const fn to_attr(&self) -> StartupHookAttr {
+        StartupHookAttr {
             start: self.start,
             param: self.param,
         }

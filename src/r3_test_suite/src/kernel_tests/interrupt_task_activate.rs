@@ -1,20 +1,25 @@
 //! Checks the return codes of disallowed system calls made in an interrupt
 //! context.
 //! TODO: wrong
-use r3::{
-    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
-    prelude::*,
-};
+use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task};
 
 use super::Driver;
 
-pub struct App<System> {
+pub trait SupportedSystem: traits::KernelBase + traits::KernelInterruptLine {}
+impl<T: traits::KernelBase + traits::KernelInterruptLine> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     task2: Task<System>,
     int: Option<InterruptLine<System>>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgInterruptLine,
+    {
         Task::build()
             .start(task_body1::<System, D>)
             .priority(1)
@@ -48,7 +53,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body1<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body1<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -60,10 +65,10 @@ fn task_body1<System: Kernel, D: Driver<App<System>>>(_: usize) {
     int.pend().unwrap();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().task2.activate().unwrap();
 }
 
-fn task_body2<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body2<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }

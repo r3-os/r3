@@ -1,6 +1,9 @@
+#![feature(const_transmute_copy)]
 #![feature(const_fn_trait_bound)]
+#![feature(const_refs_to_cell)]
 #![feature(const_option)]
 #![feature(const_mut_refs)]
+#![feature(const_trait_impl)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(decl_macro)]
@@ -8,6 +11,7 @@
 #![feature(cell_update)]
 #![feature(cfg_target_has_atomic)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::eq_op)] // we want to test `PartialEq` implementations
 #![deny(unsupported_naked_functions)]
@@ -38,6 +42,17 @@ pub mod kernel_tests {
         /// Signal to the test runner that a test has failed.
         fn fail();
 
+        /// Indicates whether [`Kernel::time_user_headroom`][1] is exact and
+        /// [`Kernel::adjust_time`][2] will deterministically fail if the limit
+        /// is exceeded.
+        ///
+        /// Setting this to `true` enables additional tests that can catch bugs
+        /// in a kernel timing mechanism.
+        ///
+        /// [1]: r3::kernel::Kernel::time_user_headroom
+        /// [2]: r3::kernel::Kernel::adjust_time
+        const TIME_USER_HEADROOM_IS_EXACT: bool = false;
+
         /// The list of interrupt lines that can be used by test programs.
         ///
         ///  - The list can have an arbitrary number of elements. Some tests
@@ -46,13 +61,13 @@ pub mod kernel_tests {
         ///
         ///  - There must be no duplicates.
         ///
-        ///  - The port must support [`enable_interrupt_line`],
-        ///    [`disable_interrupt_line`], [`pend_interrupt_line`] for all of
-        ///    the specified interrupt lines.
+        ///  - The kernel must support [`InterruptLine::enable`][1],
+        ///    [`InterruptLine::disable`][2], [`InterruptLine::pend`][3] for all
+        ///    of the specified interrupt lines.
         ///
-        /// [`enable_interrupt_line`]: r3::kernel::PortInterrupts::enable_interrupt_line
-        /// [`disable_interrupt_line`]: r3::kernel::PortInterrupts::disable_interrupt_line
-        /// [`pend_interrupt_line`]: r3::kernel::PortInterrupts::pend_interrupt_line
+        /// [1]: r3::kernel::InterruptLine::enable
+        /// [2]: r3::kernel::InterruptLine::disable
+        /// [3]: r3::kernel::InterruptLine::pend
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
         /// Valid managed priority values.
@@ -62,13 +77,13 @@ pub mod kernel_tests {
         ///    least two for all test cases to run.
         ///
         ///  - All elements must be in range
-        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///    [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`].
         ///
         ///  - The elements must be sorted in a descending order of priority.
         ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
         ///    `p[i]` should be high enough to preempt `p[o + 1]`.
         ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
 
         /// Valid unmanaged priority values.
@@ -78,7 +93,7 @@ pub mod kernel_tests {
         ///    least one for all test cases to run.
         ///
         ///  - No elements must be in range
-        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///    [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`].
         ///
         ///  - The elements must be sorted in a descending order of priority.
         ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
@@ -89,7 +104,7 @@ pub mod kernel_tests {
         ///    in [`INTERRUPT_PRIORITIES`], `pri_unmanaged` should be high
         ///    enough to preempt `pri_managed`.
         ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
         /// [`INTERRUPT_PRIORITIES`]: Self::INTERRUPT_PRIORITIES
         ///
         const UNMANAGED_INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
@@ -326,13 +341,13 @@ pub mod kernel_benchmarks {
         ///
         ///  - There must be no duplicates.
         ///
-        ///  - The port must support [`enable_interrupt_line`],
-        ///    [`disable_interrupt_line`], [`pend_interrupt_line`] for all of
-        ///    the specified interrupt lines.
+        ///  - The kernel must support [`InterruptLine::enable`][1],
+        ///    [`InterruptLine::disable`][2], [`InterruptLine::pend`][3] for all
+        ///    of the specified interrupt lines.
         ///
-        /// [`enable_interrupt_line`]: r3::kernel::PortInterrupts::enable_interrupt_line
-        /// [`disable_interrupt_line`]: r3::kernel::PortInterrupts::disable_interrupt_line
-        /// [`pend_interrupt_line`]: r3::kernel::PortInterrupts::pend_interrupt_line
+        /// [1]: r3::kernel::InterruptLine::enable
+        /// [2]: r3::kernel::InterruptLine::disable
+        /// [3]: r3::kernel::InterruptLine::pend
         const INTERRUPT_LINES: &'static [InterruptNum] = &[];
 
         /// Valid priority values.
@@ -342,19 +357,19 @@ pub mod kernel_benchmarks {
         ///    least two for all test cases to run.
         ///
         ///  - All elements must be in range
-        ///    [`MANAGED_INTERRUPT_PRIORITY_RANGE`].
+        ///    [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`].
         ///
         ///  - The elements must be sorted in a descending order of priority.
         ///    That is, for every pair of adjacent elements `[p[i], p[i + 1]]`,
         ///    `p[i]` should be high enough to preempt `p[o + 1]`.
         ///
-        /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+        /// [`RAW_MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE
         const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
     }
 
     /// The interface provided by [`use_benchmark_in_kernel_benchmark!`] and
     /// consumed by an inner app.
-    trait Bencher<System, App> {
+    trait Bencher<System: crate::utils::benchmark::SupportedSystem, App> {
         /// Get a reference to `App` of the inner app.
         fn app() -> &'static App;
 
@@ -382,33 +397,39 @@ pub mod kernel_benchmarks {
     #[allow(unused_macros)]
     macro_rules! use_benchmark_in_kernel_benchmark {
         {
-            pub unsafe struct App<System> {
+            $( #[cfg_bounds( $($tt:tt)* )] )?
+            pub unsafe struct App<System: $SystemBounds:path> {
                 inner: $inner_ty:ty,
             }
         } => {
             use crate::kernel_benchmarks::Driver;
             use crate::utils::benchmark;
 
-            pub struct App<System> {
+            pub struct App<System: benchmark::SupportedSystem + $SystemBounds> {
                 benchmark: benchmark::BencherCottage<System>,
                 inner: $inner_ty,
             }
 
             struct MyBencherOptions<System, D>(core::marker::PhantomData<(System, D)>);
 
-            impl<System: r3::kernel::Kernel> App<System> {
-                pub const fn new<D: Driver<Self>>(
-                    b: &mut r3::kernel::cfg::CfgBuilder<System>,
-                ) -> Self {
+            impl<System: benchmark::SupportedSystem + $SystemBounds> App<System> {
+                pub const fn new<C, D: Driver<Self>>(
+                    b: &mut r3::kernel::Cfg<C>,
+                ) -> Self
+                where
+                    C: ~const r3::kernel::traits::CfgBase<System = System> +
+                       ~const r3::kernel::traits::CfgTask,
+                    $( C: $($tt)* )?
+                {
                     App {
-                        benchmark: benchmark::configure::<System, MyBencherOptions<System, D>>(b),
-                        inner: <$inner_ty>::new::<MyBencherOptions<System, D>>(b),
+                        benchmark: benchmark::configure::<C, System, MyBencherOptions<System, D>>(b),
+                        inner: <$inner_ty>::new::<C, MyBencherOptions<System, D>>(b),
                     }
                 }
             }
 
             /// benchmark framework → app
-            unsafe impl<System: r3::kernel::Kernel, D: Driver<App<System>>>
+            unsafe impl<System: benchmark::SupportedSystem + $SystemBounds, D: Driver<App<System>>>
                 benchmark::BencherOptions<System> for MyBencherOptions<System, D>
             {
                 fn cottage() -> &'static benchmark::BencherCottage<System> {
@@ -431,7 +452,7 @@ pub mod kernel_benchmarks {
             }
 
             /// app → benchmark framework
-            impl<System: r3::kernel::Kernel, D: Driver<App<System>>>
+            impl<System: benchmark::SupportedSystem + $SystemBounds, D: Driver<App<System>>>
                 crate::kernel_benchmarks::Bencher<System, $inner_ty> for MyBencherOptions<System, D>
             {
                 fn app() -> &'static $inner_ty {
@@ -526,7 +547,8 @@ pub mod kernel_benchmarks {
         [$]
         (mod mutex_ceiling {}, "mutex_ceiling"),
         (mod mutex_none {}, "mutex_none"),
-        (mod port {}, "port"),
+        // TODO: `port` is specific to `r3_kernel`
+        // (mod port {}, "port"),
         (mod semaphore {}, "semaphore"),
         (mod task_lifecycle {}, "task_lifecycle"),
         (mod timer_start {}, "timer_start"),

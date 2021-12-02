@@ -11,11 +11,12 @@ use once_cell::sync::OnceCell;
 use r3::{
     kernel::{
         ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-        PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
-        SetInterruptLinePriorityError, TaskCb, UTicks,
+        Kernel as _, PendInterruptLineError, QueryInterruptLineError,
+        SetInterruptLinePriorityError,
     },
     prelude::*,
 };
+use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb, UTicks};
 use spin::Mutex as SpinMutex;
 use std::{
     cell::Cell,
@@ -47,6 +48,9 @@ mod utils;
 pub extern crate r3;
 /// Used by `use_port!`
 #[doc(hidden)]
+pub extern crate r3_kernel;
+/// Used by `use_port!`
+#[doc(hidden)]
 pub use std::sync::atomic::{AtomicBool, Ordering};
 /// Used by `use_port!`
 #[doc(hidden)]
@@ -74,7 +78,9 @@ pub const INTERRUPT_PRIORITY_TIMER: InterruptPriority = 16383;
 ///
 /// Only meant to be implemented by [`use_port!`].
 #[doc(hidden)]
-pub unsafe trait PortInstance: Kernel + Port<PortTaskState = TaskState> {
+pub unsafe trait PortInstance:
+    KernelTraits + Port<PortTaskState = TaskState> + PortToKernel
+{
     fn port_state() -> &'static State;
 }
 
@@ -158,7 +164,7 @@ impl TaskState {
         assert_eq!(ums::current_thread(), Some(expected_thread_id));
     }
 
-    unsafe fn exit_and_dispatch<System: PortInstance>(&self, state: &'static State) -> ! {
+    unsafe fn exit_and_dispatch<Traits: PortInstance>(&self, state: &'static State) -> ! {
         log::trace!("exit_and_dispatch({:p}) enter", self);
         self.assert_current_thread();
 
@@ -184,7 +190,7 @@ impl TaskState {
         drop(lock);
 
         // Invoke the dispatcher
-        unsafe { state.yield_cpu::<System>() };
+        unsafe { state.yield_cpu::<Traits>() };
 
         log::trace!("exit_and_dispatch({:p}) calling exit_thread", self);
         unsafe { ums::exit_thread() };
@@ -204,9 +210,9 @@ impl State {
     /// Initialize the user-mode scheduling system and boot the kernel.
     ///
     /// Returns when the shutdown initiated by [`shutdown`] completes.
-    pub fn port_boot<System: PortInstance>(&self) {
+    pub fn port_boot<Traits: PortInstance>(&self) {
         // Create a UMS thread group.
-        let (thread_group, join_handle) = ums::ThreadGroup::new(sched::SchedState::new::<System>());
+        let (thread_group, join_handle) = ums::ThreadGroup::new(sched::SchedState::new::<Traits>());
 
         self.thread_group.set(thread_group).ok().unwrap();
 
@@ -228,7 +234,7 @@ impl State {
                         break;
                     }
                     Err(mpsc::RecvTimeoutError::Timeout) => {
-                        pend_interrupt_line::<System>(INTERRUPT_LINE_TIMER).unwrap();
+                        pend_interrupt_line::<Traits>(INTERRUPT_LINE_TIMER).unwrap();
                         next_deadline = None;
                     }
                     Ok(TimerCmd::SetTimeout { at }) => {
@@ -247,7 +253,7 @@ impl State {
 
             // Safety: We are a port, so it's okay to call this
             unsafe {
-                <System as PortToKernel>::boot();
+                <Traits as PortToKernel>::boot();
             }
         });
         log::trace!("startup thread = {:?}", thread_id);
@@ -260,7 +266,7 @@ impl State {
             .update_line(INTERRUPT_LINE_TIMER, |line| {
                 line.priority = INTERRUPT_PRIORITY_TIMER;
                 line.enable = true;
-                line.start = Some(Self::timer_handler::<System>);
+                line.start = Some(Self::timer_handler::<Traits>);
             })
             .ok()
             .unwrap();
@@ -284,10 +290,10 @@ impl State {
         }
     }
 
-    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
+    pub unsafe fn dispatch_first_task<Traits: PortInstance>(&'static self) -> ! {
         log::trace!("dispatch_first_task");
-        assert_eq!(expect_worker_thread::<System>(), ThreadRole::Boot);
-        assert!(self.is_cpu_lock_active::<System>());
+        assert_eq!(expect_worker_thread::<Traits>(), ThreadRole::Boot);
+        assert!(self.is_cpu_lock_active::<Traits>());
 
         // Create a UMS worker thread for the dispatcher
         let mut lock = self.thread_group.get().unwrap().lock();
@@ -299,7 +305,7 @@ impl State {
                 line.priority = INTERRUPT_PRIORITY_DISPATCH;
                 line.enable = true;
                 line.pended = true;
-                line.start = Some(Self::dispatch_handler::<System>);
+                line.start = Some(Self::dispatch_handler::<Traits>);
             })
             .ok()
             .unwrap();
@@ -318,23 +324,23 @@ impl State {
         unsafe { ums::exit_thread() };
     }
 
-    extern "C" fn dispatch_handler<System: PortInstance>() {
-        System::port_state().dispatch::<System>();
+    extern "C" fn dispatch_handler<Traits: PortInstance>() {
+        Traits::port_state().dispatch::<Traits>();
     }
 
-    fn dispatch<System: PortInstance>(&'static self) {
-        assert_eq!(expect_worker_thread::<System>(), ThreadRole::Interrupt);
+    fn dispatch<Traits: PortInstance>(&'static self) {
+        assert_eq!(expect_worker_thread::<Traits>(), ThreadRole::Interrupt);
 
-        unsafe { self.enter_cpu_lock::<System>() };
-        unsafe { System::choose_running_task() };
-        unsafe { self.leave_cpu_lock::<System>() };
+        unsafe { self.enter_cpu_lock::<Traits>() };
+        unsafe { Traits::choose_running_task() };
+        unsafe { self.leave_cpu_lock::<Traits>() };
 
         let mut lock = self.thread_group.get().unwrap().lock();
 
         // Tell the scheduler which task to run next
         // Safety: `running_task` is only modified by `choose_running_task`, so
         //         there's no data race
-        let running_task = unsafe { *System::state().running_task_ptr() };
+        let running_task = unsafe { *Traits::state().running_task_ptr() };
         lock.scheduler().task_thread = if let Some(task) = running_task {
             log::trace!("dispatching task {:p}", task);
 
@@ -345,7 +351,7 @@ impl State {
                     // Spawn a UMS worker thread for this task
                     let thread = lock.spawn(move |_| {
                         THREAD_ROLE.with(|role| role.set(ThreadRole::Task));
-                        assert!(!self.is_cpu_lock_active::<System>());
+                        assert!(!self.is_cpu_lock_active::<Traits>());
 
                         log::debug!("task {:p} is now running", task);
 
@@ -359,7 +365,7 @@ impl State {
                         // `forget`. (`libstd`'s thread entry point might
                         // not be prepared to this, though...)
                         unsafe {
-                            System::exit_task().unwrap();
+                            System::<Traits>::exit_task().unwrap();
                         }
                     });
 
@@ -376,40 +382,40 @@ impl State {
         };
     }
 
-    pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
+    pub unsafe fn yield_cpu<Traits: PortInstance>(&'static self) {
         log::trace!("yield_cpu");
-        expect_worker_thread::<System>();
-        assert!(!self.is_cpu_lock_active::<System>());
+        expect_worker_thread::<Traits>();
+        assert!(!self.is_cpu_lock_active::<Traits>());
 
-        self.pend_interrupt_line::<System>(INTERRUPT_LINE_DISPATCH)
+        self.pend_interrupt_line::<Traits>(INTERRUPT_LINE_DISPATCH)
             .unwrap();
     }
 
-    pub unsafe fn exit_and_dispatch<System: PortInstance>(
+    pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
         &'static self,
-        task: &'static TaskCb<System>,
+        task: &'static TaskCb<Traits>,
     ) -> ! {
         log::trace!("exit_and_dispatch");
-        assert_eq!(expect_worker_thread::<System>(), ThreadRole::Task);
-        assert!(self.is_cpu_lock_active::<System>());
+        assert_eq!(expect_worker_thread::<Traits>(), ThreadRole::Task);
+        assert!(self.is_cpu_lock_active::<Traits>());
 
         unsafe {
-            task.port_task_state.exit_and_dispatch::<System>(self);
+            task.port_task_state.exit_and_dispatch::<Traits>(self);
         }
     }
 
-    pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
+    pub unsafe fn enter_cpu_lock<Traits: PortInstance>(&self) {
         log::trace!("enter_cpu_lock");
-        expect_worker_thread::<System>();
+        expect_worker_thread::<Traits>();
 
         let mut lock = self.thread_group.get().unwrap().lock();
         assert!(!lock.scheduler().cpu_lock);
         lock.scheduler().cpu_lock = true;
     }
 
-    pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
+    pub unsafe fn leave_cpu_lock<Traits: PortInstance>(&'static self) {
         log::trace!("leave_cpu_lock");
-        expect_worker_thread::<System>();
+        expect_worker_thread::<Traits>();
 
         let mut lock = self.thread_group.get().unwrap().lock();
         assert!(lock.scheduler().cpu_lock);
@@ -421,13 +427,13 @@ impl State {
         }
     }
 
-    pub unsafe fn initialize_task_state<System: PortInstance>(
+    pub unsafe fn initialize_task_state<Traits: PortInstance>(
         &self,
-        task: &'static TaskCb<System>,
+        task: &'static TaskCb<Traits>,
     ) {
         log::trace!("initialize_task_state {:p}", task);
-        expect_worker_thread::<System>();
-        assert!(self.is_cpu_lock_active::<System>());
+        expect_worker_thread::<Traits>();
+        assert!(self.is_cpu_lock_active::<Traits>());
 
         let pts = &task.port_task_state;
         let mut tsm = pts.tsm.lock();
@@ -442,16 +448,16 @@ impl State {
         }
     }
 
-    pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
-        expect_worker_thread::<System>();
+    pub fn is_cpu_lock_active<Traits: PortInstance>(&self) -> bool {
+        expect_worker_thread::<Traits>();
 
         (self.thread_group.get().unwrap().lock())
             .scheduler()
             .cpu_lock
     }
 
-    pub fn is_task_context<System: PortInstance>(&self) -> bool {
-        expect_worker_thread::<System>();
+    pub fn is_task_context<Traits: PortInstance>(&self) -> bool {
+        expect_worker_thread::<Traits>();
 
         THREAD_ROLE.with(|role| match role.get() {
             ThreadRole::Interrupt | ThreadRole::Boot => false,
@@ -460,14 +466,14 @@ impl State {
         })
     }
 
-    pub fn set_interrupt_line_priority<System: PortInstance>(
+    pub fn set_interrupt_line_priority<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
         priority: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
         log::trace!("set_interrupt_line_priority{:?}", (num, priority));
         assert!(matches!(
-            expect_worker_thread::<System>(),
+            expect_worker_thread::<Traits>(),
             ThreadRole::Boot | ThreadRole::Task
         ));
 
@@ -484,12 +490,12 @@ impl State {
         Ok(())
     }
 
-    pub fn enable_interrupt_line<System: PortInstance>(
+    pub fn enable_interrupt_line<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
         log::trace!("enable_interrupt_line{:?}", (num,));
-        expect_worker_thread::<System>();
+        expect_worker_thread::<Traits>();
 
         let mut lock = self.thread_group.get().unwrap().lock();
         lock.scheduler()
@@ -504,12 +510,12 @@ impl State {
         Ok(())
     }
 
-    pub fn disable_interrupt_line<System: PortInstance>(
+    pub fn disable_interrupt_line<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
         log::trace!("disable_interrupt_line{:?}", (num,));
-        expect_worker_thread::<System>();
+        expect_worker_thread::<Traits>();
 
         (self.thread_group.get().unwrap().lock())
             .scheduler()
@@ -517,12 +523,12 @@ impl State {
             .map_err(|sched::BadIntLineError| EnableInterruptLineError::BadParam)
     }
 
-    pub fn pend_interrupt_line<System: PortInstance>(
+    pub fn pend_interrupt_line<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), PendInterruptLineError> {
         log::trace!("pend_interrupt_line{:?}", (num,));
-        expect_worker_thread::<System>();
+        expect_worker_thread::<Traits>();
 
         let mut lock = self.thread_group.get().unwrap().lock();
         lock.scheduler()
@@ -537,12 +543,12 @@ impl State {
         Ok(())
     }
 
-    pub fn clear_interrupt_line<System: PortInstance>(
+    pub fn clear_interrupt_line<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), ClearInterruptLineError> {
         log::trace!("clear_interrupt_line{:?}", (num,));
-        expect_worker_thread::<System>();
+        expect_worker_thread::<Traits>();
 
         (self.thread_group.get().unwrap().lock())
             .scheduler()
@@ -550,11 +556,11 @@ impl State {
             .map_err(|sched::BadIntLineError| ClearInterruptLineError::BadParam)
     }
 
-    pub fn is_interrupt_line_pending<System: PortInstance>(
+    pub fn is_interrupt_line_pending<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
-        expect_worker_thread::<System>();
+        expect_worker_thread::<Traits>();
 
         (self.thread_group.get().unwrap().lock())
             .scheduler()
@@ -566,8 +572,8 @@ impl State {
     pub const MAX_TICK_COUNT: UTicks = UTicks::MAX;
     pub const MAX_TIMEOUT: UTicks = UTicks::MAX / 2;
 
-    pub fn tick_count<System: PortInstance>(&self) -> UTicks {
-        expect_worker_thread::<System>();
+    pub fn tick_count<Traits: PortInstance>(&self) -> UTicks {
+        expect_worker_thread::<Traits>();
 
         let origin = if let Some(x) = self.origin.load(Ordering::Acquire) {
             x
@@ -615,8 +621,8 @@ impl State {
         (micros as UTicks).wrapping_add(get_random_number())
     }
 
-    pub fn pend_tick_after<System: PortInstance>(&self, tick_count_delta: UTicks) {
-        expect_worker_thread::<System>();
+    pub fn pend_tick_after<Traits: PortInstance>(&self, tick_count_delta: UTicks) {
+        expect_worker_thread::<Traits>();
         log::trace!("pend_tick_after({:?})", tick_count_delta);
 
         // Calculate when `timer_tick` should be called
@@ -624,7 +630,7 @@ impl State {
 
         // Lock the scheduler because we aren't sure what would happen if
         // `Sender::send` was interrupted
-        let _sched_lock = lock_scheduler::<System>();
+        let _sched_lock = lock_scheduler::<Traits>();
 
         let timer_cmd_send = self.timer_cmd_send.lock();
         let timer_cmd_send = timer_cmd_send.as_ref().unwrap();
@@ -633,27 +639,27 @@ impl State {
             .unwrap();
     }
 
-    pub fn pend_tick<System: PortInstance>(&'static self) {
-        expect_worker_thread::<System>();
+    pub fn pend_tick<Traits: PortInstance>(&'static self) {
+        expect_worker_thread::<Traits>();
         log::trace!("pend_tick");
 
-        self.pend_interrupt_line::<System>(INTERRUPT_LINE_TIMER)
+        self.pend_interrupt_line::<Traits>(INTERRUPT_LINE_TIMER)
             .unwrap();
     }
 
-    extern "C" fn timer_handler<System: PortInstance>() {
-        assert_eq!(expect_worker_thread::<System>(), ThreadRole::Interrupt);
+    extern "C" fn timer_handler<Traits: PortInstance>() {
+        assert_eq!(expect_worker_thread::<Traits>(), ThreadRole::Interrupt);
         log::trace!("timer_handler");
 
         // Safety: CPU Lock inactive, an interrupt context
-        unsafe { <System as PortToKernel>::timer_tick() };
+        unsafe { <Traits as PortToKernel>::timer_tick() };
     }
 }
 
-/// Assert that the current thread is a worker thread of `System`.
-fn expect_worker_thread<System: PortInstance>() -> ThreadRole {
+/// Assert that the current thread is a worker thread of `Traits`.
+fn expect_worker_thread<Traits: PortInstance>() -> ThreadRole {
     // TODO: Check that the current worker thread belongs to
-    //       `System::port_state().thread_group`
+    //       `Traits::port_state().thread_group`
     let role = THREAD_ROLE.with(|r| r.get());
     assert_ne!(role, ThreadRole::Unknown);
     role
@@ -666,8 +672,8 @@ fn expect_worker_thread<System: PortInstance>() -> ThreadRole {
 ///
 /// Note: There is no safe way to restart the simulated system without
 /// restarting an entire process.
-pub fn shutdown<System: PortInstance>() {
-    System::port_state()
+pub fn shutdown<Traits: PortInstance>() {
+    Traits::port_state()
         .thread_group
         .get()
         .unwrap()
@@ -680,7 +686,7 @@ pub fn shutdown<System: PortInstance>() {
 /// It's illegal to call this method from a thread managed by the port (i.e.,
 /// you can't call it from a task or an interrupt handler). Use
 /// [`r3::kernel::InterruptLine::pend`] instead in such cases.
-pub fn pend_interrupt_line<System: PortInstance>(
+pub fn pend_interrupt_line<Traits: PortInstance>(
     num: InterruptNum,
 ) -> Result<(), PendInterruptLineError> {
     log::trace!("external-pend_interrupt_line{:?}", (num,));
@@ -691,7 +697,7 @@ pub fn pend_interrupt_line<System: PortInstance>(
         "this method cannot be called from a port-managed thread"
     );
 
-    let state = System::port_state();
+    let state = Traits::port_state();
     let mut lock = state.thread_group.get().unwrap().lock();
     lock.scheduler()
         .update_line(num, |line| line.pended = true)
@@ -709,36 +715,38 @@ pub fn pend_interrupt_line<System: PortInstance>(
 ///
 /// *All* operating system and port functions will be unavailable until the lock
 /// is relinquished.
-pub fn lock_scheduler<System: PortInstance>() -> impl Sized {
-    let state = System::port_state();
+pub fn lock_scheduler<Traits: PortInstance>() -> impl Sized {
+    let state = Traits::port_state();
     state.thread_group.get().unwrap().lock()
 }
 
 #[macro_export]
 macro_rules! use_port {
-    (unsafe $vis:vis struct $sys:ident) => {
-        $vis struct $sys;
+    (unsafe $vis:vis struct $SystemTraits:ident) => {
+        $vis struct $SystemTraits;
 
         mod port_std_impl {
-            use super::$sys;
+            use super::$SystemTraits;
             use $crate::r3::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-                PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
-                TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
+                PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
+            };
+            use $crate::r3_kernel::{
+                Port, TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
             use $crate::{State, TaskState, PortInstance};
 
             pub(super) static PORT_STATE: State = State::new();
 
-            unsafe impl PortInstance for $sys {
+            unsafe impl PortInstance for $SystemTraits {
                 #[inline]
                 fn port_state() -> &'static State {
                     &PORT_STATE
                 }
             }
 
-            // Assume `$sys: Kernel`
-            unsafe impl PortThreading for $sys {
+            // Assume `$SystemTraits: KernelTraits`
+            unsafe impl PortThreading for $SystemTraits {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState = TaskState::new();
@@ -776,7 +784,7 @@ macro_rules! use_port {
                 }
             }
 
-            unsafe impl PortInterrupts for $sys {
+            unsafe impl PortInterrupts for $SystemTraits {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE:
                     ::std::ops::Range<InterruptPriority> = 0..InterruptPriority::MAX;
 
@@ -810,7 +818,7 @@ macro_rules! use_port {
                 }
             }
 
-            impl PortTimer for $sys {
+            impl PortTimer for $SystemTraits {
                 const MAX_TICK_COUNT: UTicks = State::MAX_TICK_COUNT;
                 const MAX_TIMEOUT: UTicks = State::MAX_TIMEOUT;
 
@@ -831,7 +839,7 @@ macro_rules! use_port {
         fn main() {
             $crate::env_logger::init();
 
-            port_std_impl::PORT_STATE.port_boot::<$sys>();
+            port_std_impl::PORT_STATE.port_boot::<$SystemTraits>();
         }
     };
 }

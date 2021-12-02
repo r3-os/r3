@@ -2,19 +2,25 @@
 //! miscellaneous properties of such methods.
 use core::marker::PhantomData;
 use r3::{
-    kernel::{cfg::CfgBuilder, StartupHook, Task},
-    prelude::*,
+    kernel::{prelude::*, traits, Cfg, StartupHook, Task},
     time::{Duration, Time},
 };
 
 use super::Driver;
+use crate::utils::conditional::KernelTimeExt;
 
-pub struct App<System> {
+pub trait SupportedSystem: traits::KernelBase + traits::KernelAdjustTime + KernelTimeExt {}
+impl<T: traits::KernelBase + traits::KernelAdjustTime + KernelTimeExt> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         StartupHook::build()
             .start(startup_hook::<System, D>)
             .finish(b);
@@ -30,10 +36,11 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Not a task context
-    #[cfg(feature = "system_time")]
-    assert_eq!(System::time(), Err(r3::kernel::TimeError::BadContext));
+    if let Some(cap) = System::TIME_CAPABILITY {
+        assert_eq!(System::time(cap), Err(r3::kernel::TimeError::BadContext));
+    }
 
     assert_eq!(
         System::set_time(Time::from_micros(0)),
@@ -49,16 +56,16 @@ fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     );
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
-    #[cfg(feature = "system_time")]
-    let now = {
-        let now = System::time().unwrap();
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+    let now = if let Some(cap) = System::TIME_CAPABILITY {
+        let now = System::time(cap).unwrap();
         log::trace!("time = {:?}", now);
-        now
+        Some((cap, now))
+    } else {
+        None
     };
 
-    #[cfg(feature = "system_time")]
-    {
+    if let Some((cap, now)) = now {
         // Because this task is activated at boot, the current time should be
         // very close to zero
         assert_eq!(now.as_secs(), 0);
@@ -70,15 +77,16 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
 
         // Because we just changed the time to `now2`, the current time should be
         // still very close to `now2`
-        let now2_got = System::time().unwrap();
+        let now2_got = System::time(cap).unwrap();
         log::trace!("time = {:?}", now2_got);
         assert_eq!(now2_got.duration_since(now2).unwrap().as_secs(), 0);
     }
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
-    #[cfg(feature = "system_time")]
-    assert_eq!(System::time(), Err(r3::kernel::TimeError::BadContext));
+    if let Some(cap) = System::TIME_CAPABILITY {
+        assert_eq!(System::time(cap), Err(r3::kernel::TimeError::BadContext));
+    }
 
     assert_eq!(
         System::set_time(Time::from_millis(0)),
@@ -94,8 +102,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     );
     unsafe { System::release_cpu_lock().unwrap() };
 
-    #[cfg(feature = "system_time")]
-    let now4_got = {
+    let now4_got = if let Some(cap) = System::TIME_CAPABILITY {
         // System time should wrap around
         let now3 = Time::from_micros(0xfffffffffffe0000);
         log::trace!("changing system time to {:?}", now3);
@@ -106,20 +113,21 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
         System::sleep(d).unwrap();
 
         let now4 = now3 + d;
-        let now4_got = System::time().unwrap();
+        let now4_got = System::time(cap).unwrap();
         log::trace!("time = {:?} (expected >= {:?})", now4_got, now4);
         assert!(now4_got.as_micros() >= now4.as_micros());
 
-        now4_got
+        Some((cap, now4_got))
+    } else {
+        None
     };
 
     // `adjust_time(0)` is no-op
     System::adjust_time(Duration::ZERO).unwrap();
 
-    #[cfg(feature = "system_time")]
-    {
+    if let Some((cap, now4_got)) = now4_got {
         let now5 = now4_got;
-        let now5_got = System::time().unwrap();
+        let now5_got = System::time(cap).unwrap();
         log::trace!("time = {:?} (expected {:?})", now5_got, now5);
         assert!(now5_got.as_micros() >= now5.as_micros());
         assert!(now5_got.as_micros() <= now5.as_micros() + 100_000);

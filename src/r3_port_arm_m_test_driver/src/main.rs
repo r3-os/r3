@@ -2,6 +2,7 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![cfg_attr(feature = "run", no_std)]
@@ -21,7 +22,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use r3::kernel::{InterruptNum, InterruptPriority, StartupHook, cfg::CfgBuilder};
+        use r3::kernel::{InterruptNum, InterruptPriority, StartupHook};
         #[cfg(feature = "kernel_benchmarks")]
         use r3_test_suite::kernel_benchmarks;
         #[cfg(feature = "kernel_tests")]
@@ -60,11 +61,12 @@ macro_rules! instantiate_test {
             panic!("test failed");
         }
 
-        port::use_port!(unsafe struct System);
-        port::use_rt!(unsafe System);
-        port::use_systick_tickful!(unsafe impl PortTimer for System);
+        type System = r3_kernel::System<SystemTraits>;
+        port::use_port!(unsafe struct SystemTraits);
+        port::use_rt!(unsafe SystemTraits);
+        port::use_systick_tickful!(unsafe impl PortTimer for SystemTraits);
 
-        impl port::ThreadingOptions for System {
+        impl port::ThreadingOptions for SystemTraits {
             // On some chips, RTT stops working when the processor is suspended
             // by the WFI instruction, which interferes with test result
             // collection.
@@ -74,7 +76,7 @@ macro_rules! instantiate_test {
             const CPU_LOCK_PRIORITY_MASK: u8 = 0x20;
         }
 
-        impl port::SysTickOptions for System {
+        impl port::SysTickOptions for SystemTraits {
             #[cfg(feature = "board-rp_pico")]
             const FREQUENCY: u64 = board_rp2040::SYSTICK_FREQUENCY;
 
@@ -133,9 +135,9 @@ macro_rules! instantiate_test {
         }
 
         static COTTAGE: test_case::App<System> =
-            r3::build!(System, configure_app => test_case::App<System>);
+            r3_kernel::build!(SystemTraits, configure_app => test_case::App<System>);
 
-        const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+        const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> test_case::App<System> {
             // Configure DWT for performance measurement
             #[cfg(feature = "kernel_benchmarks")]
             #[cfg(not(feature = "board-rp_pico"))]
@@ -183,9 +185,9 @@ macro_rules! instantiate_test {
             #[cfg(feature = "board-rp_pico")]
             board_rp2040::configure(b);
 
-            System::configure_systick(b);
+            SystemTraits::configure_systick(b);
 
-            test_case::App::new::<Driver>(b)
+            test_case::App::new::<_, Driver>(b)
         }
     };
 

@@ -3,7 +3,7 @@ use arrayvec::ArrayVec;
 use core::{cell::UnsafeCell, fmt};
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, Kernel, Task},
+    kernel::{raw_cfg, traits, Cfg, Task},
     utils::Init,
 };
 
@@ -11,6 +11,11 @@ use crate::utils::sort::insertion_sort;
 
 /// Identifies a measured interval.
 pub type Interval = &'static str;
+
+/// Implemented for all system types implementing the necessary traits for
+/// the bencher.
+pub trait SupportedSystem: traits::KernelBase + traits::KernelStatic {}
+impl<T: traits::KernelBase + traits::KernelStatic> SupportedSystem for T {}
 
 /// The options for the bencher.
 ///
@@ -23,7 +28,7 @@ pub type Interval = &'static str;
 ///  - `Bencher`'s methods access a global object without synchronization. The
 ///    application code should ensure no data race occurs.
 ///
-pub unsafe trait BencherOptions<System> {
+pub unsafe trait BencherOptions<System: SupportedSystem> {
     fn performance_time() -> u32;
 
     const PERFORMANCE_TIME_UNIT: &'static str;
@@ -42,14 +47,14 @@ pub unsafe trait BencherOptions<System> {
 
 /// The API to be used by a measured program. Automatically implemented on every
 /// `T: `[`BencherOptions`]`<System>`.
-pub trait Bencher<System> {
+pub trait Bencher<System: SupportedSystem> {
     fn mark_start();
     fn mark_end(int: Interval);
     fn main_task() -> Task<System>;
 }
 
 /// The cottage object of the bencher. Created by [`configure`].
-pub struct BencherCottage<System> {
+pub struct BencherCottage<System: SupportedSystem> {
     task: Task<System>,
     state: Hunk<System, BencherState>,
 }
@@ -75,9 +80,12 @@ impl Init for BencherState {
     }));
 }
 
-pub const fn configure<System: Kernel, Options: BencherOptions<System>>(
-    b: &mut CfgBuilder<System>,
-) -> BencherCottage<System> {
+pub const fn configure<C, System: SupportedSystem, Options: BencherOptions<System>>(
+    b: &mut Cfg<C>,
+) -> BencherCottage<System>
+where
+    C: ~const raw_cfg::CfgBase<System = System> + ~const raw_cfg::CfgTask,
+{
     let task = Task::build()
         .start(main_task::<System, Options>)
         .active(true)
@@ -89,7 +97,7 @@ pub const fn configure<System: Kernel, Options: BencherOptions<System>>(
     BencherCottage { task, state }
 }
 
-impl<System: Kernel, Options: BencherOptions<System>> Bencher<System> for Options {
+impl<System: SupportedSystem, Options: BencherOptions<System>> Bencher<System> for Options {
     #[inline(never)]
     fn mark_start() {
         let state = unsafe { &mut *Self::cottage().state.0.get() };
@@ -131,7 +139,7 @@ impl<System: Kernel, Options: BencherOptions<System>> Bencher<System> for Option
     }
 }
 
-fn main_task<System: Kernel, Options: BencherOptions<System>>(_: usize) {
+fn main_task<System: SupportedSystem, Options: BencherOptions<System>>(_: usize) {
     while {
         Options::mark_start();
         Options::mark_end("(empty)");

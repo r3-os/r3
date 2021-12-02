@@ -10,8 +10,7 @@ use core::{
 };
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, StartupHook, Task, Timer},
-    prelude::*,
+    kernel::{traits, Cfg, StartupHook, Task, Timer},
     time::Duration,
     utils::Init,
 };
@@ -21,14 +20,32 @@ use crate::utils::compute;
 
 const NUM_TASKS: usize = 3;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelTimer + traits::KernelStatic
+{
+}
+impl<
+        T: traits::KernelBase
+            + traits::KernelTaskSetPriority
+            + traits::KernelTimer
+            + traits::KernelStatic,
+    > SupportedSystem for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     timer: Timer<System>,
     tasks: [Task<System>; NUM_TASKS],
     state: Hunk<System, State>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgTimer,
+    {
         StartupHook::build().start(hook_body::<System, D>).finish(b);
 
         let timer = Timer::build()
@@ -115,7 +132,7 @@ impl Init for SchedState {
     };
 }
 
-fn hook_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn hook_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let state = &*D::app().state;
 
     // Safety: These are unique references to the contents of respective cells
@@ -126,7 +143,7 @@ fn hook_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     task_state.kernel_state.run(ref_output);
 }
 
-fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
+fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize) {
     let App { state, .. } = D::app();
 
     // Safety: This is a unique reference
@@ -163,7 +180,7 @@ fn worker_body<System: Kernel, D: Driver<App<System>>>(worker_id: usize) {
     }
 }
 
-fn timer_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { state, tasks, .. } = D::app();
 
     // Safety: This is a unique reference
@@ -221,7 +238,7 @@ fn timer_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn stop<System: Kernel, D: Driver<App<System>>>() {
+fn stop<System: SupportedSystem, D: Driver<App<System>>>() {
     let App { state, timer, .. } = D::app();
 
     log::debug!("Stopping the workers");

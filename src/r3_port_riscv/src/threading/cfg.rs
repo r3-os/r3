@@ -16,47 +16,50 @@ pub const INTERRUPT_PLATFORM_START: InterruptNum = 3;
 /// The configuration of the port.
 pub trait ThreadingOptions {}
 
-/// Define a system type implementing [`PortThreading`], [`PortInterrupts`], and
-/// [`EntryPoint`].
+/// Define a kernel trait type implementing [`PortThreading`],
+/// [`PortInterrupts`], and [`EntryPoint`].
 /// **Requires [`ThreadingOptions`] and [`InterruptController`].**
 ///
-/// [`PortThreading`]: r3::kernel::PortThreading
-/// [`PortInterrupts`]: r3::kernel::PortInterrupts
+/// [`PortThreading`]: r3_kernel::PortThreading
+/// [`PortInterrupts`]: r3_kernel::PortInterrupts
 /// [`EntryPoint`]: crate::EntryPoint
 /// [`InterruptController`]: crate::InterruptController
 #[macro_export]
 macro_rules! use_port {
-    (unsafe $vis:vis struct $sys:ident) => {
-        $vis struct $sys;
+    (unsafe $vis:vis struct $Traits:ident) => {
+        $vis struct $Traits;
 
         mod port_riscv_impl {
-            use super::$sys;
+            use super::$Traits;
             use $crate::r3::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-                PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
-                TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer, KernelCfg2,
-                cfg::InterruptHandlerFn,
+                PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
+                interrupt::InterruptHandlerFn,
+            };
+            use $crate::r3_kernel::{
+                TaskCb, PortToKernel, PortInterrupts, Port, PortThreading, UTicks, PortTimer,
+                KernelCfg2,
             };
             use $crate::core::ops::Range;
             use $crate::{threading::imp::{State, TaskState, PortInstance}, ThreadingOptions, EntryPoint, InterruptController};
 
             pub(super) static PORT_STATE: State = State::new();
 
-            unsafe impl PortInstance for $sys {
+            unsafe impl PortInstance for $Traits {
                 #[inline(always)]
                 fn port_state() -> &'static State {
                     &PORT_STATE
                 }
 
                 const INTERRUPT_SOFTWARE_HANDLER: Option<InterruptHandlerFn> =
-                    <$sys as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_SOFTWARE);
+                    <$Traits as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_SOFTWARE);
                 const INTERRUPT_TIMER_HANDLER: Option<InterruptHandlerFn> =
-                    <$sys as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_TIMER);
+                    <$Traits as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_TIMER);
                 const INTERRUPT_EXTERNAL_HANDLER: Option<InterruptHandlerFn> =
-                    <$sys as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_EXTERNAL);
+                    <$Traits as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_EXTERNAL);
             }
 
-            impl EntryPoint for $sys {
+            impl EntryPoint for $Traits {
                 unsafe fn start() -> ! {
                     unsafe { PORT_STATE.port_boot::<Self>() };
                 }
@@ -64,8 +67,8 @@ macro_rules! use_port {
                 const TRAP_HANDLER: unsafe extern "C" fn() -> ! = State::exception_handler::<Self>;
             }
 
-            // Assume `$sys: Kernel`
-            unsafe impl PortThreading for $sys {
+            // Assume `$Traits: KernelTraits`
+            unsafe impl PortThreading for $Traits {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
@@ -115,9 +118,9 @@ macro_rules! use_port {
                 }
             }
 
-            unsafe impl PortInterrupts for $sys {
+            unsafe impl PortInterrupts for $Traits {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
-                    <$sys as InterruptController>::MANAGED_INTERRUPT_PRIORITY_RANGE;
+                    <$Traits as InterruptController>::MANAGED_INTERRUPT_PRIORITY_RANGE;
 
                 const MANAGED_INTERRUPT_LINES: &'static [InterruptNum] = &[
                     $crate::INTERRUPT_SOFTWARE,
@@ -170,6 +173,6 @@ macro_rules! use_port {
             }
         }
 
-        const _: () = $crate::threading::imp::validate::<$sys>();
+        const _: () = $crate::threading::imp::validate::<$Traits>();
     };
 }

@@ -51,7 +51,7 @@ As far as kernel timing is concerned, there is no universal solution for a Corte
 
 # Interrupt Controller
 
-Your system type should be combined with an interrupt controller driver by implementing [`PortInterrupts`] and [`InterruptController`]. Most systems are equipped with Arm Generic Interrupt Controller (GIC), whose driver is provided by [`use_gic!`].
+Your kernel trait type should be combined with an interrupt controller driver by implementing [`PortInterrupts`] and [`InterruptController`]. Most systems are equipped with Arm Generic Interrupt Controller (GIC), whose driver is provided by [`use_gic!`].
 
 The maximum possible range of valid interrupt numbers is `0..1020` (the upper bound varies across implementations). The range is statically partitioned as follows:
 
@@ -61,10 +61,10 @@ The maximum possible range of valid interrupt numbers is `0..1020` (the upper bo
 
 The valid priority range is `0..255`. All priorities are [*managed*] - unmanaged interrupts aren't supported yet.
 
-The GIC driver exposes additional operations on interrupt lines through [`Gic`] implemented on your system type.
+The GIC driver exposes additional operations on interrupt lines through [`Gic`] implemented on your kernel trait type.
 
-[`PortInterrupts`]: r3::kernel::PortInterrupts
-[*managed*]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+[`PortInterrupts`]: r3_kernel::PortInterrupts
+[*managed*]: r3_kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
 
 # Implementation
 
@@ -112,7 +112,7 @@ struct ContextState {
 
 `sp` is stored in [`TaskCb::port_task_state`].
 
-[`TaskCb::port_task_state`]: r3::kernel::TaskCb::port_task_state
+[`TaskCb::port_task_state`]: r3_kernel::TaskCb::port_task_state
 
 When a task is activated, a new context state is created inside the task's stack. By default, only essential registers are preloaded with known values. The **`preload-registers`** Cargo feature enables preloading for all GPRs, which might help in debugging at the cost of performance and code size.
 
@@ -124,4 +124,4 @@ For the idle task, saving and restoring the context store is essentially replace
  - **Supervisor**: Non-task context
  - **IRQ**: The processor enters this mode when it takes an exception. This state lasts only briefly because the IRQ handler switches to Supervisor as soon as possible to allow reentry. `sp_irq` is only used as a scratch register.
 
-[`running_task_ptr`]: r3::kernel::State::running_task_ptr
+[`running_task_ptr`]: r3_kernel::State::running_task_ptr

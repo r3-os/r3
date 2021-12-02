@@ -10,6 +10,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(slice_ptr_len)]
 #![feature(naked_functions)]
+#![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![doc = include_str!("./lib.md")]
@@ -19,7 +20,7 @@
 #[doc = include_str!("../CHANGELOG.md")]
 pub mod _changelog_ {}
 
-/// The [`r3::kernel::PortThreading`] implementation.
+/// The [`r3_kernel::PortThreading`] implementation.
 #[doc(hidden)]
 pub mod threading {
     pub mod cfg;
@@ -35,7 +36,7 @@ pub mod rt {
     pub mod imp;
 }
 
-/// The tickful [`r3::kernel::PortTimer`] implementation based on SysTick.
+/// The tickful [`r3_kernel::PortTimer`] implementation based on SysTick.
 #[doc(hidden)]
 pub mod systick_tickful {
     pub mod cfg;
@@ -52,6 +53,9 @@ pub extern crate core;
 /// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate r3;
+/// Used by `use_port!`
+#[doc(hidden)]
+pub extern crate r3_kernel;
 /// Used by `use_port!`
 #[doc(hidden)]
 #[cfg(target_os = "none")]

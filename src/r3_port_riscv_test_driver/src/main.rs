@@ -2,6 +2,7 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(global_asm)]
 #![feature(decl_macro)]
@@ -48,8 +49,7 @@ macro_rules! instantiate_test {
         // Only one test case can be specified
         reject_excess!($($excess)*);
 
-        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum,
-            cfg::CfgBuilder};
+        use r3::kernel::{StartupHook, InterruptPriority, InterruptNum};
         #[cfg(feature = "kernel_tests")]
         use r3_test_suite::kernel_tests;
         #[cfg(feature = "kernel_benchmarks")]
@@ -76,19 +76,20 @@ macro_rules! instantiate_test {
             panic!("test failed");
         }
 
-        port::use_port!(unsafe struct System);
-        port::use_rt!(unsafe System);
-        port::use_timer!(unsafe impl PortTimer for System);
+        type System = r3_kernel::System<SystemTraits>;
+        port::use_port!(unsafe struct SystemTraits);
+        port::use_rt!(unsafe SystemTraits);
+        port::use_timer!(unsafe impl PortTimer for SystemTraits);
 
-        impl port::ThreadingOptions for System {}
+        impl port::ThreadingOptions for SystemTraits {}
 
         #[cfg(feature = "interrupt-e310x")]
-        use_interrupt_e310x!(unsafe impl InterruptController for System);
+        use_interrupt_e310x!(unsafe impl InterruptController for SystemTraits);
 
         #[cfg(feature = "interrupt-u540-qemu")]
-        port::use_plic!(unsafe impl InterruptController for System);
+        port::use_plic!(unsafe impl InterruptController for SystemTraits);
         #[cfg(feature = "interrupt-u540-qemu")]
-        impl port::PlicOptions for System {
+        impl port::PlicOptions for SystemTraits {
             const MAX_PRIORITY: InterruptPriority = 7;
             const MAX_NUM: InterruptNum = 53;
             const PLIC_BASE: usize = 0x0c00_0000;
@@ -96,16 +97,16 @@ macro_rules! instantiate_test {
         }
 
         #[cfg(feature = "interrupt-k210")]
-        port::use_plic!(unsafe impl InterruptController for System);
+        port::use_plic!(unsafe impl InterruptController for SystemTraits);
         #[cfg(feature = "interrupt-k210")]
-        impl port::PlicOptions for System {
+        impl port::PlicOptions for SystemTraits {
             const MAX_PRIORITY: InterruptPriority = 7;
             const MAX_NUM: InterruptNum = 65;
             const PLIC_BASE: usize = 0x0c00_0000;
             const CONTEXT: usize = 0;
         }
 
-        impl port::TimerOptions for System {
+        impl port::TimerOptions for SystemTraits {
             const MTIME_PTR: usize = 0x0200_bff8;
 
             #[cfg(any(
@@ -180,9 +181,9 @@ macro_rules! instantiate_test {
         }
 
         static COTTAGE: test_case::App<System> =
-            r3::build!(System, configure_app => test_case::App<System>);
+            r3_kernel::build!(SystemTraits, configure_app => test_case::App<System>);
 
-        const fn configure_app(b: &mut CfgBuilder<System>) -> test_case::App<System> {
+        const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> test_case::App<System> {
             // Initialize the clock
             #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
             StartupHook::build().start(|_| {
@@ -190,15 +191,15 @@ macro_rules! instantiate_test {
             }).finish(b);
 
             #[cfg(feature = "interrupt-e310x")]
-            System::configure_interrupt(b);
+            SystemTraits::configure_interrupt(b);
 
             #[cfg(feature = "interrupt-u540-qemu")]
-            System::configure_plic(b);
+            SystemTraits::configure_plic(b);
 
             #[cfg(feature = "interrupt-k210")]
-            System::configure_plic(b);
+            SystemTraits::configure_plic(b);
 
-            System::configure_timer(b);
+            SystemTraits::configure_timer(b);
 
             // Initialize RTT (Real-Time Transfer) with two up channels and set
             // the first one as the print channel for the printing macros, and
@@ -235,7 +236,7 @@ macro_rules! instantiate_test {
                 logger_uart::init();
             }).finish(b);
 
-            test_case::App::new::<Driver>(b)
+            test_case::App::new::<_, Driver>(b)
         }
     };
 

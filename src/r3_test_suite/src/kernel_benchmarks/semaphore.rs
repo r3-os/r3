@@ -22,18 +22,25 @@
 //!      │ │       │ │                 ┊
 //! ```
 //!
-use r3::kernel::{cfg::CfgBuilder, Kernel, Semaphore, Task};
+use r3::kernel::{traits, Cfg, Semaphore, Task};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;
 
 use_benchmark_in_kernel_benchmark! {
-    pub unsafe struct App<System> {
+    #[cfg_bounds(~const traits::CfgSemaphore)]
+    pub unsafe struct App<System: SupportedSystem> {
         inner: AppInner<System>,
     }
 }
 
-struct AppInner<System> {
+pub trait SupportedSystem:
+    crate::utils::benchmark::SupportedSystem + traits::KernelSemaphore
+{
+}
+impl<T: crate::utils::benchmark::SupportedSystem + traits::KernelSemaphore> SupportedSystem for T {}
+
+struct AppInner<System: SupportedSystem> {
     task1: Task<System>,
     sem: Semaphore<System>,
 }
@@ -43,9 +50,14 @@ const I_WAIT: Interval = "wait semaphore";
 const I_SIGNAL_DISPATCHING: Interval = "signal semaphore with dispatch";
 const I_SIGNAL: Interval = "signal semaphore";
 
-impl<System: Kernel> AppInner<System> {
+impl<System: SupportedSystem> AppInner<System> {
     /// Used by `use_benchmark_in_kernel_benchmark!`
-    const fn new<B: Bencher<System, Self>>(b: &mut CfgBuilder<System>) -> Self {
+    const fn new<C, B: Bencher<System, Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgSemaphore,
+    {
         let task1 = Task::build()
             .start(task1_body::<System, B>)
             .priority(1)
@@ -70,7 +82,7 @@ impl<System: Kernel> AppInner<System> {
     }
 }
 
-fn task1_body<System: Kernel, B: Bencher<System, AppInner<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>(_: usize) {
     B::mark_start(); // I_WAIT_DISPATCHING
     B::app().sem.wait_one().unwrap();
     B::mark_end(I_SIGNAL_DISPATCHING);

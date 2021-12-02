@@ -2,13 +2,12 @@ use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 use memoffset::offset_of;
 use r3::{
     kernel::{
-        ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-        PendInterruptLineError, Port, PortToKernel, QueryInterruptLineError,
-        SetInterruptLinePriorityError, TaskCb,
+        traits, ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
+        PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
     },
-    prelude::*,
     utils::{Init, ZeroInit},
 };
+use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
 use r3_portkit::{
     pptext::pp_asm,
     sym::{sym_static, SymStaticExt},
@@ -19,13 +18,13 @@ use crate::{
     INTERRUPT_SYSTICK,
 };
 
-/// Implemented on a system type by [`use_port!`].
+/// Implemented on a kernel trait type by [`use_port!`].
 ///
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_port!`].
 pub unsafe trait PortInstance:
-    Kernel + Port<PortTaskState = TaskState> + ThreadingOptions
+    KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions
 {
     sym_static!(static PORT_STATE: SymStatic<State> = zeroed!());
 
@@ -45,9 +44,9 @@ unsafe impl cortex_m::interrupt::Nr for Int {
 }
 
 pub struct State {
-    /// Stores the value of `System::state().running_task_ptr()` so that it can
+    /// Stores the value of `Traits::state().running_task_ptr()` so that it can
     /// be accessed in naked functions. This field is actually of type
-    /// `*mut Option<&'static TaskCb<System>>`.
+    /// `*mut Option<&'static TaskCb<Traits>>`.
     running_task_ptr: UnsafeCell<*mut ()>,
 }
 
@@ -73,10 +72,10 @@ impl Init for TaskState {
 }
 
 impl State {
-    pub unsafe fn port_boot<System: PortInstance>(&self) -> ! {
-        unsafe { self.enter_cpu_lock::<System>() };
+    pub unsafe fn port_boot<Traits: PortInstance>(&self) -> ! {
+        unsafe { self.enter_cpu_lock::<Traits>() };
 
-        unsafe { *self.running_task_ptr.get() = System::state().running_task_ptr() as *mut () };
+        unsafe { *self.running_task_ptr.get() = Traits::state().running_task_ptr() as *mut () };
 
         // Claim the ownership of `Peripherals`
         let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
@@ -94,11 +93,11 @@ impl State {
 
         // Safety: We are a port, so it's okay to call this
         unsafe {
-            <System as PortToKernel>::boot();
+            <Traits as PortToKernel>::boot();
         }
     }
 
-    pub unsafe fn dispatch_first_task<System: PortInstance>(&'static self) -> ! {
+    pub unsafe fn dispatch_first_task<Traits: PortInstance>(&'static self) -> ! {
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
 
@@ -108,7 +107,7 @@ impl State {
         //
         // Safety: `CONTROL.SPSEL == 0`, Thread mode (entailed by the boot
         // context), CPU Lock active
-        unsafe { Self::idle_task::<System>() };
+        unsafe { Self::idle_task::<Traits>() };
     }
 
     /// Reset MSP to `interrupt_stack_top()`, release CPU Lock, and start
@@ -118,10 +117,10 @@ impl State {
     ///
     /// `CONTROL.SPSEL == 0`, Thread mode, CPU Lock active
     #[inline(never)]
-    unsafe extern "C" fn idle_task<System: PortInstance>() -> ! {
+    unsafe extern "C" fn idle_task<Traits: PortInstance>() -> ! {
         // Find the top of the interrupt stack
         // Safety: Only the port can call this method
-        let msp_top = unsafe { System::interrupt_stack_top() };
+        let msp_top = unsafe { Traits::interrupt_stack_top() };
 
         pp_asm!("
             # Reset MSP to the top of the stack, effectively discarding the
@@ -144,7 +143,7 @@ impl State {
             msp_top = in(reg) msp_top,
         );
 
-        if System::USE_WFI {
+        if Traits::USE_WFI {
             pp_asm!(
                 "
             0:
@@ -164,14 +163,14 @@ impl State {
         }
     }
 
-    pub unsafe fn yield_cpu<System: PortInstance>(&'static self) {
+    pub unsafe fn yield_cpu<Traits: PortInstance>(&'static self) {
         // Safety: See `use_port!`
         cortex_m::peripheral::SCB::set_pendsv();
     }
 
-    pub unsafe fn exit_and_dispatch<System: PortInstance>(
+    pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
         &'static self,
-        _task: &'static TaskCb<System>,
+        _task: &'static TaskCb<Traits>,
     ) -> ! {
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
@@ -200,7 +199,7 @@ impl State {
         "   } else {                                                        "
                 b {idle_task}
         "   },
-            idle_task = sym Self::idle_task::<System>,
+            idle_task = sym Self::idle_task::<Traits>,
             options(noreturn),
         );
     }
@@ -213,7 +212,7 @@ impl State {
     ///    registers must contain the values from the background context.
     ///
     #[naked]
-    pub unsafe extern "C" fn handle_pend_sv<System: PortInstance>() {
+    pub unsafe extern "C" fn handle_pend_sv<Traits: PortInstance>() {
         // Precondition:
         //  - `EXC_RETURN.Mode == 1` - Exception was taken in Thread mode. This
         //    is true because PendSV is configured with the lowest priority.
@@ -224,14 +223,14 @@ impl State {
         //    context is the idle task, the exception frame should have been
         //    stacked to MSP.
 
-        extern "C" fn choose_next_task<System: PortInstance>() {
+        extern "C" fn choose_next_task<Traits: PortInstance>() {
             // Choose the next task to run
-            unsafe { State::enter_cpu_lock_inner::<System>() };
+            unsafe { State::enter_cpu_lock_inner::<Traits>() };
 
             // Safety: CPU Lock active
-            unsafe { System::choose_running_task() };
+            unsafe { Traits::choose_running_task() };
 
-            unsafe { State::leave_cpu_lock_inner::<System>() };
+            unsafe { State::leave_cpu_lock_inner::<Traits>() };
         }
 
         pp_asm!("
@@ -374,24 +373,24 @@ impl State {
             msr control, r0
             bx lr
         ",
-            choose_next_task = sym choose_next_task::<System>,
-            PORT_STATE = sym System::PORT_STATE,
+            choose_next_task = sym choose_next_task::<Traits>,
+            PORT_STATE = sym Traits::PORT_STATE,
             OFFSET_RUNNING_TASK_PTR = const Self::OFFSET_RUNNING_TASK_PTR,
             options(noreturn),
         );
     }
 
     #[inline(always)]
-    pub unsafe fn enter_cpu_lock<System: PortInstance>(&self) {
-        unsafe { Self::enter_cpu_lock_inner::<System>() };
+    pub unsafe fn enter_cpu_lock<Traits: PortInstance>(&self) {
+        unsafe { Self::enter_cpu_lock_inner::<Traits>() };
     }
 
     #[inline(always)]
-    unsafe fn enter_cpu_lock_inner<System: PortInstance>() {
+    unsafe fn enter_cpu_lock_inner<Traits: PortInstance>() {
         #[cfg(not(any(armv6m, armv8m_base)))]
-        if System::CPU_LOCK_PRIORITY_MASK > 0 {
+        if Traits::CPU_LOCK_PRIORITY_MASK > 0 {
             // Set `BASEPRI` to `CPU_LOCK_PRIORITY_MASK`
-            unsafe { cortex_m::register::basepri::write(System::CPU_LOCK_PRIORITY_MASK) };
+            unsafe { cortex_m::register::basepri::write(Traits::CPU_LOCK_PRIORITY_MASK) };
             return;
         }
 
@@ -400,14 +399,14 @@ impl State {
     }
 
     #[inline(always)]
-    pub unsafe fn leave_cpu_lock<System: PortInstance>(&'static self) {
-        unsafe { Self::leave_cpu_lock_inner::<System>() };
+    pub unsafe fn leave_cpu_lock<Traits: PortInstance>(&'static self) {
+        unsafe { Self::leave_cpu_lock_inner::<Traits>() };
     }
 
     #[inline(always)]
-    unsafe fn leave_cpu_lock_inner<System: PortInstance>() {
+    unsafe fn leave_cpu_lock_inner<Traits: PortInstance>() {
         #[cfg(not(any(armv6m, armv8m_base)))]
-        if System::CPU_LOCK_PRIORITY_MASK > 0 {
+        if Traits::CPU_LOCK_PRIORITY_MASK > 0 {
             // Set `BASEPRI` to `0` (no masking)
             unsafe { cortex_m::register::basepri::write(0) };
             return;
@@ -417,9 +416,9 @@ impl State {
         unsafe { cortex_m::interrupt::enable() };
     }
 
-    pub unsafe fn initialize_task_state<System: PortInstance>(
+    pub unsafe fn initialize_task_state<Traits: PortInstance>(
         &self,
-        task: &'static TaskCb<System>,
+        task: &'static TaskCb<Traits>,
     ) {
         let stack = task.attr.stack.as_ptr();
         let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<u32>;
@@ -444,7 +443,8 @@ impl State {
             exc_frame[4] = MaybeUninit::new(0x12121212);
         }
         // LR: The return address
-        exc_frame[5] = MaybeUninit::new(System::exit_task as usize as u32);
+        exc_frame[5] =
+            MaybeUninit::new(<System<Traits> as traits::KernelBase>::raw_exit_task as usize as u32);
         // PC: The entry point - The given function pointer has its LSB set to
         // signify that the target is a Thumb function (that's the only valid
         // mode on Arm-M) as required by the BLX instruction. In an exception
@@ -491,22 +491,22 @@ impl State {
     }
 
     #[inline(always)]
-    pub fn is_cpu_lock_active<System: PortInstance>(&self) -> bool {
+    pub fn is_cpu_lock_active<Traits: PortInstance>(&self) -> bool {
         #[cfg(not(any(armv6m, armv8m_base)))]
-        if System::CPU_LOCK_PRIORITY_MASK > 0 {
+        if Traits::CPU_LOCK_PRIORITY_MASK > 0 {
             return cortex_m::register::basepri::read() != 0;
         }
 
         cortex_m::register::primask::read().is_inactive()
     }
 
-    pub fn is_task_context<System: PortInstance>(&self) -> bool {
+    pub fn is_task_context<Traits: PortInstance>(&self) -> bool {
         // All tasks use PSP. The idle task is the exception, but user
         // code cannot run in the idle task, so we can ignore this.
         cortex_m::register::control::read().spsel() == cortex_m::register::control::Spsel::Psp
     }
 
-    pub fn set_interrupt_line_priority<System: PortInstance>(
+    pub fn set_interrupt_line_priority<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
         priority: InterruptPriority,
@@ -535,7 +535,7 @@ impl State {
     }
 
     #[inline]
-    pub fn enable_interrupt_line<System: PortInstance>(
+    pub fn enable_interrupt_line<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
@@ -551,7 +551,7 @@ impl State {
     }
 
     #[inline]
-    pub fn disable_interrupt_line<System: PortInstance>(
+    pub fn disable_interrupt_line<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
@@ -566,7 +566,7 @@ impl State {
     }
 
     #[inline]
-    pub fn pend_interrupt_line<System: PortInstance>(
+    pub fn pend_interrupt_line<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
     ) -> Result<(), PendInterruptLineError> {
@@ -584,7 +584,7 @@ impl State {
     }
 
     #[inline]
-    pub fn clear_interrupt_line<System: PortInstance>(
+    pub fn clear_interrupt_line<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<(), ClearInterruptLineError> {
@@ -602,7 +602,7 @@ impl State {
     }
 
     #[inline]
-    pub fn is_interrupt_line_pending<System: PortInstance>(
+    pub fn is_interrupt_line_pending<Traits: PortInstance>(
         &self,
         num: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
@@ -619,10 +619,10 @@ impl State {
 }
 
 /// Used by `use_port!`
-pub const fn validate<System: PortInstance>() {
+pub const fn validate<Traits: PortInstance>() {
     #[cfg(any(armv6m, armv8m_base))]
     assert!(
-        System::CPU_LOCK_PRIORITY_MASK == 0,
+        Traits::CPU_LOCK_PRIORITY_MASK == 0,
         "`CPU_LOCK_PRIORITY_MASK` must be zero because the target architecture \
          does not have a BASEPRI register"
     );

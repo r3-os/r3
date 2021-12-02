@@ -20,7 +20,7 @@ pub trait ThreadingOptions {
     /// The lower bound of [`MANAGED_INTERRUPT_PRIORITY_RANGE`] is bound to this
     /// value.
     ///
-    /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3::kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
+    /// [`MANAGED_INTERRUPT_PRIORITY_RANGE`]: r3_kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE
     ///
     /// Must be `0` on Armv6-M and Armv8-M Baseline because they don't support
     /// `BASEPRI`.
@@ -81,8 +81,8 @@ pub unsafe trait EntryPoint {
 /// See [the crate-level documentation](crate#kernel-timing) for possible
 /// options.
 ///
-/// [`PortThreading`]: r3::kernel::PortThreading
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortThreading`]: r3_kernel::PortThreading
+/// [`PortTimer`]: r3_kernel::PortTimer
 ///
 /// # Safety
 ///
@@ -92,24 +92,26 @@ pub unsafe trait EntryPoint {
 ///    you are doing.
 ///  - `::cortex_m_rt` should point to the `cortex-m-rt` crate.
 ///  - Other components should not execute the `svc` instruction.
-///  - `<$sys as `[`ThreadingOptions`]`>::`[`interrupt_stack_top`] must return a
-///    valid stack pointer. The default implementation evaluates `*(SCB.VTOR a
-///    *const u32)`, which should be fine for most use cases, but if this is not
-///    acceptable, a custom implementation should be provided.
+///  - `<$Traits as `[`ThreadingOptions`]`>::`[`interrupt_stack_top`] must
+///    return a valid stack pointer. The default implementation evaluates
+///    `*(SCB.VTOR a *const u32)`, which should be fine for most use cases, but
+///    if this is not acceptable, a custom implementation should be provided.
 ///
 /// [`interrupt_stack_top`]: ThreadingOptions::interrupt_stack_top
 ///
 #[macro_export]
 macro_rules! use_port {
-    (unsafe $vis:vis struct $sys:ident) => {
-        $vis struct $sys;
+    (unsafe $vis:vis struct $Traits:ident) => {
+        $vis struct $Traits;
 
         mod port_arm_m_impl {
-            use super::$sys;
+            use super::$Traits;
             use $crate::r3::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-                PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
-                TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
+                PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
+            };
+            use $crate::r3_kernel::{
+                Port, TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
             };
             use $crate::core::ops::Range;
             use $crate::threading::{
@@ -118,13 +120,13 @@ macro_rules! use_port {
             };
 
             pub(super) fn port_state() -> &'static State {
-                <$sys as PortInstance>::port_state()
+                <$Traits as PortInstance>::port_state()
             }
 
-            unsafe impl PortInstance for $sys {}
+            unsafe impl PortInstance for $Traits {}
 
-            // Assume `$sys: Kernel`
-            unsafe impl PortThreading for $sys {
+            // Assume `$Traits: KernelTraits`
+            unsafe impl PortThreading for $Traits {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
@@ -169,9 +171,9 @@ macro_rules! use_port {
                 }
             }
 
-            unsafe impl PortInterrupts for $sys {
+            unsafe impl PortInterrupts for $Traits {
                 const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> =
-                    (<$sys as ThreadingOptions>::CPU_LOCK_PRIORITY_MASK as _)..256;
+                    (<$Traits as ThreadingOptions>::CPU_LOCK_PRIORITY_MASK as _)..256;
 
                 unsafe fn set_interrupt_line_priority(
                     line: InterruptNum,
@@ -203,16 +205,16 @@ macro_rules! use_port {
                 }
             }
 
-            unsafe impl EntryPoint for $sys {
+            unsafe impl EntryPoint for $Traits {
                 unsafe fn start() -> ! {
-                    unsafe { port_state().port_boot::<$sys>() }
+                    unsafe { port_state().port_boot::<$Traits>() }
                 }
 
                 const HANDLE_PEND_SV: unsafe extern "C" fn() =
-                    State::handle_pend_sv::<$sys>;
+                    State::handle_pend_sv::<$Traits>;
             }
         }
 
-        const _: () = $crate::threading::imp::validate::<$sys>();
+        const _: () = $crate::threading::imp::validate::<$Traits>();
     };
 }

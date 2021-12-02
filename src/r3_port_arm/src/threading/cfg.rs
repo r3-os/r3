@@ -7,7 +7,7 @@ pub trait InterruptController {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
-    /// [`PortToKernel::boot`]: r3::kernel::PortToKernel::boot
+    /// [`PortToKernel::boot`]: r3_kernel::PortToKernel::boot
     ///
     /// # Safety
     ///
@@ -36,7 +36,7 @@ pub trait Timer {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
     ///
-    /// [`PortToKernel::boot`]: r3::kernel::PortToKernel::boot
+    /// [`PortToKernel::boot`]: r3_kernel::PortToKernel::boot
     ///
     /// # Safety
     ///
@@ -68,21 +68,24 @@ pub trait EntryPoint {
     const IRQ_ENTRY: unsafe extern "C" fn() -> !;
 }
 
-/// Define a system type implementing [`PortThreading`] and [`EntryPoint`].
-/// **Requires [`ThreadingOptions`], [`InterruptController`], and [`Timer`].**
+/// Define a kernel trait type implementing [`PortThreading`] and
+/// [`EntryPoint`]. **Requires [`ThreadingOptions`], [`InterruptController`],
+/// and [`Timer`].**
 ///
-/// [`PortThreading`]: r3::kernel::PortThreading
+/// [`PortThreading`]: r3_kernel::PortThreading
 #[macro_export]
 macro_rules! use_port {
-    (unsafe $vis:vis struct $sys:ident) => {
-        $vis struct $sys;
+    (unsafe $vis:vis struct $Traits:ident) => {
+        $vis struct $Traits;
 
         mod port_arm_impl {
-            use super::$sys;
+            use super::$Traits;
             use $crate::r3::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
-                PendInterruptLineError, Port, QueryInterruptLineError, SetInterruptLinePriorityError,
-                TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer,
+                PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
+            };
+            use $crate::r3_kernel::{
+                TaskCb, PortToKernel, PortInterrupts, PortThreading, UTicks, PortTimer, Port,
             };
             use $crate::core::ops::Range;
             use $crate::threading::{
@@ -90,9 +93,9 @@ macro_rules! use_port {
                 cfg::{ThreadingOptions, EntryPoint},
             };
 
-            unsafe impl PortInstance for $sys {}
+            unsafe impl PortInstance for $Traits {}
 
-            impl EntryPoint for $sys {
+            impl EntryPoint for $Traits {
                 unsafe fn start() -> ! {
                     unsafe { <Self as PortInstance>::port_state().port_boot::<Self>() }
                 }
@@ -100,8 +103,8 @@ macro_rules! use_port {
                 const IRQ_ENTRY: unsafe extern "C" fn() -> ! = State::irq_entry::<Self>;
             }
 
-            // Assume `$sys: Kernel`
-            unsafe impl PortThreading for $sys {
+            // Assume `$Traits: Kernel`
+            unsafe impl PortThreading for $Traits {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
@@ -147,6 +150,6 @@ macro_rules! use_port {
             }
         }
 
-        const _: () = $crate::threading::imp::validate::<$sys>();
+        const _: () = $crate::threading::imp::validate::<$Traits>();
     };
 }

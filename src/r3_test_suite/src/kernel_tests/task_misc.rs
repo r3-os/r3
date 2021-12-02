@@ -1,22 +1,32 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
 use core::num::NonZeroUsize;
-use r3::{
-    kernel::{cfg::CfgBuilder, StartupHook, Task},
-    prelude::*,
-};
+use r3::kernel::{prelude::*, traits, Cfg, StartupHook, Task};
 use wyhash::WyHash;
 
 use super::Driver;
 
-pub struct App<System> {
+// TODO: Somehow remove the `NonZeroUsize` bound
+pub trait SupportedSystem:
+    traits::KernelBase<RawTaskId = NonZeroUsize> + traits::KernelTaskSetPriority
+{
+}
+impl<T: traits::KernelBase<RawTaskId = NonZeroUsize> + traits::KernelTaskSetPriority>
+    SupportedSystem for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     task1: Task<System>,
     task2: Task<System>,
     task3: Task<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         StartupHook::build()
             .start(startup_hook::<System, D>)
             .finish(b);
@@ -44,14 +54,14 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn startup_hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(
         Task::<System>::current(),
         Err(r3::kernel::GetCurrentTaskError::BadContext)
     );
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     assert_eq!(param, 42);
 
     // `PartialEq`
@@ -156,11 +166,11 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(param: usize) {
     app.task3.activate().unwrap();
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     unreachable!();
 }
 
-fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Current task (again)
     assert_eq!(Task::current().unwrap(), Some(D::app().task3));
 

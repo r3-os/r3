@@ -2,29 +2,32 @@
 use r3::kernel::{InterruptNum, InterruptPriority};
 
 /// Attach the implementation of [`PortTimer`] that is based on RZ/A1 OS Timer
-/// to a given system type. This macro also implements [`Timer`] on the system
-/// type.
+/// to a given kernel trait type. This macro also implements [`Timer`] on the
+/// kernel trait type.
 /// **Requires [`OsTimerOptions`] and [`Gic`].**
 ///
-/// [`PortTimer`]: r3::kernel::PortTimer
+/// [`PortTimer`]: r3_kernel::PortTimer
 /// [`Timer`]: r3_port_arm::Timer
 /// [`Gic`]: r3_port_arm::Gic
 ///
 /// You should do the following:
 ///
-///  - Implement [`OsTimerOptions`] on the system type `$ty`.
-///  - Call `$ty::configure_os_timer()` in your configuration function.
+///  - Implement [`OsTimerOptions`] on the kernel trait type `$Traits`.
+///  - Call `$Traits::configure_os_timer()` in your configuration function.
 ///    See the following example.
 ///
 /// ```rust,ignore
-/// r3_support_rza1::use_os_timer!(unsafe impl PortTimer for System);
+/// r3_support_rza1::use_os_timer!(unsafe impl PortTimer for SystemTraits);
 ///
-/// impl r3_support_rza1::OsTimerOptions for System {
+/// impl r3_support_rza1::OsTimerOptions for SystemTraits {
 ///     const FREQUENCY: u64 = 1_000_000;
 /// }
 ///
-/// const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
-///     System::configure_os_timer(b);
+/// const fn configure_app(b: &mut Cfg<C>) -> Objects
+/// where
+///     C: ~const traits::CfgBase<System = System<SystemTraits>>,
+/// {
+///     SystemTraits::configure_os_timer(b);
 ///     /* ... */
 /// }
 /// ```
@@ -35,17 +38,18 @@ use r3::kernel::{InterruptNum, InterruptPriority};
 ///
 #[macro_export]
 macro_rules! use_os_timer {
-    (unsafe impl PortTimer for $ty:ty) => {
+    (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
             use $crate::r3::{
-                kernel::{cfg::CfgBuilder, PortTimer, UTicks},
+                kernel::{traits, Cfg},
                 utils::Init,
             };
+            use $crate::r3_kernel::{PortTimer, System, UTicks};
             use $crate::r3_port_arm::Timer;
             use $crate::r3_portkit::tickless;
             use $crate::{os_timer, OsTimerOptions};
 
-            impl PortTimer for $ty {
+            impl PortTimer for $Traits {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;
                 const MAX_TIMEOUT: UTicks = u32::MAX;
 
@@ -65,7 +69,7 @@ macro_rules! use_os_timer {
                 }
             }
 
-            impl Timer for $ty {
+            impl Timer for $Traits {
                 unsafe fn init() {
                     unsafe { os_timer::imp::init::<Self>() }
                 }
@@ -73,9 +77,9 @@ macro_rules! use_os_timer {
 
             const TICKLESS_CFG: tickless::TicklessCfg =
                 match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$ty as OsTimerOptions>::FREQUENCY,
-                    hw_freq_denom: <$ty as OsTimerOptions>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$ty as OsTimerOptions>::HEADROOM,
+                    hw_freq_num: <$Traits as OsTimerOptions>::FREQUENCY,
+                    hw_freq_denom: <$Traits as OsTimerOptions>::FREQUENCY_DENOMINATOR,
+                    hw_headroom_ticks: <$Traits as OsTimerOptions>::HEADROOM,
                     force_full_hw_period: true,
                     resettable: false,
                 }) {
@@ -86,7 +90,7 @@ macro_rules! use_os_timer {
             static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
 
             // Safety: Only `use_os_timer!` is allowed to `impl` this
-            unsafe impl os_timer::imp::OsTimerInstance for $ty {
+            unsafe impl os_timer::imp::OsTimerInstance for $Traits {
                 const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
 
                 type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
@@ -96,8 +100,11 @@ macro_rules! use_os_timer {
                 }
             }
 
-            impl $ty {
-                pub const fn configure_os_timer(b: &mut CfgBuilder<Self>) {
+            impl $Traits {
+                pub const fn configure_os_timer<C>(b: &mut Cfg<C>)
+                where
+                    C: ~const traits::CfgInterruptLine<System = System<Self>>,
+                {
                     os_timer::imp::configure(b);
                 }
             }

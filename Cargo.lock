@@ -204,6 +204,7 @@ name = "basic_gr_peach"
 version = "0.0.0"
 dependencies = [
  "r3",
+ "r3_kernel",
  "r3_port_arm",
  "r3_support_rza1",
  "rtt-target 0.2.2",
@@ -1684,6 +1685,7 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "chrono",
+ "either",
  "elain",
  "env_logger",
  "log",
@@ -1702,6 +1704,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "r3",
+ "r3_kernel",
  "r3_port_std",
 ]
 
@@ -1713,6 +1716,7 @@ dependencies = [
  "nucleo-f401re",
  "panic-rtt-target",
  "r3",
+ "r3_kernel",
  "r3_port_arm_m",
  "rtt-target 0.2.2",
 ]
@@ -1723,6 +1727,7 @@ version = "0.0.0"
 dependencies = [
  "cortex-m-rt",
  "r3",
+ "r3_kernel",
  "r3_port_arm_m",
  "r3_support_rp2040",
  "rp2040",
@@ -1740,6 +1745,7 @@ dependencies = [
  "embedded-graphics",
  "r3",
  "r3_example_common",
+ "r3_kernel",
  "r3_port_arm_m",
  "spin",
  "usb-device",
@@ -1764,10 +1770,32 @@ dependencies = [
  "cortex-m 0.7.3",
  "cortex-m-rt",
  "r3",
+ "r3_kernel",
  "r3_port_arm_m",
  "r3_support_rp2040",
  "rp2040",
  "rp2040-boot2",
+]
+
+[[package]]
+name = "r3_kernel"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+ "bitflags",
+ "chrono",
+ "either",
+ "elain",
+ "env_logger",
+ "log",
+ "num-integer",
+ "num-traits",
+ "pin-utils",
+ "quickcheck",
+ "quickcheck_macros",
+ "r3",
+ "svgbobdoc",
+ "tokenlock",
 ]
 
 [[package]]
@@ -1777,6 +1805,7 @@ dependencies = [
  "memoffset",
  "r0 1.0.0",
  "r3",
+ "r3_kernel",
  "r3_portkit",
  "tock-registers",
 ]
@@ -1789,6 +1818,7 @@ dependencies = [
  "cortex-m-rt",
  "memoffset",
  "r3",
+ "r3_kernel",
  "r3_portkit",
 ]
 
@@ -1803,6 +1833,7 @@ dependencies = [
  "panic-rtt-target",
  "panic-semihosting",
  "r3",
+ "r3_kernel",
  "r3_port_arm_m",
  "r3_support_rp2040",
  "r3_test_suite",
@@ -1818,6 +1849,7 @@ dependencies = [
  "arrayvec",
  "log",
  "r3",
+ "r3_kernel",
  "r3_port_arm",
  "r3_support_rza1",
  "r3_test_suite",
@@ -1830,6 +1862,7 @@ name = "r3_port_riscv"
 version = "0.1.3"
 dependencies = [
  "r3",
+ "r3_kernel",
  "r3_portkit",
  "riscv 0.7.0",
  "riscv-rt 0.6.2",
@@ -1847,6 +1880,7 @@ dependencies = [
  "log",
  "nb 1.0.0",
  "r3",
+ "r3_kernel",
  "r3_port_riscv",
  "r3_portkit",
  "r3_test_suite",
@@ -1867,6 +1901,7 @@ dependencies = [
  "log",
  "once_cell",
  "r3",
+ "r3_kernel",
  "r3_test_suite",
  "slab",
  "spin",
@@ -1885,6 +1920,7 @@ dependencies = [
  "quickcheck",
  "quickcheck_macros",
  "r3",
+ "r3_kernel",
  "svgbobdoc",
 ]
 
@@ -1912,6 +1948,7 @@ dependencies = [
  "embedded-hal",
  "nb 1.0.0",
  "r3",
+ "r3_kernel",
  "r3_port_arm",
  "r3_portkit",
  "rza1",
@@ -2583,9 +2620,9 @@ dependencies = [
 
 [[package]]
 name = "svgbobdoc"
-version = "0.3.0-alpha.2"
+version = "0.3.0-alpha.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb75a012d10badd1b56202ac7f89ace979a75d10ddcbcdd005f1f43e742d0d7"
+checksum = "61cb54242ebcd38bd8d5f307fb43ea58eb9f9140dac11ed9382229ba9c7f3855"
 dependencies = [
  "base64",
  "proc-macro2",

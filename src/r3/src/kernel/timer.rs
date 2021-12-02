@@ -1,25 +1,26 @@
 //! Timers
-use core::{fmt, hash, marker::PhantomData, mem::ManuallyDrop};
+use core::{fmt, hash};
 
 use super::{
-    timeout,
-    utils::{assume_cpu_lock, lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
-    BadIdError, Id, Kernel, SetTimerDelayError, SetTimerPeriodError, StartTimerError,
-    StopTimerError,
+    raw, raw_cfg, Cfg, SetTimerDelayError, SetTimerPeriodError, StartTimerError, StopTimerError,
 };
 use crate::{
     time::Duration,
-    utils::{pin::static_pin, Init},
+    utils::{Init, PhantomInvariant},
 };
+
+// ----------------------------------------------------------------------------
 
 /// Represents a single timer in a system.
 ///
-/// This type is ABI-compatible with [`Id`].
+/// This type is ABI-compatible with `System::`[`RawTimerId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
 /// > **Relation to Other Specifications:** A similar concept exists in almost
 /// > every operating system.
+///
+/// [`RawTimerId`]: raw::KernelTimer::RawTimerId
 ///
 /// <div class="toc-header"></div>
 ///
@@ -118,11 +119,10 @@ use crate::{
 /// second worth of calls no matter what.*
 /// If a periodic timer's callback function couldn't complete within the
 /// timer's period, the timer latency would steadily increase until it reaches
-/// the point where various internal assumptions (such as
-/// [`TIME_HARD_HEADROOM`]) get broken. While the system is processing overdue
-/// calls, the timer interrupt handler will not return. Some port timer drivers
-/// (most notably the Arm-M tickful SysTick driver) have much lower tolerance
-/// for this.
+/// the point where various internal assumptions get broken. While the system is
+/// processing overdue calls, the timer interrupt handler might not return. Some
+/// kernel timer drivers (most notably the Arm-M tickful SysTick driver) have
+/// much lower tolerance for this.
 /// To avoid this catastrophic situation, an application should take the
 /// precautions shown below:
 ///
@@ -136,7 +136,6 @@ use crate::{
 ///
 ///  - Keep your target platform's performance characteristics in your mind.
 ///
-/// [`TIME_HARD_HEADROOM`]: crate::kernel::TIME_HARD_HEADROOM
 /// [activated]: crate::kernel::Task::activate
 /// [unparked]: crate::kernel::Task::unpark
 ///
@@ -274,9 +273,14 @@ use crate::{
 /// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
-/// use r3::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
+/// # #![feature(const_trait_impl)]
+/// use r3::{kernel::{Cfg, Timer, traits}, time::Duration};
 ///
-/// const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) -> Timer<System> {
+/// const fn configure<C>(b: &mut Cfg<C>) -> Timer<C::System>
+/// where
+///     C: ~const traits::CfgTimer,
+///     C::System: traits::KernelTimer,
+/// {
 ///     Timer::build()
 ///         .delay(Duration::from_millis(70))
 ///         .period(Duration::from_millis(40))
@@ -309,9 +313,14 @@ use crate::{
 /// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
-/// use r3::{kernel::{cfg::CfgBuilder, Timer, Kernel}, time::Duration};
+/// # #![feature(const_trait_impl)]
+/// use r3::{kernel::{Cfg, Timer, traits}, time::Duration};
 ///
-/// const fn configure<System: Kernel>(b: &mut CfgBuilder<System>) -> Timer<System> {
+/// const fn configure<C>(b: &mut Cfg<C>) -> Timer<C::System>
+/// where
+///     C: ~const traits::CfgTimer,
+///     C::System: traits::KernelTimer,
+/// {
 ///     Timer::build()
 ///         .active(true)
 ///         .start(|_| dbg!())
@@ -322,9 +331,9 @@ use crate::{
 /// [Reset the delay] to schedule a call.
 ///
 /// ```rust
-/// use r3::{kernel::{Timer, Kernel}, time::Duration};
+/// use r3::{kernel::{Timer, traits}, time::Duration};
 ///
-/// fn sched<System: Kernel>(timer: Timer<System>) {
+/// fn sched<System: traits::KernelTimer>(timer: Timer<System>) {
 ///     timer.set_delay(Some(Duration::from_millis(40))).unwrap();
 /// }
 /// ```
@@ -350,25 +359,25 @@ use crate::{
 ///
 #[doc = include_str!("../common.md")]
 #[repr(transparent)]
-pub struct Timer<System>(Id, PhantomData<System>);
+pub struct Timer<System: raw::KernelTimer>(System::RawTimerId);
 
-impl<System> Clone for Timer<System> {
+impl<System: raw::KernelTimer> Clone for Timer<System> {
     fn clone(&self) -> Self {
-        Self(self.0, self.1)
+        Self(self.0)
     }
 }
 
-impl<System> Copy for Timer<System> {}
+impl<System: raw::KernelTimer> Copy for Timer<System> {}
 
-impl<System> PartialEq for Timer<System> {
+impl<System: raw::KernelTimer> PartialEq for Timer<System> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl<System> Eq for Timer<System> {}
+impl<System: raw::KernelTimer> Eq for Timer<System> {}
 
-impl<System> hash::Hash for Timer<System> {
+impl<System: raw::KernelTimer> hash::Hash for Timer<System> {
     fn hash<H>(&self, state: &mut H)
     where
         H: hash::Hasher,
@@ -377,14 +386,14 @@ impl<System> hash::Hash for Timer<System> {
     }
 }
 
-impl<System> fmt::Debug for Timer<System> {
+impl<System: raw::KernelTimer> fmt::Debug for Timer<System> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Timer").field(&self.0).finish()
     }
 }
 
-impl<System> Timer<System> {
-    /// Construct a `Timer` from `Id`.
+impl<System: raw::KernelTimer> Timer<System> {
+    /// Construct a `Timer` from `RawTimerId`.
     ///
     /// # Safety
     ///
@@ -393,41 +402,41 @@ impl<System> Timer<System> {
     /// manipulated except by its creator. This is usually prevented by making
     /// `Timer` an opaque handle, but this safeguard can be circumvented by
     /// this method.
-    pub const unsafe fn from_id(id: Id) -> Self {
-        Self(id, PhantomData)
+    pub const unsafe fn from_id(id: System::RawTimerId) -> Self {
+        Self(id)
     }
 
-    /// Get the raw `Id` value representing this timer.
-    pub const fn id(self) -> Id {
+    /// Get the raw `RawTimerId` value representing this timer.
+    pub const fn id(self) -> System::RawTimerId {
         self.0
     }
 }
 
-impl<System: Kernel> Timer<System> {
-    fn timer_cb(self) -> Result<&'static TimerCb<System>, BadIdError> {
-        System::get_timer_cb(self.0.get() - 1).ok_or(BadIdError::BadId)
+impl<System: raw::KernelTimer> Timer<System> {
+    /// Construct a `TimerDefiner` to define a timer in [a
+    /// configuration function](crate#static-configuration).
+    pub const fn build() -> TimerDefiner<System> {
+        TimerDefiner::new()
     }
 
     /// Start the timer (transition it into the Active state).
     ///
     /// This method has no effect if the timer is already in the Active state.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn start(self) -> Result<(), StartTimerError> {
-        let mut lock = lock_cpu::<System>()?;
-        let timer_cb = self.timer_cb()?;
-        start_timer(lock.borrow_mut(), timer_cb);
-        Ok(())
+        // Safety: `Timer` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_timer_start(self.0) }
     }
 
     /// Stop the timer (transition it into the Dormant state).
     ///
     /// This method has no effect if the timer is already in the Dormant state.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn stop(self) -> Result<(), StopTimerError> {
-        let mut lock = lock_cpu::<System>()?;
-        let timer_cb = self.timer_cb()?;
-        stop_timer(lock.borrow_mut(), timer_cb);
-        Ok(())
+        // Safety: `Timer` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_timer_stop(self.0) }
     }
 
     /// Set the duration before the next tick.
@@ -437,262 +446,115 @@ impl<System: Kernel> Timer<System> {
     /// following the activation.
     ///
     /// `None` means infinity (the timer will never fire).
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn set_delay(self, delay: Option<Duration>) -> Result<(), SetTimerDelayError> {
-        let time32 = if let Some(x) = delay {
-            timeout::time32_from_duration(x)?
-        } else {
-            timeout::BAD_DURATION32
-        };
-        let mut lock = lock_cpu::<System>()?;
-        let timer_cb = self.timer_cb()?;
-        set_timer_delay(lock.borrow_mut(), timer_cb, time32);
-        Ok(())
+        // Safety: `Timer` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_timer_set_delay(self.0, delay) }
     }
 
     /// Set the timer period, which is a quantity to be added to the timer's
     /// absolute arrival time on every tick.
     ///
     /// `None` means infinity.
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    #[inline]
     pub fn set_period(self, period: Option<Duration>) -> Result<(), SetTimerPeriodError> {
-        let time32 = if let Some(x) = period {
-            timeout::time32_from_duration(x)?
-        } else {
-            timeout::BAD_DURATION32
-        };
-        let mut lock = lock_cpu::<System>()?;
-        let timer_cb = self.timer_cb()?;
-        set_timer_period(lock.borrow_mut(), timer_cb, time32);
-        Ok(())
+        // Safety: `Timer` represents a permission to access the
+        //         referenced object.
+        unsafe { System::raw_timer_set_period(self.0, period) }
     }
 }
 
-/// *Timer control block* - the state data of a timer.
-///
-/// This type isn't technically public but needs to be `pub` so that it can be
-/// referred to by a macro.
-#[doc(hidden)]
-pub struct TimerCb<System: Kernel> {
-    /// The static properties of the timer.
-    pub(super) attr: &'static TimerAttr<System>,
+// ----------------------------------------------------------------------------
 
-    /// The timeout object for the timer.
-    ///
-    ///  - If the delay is `Some(_)` and the timer is in the Active state, the
-    ///    timeout object is linked. The delay is implicitly defined in this
-    ///    case.
-    ///
-    ///  - If the delay is `None` or the timer is in the Dormant state, the
-    ///    timeout object is unlinked. The delay can be retrieved by
-    ///    [`timeout::Timeout::at_raw`].
-    ///
-    // FIXME: `!Drop` is a requirement of `array_item_from_fn!` that ideally
-    //        should be removed
-    pub(super) timeout: ManuallyDrop<timeout::Timeout<System>>,
-
-    /// `true` iff the timer is in the Active state.
-    pub(super) active: CpuLockCell<System, bool>,
-
-    pub(super) period: CpuLockCell<System, timeout::Time32>,
+/// The definer (static builder) for [`Timer`].
+#[must_use = "must call `finish()` to complete registration"]
+pub struct TimerDefiner<System> {
+    _phantom: PhantomInvariant<System>,
+    start: Option<fn(usize)>,
+    param: usize,
+    delay: Option<Duration>,
+    period: Option<Duration>,
+    active: bool,
 }
 
-impl<System: Kernel> Init for TimerCb<System> {
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        attr: &Init::INIT,
-        timeout: Init::INIT,
-        active: Init::INIT,
-        period: Init::INIT,
-    };
-}
-
-impl<System: Kernel> fmt::Debug for TimerCb<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TimerCb")
-            .field("self", &(self as *const _))
-            .field("attr", &self.attr)
-            .field("timeout", &self.timeout)
-            .field("active", &self.active)
-            .field("period", &self.period)
-            .finish()
-    }
-}
-
-/// The static properties of a timer.
-///
-/// This type isn't technically public but needs to be `pub` so that it can be
-/// referred to by a macro.
-#[doc(hidden)]
-pub struct TimerAttr<System> {
-    /// The entry point of the timer.
-    ///
-    /// # Safety
-    ///
-    /// This is only meant to be used by a kernel port, as a timer callback,
-    /// not by user code. Using this in other ways may cause an undefined
-    /// behavior.
-    pub(super) entry_point: fn(usize),
-
-    /// The parameter supplied for `entry_point`.
-    pub(super) entry_param: usize,
-
-    /// The initial state of the timer.
-    pub(super) init_active: bool,
-
-    pub(super) _phantom: PhantomData<System>,
-}
-
-impl<System> Init for TimerAttr<System> {
-    const INIT: Self = Self {
-        entry_point: |_| {},
-        entry_param: 0,
-        init_active: false,
-        _phantom: PhantomData,
-    };
-}
-
-impl<System: Kernel> fmt::Debug for TimerAttr<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TimerAttr")
-            .field("entry_point", &self.entry_point)
-            .field("entry_param", &self.entry_param)
-            .finish()
-    }
-}
-
-/// Initialize a timer at boot time.
-pub(super) fn init_timer<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timer_cb: &'static TimerCb<System>,
-) {
-    if timer_cb.attr.init_active {
-        // Get the initial delay value
-        let delay = timer_cb.timeout.at_raw(lock.borrow_mut());
-
-        if delay != timeout::BAD_DURATION32 {
-            // Schedule the first tick
-            timeout::insert_timeout(lock.borrow_mut(), static_pin(&timer_cb.timeout));
+impl<System: raw::KernelTimer> TimerDefiner<System> {
+    const fn new() -> Self {
+        Self {
+            _phantom: Init::INIT,
+            start: None,
+            param: 0,
+            delay: None,
+            period: None,
+            active: false,
         }
-
-        timer_cb.active.replace(&mut *lock, true);
-    }
-}
-
-/// The core portion of [`Timer::start`].
-fn start_timer<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timer_cb: &'static TimerCb<System>,
-) {
-    if timer_cb.active.get(&*lock) {
-        return;
     }
 
-    // Get the current delay value
-    let delay = timer_cb.timeout.at_raw(lock.borrow_mut());
-
-    if delay != timeout::BAD_DURATION32 {
-        // Schedule the next tick
-        timer_cb
-            .timeout
-            .set_expiration_after(lock.borrow_mut(), delay);
-        timeout::insert_timeout(lock.borrow_mut(), static_pin(&timer_cb.timeout));
+    /// \[**Required**\] Specify the timer's entry point. It will be called
+    /// in an interrupt context.
+    pub const fn start(self, start: fn(usize)) -> Self {
+        Self {
+            start: Some(start),
+            ..self
+        }
     }
 
-    timer_cb.active.replace(&mut *lock, true);
-}
-
-/// The core portion of [`Timer::stop`].
-fn stop_timer<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timer_cb: &TimerCb<System>,
-) {
-    if timer_cb.timeout.is_linked(lock.borrow_mut()) {
-        debug_assert!(timer_cb.active.get(&*lock));
-
-        // Capture the current delay value
-        let delay = timer_cb
-            .timeout
-            .saturating_duration_until_timeout(lock.borrow_mut());
-
-        // Unlink the timeout
-        timeout::remove_timeout(lock.borrow_mut(), &timer_cb.timeout);
-
-        // Store the captured delay value
-        timer_cb.timeout.set_at_raw(lock.borrow_mut(), delay);
+    /// Specify the parameter to `start`. Defaults to `0`.
+    pub const fn param(self, param: usize) -> Self {
+        Self { param, ..self }
     }
 
-    timer_cb.active.replace(&mut *lock, false);
-}
-
-/// The core portion of [`Timer::set_delay`].
-fn set_timer_delay<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timer_cb: &'static TimerCb<System>,
-    delay: timeout::Time32,
-) {
-    let is_active = timer_cb.active.get(&*lock);
-
-    if timer_cb.timeout.is_linked(lock.borrow_mut()) {
-        timeout::remove_timeout(lock.borrow_mut(), &timer_cb.timeout);
+    /// Specify whether the timer should be started at system startup.
+    /// Defaults to `false` (don't activate).
+    pub const fn active(self, active: bool) -> Self {
+        Self { active, ..self }
     }
 
-    if is_active && delay != timeout::BAD_DURATION32 {
-        timer_cb
-            .timeout
-            .set_expiration_after(lock.borrow_mut(), delay);
-        timeout::insert_timeout(lock.borrow_mut(), static_pin(&timer_cb.timeout));
-    } else {
-        timer_cb.timeout.set_at_raw(lock.borrow_mut(), delay);
-    }
-}
-
-/// The core portion of [`Timer::set_period`].
-fn set_timer_period<System: Kernel>(
-    mut lock: CpuLockTokenRefMut<'_, System>,
-    timer: &TimerCb<System>,
-    period: timeout::Time32,
-) {
-    timer.period.replace(&mut *lock, period);
-}
-
-/// The timeout callback function for a timer. This function should be
-/// registered as a callback function when initializing [`TimerCb::timeout`].
-///
-/// `i` is an index into [`super::KernelCfg2::timer_cb_pool`].
-pub(super) fn timer_timeout_handler<System: Kernel>(
-    i: usize,
-    mut lock: CpuLockGuard<System>,
-) -> CpuLockGuard<System> {
-    let timer_cb = System::get_timer_cb(i).unwrap();
-
-    // Schedule the next tick
-    debug_assert!(!timer_cb.timeout.is_linked(lock.borrow_mut()));
-    debug_assert!(timer_cb.active.get(&*lock));
-
-    let period = timer_cb.period.get(&*lock);
-    if period == timeout::BAD_DURATION32 {
-        timer_cb
-            .timeout
-            .set_at_raw(lock.borrow_mut(), timeout::BAD_DURATION32);
-    } else {
-        timer_cb
-            .timeout
-            .adjust_expiration(lock.borrow_mut(), period);
-        timeout::insert_timeout(lock.borrow_mut(), static_pin(&timer_cb.timeout));
+    /// Specify the initial [delay].
+    /// Defaults to `None` (infinity; the timer will never fire).
+    ///
+    /// [delay]: crate::kernel::Timer::set_delay
+    pub const fn delay(self, delay: Duration) -> Self {
+        Self {
+            delay: Some(delay),
+            ..self
+        }
     }
 
-    // Release CPU Lock before calling the application-provided callback
-    // function
-    drop(lock);
+    /// Specify the initial [period].
+    /// Defaults to `None` (infinity; the timer will stop firing after the next
+    /// tick).
+    ///
+    /// [period]: crate::kernel::Timer::set_period
+    pub const fn period(self, period: Duration) -> Self {
+        Self {
+            period: Some(period),
+            ..self
+        }
+    }
 
-    let TimerAttr {
-        entry_point,
-        entry_param,
-        ..
-    } = timer_cb.attr;
-    entry_point(*entry_param);
-
-    // Re-acquire CPU Lock
-    lock_cpu().unwrap_or_else(|_| unsafe { assume_cpu_lock() })
+    /// Complete the definition of a mutex, returning a reference to the
+    /// mutex.
+    pub const fn finish<C: ~const raw_cfg::CfgTimer<System = System>>(
+        self,
+        c: &mut Cfg<C>,
+    ) -> Timer<System> {
+        let id = c.raw().timer_define(
+            raw_cfg::TimerDescriptor {
+                phantom: Init::INIT,
+                // FIXME: Work-around for `Option::expect` being not `const fn`
+                start: if let Some(x) = self.start {
+                    x
+                } else {
+                    panic!("`start` (timer callback function) is not specified")
+                },
+                param: self.param,
+                delay: self.delay,
+                period: self.period,
+                active: self.active,
+            },
+            (),
+        );
+        unsafe { Timer::from_id(id) }
+    }
 }

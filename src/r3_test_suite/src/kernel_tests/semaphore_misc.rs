@@ -1,21 +1,33 @@
 //! Validates error codes returned by semaphore manipulation methods. Also,
 //! checks miscellaneous properties of `Semaphore`.
 use core::num::NonZeroUsize;
-use r3::{
-    kernel::{cfg::CfgBuilder, Semaphore, Task},
-    prelude::*,
-};
+use r3::kernel::{prelude::*, traits, Cfg, Semaphore, Task};
 use wyhash::WyHash;
 
 use super::Driver;
 
-pub struct App<System> {
+// TODO: Somehow remove the `NonZeroUsize` bound
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelSemaphore<RawSemaphoreId = NonZeroUsize>
+{
+}
+impl<T: traits::KernelBase + traits::KernelSemaphore<RawSemaphoreId = NonZeroUsize>> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     eg1: Semaphore<System>,
     eg2: Semaphore<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgSemaphore,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(2)
@@ -28,7 +40,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // `PartialEq`
     let app = D::app();
     assert_ne!(app.eg1, app.eg2);

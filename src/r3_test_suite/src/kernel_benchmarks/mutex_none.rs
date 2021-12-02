@@ -30,8 +30,13 @@
 //!  pri: effective priority (assuming mtx uses the priority ceiling protocol)
 //! ```
 //!
+use r3::kernel::traits;
+
+pub use super::mutex::SupportedSystem;
+
 use_benchmark_in_kernel_benchmark! {
-    pub unsafe struct App<System> {
+    #[cfg_bounds(~const traits::CfgMutex)]
+    pub unsafe struct App<System: SupportedSystem> {
         inner: super::mutex::AppInnerNone<System>,
     }
 }

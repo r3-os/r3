@@ -9,6 +9,7 @@ members = [
     "examples/smp_rp_pico",
     "src/arm_semihosting",
     "src/r3",
+    "src/r3_kernel",
     "src/r3_port_arm",
     "src/r3_port_arm_m",
     "src/r3_port_arm_m_test_driver",

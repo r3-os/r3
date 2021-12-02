@@ -1,9 +1,6 @@
 //! Activates and deactivates CPU Lock.
 use core::marker::PhantomData;
-use r3::{
-    kernel::{cfg::CfgBuilder, Task},
-    prelude::*,
-};
+use r3::kernel::{prelude::*, traits, Cfg, Task};
 
 use super::Driver;
 
@@ -11,8 +8,11 @@ pub struct App<System> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: traits::KernelBase> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(0)
@@ -25,7 +25,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: traits::KernelBase, D: Driver<App<System>>>(_: usize) {
     assert!(!System::has_cpu_lock());
 
     // Acquire CPU Lock

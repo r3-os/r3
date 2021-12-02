@@ -14,6 +14,7 @@ preload-registers = []
 
 [dependencies]
 r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
+r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
 r3 = { version = "0.1.0", path = "../r3" }
 
 tock-registers = { version = "0.7.0" }

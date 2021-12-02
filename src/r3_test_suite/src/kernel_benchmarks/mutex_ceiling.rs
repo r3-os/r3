@@ -5,8 +5,13 @@
 //!
 //! [`Ceiling`]: r3::kernel::MutexProtocol::Ceiling
 //! [`mutex_none`]: crate::kernel_benchmarks::mutex_none
+use r3::kernel::traits;
+
+pub use super::mutex::SupportedSystem;
+
 use_benchmark_in_kernel_benchmark! {
-    pub unsafe struct App<System> {
+    #[cfg_bounds(~const traits::CfgMutex)]
+    pub unsafe struct App<System: SupportedSystem> {
         inner: super::mutex::AppInnerCeiling<System>,
     }
 }

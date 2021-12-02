@@ -1,22 +1,29 @@
 //! Unlocks a mutex, waking up a task.
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, Mutex, Task},
-    prelude::*,
+    kernel::{traits, Cfg, Mutex, Task},
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem: traits::KernelBase + traits::KernelMutex + traits::KernelStatic {}
+impl<T: traits::KernelBase + traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     task2: Task<System>,
     task3: Task<System>,
     mtx: Mutex<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgMutex,
+    {
         Task::build()
             .start(task1_body::<System, D>)
             .priority(2)
@@ -43,7 +50,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
 
     D::app().mtx.lock().unwrap();
@@ -62,7 +69,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
 
     D::app().mtx.lock().unwrap(); // start waiting, switching to `task1`
@@ -70,7 +77,7 @@ fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(7, 8);
 }
 
-fn task3_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(4, 5);
 
     D::app().mtx.lock().unwrap(); // start waiting, switching to `task1`

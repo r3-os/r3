@@ -1,20 +1,18 @@
 use core::{cell::Cell, fmt, marker::PhantomData};
 
 use crate::{
-    hunk::{CfgHunkBuilder, DefaultInitTag, Hunk, HunkIniter},
+    hunk::{DefaultInitTag, Hunk, HunkDefiner, HunkIniter},
     kernel::{
-        self,
-        cfg::{CfgBuilder, CfgMutexBuilder},
-        LockMutexError, MarkConsistentMutexError, MutexProtocol, TryLockMutexError,
+        mutex, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
+        TryLockMutexError,
     },
-    prelude::*,
     utils::Init,
 };
 
-/// Configuration builder type for [`RecursiveMutex`].
-pub struct Builder<System, T, InitTag> {
-    mutex: CfgMutexBuilder<System>,
-    hunk: CfgHunkBuilder<System, MutexInner<T>, InitTag>,
+/// The definer (static builder) for [`RecursiveMutex`][].
+pub struct Definer<System, T, InitTag> {
+    mutex: mutex::MutexDefiner<System>,
+    hunk: HunkDefiner<System, MutexInner<T>, InitTag>,
 }
 
 /// A recursive mutex, which can be locked by a task for multiple times
@@ -32,16 +30,25 @@ pub struct Builder<System, T, InitTag> {
 ///    might panic if this is violated.
 ///
 /// [`r3::kernel::Mutex`]: crate::kernel::Mutex
-pub struct RecursiveMutex<System, T> {
+pub struct RecursiveMutex<System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     hunk: Hunk<System, MutexInner<T>>,
-    mutex: kernel::Mutex<System>,
+    mutex: mutex::Mutex<System>,
 }
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior
 
-unsafe impl<System: Kernel, T: 'static + Send> Send for RecursiveMutex<System, T> {}
-unsafe impl<System: Kernel, T: 'static + Send> Sync for RecursiveMutex<System, T> {}
+unsafe impl<System, T: 'static + Send> Send for RecursiveMutex<System, T> where
+    System: traits::KernelMutex + traits::KernelStatic
+{
+}
+unsafe impl<System, T: 'static + Send> Sync for RecursiveMutex<System, T> where
+    System: traits::KernelMutex + traits::KernelStatic
+{
+}
 
 #[doc(hidden)]
 pub struct MutexInner<T> {
@@ -87,12 +94,18 @@ const LEVEL_COUNT_SHIFT: u32 = 1;
 /// [`lock`]: RecursiveMutex::lock
 /// [`try_lock`]: RecursiveMutex::try_lock
 #[must_use = "if unused the RecursiveMutex will immediately unlock"]
-pub struct MutexGuard<'a, System: Kernel, T: 'static> {
+pub struct MutexGuard<'a, System, T: 'static>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     mutex: &'a RecursiveMutex<System, T>,
     _no_send_sync: PhantomData<*mut ()>,
 }
 
-unsafe impl<System: Kernel, T: 'static + Sync> Sync for MutexGuard<'_, System, T> {}
+unsafe impl<System, T: 'static + Sync> Sync for MutexGuard<'_, System, T> where
+    System: traits::KernelMutex + traits::KernelStatic
+{
+}
 
 /// Type alias for the result of [`RecursiveMutex::lock`].
 pub type LockResult<Guard> = Result<Guard, LockError<Guard>>;
@@ -177,18 +190,24 @@ pub enum MarkConsistentError {
     Consistent = MarkConsistentMutexError::BadObjectState as i8,
 }
 
-impl<System: Kernel, T: 'static> RecursiveMutex<System, T> {
-    /// Construct a `Builder` to define a mutex in [a configuration
+impl<System, T: 'static> RecursiveMutex<System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
+    /// Construct a `Definer` to define a mutex in [a configuration
     /// function](crate#static-configuration).
-    pub const fn build() -> Builder<System, T, DefaultInitTag> {
-        Builder {
-            mutex: kernel::Mutex::build(),
+    pub const fn build() -> Definer<System, T, DefaultInitTag> {
+        Definer {
+            mutex: mutex::Mutex::build(),
             hunk: Hunk::build(),
         }
     }
 }
 
-impl<System: Kernel, T: 'static, InitTag> Builder<System, T, InitTag> {
+impl<System, T: 'static, InitTag> Definer<System, T, InitTag>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     /// Specify the mutex's protocol. Defaults to `None` when unspecified.
     pub const fn protocol(self, protocol: MutexProtocol) -> Self {
         Self {
@@ -198,9 +217,16 @@ impl<System: Kernel, T: 'static, InitTag> Builder<System, T, InitTag> {
     }
 }
 
-impl<System: Kernel, T: 'static, InitTag: HunkIniter<MutexInner<T>>> Builder<System, T, InitTag> {
+impl<System, T: 'static, InitTag: HunkIniter<MutexInner<T>>> Definer<System, T, InitTag>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     /// Complete the definition of a mutex, returning a reference to the mutex.
-    pub const fn finish(self, cfg: &mut CfgBuilder<System>) -> RecursiveMutex<System, T> {
+    // FIXME: `~const CfgBase` is not implied - compiler bug?
+    pub const fn finish<C: ~const traits::CfgMutex<System = System> + ~const traits::CfgBase>(
+        self,
+        cfg: &mut Cfg<C>,
+    ) -> RecursiveMutex<System, T> {
         RecursiveMutex {
             hunk: self.hunk.finish(cfg),
             mutex: self.mutex.finish(cfg),
@@ -208,7 +234,10 @@ impl<System: Kernel, T: 'static, InitTag: HunkIniter<MutexInner<T>>> Builder<Sys
     }
 }
 
-impl<System: Kernel, T: 'static> RecursiveMutex<System, T> {
+impl<System, T: 'static> RecursiveMutex<System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     /// Acquire the mutex, blocking the current thread until it is able to do
     /// so.
     ///
@@ -324,7 +353,10 @@ impl<System: Kernel, T: 'static> RecursiveMutex<System, T> {
     }
 }
 
-impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for RecursiveMutex<System, T> {
+impl<System, T: fmt::Debug + 'static> fmt::Debug for RecursiveMutex<System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_lock() {
             Ok(guard) => f
@@ -383,13 +415,19 @@ impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for RecursiveMutex<Syst
     }
 }
 
-impl<System: Kernel, T: fmt::Debug + 'static> fmt::Debug for MutexGuard<'_, System, T> {
+impl<System, T: fmt::Debug + 'static> fmt::Debug for MutexGuard<'_, System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
-impl<System: Kernel, T: fmt::Display + 'static> fmt::Display for MutexGuard<'_, System, T> {
+impl<System, T: fmt::Display + 'static> fmt::Display for MutexGuard<'_, System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
@@ -397,7 +435,10 @@ impl<System: Kernel, T: fmt::Display + 'static> fmt::Display for MutexGuard<'_, 
 
 /// The destructor of `MutexGuard` that releases the lock. It will panic if
 /// CPU Lock is active.
-impl<System: Kernel, T: 'static> Drop for MutexGuard<'_, System, T> {
+impl<System, T: 'static> Drop for MutexGuard<'_, System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     #[inline]
     fn drop(&mut self) {
         let level = &self.mutex.hunk.level;
@@ -409,7 +450,10 @@ impl<System: Kernel, T: 'static> Drop for MutexGuard<'_, System, T> {
     }
 }
 
-impl<System: Kernel, T: 'static> core::ops::Deref for MutexGuard<'_, System, T> {
+impl<System, T: 'static> core::ops::Deref for MutexGuard<'_, System, T>
+where
+    System: traits::KernelMutex + traits::KernelStatic,
+{
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {

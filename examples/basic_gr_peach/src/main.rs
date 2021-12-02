@@ -1,6 +1,7 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
+#![feature(const_trait_impl)]
 #![feature(asm)]
 #![feature(naked_functions)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -15,14 +16,15 @@
 use r3_port_arm as port;
 use r3_support_rza1 as support_rza1;
 
-port::use_port!(unsafe struct System);
-port::use_startup!(unsafe System);
-port::use_gic!(unsafe impl PortInterrupts for System);
-support_rza1::use_os_timer!(unsafe impl PortTimer for System);
+type System = r3_kernel::System<SystemTraits>;
+port::use_port!(unsafe struct SystemTraits);
+port::use_startup!(unsafe SystemTraits);
+port::use_gic!(unsafe impl PortInterrupts for SystemTraits);
+support_rza1::use_os_timer!(unsafe impl PortTimer for SystemTraits);
 
-impl port::ThreadingOptions for System {}
+impl port::ThreadingOptions for SystemTraits {}
 
-impl port::StartupOptions for System {
+impl port::StartupOptions for SystemTraits {
     const MEMORY_MAP: &'static [port::MemoryMapSection] = &[
         // On-chip RAM (10MB)
         port::MemoryMapSection::new(0x2000_0000..0x20a0_0000, 0x2000_0000).with_executable(true),
@@ -34,19 +36,19 @@ impl port::StartupOptions for System {
     ];
 }
 
-impl port::GicOptions for System {
+impl port::GicOptions for SystemTraits {
     const GIC_DISTRIBUTOR_BASE: usize = 0xe8201000;
     const GIC_CPU_BASE: usize = 0xe8202000;
 }
 
-impl support_rza1::OsTimerOptions for System {
+impl support_rza1::OsTimerOptions for SystemTraits {
     const FREQUENCY: u64 = 33_333_000;
 }
 
 // -----------------------------------------------------------------------
 
 use r3::{
-    kernel::{cfg::CfgBuilder, StartupHook, Task},
+    kernel::{StartupHook, Task},
     prelude::*,
 };
 
@@ -55,16 +57,17 @@ mod panic_serial;
 
 #[derive(Debug)]
 struct Objects {
+    #[allow(dead_code)]
     task1: Task<System>,
     task2: Task<System>,
 }
 
-const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
-const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    System::configure_os_timer(b);
+    SystemTraits::configure_os_timer(b);
 
     // Initialize the serial port
     StartupHook::build()

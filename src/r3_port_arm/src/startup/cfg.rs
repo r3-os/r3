@@ -11,13 +11,13 @@ use core::ops::Range;
 /// [`EntryPoint`]: crate::EntryPoint
 #[macro_export]
 macro_rules! use_startup {
-    (unsafe $sys:ty) => {
+    (unsafe $Traits:ty) => {
         #[no_mangle]
         #[naked]
         pub unsafe extern "C" fn start() {
             asm!(
                 "b {}",
-                sym $crate::startup::imp::start::<$sys>,
+                sym $crate::startup::imp::start::<$Traits>,
                 options(noreturn),
             );
         }

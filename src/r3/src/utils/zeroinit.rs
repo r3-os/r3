@@ -1,8 +1,8 @@
 use core::{cell::UnsafeCell, mem, sync::atomic};
 
-use super::RawCell;
-
 /// Trait for zero-initializable types.
+///
+/// This trait is subject to the API stability guarantee.
 ///
 /// # Safety
 ///
@@ -13,7 +13,6 @@ pub unsafe trait ZeroInit {}
 unsafe impl<T> ZeroInit for atomic::AtomicPtr<T> {}
 
 unsafe impl<T: ZeroInit> ZeroInit for UnsafeCell<T> {}
-unsafe impl<T: ZeroInit> ZeroInit for RawCell<T> {}
 unsafe impl<T> ZeroInit for mem::MaybeUninit<T> {}
 
 unsafe impl<T: ZeroInit> ZeroInit for [T] {}

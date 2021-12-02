@@ -1,20 +1,33 @@
 //! Makes sure that CPU Lock doesn't mask unmanaged interrupts.
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
-    prelude::*,
+    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic
+{
+}
+impl<T: traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgInterruptLine,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(0)
@@ -49,7 +62,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(0, 1);
 
     if let Some(int) = D::app().int {
@@ -69,6 +82,6 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
 }

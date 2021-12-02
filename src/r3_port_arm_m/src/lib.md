@@ -11,9 +11,9 @@ The interrupt numbers `0..16` are mapped to non-external interrupts, and most op
 
 # Kernel Timing
 
-The availability of timer sources varies greatly between MCUs and there's no one-size-fits-all solution. For this reason, [`use_port!`] does not implement [`PortTimer`] on your system type. The Arm-M architecture defines SysTick, an optional timer integrated with a processor core and most Arm-M-based MCUs are equipped with those. This crate provides an implementation of `PortTimer` that utilizes SysTick.
+The availability of timer sources varies greatly between MCUs and there's no one-size-fits-all solution. For this reason, [`use_port!`] does not implement [`PortTimer`] on your kernel trait type. The Arm-M architecture defines SysTick, an optional timer integrated with a processor core and most Arm-M-based MCUs are equipped with those. This crate provides an implementation of `PortTimer` that utilizes SysTick.
 
-[`PortTimer`]: r3::kernel::PortTimer
+[`PortTimer`]: r3_kernel::PortTimer
 
 ## Tickful SysTick
 

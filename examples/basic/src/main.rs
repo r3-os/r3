@@ -1,15 +1,17 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
+#![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 use r3::{
-    kernel::{cfg::CfgBuilder, Task},
+    kernel::{prelude::*, traits, Task},
     prelude::*,
     sync::Mutex,
 };
 
-r3_port_std::use_port!(unsafe struct System);
+type System = r3_kernel::System<SystemTraits>;
+r3_port_std::use_port!(unsafe struct SystemTraits);
 
 #[derive(Debug)]
 struct Objects {
@@ -18,9 +20,9 @@ struct Objects {
     mutex1: Mutex<System, u32>,
 }
 
-const COTTAGE: Objects = r3::build!(System, configure_app => Objects);
+const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
-const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
+const fn configure_app(b: &mut r3_kernel::Cfg<'_, SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
     let task1 = Task::build()

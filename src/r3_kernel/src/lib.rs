@@ -1,370 +1,218 @@
-//! The RTOS kernel
+#![feature(const_maybe_uninit_assume_init)]
+#![feature(option_result_unwrap_unchecked)]
+#![feature(const_slice_from_raw_parts)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
+#![feature(const_fn_trait_bound)]
+#![feature(const_raw_ptr_deref)]
+#![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
+#![feature(generic_const_exprs)]
+#![feature(const_refs_to_cell)]
+#![feature(maybe_uninit_slice)]
+#![feature(const_ptr_offset)]
+#![feature(const_trait_impl)]
+#![feature(specialization)]
+#![feature(assert_matches)]
+#![feature(const_mut_refs)]
+#![feature(never_type)] // `!`
+#![feature(decl_macro)]
+#![feature(doc_cfg)] // `#[doc(cfg(...))]`
+#![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsupported_naked_functions)]
+#![doc = include_str!("./lib.md")]
+#![doc = include_str!("./common.md")]
+#![doc = include!("../doc/traits.rs")] // `![traits]`
+#![cfg_attr(
+    feature = "_full",
+    doc = r#"<style type="text/css">.disabled-feature-warning { display: none; }</style>"#
+)]
+#![cfg_attr(not(test), no_std)] // Link `std` only when building a test (`cfg(test)`)
+
+// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣤⣶⣶⣶⣶⣶⣶⣶⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⡄⠀⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠇⠈⠙⠻⣿⠿⠛⠛⠛⠻⠿⢿⣿⣿⠟⢿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠀⠀⠹⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣽⣿⣿⣿⣿⣿⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣤⣤⣄⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣷⣄⠀⠀⠀⠀⠰⠶⠶⠤⣤⣤⣤⠀⠀⠛⠸⠻⣿⣿⣿⠃⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠀⣠⣶⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣷⠀⠀⠀⣼⡷⠚⠋⠉⠉⠉⠀⢰⣄⣀⣼⣿⣿⠏⠀⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠓⠂⠀⠒⠠⢄⡀⠀⠀⢿⣿⣿⣿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⡏⠀⠀⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠉⢉⠏⠉⠁⠀⠒⠠⠄⠀⠀⠉⠀⠘⣿⣿⣿⣿⣿⣦⡀⢀⠠⠄⠀⠀⢤⣤⣤⣿⣿⣿⣿⠀⠀⢀⣤⣤⣄⠀
+// ⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⡟⠁⠀⠀⢸⣣⠀⠀⠀⠂⠁⠀⠀⠀⠰⠀⠀⠘⣿⣿⣿⣿⣿⣿⣧⣄⠀⠀⠀⠸⣿⣿⣿⣿⣿⣿⠀⠠⠟⠉⢻⣿⡇
+// ⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⢸⠙⠃⢄⠰⠀⠀⠀⠀⠀⡰⠀⠀⠀⠘⣿⣿⣿⣿⣿⣿⣿⣷⣄⠀⠀⠹⣿⣿⣿⣿⣿⣷⣤⣄⣤⣾⣿⠇
+// ⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠆⠀⠀⠙⣗⠂⠀⠐⠈⠀⠀⠀⠀⢀⠜⢻⣿⣿⣿⣿⣿⣿⣿⣷⡀⠀⠈⠻⣿⣿⣿⣿⣿⣿⣿⠿⠋⠀
+// ⠀⠀⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀⢠⠂⠁⠀⠀⡞⠀⠍⡉⠀⠀⢀⠒⠒⢹⠀⠀⠀⠙⣿⣿⣿⣿⣿⣿⣿⣷⡀⠀⠀⠀⠉⠉⠉⠉⠉⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠻⣿⣿⣿⣿⣿⣿⣿⣿⣧⣀⠃⠀⠀⠀⡜⠀⡜⢰⠀⠀⠀⢸⠀⠀⠀⡀⠀⠀⠀⠈⢿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+// ⠀⠀⠀⠀⠀⠀⠀⠈⠻⢿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⢀⠃⠀⡇⡄⠀⠀⠀⢸⠀⠀⠀⡇⠀⠀⣀⡀⠈⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+// ⣀⣤⣤⣤⣤⣀⣀⣀⠀⠀⣈⣿⣿⣿⣿⣿⠀⠀⠀⠀⢸⠀⠀⡇⠇⠀⠀⠀⠀⡇⠀⠀⢱⠀⢸⣿⡛⢀⣿⣿⣿⣿⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+// ⠿⠿⠟⠿⠿⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⡆⠀⢹⠀⠀⠀⠀⠀⢣⠀⠀⠀⢆⠈⠿⣿⣿⣿⣿⡿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+// ⠀⢀⠀⠀⠀⠀⠀⠈⠉⠛⠛⠛⠛⠛⠛⠻⠀⠀⠀⠀⠀⠱⠤⠴⡆⠀⠀⠀⠀⠈⢆⣀⣀⣈⠆⠀⠈⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+// ⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠒⠒⠂⠈⠀⠀⠑⠤⠤⠀⠀⠤⠜⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+// `array_item_from_fn!` requires `MaybeUninit`.
+#[doc(hidden)]
+pub extern crate core;
+
+// `build!` requires `ArrayVec`
+#[doc(hidden)]
+pub extern crate arrayvec;
+
+// `build!` requires `r3`
+#[doc(hidden)]
+pub extern crate r3;
+
+pub mod utils;
+
 #[cfg(feature = "priority_boost")]
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::{fmt, marker::PhantomData, mem::forget, num::NonZeroUsize, ops::Range};
 
-use crate::{
+use r3::{
+    kernel::{
+        cfg::{DelegateKernelStatic, KernelStatic},
+        raw,
+    },
     time::{Duration, Time},
-    utils::{binary_heap::VecLike, BinUInteger, Init},
+    utils::Init,
 };
+
+use crate::utils::{binary_heap::VecLike, BinUInteger};
 
 #[macro_use]
 pub mod cfg;
 mod error;
 mod event_group;
-mod hunk;
 mod interrupt;
+mod klock;
 mod mutex;
 mod semaphore;
-mod startup;
 mod state;
 mod task;
 mod timeout;
 mod timer;
-mod utils;
 mod wait;
-pub use self::{
-    error::*, event_group::*, hunk::*, interrupt::*, mutex::*, semaphore::*, startup::*, task::*,
-    timeout::*, timer::*, wait::*,
-};
+
+// Some of these re-exports are for our macros, the others are really public
+pub use {event_group::*, interrupt::*, mutex::*, semaphore::*, task::*, timeout::*, timer::*};
 
 /// Numeric value used to identify various kinds of kernel objects.
 pub type Id = NonZeroUsize;
 
-/// Provides access to the global API functions exposed by the kernel.
+/// Wraps a provided [trait type][1] `Traits` to instantiate a kernel. This type
+/// implements the traits from [`r3::kernel::raw`], making it usable as a
+/// kernel, if `Traits` implements some appropriate traits, which consequently
+/// make it implement [`KernelTraits`].
 ///
-/// This trait is automatically implemented on "system" types that have
-/// sufficient trait `impl`s to instantiate the kernel.
-#[doc = include_str!("./common.md")]
-pub trait Kernel: Port + KernelCfg2 + Sized + 'static {
-    type DebugPrinter: fmt::Debug + Send + Sync;
+/// [1]: crate#kernel-trait-type
+pub struct System<Traits>(PhantomData<Traits>);
 
-    /// Get an object that implements [`Debug`](fmt::Debug) for dumping the
-    /// current kernel state.
-    ///
-    /// Note that printing this object might consume a large amount of stack
-    /// space.
-    fn debug() -> Self::DebugPrinter;
-
-    /// Activate [CPU Lock].
-    ///
-    /// Returns [`BadContext`] if CPU Lock is already active.
-    ///
-    /// [CPU Lock]: crate#system-states
-    /// [`BadContext`]: CpuLockError::BadContext
-    fn acquire_cpu_lock() -> Result<(), CpuLockError>;
-
-    /// Deactivate [CPU Lock].
-    ///
-    /// Returns [`BadContext`] if CPU Lock is already inactive.
-    ///
-    /// [CPU Lock]: crate#system-states
-    /// [`BadContext`]: CpuLockError::BadContext
-    ///
-    /// # Safety
-    ///
-    /// CPU Lock is useful for creating a critical section. By making this
-    /// method `unsafe`, safe code is prevented from interfering with a critical
-    /// section.
-    ///
-    /// Deactivating CPU Lock in a boot context is disallowed.
-    unsafe fn release_cpu_lock() -> Result<(), CpuLockError>;
-
-    /// Return a flag indicating whether CPU Lock is currently active.
-    fn has_cpu_lock() -> bool;
-
-    /// Activate [Priority Boost].
-    ///
-    /// Returns [`BadContext`] if Priority Boost is already active, the
-    /// calling context is not a task context, or CPU Lock is active.
-    ///
-    /// [Priority Boost]: crate#system-states
-    /// [`BadContext`]: CpuLockError::BadContext
-    #[cfg(feature = "priority_boost")]
-    #[doc(cfg(feature = "priority_boost"))]
-    fn boost_priority() -> Result<(), BoostPriorityError>;
-
-    /// Deactivate [Priority Boost].
-    ///
-    /// Returns [`BadContext`] if Priority Boost is already inactive, the
-    /// calling context is not a task context, or CPU Lock is active.
-    ///
-    /// [Priority Boost]: crate#system-states
-    /// [`BadContext`]: CpuLockError::BadContext
-    ///
-    /// # Safety
-    ///
-    /// Priority Boost is useful for creating a critical section. By making this
-    /// method `unsafe`, safe code is prevented from interfering with a critical
-    /// section.
-    unsafe fn unboost_priority() -> Result<(), BoostPriorityError>;
-
-    /// Return a flag indicating whether [Priority Boost] is currently active.
-    ///
-    /// [Priority Boost]: crate#system-states
-    fn is_priority_boost_active() -> bool;
-
-    /// Get the current [system time].
-    ///
-    /// [system time]: crate#kernel-timing
-    ///
-    /// This method will return [`TimeError::BadContext`] when called in a
-    /// non-task context.
-    ///
-    /// <div class="admonition-follows"></div>
-    ///
-    /// > **Rationale:** This restriction originates from μITRON4.0. It's
-    /// > actually unnecessary in the current implementation, but allows
-    /// > headroom for potential changes in the implementation.
-    #[cfg(feature = "system_time")]
-    #[doc(cfg(feature = "system_time"))]
-    fn time() -> Result<Time, TimeError>;
-
-    /// Set the current [system time].
-    ///
-    /// This method *does not change* the relative arrival times of outstanding
-    /// timed events nor the relative time of the frontier (a concept used in
-    /// the definition of [`adjust_time`]).
-    ///
-    /// [system time]: crate#kernel-timing
-    /// [`adjust_time`]: Self::adjust_time
-    ///
-    /// This method will return [`TimeError::BadContext`] when called in a
-    /// non-task context.
-    ///
-    /// <div class="admonition-follows"></div>
-    ///
-    /// > **Rationale:** This restriction originates from μITRON4.0. It's
-    /// > actually unnecessary in the current implementation, but allows
-    /// > headroom for potential changes in the implementation.
-    fn set_time(time: Time) -> Result<(), TimeError>;
-
-    /// Move the current [system time] forward or backward by the specified
-    /// amount.
-    ///
-    /// This method *changes* the relative arrival times of outstanding
-    /// timed events.
-    ///
-    /// The kernel uses a limited number of bits to represent the arrival times
-    /// of outstanding timed events. This means that there's some upper bound
-    /// on how far the system time can be moved away without breaking internal
-    /// invariants. This method ensures this bound is not violated by the
-    /// methods described below. This method will return `BadObjectState` if
-    /// this check fails.
-    ///
-    /// **Moving Forward (`delta > 0`):** If there are no outstanding time
-    /// events, adjustment in this direction is unbounded. Otherwise, let
-    /// `t` be the relative arrival time (in relation to the current time) of
-    /// the earliest outstanding time event.
-    /// If `t - delta < -`[`TIME_USER_HEADROOM`] (i.e., if the adjustment would
-    /// make the event overdue by more than `TIME_USER_HEADROOM`), the check
-    /// will fail.
-    ///
-    /// The events made overdue by the call will be processed when the port
-    /// timer driver announces a new tick. It's unspecified whether this happens
-    /// before or after the call returns.
-    ///
-    /// **Moving Backward (`delta < 0`):** First, we introduce the concept of
-    /// **a frontier**. The frontier represents the point of time at which the
-    /// system time advanced the most. Usually, the frontier is identical to
-    /// the current system time because the system time keeps moving forward
-    /// (a). However, adjusting the system time to past makes them temporarily
-    /// separate from each other (b). In this case, the frontier stays in place
-    /// until the system time eventually catches up with the frontier and they
-    /// start moving together again (c).
-    ///
-    /// <center>
-    ///
-    #[doc = svgbobdoc::transform_mdstr!(
-    /// ```svgbob
-    ///                                   system time
-    ///                                    ----*------------------------
-    ///                                                     ^ frontier
-    /// ​
-    ///                                                (b)
-    /// ​
-    ///                                    --------*--------------------
-    ///       system time                                   ^
-    /// ----------*------------            ------------*----------------
-    ///           ^ frontier                                ^
-    ///                                    -----------------*-----------
-    ///          (a)                                        ^
-    ///                                    ----------------------*------
-    ///                                                          ^
-    ///                                                (c)
-    /// ```
-    )]
-    ///
-    /// </center>
-    ///
-    /// Let `frontier` be the current relative time of the frontier (in relation
-    /// to the current time). If `frontier - delta > `[`TIME_USER_HEADROOM`]
-    /// (i.e., if the adjustment would move the frontier too far away), the
-    /// check will fail.
-    ///
-    /// [system time]: crate#kernel-timing
-    ///
-    /// <div class="admonition-follows"></div>
-    ///
-    /// > **Observation:** Even under ideal circumstances, all timed events are
-    /// > bound to be overdue by a very small extent because of various factors
-    /// > such as an intrinsic interrupt latency, insufficient timer resolution,
-    /// > and uses of CPU Lock. This means the minimum value of `t` in the above
-    /// > explanation is not `0` but a somewhat smaller value. The consequence
-    /// > is that `delta` can never reliably be `>= TIME_USER_HEADROOM`.
-    ///
-    /// <div class="admonition-follows"></div>
-    ///
-    /// > **Relation to Other Specifications:** `adj_tim` from
-    /// > [the TOPPERS 3rd generation kernels]
-    ///
-    /// [the TOPPERS 3rd generation kernels]: https://www.toppers.jp/index.html
-    ///
-    /// <div class="admonition-follows"></div>
-    ///
-    /// > **Rationale:** When moving the system time forward, capping by a
-    /// > frontier instead of an actual latest arrival time has advantages over
-    /// > other schemes that involve tracking the latest arrival time:
-    /// >
-    /// >  - Linear-scanning all outstanding timed events to find the latest
-    /// >    arrival time would take a linear time.
-    /// >
-    /// >  - Using a double-ended data structure for an event queue, such as a
-    /// >    balanced search tree and double heaps, would increase the runtime
-    /// >    cost of maintaining the structure.
-    /// >
-    /// > Also, the gap between the current time and the frontier is completely
-    /// > in control of the code that calls `adjust_time`, making the behavior
-    /// > more predictable.
-    fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError>;
-
-    // TODO: get time resolution?
-
-    /// Terminate the current task, putting it into the Dormant state.
-    ///
-    /// The kernel (to be precise, the port) makes an implicit call to this
-    /// function when a task entry point function returns.
-    ///
-    /// # Safety
-    ///
-    /// On a successful call, this function destroys the current task's stack
-    /// without running any destructors on stack-allocated objects and renders
-    /// all references pointing to such objects invalid. The caller is
-    /// responsible for taking this possibility into account and ensuring this
-    /// doesn't lead to an undefined behavior.
-    ///
-    unsafe fn exit_task() -> Result<!, ExitTaskError>;
-
-    /// Put the current task into the Waiting state until the task's token is
-    /// made available by [`Task::unpark`]. The token is initially absent when
-    /// the task is activated.
-    ///
-    /// The token will be consumed when this method returns successfully.
-    ///
-    /// This system service may block. Therefore, calling this method is not
-    /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
-    ///
-    /// [a non-waitable context]: crate#contexts
-    fn park() -> Result<(), ParkError>;
-
-    /// [`park`](Self::park) with timeout.
-    ///
-    /// This system service may block. Therefore, calling this method is not
-    /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
-    ///
-    /// [a non-waitable context]: crate#contexts
-    fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError>;
-
-    /// Block the current task for the specified duration.
-    fn sleep(duration: Duration) -> Result<(), SleepError>;
+impl<Traits> Clone for System<Traits> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
-impl<T: Port + KernelCfg2 + 'static> Kernel for T {
+impl<Traits> Copy for System<Traits> {}
+
+impl<Traits> core::fmt::Debug for System<Traits> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("System")
+    }
+}
+
+/// The instantiation of [`r3::kernel::Cfg`] used by [`build!`] to configure
+/// a kernel. `CfgBuilder<...>` in this alias Implements
+/// [`~const`]` `[`raw_cfg::CfgBase`]`<`[`System`]`<Traits>>` and many other
+/// `raw_cfg` traits.
+///
+/// [`~const`]: https://github.com/rust-lang/rust/issues/77463
+/// [`raw_cfg::CfgBase`]: r3::kernel::raw_cfg::CfgBase
+pub type Cfg<'c, Traits> = r3::kernel::Cfg<'c, cfg::CfgBuilder<Traits>>;
+
+/// Represents a complete [kernel trait type][1].
+///
+/// [1]: crate#the-kernrel-trait-type
+pub trait KernelTraits: Port + KernelCfg2 + KernelStatic<System<Self>> + 'static {}
+
+impl<Traits: Port + KernelCfg2 + KernelStatic<System<Self>> + 'static> KernelTraits for Traits {}
+
+/// Implement `KernelStatic<System<Traits>>` on `System<Traits>` if the same
+/// trait is implemented on `Traits`.
+impl<Traits: KernelStatic<System<Traits>>> DelegateKernelStatic<System<Traits>> for System<Traits> {
+    type Target = Traits;
+}
+
+unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     #[inline]
-    fn acquire_cpu_lock() -> Result<(), CpuLockError> {
+    fn raw_acquire_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
         // Safety: `try_enter_cpu_lock` is only meant to be called by
         //         the kernel
-        if unsafe { Self::try_enter_cpu_lock() } {
+        if unsafe { Traits::try_enter_cpu_lock() } {
             Ok(())
         } else {
-            Err(CpuLockError::BadContext)
+            Err(r3::kernel::CpuLockError::BadContext)
         }
     }
 
     #[inline]
-    unsafe fn release_cpu_lock() -> Result<(), CpuLockError> {
-        if !Self::is_cpu_lock_active() {
-            Err(CpuLockError::BadContext)
+    unsafe fn raw_release_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
+        if !Traits::is_cpu_lock_active() {
+            Err(r3::kernel::CpuLockError::BadContext)
         } else {
             // Safety: CPU Lock active
-            unsafe { Self::leave_cpu_lock() };
+            unsafe { Traits::leave_cpu_lock() };
             Ok(())
         }
     }
 
     #[inline]
-    fn has_cpu_lock() -> bool {
-        Self::is_cpu_lock_active()
+    fn raw_has_cpu_lock() -> bool {
+        Traits::is_cpu_lock_active()
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    #[cfg(feature = "priority_boost")]
-    fn boost_priority() -> Result<(), BoostPriorityError> {
-        state::boost_priority::<Self>()
-    }
-
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn unboost_priority() -> Result<(), BoostPriorityError> {
-        state::unboost_priority::<Self>()
+    unsafe fn raw_unboost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
+        state::unboost_priority::<Traits>()
     }
 
     #[inline]
     #[cfg(feature = "priority_boost")]
-    fn is_priority_boost_active() -> bool {
-        Self::state().priority_boost.load(Ordering::Relaxed)
+    fn raw_is_priority_boost_active() -> bool {
+        Traits::state().priority_boost.load(Ordering::Relaxed)
     }
 
     #[inline]
     #[cfg(not(feature = "priority_boost"))]
-    fn is_priority_boost_active() -> bool {
+    fn raw_is_priority_boost_active() -> bool {
         false
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    #[cfg(feature = "system_time")]
-    fn time() -> Result<Time, TimeError> {
-        timeout::system_time::<Self>()
-    }
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn set_time(time: Time) -> Result<(), TimeError> {
-        timeout::set_system_time::<Self>(time)
-    }
-    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn adjust_time(delta: Duration) -> Result<(), AdjustTimeError> {
-        timeout::adjust_system_and_event_time::<Self>(delta)
+    fn raw_set_time(time: Time) -> Result<(), r3::kernel::TimeError> {
+        timeout::set_system_time::<Traits>(time)
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn exit_task() -> Result<!, ExitTaskError> {
+    unsafe fn raw_exit_task() -> Result<!, r3::kernel::ExitTaskError> {
         // Safety: Just forwarding the function call
-        unsafe { exit_current_task::<Self>() }
+        unsafe { task::exit_current_task::<Traits>() }
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn park() -> Result<(), ParkError> {
-        task::park_current_task::<Self>()
+    fn raw_park() -> Result<(), r3::kernel::ParkError> {
+        task::park_current_task::<Traits>()
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn park_timeout(timeout: Duration) -> Result<(), ParkTimeoutError> {
-        task::park_current_task_timeout::<Self>(timeout)
+    fn raw_park_timeout(timeout: Duration) -> Result<(), r3::kernel::ParkTimeoutError> {
+        task::park_current_task_timeout::<Traits>(timeout)
     }
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn sleep(timeout: Duration) -> Result<(), SleepError> {
-        task::put_current_task_on_sleep_timeout::<Self>(timeout)
+    fn raw_sleep(timeout: Duration) -> Result<(), r3::kernel::SleepError> {
+        task::put_current_task_on_sleep_timeout::<Traits>(timeout)
     }
 
-    type DebugPrinter = KernelDebugPrinter<Self>;
+    type RawDebugPrinter = KernelDebugPrinter<Traits>;
 
     /// Get an object that implements [`Debug`](fmt::Debug) for dumping the
     /// current kernel state.
@@ -372,17 +220,99 @@ impl<T: Port + KernelCfg2 + 'static> Kernel for T {
     /// Note that printing this object might consume a large amount of stack
     /// space.
     #[inline]
-    fn debug() -> Self::DebugPrinter {
+    fn raw_debug() -> Self::RawDebugPrinter {
         KernelDebugPrinter(PhantomData)
+    }
+
+    type RawTaskId = task::TaskId;
+
+    #[inline]
+    fn raw_task_current() -> Result<Option<Self::RawTaskId>, r3::kernel::GetCurrentTaskError> {
+        Self::task_current()
+    }
+
+    #[inline]
+    unsafe fn raw_task_activate(
+        this: Self::RawTaskId,
+    ) -> Result<(), r3::kernel::ActivateTaskError> {
+        Self::task_activate(this)
+    }
+
+    #[inline]
+    unsafe fn raw_task_interrupt(
+        this: Self::RawTaskId,
+    ) -> Result<(), r3::kernel::InterruptTaskError> {
+        Self::task_interrupt(this)
+    }
+
+    #[inline]
+    unsafe fn raw_task_unpark_exact(
+        this: Self::RawTaskId,
+    ) -> Result<(), r3::kernel::UnparkExactError> {
+        Self::task_unpark_exact(this)
+    }
+
+    #[inline]
+    unsafe fn raw_task_priority(
+        this: Self::RawTaskId,
+    ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
+        Self::task_priority(this)
+    }
+
+    #[inline]
+    unsafe fn raw_task_effective_priority(
+        this: Self::RawTaskId,
+    ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
+        Self::task_effective_priority(this)
     }
 }
 
-/// The object returned by [`Kernel::debug`]. Implements [`fmt::Debug`].
+unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> {
+    #[inline]
+    unsafe fn raw_task_set_priority(
+        this: Self::RawTaskId,
+        priority: usize,
+    ) -> Result<(), r3::kernel::SetTaskPriorityError> {
+        Self::task_set_priority(this, priority)
+    }
+}
+
+#[cfg(feature = "priority_boost")]
+#[doc(cfg(feature = "priority_boost"))]
+unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    fn raw_boost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
+        state::boost_priority::<Traits>()
+    }
+}
+
+#[cfg(feature = "system_time")]
+#[doc(cfg(feature = "system_time"))]
+unsafe impl<Traits: KernelTraits> raw::KernelTime for System<Traits> {
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    fn raw_time() -> Result<Time, r3::kernel::TimeError> {
+        timeout::system_time::<Traits>()
+    }
+}
+
+unsafe impl<Traits: KernelTraits> raw::KernelAdjustTime for System<Traits> {
+    const RAW_TIME_USER_HEADROOM: Duration = TIME_USER_HEADROOM;
+
+    #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
+    fn raw_adjust_time(delta: Duration) -> Result<(), r3::kernel::AdjustTimeError> {
+        timeout::adjust_system_and_event_time::<Traits>(delta)
+    }
+}
+
+/// The object returned by `<`[`System`]` as `[`KernelBase`]`>::debug`.
+/// Implements [`fmt::Debug`].
 ///
 /// **This type is exempt from the API stability guarantee.**
+///
+/// [`KernelBase`]: r3::kernel::raw::KernelBase
 pub struct KernelDebugPrinter<T>(PhantomData<T>);
 
-impl<T: Kernel> fmt::Debug for KernelDebugPrinter<T> {
+impl<T: KernelTraits> fmt::Debug for KernelDebugPrinter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         struct PoolPrinter<'a, T>(&'a [T]);
 
@@ -407,7 +337,7 @@ impl<T: Kernel> fmt::Debug for KernelDebugPrinter<T> {
     }
 }
 
-/// Associates "system" types with kernel-private data. Use [`build!`] to
+/// Associates a kernel trait type with kernel-private data. Use [`build!`] to
 /// implement.
 ///
 /// Customizable things needed by both of `Port` and `KernelCfg2` should live
@@ -452,7 +382,7 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
 /// These methods are only meant to be called by the kernel.
 #[doc = include_str!("./common.md")]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe trait PortThreading: KernelCfg1 {
+pub unsafe trait PortThreading: KernelCfg1 + KernelStatic<System<Self>> {
     type PortTaskState: Send + Sync + Init + fmt::Debug + 'static;
 
     /// The initial value of [`TaskCb::port_task_state`] for all tasks.
@@ -467,11 +397,10 @@ pub unsafe trait PortThreading: KernelCfg1 {
     /// Both ends of stack regions are aligned by `STACK_ALIGN`. It's
     /// automatically enforced by the kernel configurator for automatically
     /// allocated stack regions (this applies to tasks created without
-    /// [`stack_hunk`]). The kernel configurator does not check the alignemnt
+    /// [`StackHunk`]). The kernel configurator does not check the alignemnt
     /// for manually-allocated stack regions.
     ///
-    /// [`stack_hunk`]: crate::kernel::cfg::CfgTaskBuilder::stack_hunk
-    /// [`StackHunk`]: crate::kernel::StackHunk
+    /// [`StackHunk`]: r3::kernel::task::StackHunk
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
 
     /// Transfer the control to the dispatcher, discarding the current
@@ -585,7 +514,7 @@ pub unsafe trait PortInterrupts: KernelCfg1 {
     ///
     /// [managed]: crate#interrupt-handling-framework
     #[allow(clippy::reversed_empty_ranges)] // on purpose
-    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
+    const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<raw::InterruptPriority> = 0..0;
 
     /// The list of interrupt lines which are considered [managed].
     ///
@@ -595,43 +524,51 @@ pub unsafe trait PortInterrupts: KernelCfg1 {
     /// doesn't support changing interrupt line priorities.
     ///
     /// [managed]: crate#interrupt-handling-framework
-    const MANAGED_INTERRUPT_LINES: &'static [InterruptNum] = &[];
+    const MANAGED_INTERRUPT_LINES: &'static [raw::InterruptNum] = &[];
 
     /// Set the priority of the specified interrupt line.
     ///
     /// Precondition: CPU Lock active. Task context or boot phase.
     unsafe fn set_interrupt_line_priority(
-        _line: InterruptNum,
-        _priority: InterruptPriority,
-    ) -> Result<(), SetInterruptLinePriorityError> {
-        Err(SetInterruptLinePriorityError::NotSupported)
+        _line: raw::InterruptNum,
+        _priority: raw::InterruptPriority,
+    ) -> Result<(), r3::kernel::SetInterruptLinePriorityError> {
+        Err(r3::kernel::SetInterruptLinePriorityError::NotSupported)
     }
 
     /// Enable the specified interrupt line.
-    unsafe fn enable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
-        Err(EnableInterruptLineError::NotSupported)
+    unsafe fn enable_interrupt_line(
+        _line: raw::InterruptNum,
+    ) -> Result<(), r3::kernel::EnableInterruptLineError> {
+        Err(r3::kernel::EnableInterruptLineError::NotSupported)
     }
 
     /// Disable the specified interrupt line.
-    unsafe fn disable_interrupt_line(_line: InterruptNum) -> Result<(), EnableInterruptLineError> {
-        Err(EnableInterruptLineError::NotSupported)
+    unsafe fn disable_interrupt_line(
+        _line: raw::InterruptNum,
+    ) -> Result<(), r3::kernel::EnableInterruptLineError> {
+        Err(r3::kernel::EnableInterruptLineError::NotSupported)
     }
 
     /// Set the pending flag of the specified interrupt line.
-    unsafe fn pend_interrupt_line(_line: InterruptNum) -> Result<(), PendInterruptLineError> {
-        Err(PendInterruptLineError::NotSupported)
+    unsafe fn pend_interrupt_line(
+        _line: raw::InterruptNum,
+    ) -> Result<(), r3::kernel::PendInterruptLineError> {
+        Err(r3::kernel::PendInterruptLineError::NotSupported)
     }
 
     /// Clear the pending flag of the specified interrupt line.
-    unsafe fn clear_interrupt_line(_line: InterruptNum) -> Result<(), ClearInterruptLineError> {
-        Err(ClearInterruptLineError::NotSupported)
+    unsafe fn clear_interrupt_line(
+        _line: raw::InterruptNum,
+    ) -> Result<(), r3::kernel::ClearInterruptLineError> {
+        Err(r3::kernel::ClearInterruptLineError::NotSupported)
     }
 
     /// Read the pending flag of the specified interrupt line.
     unsafe fn is_interrupt_line_pending(
-        _line: InterruptNum,
-    ) -> Result<bool, QueryInterruptLineError> {
-        Err(QueryInterruptLineError::NotSupported)
+        _line: raw::InterruptNum,
+    ) -> Result<bool, r3::kernel::QueryInterruptLineError> {
+        Err(r3::kernel::QueryInterruptLineError::NotSupported)
     }
 }
 
@@ -762,19 +699,19 @@ pub trait PortToKernel {
     unsafe fn timer_tick();
 }
 
-impl<System: Kernel> PortToKernel for System {
+impl<Traits: KernelTraits> PortToKernel for Traits {
     unsafe fn boot() -> ! {
-        let mut lock = unsafe { utils::assume_cpu_lock::<Self>() };
+        let mut lock = unsafe { klock::assume_cpu_lock::<Traits>() };
 
         // Initialize all tasks
-        for cb in Self::task_cb_pool() {
+        for cb in Traits::task_cb_pool() {
             task::init_task(lock.borrow_mut(), cb);
         }
 
         // Initialize the timekeeping system
-        System::state().timeout.init(lock.borrow_mut());
+        Traits::state().timeout.init(lock.borrow_mut());
 
-        for cb in Self::timer_cb_pool() {
+        for cb in Traits::timer_cb_pool() {
             timer::init_timer(lock.borrow_mut(), cb);
         }
 
@@ -784,20 +721,18 @@ impl<System: Kernel> PortToKernel for System {
         // safety*. Thus the use of unmanaged priority values has been already
         // authorized.
         unsafe {
-            System::INTERRUPT_ATTR.init(lock.borrow_mut());
+            Traits::INTERRUPT_ATTR.init(lock.borrow_mut());
         }
 
         // Call startup hooks
-        for hook in Self::STARTUP_HOOKS {
-            // Safety: This is the intended place to call startup hooks.
-            unsafe { (hook.start)(hook.param) };
-        }
+        // Safety: This is the intended place to call startup hooks.
+        unsafe { (Traits::STARTUP_HOOK)() };
 
         forget(lock);
 
         // Safety: CPU Lock is active, Startup phase
         unsafe {
-            Self::dispatch_first_task();
+            Traits::dispatch_first_task();
         }
     }
 
@@ -805,7 +740,7 @@ impl<System: Kernel> PortToKernel for System {
     unsafe fn choose_running_task() {
         // Safety: The precondition of this method includes CPU Lock being
         // active
-        let mut lock = unsafe { utils::assume_cpu_lock::<Self>() };
+        let mut lock = unsafe { klock::assume_cpu_lock::<Traits>() };
 
         task::choose_next_running_task(lock.borrow_mut());
 
@@ -814,7 +749,7 @@ impl<System: Kernel> PortToKernel for System {
     }
 
     unsafe fn timer_tick() {
-        timeout::handle_tick::<Self>();
+        timeout::handle_tick::<Traits>();
     }
 }
 
@@ -824,7 +759,7 @@ impl<System: Kernel> PortToKernel for System {
 /// # Safety
 ///
 /// This is only intended to be implemented by `build!`.
-pub unsafe trait KernelCfg2: Port + Sized {
+pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
     // Most associated items are hidden because they have no use outside the
     // kernel. The rest is not hidden because it's meant to be accessed by port
     // code.
@@ -839,8 +774,10 @@ pub unsafe trait KernelCfg2: Port + Sized {
     #[doc(hidden)]
     const INTERRUPT_ATTR: InterruptAttr<Self>;
 
+    /// The startup hook set through `CfgBase`. The `unsafe`-ness ensures it's
+    /// not called by code non grata.
     #[doc(hidden)]
-    const STARTUP_HOOKS: &'static [StartupHookAttr];
+    const STARTUP_HOOK: unsafe fn();
 
     /// Access the kernel's global state.
     fn state() -> &'static State<Self>;
@@ -911,17 +848,17 @@ pub unsafe trait KernelCfg2: Port + Sized {
 
 /// Global kernel state.
 pub struct State<
-    System: KernelCfg2,
-    PortTaskState: 'static = <System as PortThreading>::PortTaskState,
-    TaskReadyQueue: 'static = <System as KernelCfg1>::TaskReadyQueue,
-    TaskPriority: 'static = <System as KernelCfg1>::TaskPriority,
-    TimeoutHeap: 'static = <System as KernelCfg2>::TimeoutHeap,
+    Traits: KernelCfg2,
+    PortTaskState: 'static = <Traits as PortThreading>::PortTaskState,
+    TaskReadyQueue: 'static = <Traits as KernelCfg1>::TaskReadyQueue,
+    TaskPriority: 'static = <Traits as KernelCfg1>::TaskPriority,
+    TimeoutHeap: 'static = <Traits as KernelCfg2>::TimeoutHeap,
 > {
     /// The currently or recently running task. Can be in a Running, Waiting, or
     /// Ready state. The last two only can be observed momentarily around a
     /// call to `yield_cpu` or in an interrupt handler.
     running_task:
-        utils::CpuLockCell<System, Option<&'static TaskCb<System, PortTaskState, TaskPriority>>>,
+        klock::CpuLockCell<Traits, Option<&'static TaskCb<Traits, PortTaskState, TaskPriority>>>,
 
     /// The task ready queue.
     task_ready_queue: TaskReadyQueue,
@@ -931,19 +868,19 @@ pub struct State<
     priority_boost: AtomicBool,
 
     /// The global state of the timekeeping system.
-    timeout: timeout::TimeoutGlobals<System, TimeoutHeap>,
+    timeout: timeout::TimeoutGlobals<Traits, TimeoutHeap>,
 }
 
 impl<
-        System: KernelCfg2,
+        Traits: KernelCfg2,
         PortTaskState: 'static,
         TaskReadyQueue: 'static + Init,
         TaskPriority: 'static,
         TimeoutHeap: 'static + Init,
-    > Init for State<System, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
+    > Init for State<Traits, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     const INIT: Self = Self {
-        running_task: utils::CpuLockCell::new(None),
+        running_task: klock::CpuLockCell::new(None),
         task_ready_queue: Init::INIT,
         #[cfg(feature = "priority_boost")]
         priority_boost: AtomicBool::new(false),
@@ -952,12 +889,12 @@ impl<
 }
 
 impl<
-        System: Kernel,
+        Traits: KernelTraits,
         PortTaskState: 'static + fmt::Debug,
         TaskReadyQueue: 'static + fmt::Debug,
         TaskPriority: 'static + fmt::Debug,
         TimeoutHeap: 'static + fmt::Debug,
-    > fmt::Debug for State<System, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
+    > fmt::Debug for State<Traits, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("State")
@@ -977,13 +914,13 @@ impl<
     }
 }
 
-impl<System: KernelCfg2> State<System> {
+impl<Traits: KernelCfg2> State<Traits> {
     /// Get the currently running task.
     #[inline]
     fn running_task(
         &self,
-        lock: utils::CpuLockTokenRefMut<System>,
-    ) -> Option<&'static TaskCb<System>> {
+        lock: klock::CpuLockTokenRefMut<Traits>,
+    ) -> Option<&'static TaskCb<Traits>> {
         *self.running_task.read(&*lock)
     }
 
@@ -1000,7 +937,7 @@ impl<System: KernelCfg2> State<System> {
     ///
     /// Writing the variable is not allowed.
     #[inline]
-    pub fn running_task_ptr(&self) -> *mut Option<&'static TaskCb<System>> {
+    pub fn running_task_ptr(&self) -> *mut Option<&'static TaskCb<Traits>> {
         self.running_task.as_ptr()
     }
 }

@@ -18,9 +18,9 @@ impl KernelTestUtil {
         }
     }
 
-    fn success<System: PortInstance>(&self) {
+    fn success<Traits: PortInstance>(&self) {
         self.is_successful.store(true, Ordering::Relaxed);
-        r3_port_std::shutdown::<System>();
+        r3_port_std::shutdown::<Traits>();
     }
 
     fn run(&self, func: impl FnOnce()) {
@@ -54,7 +54,8 @@ macro_rules! instantiate_kernel_tests {
             use r3_test_suite::kernel_benchmarks;
             use $path as test_case;
 
-            r3_port_std::use_port!(unsafe struct System);
+            type System = r3_kernel::System<SystemTraits>;
+            r3_port_std::use_port!(unsafe struct SystemTraits);
 
             struct Driver;
             static TEST_UTIL: super::KernelTestUtil = super::KernelTestUtil::new();
@@ -65,11 +66,11 @@ macro_rules! instantiate_kernel_tests {
                 }
 
                 fn success() {
-                    TEST_UTIL.success::<System>();
+                    TEST_UTIL.success::<SystemTraits>();
                 }
 
                 fn performance_time() -> u32 {
-                    port_std_impl::PORT_STATE.tick_count::<System>()
+                    port_std_impl::PORT_STATE.tick_count::<SystemTraits>()
                 }
 
                 const PERFORMANCE_TIME_UNIT: &'static str = "μs";
@@ -79,11 +80,11 @@ macro_rules! instantiate_kernel_tests {
             }
 
             static COTTAGE: test_case::App<System> =
-                r3::build!(System, test_case::App::new::<Driver> => test_case::App<System>);
+                r3_kernel::build!(SystemTraits, test_case::App::new::<_, Driver> => test_case::App<System>);
 
             pub fn run() {
                 TEST_UTIL.run(|| {
-                    port_std_impl::PORT_STATE.port_boot::<System>();
+                    port_std_impl::PORT_STATE.port_boot::<SystemTraits>();
                 });
             }
         })*

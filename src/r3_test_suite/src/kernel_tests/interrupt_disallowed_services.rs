@@ -1,18 +1,31 @@
 //! Checks the return codes of disallowed system calls made in an interrupt
 //! context.
-use r3::{
-    kernel::{self, cfg::CfgBuilder, InterruptHandler, InterruptLine, Task},
-    prelude::*,
-};
+use core::assert_matches::assert_matches;
+use r3::kernel::{self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task};
 
 use super::Driver;
+use crate::utils::conditional::KernelBoostPriorityExt;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelInterruptLine + KernelBoostPriorityExt
+{
+}
+impl<T: traits::KernelBase + traits::KernelInterruptLine + KernelBoostPriorityExt> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgInterruptLine,
+    {
         Task::build()
             .start(task_body::<System, D>)
             .priority(0)
@@ -42,7 +55,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -54,21 +67,34 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     int.pend().unwrap();
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Disallowed in a non-task context
-    assert_eq!(
+    if let &[priority, ..] = D::INTERRUPT_PRIORITIES {
+        assert_eq!(
+            D::app().int.unwrap().set_priority(priority),
+            Err(kernel::SetInterruptLinePriorityError::BadContext),
+        );
+        assert_eq!(
+            unsafe { D::app().int.unwrap().set_priority_unchecked(priority) },
+            Err(kernel::SetInterruptLinePriorityError::BadContext),
+        );
+    }
+    assert_matches!(
         D::app().int.unwrap().set_priority(1),
-        Err(kernel::SetInterruptLinePriorityError::BadContext),
+        Err(kernel::SetInterruptLinePriorityError::BadContext
+            | kernel::SetInterruptLinePriorityError::BadParam),
     );
-    assert_eq!(
+    assert_matches!(
         unsafe { D::app().int.unwrap().set_priority_unchecked(1) },
-        Err(kernel::SetInterruptLinePriorityError::BadContext),
+        Err(kernel::SetInterruptLinePriorityError::BadContext
+            | kernel::SetInterruptLinePriorityError::BadParam),
     );
-    #[cfg(feature = "priority_boost")]
-    assert_eq!(
-        System::boost_priority(),
-        Err(kernel::BoostPriorityError::BadContext),
-    );
+    if let Some(cap) = System::BOOST_PRIORITY_CAPABILITY {
+        assert_eq!(
+            System::boost_priority(cap),
+            Err(kernel::BoostPriorityError::BadContext),
+        );
+    }
     assert_eq!(
         unsafe { System::exit_task() },
         Err(kernel::ExitTaskError::BadContext),

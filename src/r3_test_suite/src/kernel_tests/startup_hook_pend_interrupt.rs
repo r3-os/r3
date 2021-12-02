@@ -61,21 +61,34 @@
 //! (2).
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, StartupHook, Task},
-    prelude::*,
+    kernel::{traits, Cfg, InterruptHandler, InterruptLine, StartupHook, Task},
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic
+{
+}
+impl<T: traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     task: Task<System>,
     int: Option<InterruptLine<System>>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgInterruptLine,
+    {
         StartupHook::build().start(hook::<System, D>).finish(b);
 
         let task = Task::build()
@@ -108,7 +121,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -122,13 +135,13 @@ fn hook<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 }
 
-fn isr<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(2, 3);
     D::app().task.activate().unwrap();
     D::app().seq.expect_and_replace(3, 4);
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(4, 5);
     D::success();
 }

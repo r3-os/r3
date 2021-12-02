@@ -5,16 +5,13 @@ authors = ["yvt <i@yvt.jp>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-description = "Static RTOS testing the limit of Rust's const eval and generics"
+description = "Static RTOS API testing the limit of Rust's const eval and generics"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "rtos"]
 repository = "https://github.com/r3-os/r3"
 
 [features]
 default = []
-inline_syscall = []
-priority_boost = []
-system_time = []
 
 # Enable the diagram rendering by svgbob
 doc = ["svgbobdoc/enable"]
@@ -28,11 +25,12 @@ _full = []
 num-integer = { version = "0.1.42", default-features = false }
 num-traits = { version = "0.2.11", default-features = false }
 pin-utils = { version = "0.1.0" }
-svgbobdoc = { version = "0.3.0-alpha.2" }
+svgbobdoc = { version = "0.3.0-alpha.3" }
 tokenlock = { version = "0.3.4", default-features = false }
 arrayvec = { version = "0.7.1", default-features = false }
 bitflags = { version = "1.2.1" }
 chrono = { version = "0.4.13", optional = true, default-features = false }
+either = { version = "1.6.1", default-features = false }
 elain = { version = "0.3.0" }
 
 [dev-dependencies]

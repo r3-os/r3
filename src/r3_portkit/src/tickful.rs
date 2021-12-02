@@ -37,7 +37,7 @@ pub enum CfgError {
     PeriodOverflowsU32,
     /// The tick period is longer than [`TIME_HARD_HEADROOM`].
     ///
-    /// [`TIME_HARD_HEADROOM`]: r3::kernel::TIME_HARD_HEADROOM
+    /// [`TIME_HARD_HEADROOM`]: r3_kernel::TIME_HARD_HEADROOM
     PeriodExceedsKernelHeadroom,
 }
 
@@ -69,7 +69,7 @@ impl fmt::Display for CfgError {
 }
 
 /// The precomputed parameters for the tickful implementation of
-/// [`r3::kernel::PortTimer`].
+/// [`r3_kernel::PortTimer`].
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct TickfulCfg {
     /// The integral part of the tick period.
@@ -141,7 +141,7 @@ impl TickfulCfg {
         //    called. If we were to continuously update `tick_count`, we would
         //    have to take the *real* interrupt latency into account.
         //
-        if tick_period_micros_ceil > r3::kernel::TIME_HARD_HEADROOM.as_micros() as u128 {
+        if tick_period_micros_ceil > r3_kernel::TIME_HARD_HEADROOM.as_micros() as u128 {
             return Err(CfgError::PeriodExceedsKernelHeadroom);
         }
 
@@ -175,7 +175,7 @@ pub type TickfulState<const CFG: TickfulCfg> =
     TickfulStateCore<Wrapping<{ CFG.take_division() - 1 }>>;
 
 /// The internal state of the tickful implementation of
-/// [`r3::kernel::PortTimer`].
+/// [`r3_kernel::PortTimer`].
 #[derive(Debug, Copy, Clone)]
 pub struct TickfulStateCore<Submicros> {
     tick_count_micros: u32,
@@ -361,7 +361,7 @@ mod tests {
     }
 
     /// `TickfulCfg` should reject a tick period that is larger than
-    /// [`r3::kernel::TIME_HARD_HEADROOM`].
+    /// [`r3_kernel::TIME_HARD_HEADROOM`].
     #[test]
     fn tickful_tick_too_long2() {
         assert_eq!(

@@ -1,6 +1,7 @@
 //! Runs test cases defined in `r3_test_suite`.
 #![feature(never_type)]
 #![feature(const_mut_refs)]
+#![feature(const_trait_impl)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
 #![feature(slice_ptr_len)]
@@ -19,9 +20,9 @@ impl KernelTestUtil {
         }
     }
 
-    fn success<System: PortInstance>(&self) {
+    fn success<Traits: PortInstance>(&self) {
         self.is_successful.store(true, Ordering::Relaxed);
-        r3_port_std::shutdown::<System>();
+        r3_port_std::shutdown::<Traits>();
     }
 
     fn fail(&self) {
@@ -56,7 +57,8 @@ macro_rules! instantiate_kernel_tests {
 
             $( { $($tt)* }, )*
 
-            // Port-specific tests
+            // Port-specific tests, which cover `r3` and `r3_kernel` as
+            // well as `r3_port_std`
             { path: crate::kernel_tests::external_interrupt, name_ident: external_interrupt, },
             { path: crate::kernel_tests::interrupt_table_sparsity, name_ident: interrupt_table_sparsity, },
             { path: crate::kernel_tests::stack_align, name_ident: stack_align, },
@@ -70,7 +72,8 @@ macro_rules! instantiate_kernel_tests {
             use r3_test_suite::kernel_tests;
             use $path as test_case;
 
-            r3_port_std::use_port!(unsafe struct System);
+            type System = r3_kernel::System<SystemTraits>;
+            r3_port_std::use_port!(unsafe struct SystemTraits);
 
             struct Driver;
             static TEST_UTIL: super::KernelTestUtil = super::KernelTestUtil::new();
@@ -81,7 +84,7 @@ macro_rules! instantiate_kernel_tests {
                 }
 
                 fn success() {
-                    TEST_UTIL.success::<System>();
+                    TEST_UTIL.success::<SystemTraits>();
                 }
 
                 fn fail() {
@@ -90,15 +93,16 @@ macro_rules! instantiate_kernel_tests {
 
                 const INTERRUPT_LINES: &'static [InterruptNum] = &[0, 1, 2, 3];
                 const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0, 4];
+                const TIME_USER_HEADROOM_IS_EXACT: bool = true;
             }
 
             static COTTAGE: test_case::App<System> =
-                r3::build!(System, test_case::App::new::<Driver> => test_case::App<System>);
+                r3_kernel::build!(SystemTraits, test_case::App::new::<_, Driver> => test_case::App<System>);
 
             #[test]
             fn run() {
                 TEST_UTIL.run(|| {
-                    port_std_impl::PORT_STATE.port_boot::<System>();
+                    port_std_impl::PORT_STATE.port_boot::<SystemTraits>();
                 });
             }
         }

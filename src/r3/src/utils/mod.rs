@@ -1,7 +1,4 @@
 //! Utility
-//!
-//! **This module is exempt from the API stability guarantee** unless specified
-//! otherwise. It's exposed only because it's needed by macros.
 use core::marker::PhantomData;
 
 /// Conditional type
@@ -46,25 +43,24 @@ macro_rules! If {
 mod binary_search;
 #[macro_use]
 mod sort;
-mod aligned_storage;
-pub mod binary_heap;
-pub(crate) mod convert;
-mod ctz;
-mod init;
-mod int;
-pub(crate) mod intrusive_list;
-pub mod mem;
-pub(crate) mod pin;
-mod prio_bitmap;
-mod rawcell;
 #[macro_use]
 mod vec;
+pub use vec::*;
 #[macro_use]
 pub mod for_times;
+
+mod aligned_storage;
+mod init;
+pub mod mem;
+mod rawcell;
 mod zeroinit;
-pub use self::{
-    aligned_storage::*, init::*, int::*, prio_bitmap::*, rawcell::*, vec::*, zeroinit::*,
-};
+pub use aligned_storage::*;
+pub use init::*;
+pub use rawcell::*;
+pub use zeroinit::*;
+
+/// A phantom type that is invariant over `T`.
+pub type PhantomInvariant<T> = core::marker::PhantomData<fn(T) -> T>;
 
 /// A "type function" producing a type.
 #[doc(hidden)]

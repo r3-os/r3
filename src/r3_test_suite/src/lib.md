@@ -25,6 +25,8 @@ Cargo features `tests_all` and `tests_selective` and an environment variable `R3
 - `tests_all` (enabled by default) enables all test cases.
 - `tests_selective` enables the test cases specified by `R3_TEST`. `R3_TEST` should contain a value like `kernel_tests::basic`.
 
+TODO: Disconnect the below features' semantics from `r3_kernel`. It'd be still useful to have feature flags to toggle the assumption about kernel capabilities, though.
+
 The R3 kernel exposes some optional features through Cargo features (e.g., `system_time`). They are all disabled by default. This crate provides Cargo features of the same names, which enable the respective features of the kernel as well as corresponding test cases. `full` Cargo feature enables all of such features (*enabled by default*).
 
 <div class="admonition-follows"></div>

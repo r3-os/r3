@@ -16,22 +16,35 @@
 //! ```
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, Task, Timer},
-    prelude::*,
+    kernel::{prelude::*, traits, Cfg, Task, Timer},
     time::Duration,
 };
 
 use super::Driver;
-use crate::utils::{time::KernelTimeExt, SeqTracker};
+use crate::utils::{conditional::KernelTimeExt, SeqTracker};
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelTimer + traits::KernelStatic + KernelTimeExt
+{
+}
+impl<T: traits::KernelBase + traits::KernelTimer + traits::KernelStatic + KernelTimeExt>
+    SupportedSystem for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     timer: Timer<System>,
     task: Task<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgTimer,
+    {
         let timer = Timer::build()
             .active(true)
             .start(timer_body::<System, D>)
@@ -50,7 +63,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { seq, timer, .. } = D::app();
 
     // Expected current time
@@ -97,7 +110,7 @@ fn task_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn timer_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { task, seq, .. } = D::app();
 
     seq.expect_and_replace(4, 5);

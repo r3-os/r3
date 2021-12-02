@@ -1,5 +1,6 @@
 //! The implementation of the RZ/A1 OS Timer driver.
-use r3::kernel::{cfg::CfgBuilder, InterruptHandler, InterruptLine, Kernel, PortToKernel, UTicks};
+use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine};
+use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_port_arm::Gic;
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use rza1::ostm0 as ostm;
@@ -11,7 +12,7 @@ use crate::os_timer::cfg::OsTimerOptions;
 /// # Safety
 ///
 /// Only meant to be implemented by [`use_os_timer!`].
-pub unsafe trait OsTimerInstance: Kernel + OsTimerOptions + Gic {
+pub unsafe trait OsTimerInstance: KernelTraits + OsTimerOptions + Gic {
     // FIXME: Specifying `TicklessCfg::new(...)` here causes a "cycle
     //        detected" error
     const TICKLESS_CFG: TicklessCfg;
@@ -33,19 +34,22 @@ trait OsTimerInstanceExt: OsTimerInstance {
 impl<T: OsTimerInstance> OsTimerInstanceExt for T {}
 
 /// The configuration function.
-pub const fn configure<System: OsTimerInstance>(b: &mut CfgBuilder<System>) {
+pub const fn configure<C, Traits: OsTimerInstance>(b: &mut Cfg<C>)
+where
+    C: ~const traits::CfgInterruptLine<System = System<Traits>>,
+{
     InterruptLine::build()
-        .line(System::INTERRUPT_OSTM)
-        .priority(System::INTERRUPT_OSTM_PRIORITY)
+        .line(Traits::INTERRUPT_OSTM)
+        .priority(Traits::INTERRUPT_OSTM_PRIORITY)
         .enabled(true)
         .finish(b);
     InterruptHandler::build()
-        .line(System::INTERRUPT_OSTM)
-        .start(handle_tick::<System>)
+        .line(Traits::INTERRUPT_OSTM)
+        .start(handle_tick::<Traits>)
         .finish(b);
 }
 
-/// Implements [`crate::Timer::init`]
+/// Implements [`r3_port_arm::Timer::init`]
 #[inline]
 pub fn init<System: OsTimerInstance>() {
     let ostm = System::ostm_regs();
@@ -92,7 +96,7 @@ fn hw_tick_count<System: OsTimerInstance>() -> u32 {
     System::ostm_regs().cnt.read().bits()
 }
 
-/// Implements [`r3::kernel::PortTimer::tick_count`]
+/// Implements [`r3_kernel::PortTimer::tick_count`]
 ///
 /// # Safety
 ///
@@ -107,28 +111,28 @@ pub unsafe fn tick_count<System: OsTimerInstance>() -> UTicks {
     tstate.tick_count(tcfg, hw_tick_count)
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick`]
+/// Implements [`r3_kernel::PortTimer::pend_tick`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_os_timer!`.
 #[inline]
-pub unsafe fn pend_tick<System: OsTimerInstance>() {
-    let _ = InterruptLine::<System>::from_num(System::INTERRUPT_OSTM).pend();
+pub unsafe fn pend_tick<Traits: OsTimerInstance>() {
+    let _ = InterruptLine::<System<Traits>>::from_num(Traits::INTERRUPT_OSTM).pend();
 }
 
-/// Implements [`r3::kernel::PortTimer::pend_tick_after`]
+/// Implements [`r3_kernel::PortTimer::pend_tick_after`]
 ///
 /// # Safety
 ///
 /// Only meant to be referenced by `use_os_timer!`.
-pub unsafe fn pend_tick_after<System: OsTimerInstance>(tick_count_delta: UTicks) {
-    let ostm = System::ostm_regs();
-    let tcfg = &System::TICKLESS_CFG;
+pub unsafe fn pend_tick_after<Traits: OsTimerInstance>(tick_count_delta: UTicks) {
+    let ostm = Traits::ostm_regs();
+    let tcfg = &Traits::TICKLESS_CFG;
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
 
-    let cur_hw_tick_count = hw_tick_count::<System>();
+    let cur_hw_tick_count = hw_tick_count::<Traits>();
     let measurement = tstate.mark_reference_and_measure(tcfg, cur_hw_tick_count, tick_count_delta);
 
     ostm.cmp
@@ -136,25 +140,25 @@ pub unsafe fn pend_tick_after<System: OsTimerInstance>(tick_count_delta: UTicks)
 
     // Did we go past `hw_tick_count` already? In that case, pend an interrupt
     // manually because the timer might not have generated an interrupt.
-    let cur_hw_tick_count2 = hw_tick_count::<System>();
+    let cur_hw_tick_count2 = hw_tick_count::<Traits>();
     if cur_hw_tick_count2.wrapping_sub(cur_hw_tick_count) >= measurement.hw_ticks {
-        let _ = InterruptLine::<System>::from_num(System::INTERRUPT_OSTM).pend();
+        let _ = InterruptLine::<System<Traits>>::from_num(Traits::INTERRUPT_OSTM).pend();
     }
 }
 
 #[inline]
-fn handle_tick<System: OsTimerInstance>(_: usize) {
-    let tcfg = &System::TICKLESS_CFG;
+fn handle_tick<Traits: OsTimerInstance>(_: usize) {
+    let tcfg = &Traits::TICKLESS_CFG;
 
     // Safety: CPU Lock protects it from concurrent access
-    let tstate = unsafe { &mut *System::tickless_state() };
+    let tstate = unsafe { &mut *Traits::tickless_state() };
 
-    let cur_hw_tick_count = hw_tick_count::<System>();
+    let cur_hw_tick_count = hw_tick_count::<Traits>();
     tstate.mark_reference(tcfg, cur_hw_tick_count);
 
     // `timer_tick` will call `pend_tick[_after]`, so it's unnecessary to
     // clear the interrupt flag
 
     // Safety: CPU Lock inactive, an interrupt context
-    unsafe { System::timer_tick() };
+    unsafe { Traits::timer_tick() };
 }

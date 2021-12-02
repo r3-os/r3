@@ -1,17 +1,22 @@
 //! Waits for an event group with various wait flags.
-use r3::{
-    kernel::{cfg::CfgBuilder, EventGroup, EventGroupWaitFlags, Task},
-    prelude::*,
-};
+use r3::kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, Task};
 
 use super::Driver;
 
-pub struct App<System> {
+pub trait SupportedSystem: traits::KernelBase + traits::KernelEventGroup {}
+impl<T: traits::KernelBase + traits::KernelEventGroup> SupportedSystem for T {}
+
+pub struct App<System: SupportedSystem> {
     eg: EventGroup<System>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System>
+            + ~const traits::CfgTask
+            + ~const traits::CfgEventGroup,
+    {
         Task::build()
             .start(task1_body::<System, D>)
             .priority(2)
@@ -24,7 +29,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let eg = D::app().eg;
 
     eg.set(0b100011).unwrap();

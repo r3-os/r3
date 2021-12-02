@@ -1,20 +1,31 @@
 //! Sequence the execution of tasks by dynamically changing their priorities.
 use r3::{
     hunk::Hunk,
-    kernel::{cfg::CfgBuilder, Task},
-    prelude::*,
+    kernel::{traits, Cfg, Task},
 };
 
 use super::Driver;
 use crate::utils::SeqTracker;
 
-pub struct App<System> {
+pub trait SupportedSystem:
+    traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelStatic
+{
+}
+impl<T: traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelStatic> SupportedSystem
+    for T
+{
+}
+
+pub struct App<System: SupportedSystem> {
     task2: Task<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
-impl<System: Kernel> App<System> {
-    pub const fn new<D: Driver<Self>>(b: &mut CfgBuilder<System>) -> Self {
+impl<System: SupportedSystem> App<System> {
+    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    where
+        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+    {
         Task::build()
             .start(task1_body::<System, D>)
             .priority(1)
@@ -32,7 +43,7 @@ impl<System: Kernel> App<System> {
     }
 }
 
-fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // `task1` executes first because it has a higher priority.
     D::app().seq.expect_and_replace(0, 1);
     assert_eq!(D::app().task2.priority(), Ok(2));
@@ -50,7 +61,7 @@ fn task1_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
     // Exit from `task1`, relinquishing the control to `task2`.
 }
 
-fn task2_body<System: Kernel, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
     assert_eq!(D::app().task2.priority(), Ok(0));
     assert_eq!(D::app().task2.effective_priority(), Ok(0));

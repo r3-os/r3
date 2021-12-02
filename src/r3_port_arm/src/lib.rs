@@ -6,6 +6,7 @@
 #![feature(const_ptr_offset_from)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_refs_to_cell)]
+#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(asm)]
 #![feature(naked_functions)]
@@ -19,6 +20,10 @@
 /// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate r3;
+
+/// Used by `use_port!`
+#[doc(hidden)]
+pub extern crate r3_kernel;
 
 /// Used by `use_sp804!`
 #[doc(hidden)]
