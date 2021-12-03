@@ -28,29 +28,29 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::build()
+        Task::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        Task::build()
+        Task::define()
             .start(task3_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        Task::build()
+        Task::define()
             .start(task4_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let eg = EventGroup::build().finish(b);
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let eg = EventGroup::define().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg, seq }
     }

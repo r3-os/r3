@@ -28,7 +28,7 @@ impl<System: SupportedSystem> App<System> {
         let mut i = 0;
         // FIXME: Work-around for `for` being unsupported in `const fn`
         while i < TASKS.len() {
-            Task::build()
+            Task::define()
                 .start(task_body::<System, D>)
                 .param(i)
                 .priority(0)
@@ -37,13 +37,13 @@ impl<System: SupportedSystem> App<System> {
             i += 1;
         }
 
-        Task::build()
+        Task::define()
             .start(completion_task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let done = EventGroup::build().finish(b);
+        let done = EventGroup::define().finish(b);
 
         App { done }
     }

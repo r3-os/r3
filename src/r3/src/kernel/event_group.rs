@@ -89,7 +89,7 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
 impl<System: raw::KernelEventGroup> EventGroup<System> {
     /// Construct a `EventGroupDefiner` to define an event group in [a
     /// configuration function](crate#static-configuration).
-    pub const fn build() -> EventGroupDefiner<System> {
+    pub const fn define() -> EventGroupDefiner<System> {
         EventGroupDefiner::new()
     }
 

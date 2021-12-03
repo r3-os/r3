@@ -28,13 +28,13 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        Task::build()
+        Task::define()
             .start(task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let eg1 = Semaphore::build().maximum(1).initial(1).finish(b);
-        let eg2 = Semaphore::build().maximum(2).initial(1).finish(b);
+        let eg1 = Semaphore::define().maximum(1).initial(1).finish(b);
+        let eg2 = Semaphore::define().maximum(2).initial(1).finish(b);
 
         App { eg1, eg2 }
     }

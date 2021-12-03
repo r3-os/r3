@@ -28,7 +28,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::build()
+        Task::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)
@@ -37,61 +37,61 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(3)
                 .priority(30)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(1)
                 .priority(10)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(7)
                 .priority(70)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(5)
                 .priority(50)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(4)
                 .priority(40)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(10)
                 .priority(100)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(9)
                 .priority(90)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(8)
                 .priority(80)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(2)
                 .priority(20)
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .param(6)
@@ -99,7 +99,7 @@ impl<System: SupportedSystem> App<System> {
                 .finish(b);
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .priority(int_pri)
                     .enabled(true)
@@ -109,7 +109,7 @@ impl<System: SupportedSystem> App<System> {
             None
         };
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { int, seq }
     }

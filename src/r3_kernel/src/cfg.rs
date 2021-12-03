@@ -333,7 +333,7 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
                 let size =
                     (size + Traits::STACK_ALIGN - 1) / Traits::STACK_ALIGN * Traits::STACK_ALIGN;
 
-                let hunk = Hunk::build()
+                let hunk = Hunk::define()
                     .len(size)
                     .align(Traits::STACK_ALIGN)
                     .finish(cfg);

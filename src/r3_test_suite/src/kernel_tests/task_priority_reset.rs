@@ -26,18 +26,18 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        let task2 = Task::build()
+        let task2 = Task::define()
             .start(task2_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { task2, seq }
     }

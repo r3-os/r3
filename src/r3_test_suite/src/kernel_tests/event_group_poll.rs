@@ -28,22 +28,22 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgEventGroup
             + ~const traits::CfgInterruptLine,
     {
-        let eg = EventGroup::build().finish(b);
+        let eg = EventGroup::define().finish(b);
 
-        StartupHook::build()
+        StartupHook::define()
             .start(startup_hook::<System, D>)
             .finish(b);
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .enabled(true)
                     .priority(int_pri)

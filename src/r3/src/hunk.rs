@@ -46,7 +46,7 @@ unsafe impl<System, T: ?Sized + Sync> Sync for Hunk<System, T> {}
 impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
     /// Construct a `HunkDefiner` to define a hunk in [a configuration
     /// function](crate#static-configuration).
-    pub const fn build() -> HunkDefiner<System, T, DefaultInitTag> {
+    pub const fn define() -> HunkDefiner<System, T, DefaultInitTag> {
         HunkDefiner {
             _phantom: PhantomData,
             len: 1,
@@ -151,7 +151,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
         self,
         cfg: &mut Cfg<C>,
     ) -> Hunk<System, T> {
-        let untyped_hunk = kernel::Hunk::<System>::build()
+        let untyped_hunk = kernel::Hunk::<System>::define()
             .len(mem::size_of::<T>())
             .align(max(mem::align_of::<T>(), self.align))
             .finish(cfg);
@@ -163,7 +163,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
         // Insert an initializer
         if InitTag::NEEDS_INIT {
             unsafe {
-                StartupHook::build()
+                StartupHook::define()
                     .priority(INIT_HOOK_PRIORITY)
                     .start(|start| {
                         let untyped_hunk = kernel::Hunk::<System>::from_offset(start).as_ptr();
@@ -193,7 +193,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
     ) -> Hunk<System, [T]> {
         assert!(self.align.is_power_of_two(), "`align` is not power of two");
 
-        let untyped_hunk = kernel::Hunk::<System>::build()
+        let untyped_hunk = kernel::Hunk::<System>::define()
             .len(mem::size_of::<T>() * self.len)
             .align(max(mem::align_of::<T>(), self.align))
             .finish(cfg);

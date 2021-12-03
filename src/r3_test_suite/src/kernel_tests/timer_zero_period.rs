@@ -64,7 +64,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
-        let timer = Timer::build()
+        let timer = Timer::define()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(0))
             .active(true)
@@ -72,13 +72,13 @@ impl<System: SupportedSystem> App<System> {
             .param(42)
             .finish(b);
 
-        let task = Task::build()
+        let task = Task::define()
             .active(true)
             .start(task_body::<System, D>)
             .priority(1)
             .finish(b);
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { timer, task, seq }
     }

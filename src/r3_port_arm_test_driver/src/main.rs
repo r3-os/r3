@@ -173,7 +173,7 @@ macro_rules! instantiate_test {
 
             // Start PMU cycle counter
             #[cfg(feature = "kernel_benchmarks")]
-            StartupHook::build().start(|_| {
+            StartupHook::define().start(|_| {
                 use register::cpu::RegisterReadWrite;
                 pmu::PMCR.modify(pmu::PMCR::E::SET + pmu::PMCR::D::DivideBy1);
                 pmu::PMCNTENSET.modify(pmu::PMCNTENSET::C::SET);
@@ -181,14 +181,14 @@ macro_rules! instantiate_test {
 
             // Redirect the log output to stderr
             #[cfg(all(feature = "output-semihosting", not(feature = "board-rza1")))]
-            StartupHook::build().start(|_| {
+            StartupHook::define().start(|_| {
                 logger_semihosting::init();
             }).finish(b);
 
             // Redirect the log output to UART because semihosting is really
             // slow on real hardware, which may prevent proper test execution
             #[cfg(feature = "board-rza1")]
-            StartupHook::build().start(|_| {
+            StartupHook::define().start(|_| {
                 logger_rza1_uart::init();
             }).finish(b);
 

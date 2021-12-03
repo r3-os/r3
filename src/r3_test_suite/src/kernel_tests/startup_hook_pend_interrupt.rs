@@ -89,9 +89,9 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        StartupHook::build().start(hook::<System, D>).finish(b);
+        StartupHook::define().start(hook::<System, D>).finish(b);
 
-        let task = Task::build()
+        let task = Task::define()
             .start(task_body::<System, D>)
             .priority(0)
             .finish(b);
@@ -99,13 +99,13 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .priority(int_pri)
                     .enabled(true)
@@ -115,7 +115,7 @@ impl<System: SupportedSystem> App<System> {
             None
         };
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { task, int, seq }
     }

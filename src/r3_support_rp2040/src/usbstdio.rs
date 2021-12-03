@@ -76,7 +76,7 @@ where
     C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
     C::System: traits::KernelInterruptLine,
 {
-    StartupHook::build()
+    StartupHook::define()
         .start(|_| {
             let p = unsafe { rp2040::Peripherals::steal() };
 
@@ -116,13 +116,13 @@ where
     let int_num =
         rp2040::Interrupt::USBCTRL_IRQ as InterruptNum + r3_port_arm_m::INTERRUPT_EXTERNAL0;
 
-    InterruptLine::build()
+    InterruptLine::define()
         .line(int_num)
         .priority(4) // meh
         .enabled(true)
         .finish(b);
 
-    InterruptHandler::build()
+    InterruptHandler::define()
         .line(int_num)
         .start(|_| {
             poll::<TOptions>();

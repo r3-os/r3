@@ -28,7 +28,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::build()
+        Task::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)
@@ -38,7 +38,7 @@ impl<System: SupportedSystem> App<System> {
             (D::INTERRUPT_LINES, D::UNMANAGED_INTERRUPT_PRIORITIES)
         {
             unsafe {
-                InterruptHandler::build()
+                InterruptHandler::define()
                     .line(int_line)
                     .unmanaged()
                     .start(isr::<System, D>)
@@ -46,7 +46,7 @@ impl<System: SupportedSystem> App<System> {
             }
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .priority(int_pri)
                     .enabled(true)
@@ -56,7 +56,7 @@ impl<System: SupportedSystem> App<System> {
             None
         };
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { int, seq }
     }

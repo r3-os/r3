@@ -29,7 +29,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::build()
+        Task::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)
@@ -40,12 +40,12 @@ impl<System: SupportedSystem> App<System> {
             if D::INTERRUPT_LINES.len() >= 1 && D::INTERRUPT_PRIORITIES.len() >= 1 {
                 let int_line = D::INTERRUPT_LINES[0];
                 let pri = D::INTERRUPT_PRIORITIES[0];
-                InterruptHandler::build()
+                InterruptHandler::define()
                     .line(int_line)
                     .start(isr0::<System, D>)
                     .finish(b);
                 Some(
-                    InterruptLine::build()
+                    InterruptLine::define()
                         .line(int_line)
                         .priority(pri)
                         .enabled(true)
@@ -57,12 +57,12 @@ impl<System: SupportedSystem> App<System> {
             if D::INTERRUPT_LINES.len() >= 2 && D::INTERRUPT_PRIORITIES.len() >= 2 {
                 let int_line = D::INTERRUPT_LINES[1];
                 let pri = D::INTERRUPT_PRIORITIES[1];
-                InterruptHandler::build()
+                InterruptHandler::define()
                     .line(int_line)
                     .start(isr1::<System, D>)
                     .finish(b);
                 Some(
-                    InterruptLine::build()
+                    InterruptLine::define()
                         .line(int_line)
                         .priority(pri)
                         .enabled(true)
@@ -73,7 +73,7 @@ impl<System: SupportedSystem> App<System> {
             },
         ];
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { int, seq }
     }

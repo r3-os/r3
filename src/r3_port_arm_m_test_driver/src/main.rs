@@ -141,7 +141,7 @@ macro_rules! instantiate_test {
             // Configure DWT for performance measurement
             #[cfg(feature = "kernel_benchmarks")]
             #[cfg(not(feature = "board-rp_pico"))]
-            StartupHook::<System>::build().start(|_| {
+            StartupHook::<System>::define().start(|_| {
                 unsafe {
                     let mut peripherals = cortex_m::peripheral::Peripherals::steal();
                     peripherals.DCB.enable_trace();
@@ -154,7 +154,7 @@ macro_rules! instantiate_test {
             // the first one as the print channel for the printing macros, and
             // the second one as log output
             #[cfg(feature = "output-rtt")]
-            StartupHook::build().start(|_| {
+            StartupHook::define().start(|_| {
                 let channels = rtt_target::rtt_init! {
                     up: {
                         0: {
@@ -176,7 +176,7 @@ macro_rules! instantiate_test {
 
             // Redirect the log output to stderr
             #[cfg(feature = "output-semihosting")]
-            StartupHook::build().start(|_| {
+            StartupHook::define().start(|_| {
                 logger_semihosting::init();
             }).finish(b);
 

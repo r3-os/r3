@@ -92,7 +92,7 @@ where
      + ~const traits::CfgTask,
 {
     b.num_task_priority_levels(4);
-    let task = Task::build()
+    let task = Task::define()
         .start(task_body).priority(3).active(true).finish(b);
     Objects { task }
 }
@@ -133,7 +133,7 @@ mod m {
     where
         C: ~const traits::CfgBase + ~const traits::CfgTask,
     {
-        let task = Task::build()
+        let task = Task::define()
             .start(task_body).priority(3).active(true).finish(b);
         MyModule { task }
     }

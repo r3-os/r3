@@ -54,7 +54,7 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    StartupHook::build()
+    StartupHook::define()
         .start(|_| {
             // Configure peripherals
             let p = unsafe { rp2040::Peripherals::steal() };
@@ -87,18 +87,18 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     SystemTraits::configure_systick(b);
 
-    let task1 = Task::build()
+    let task1 = Task::define()
         .start(task1_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let task2 = Task::build().start(task2_body).priority(3).finish(b);
+    let task2 = Task::define().start(task2_body).priority(3).finish(b);
 
-    let mutex1 = Mutex::build().finish(b);
+    let mutex1 = Mutex::define().finish(b);
 
     // Listen for messages from core1
     let int_fifo = rp2040::Interrupt::SIO_IRQ_PROC0 as InterruptNum + port::INTERRUPT_EXTERNAL0;
-    InterruptLine::build()
+    InterruptLine::define()
         .line(int_fifo)
         // The priority should be lower than USB interrupts so that USB packets
         // can handled by the USB interrupt handler while we are doing
@@ -106,7 +106,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .priority(0x40)
         .enabled(true)
         .finish(b);
-    InterruptHandler::build()
+    InterruptHandler::define()
         .line(int_fifo)
         .start(|_| {
             let p = unsafe { rp2040::Peripherals::steal() };

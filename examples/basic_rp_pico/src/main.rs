@@ -73,7 +73,7 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    StartupHook::build()
+    StartupHook::define()
         .start(|_| {
             // Configure peripherals
             let p = unsafe { rp2040::Peripherals::steal() };
@@ -115,14 +115,14 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     SystemTraits::configure_systick(b);
 
-    let task1 = Task::build()
+    let task1 = Task::define()
         .start(task1_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let task2 = Task::build().start(task2_body).priority(3).finish(b);
+    let task2 = Task::define().start(task2_body).priority(3).finish(b);
 
-    let mutex1 = Mutex::build().finish(b);
+    let mutex1 = Mutex::define().finish(b);
 
     Objects {
         task1,

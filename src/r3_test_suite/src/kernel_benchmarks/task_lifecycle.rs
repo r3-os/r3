@@ -47,12 +47,12 @@ impl<System: SupportedSystem> AppInner<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        let task1 = Task::build()
+        let task1 = Task::define()
             .start(task1_body::<System, B>)
             .priority(1)
             .finish(b);
 
-        let task2 = Task::build()
+        let task2 = Task::define()
             .start(task2_body::<System, B>)
             .priority(2)
             .finish(b);

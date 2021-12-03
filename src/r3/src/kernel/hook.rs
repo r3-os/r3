@@ -25,7 +25,7 @@ pub struct StartupHook<System: raw::KernelBase>(PhantomInvariant<System>);
 impl<System: raw::KernelBase> StartupHook<System> {
     /// Construct a `StartupHookDefiner` to register a startup hook in
     /// [a configuration function](crate#static-configuration).
-    pub const fn build() -> StartupHookDefiner<System> {
+    pub const fn define() -> StartupHookDefiner<System> {
         StartupHookDefiner::new()
     }
 

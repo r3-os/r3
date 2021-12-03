@@ -196,10 +196,10 @@ where
 {
     /// Construct a `Definer` to define a mutex in [a configuration
     /// function](crate#static-configuration).
-    pub const fn build() -> Definer<System, T, DefaultInitTag> {
+    pub const fn define() -> Definer<System, T, DefaultInitTag> {
         Definer {
-            mutex: mutex::Mutex::build(),
-            hunk: Hunk::build(),
+            mutex: mutex::Mutex::define(),
+            hunk: Hunk::define(),
         }
     }
 }

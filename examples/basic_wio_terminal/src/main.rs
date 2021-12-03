@@ -109,7 +109,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
     // Register a hook to initialize hardware
-    StartupHook::build()
+    StartupHook::define()
         .start(|_| {
             init_hardware();
         })
@@ -119,46 +119,46 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     SystemTraits::configure_systick(b);
 
     // Miscellaneous tasks
-    let _noisy_task = Task::build()
+    let _noisy_task = Task::define()
         .start(noisy_task_body)
         .priority(0)
         .active(true)
         .finish(b);
-    let button_reporter_task = Task::build()
+    let button_reporter_task = Task::define()
         .start(button_reporter_task_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let _blink_task = Task::build()
+    let _blink_task = Task::define()
         .start(blink_task_body)
         .priority(1)
         .active(true)
         .finish(b);
 
     // USB input handler
-    let usb_in_task = Task::build()
+    let usb_in_task = Task::define()
         .start(usb_in_task_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let usb_poll_timer = Timer::build()
+    let usb_poll_timer = Timer::define()
         .start(usb_poll_timer_handler)
         .delay(r3::time::Duration::from_millis(0))
         // Should be < 10ms for USB compliance
         .period(r3::time::Duration::from_millis(5))
         .finish(b);
     let usb_interrupt_lines = [
-        InterruptLine::build()
+        InterruptLine::define()
             .line(interrupt::USB_OTHER as InterruptNum + port::INTERRUPT_EXTERNAL0)
             .priority(1)
             .enabled(true)
             .finish(b),
-        InterruptLine::build()
+        InterruptLine::define()
             .line(interrupt::USB_TRCPT0 as InterruptNum + port::INTERRUPT_EXTERNAL0)
             .priority(1)
             .enabled(true)
             .finish(b),
-        InterruptLine::build()
+        InterruptLine::define()
             .line(interrupt::USB_TRCPT1 as InterruptNum + port::INTERRUPT_EXTERNAL0)
             .priority(1)
             .enabled(true)
@@ -166,18 +166,18 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     ];
 
     // Graphics-related tasks and objects
-    let _animation_task = Task::build()
+    let _animation_task = Task::define()
         .start(animation_task_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let _console_task = Task::build()
+    let _console_task = Task::define()
         .start(console_task_body)
         .priority(3)
         .active(true)
         .finish(b);
     let console_pipe = queue::Queue::new(b);
-    let lcd_mutex = Mutex::build().finish(b);
+    let lcd_mutex = Mutex::define().finish(b);
 
     Objects {
         console_pipe,
@@ -686,9 +686,9 @@ mod queue {
             C: ~const traits::CfgBase<System = System> + ~const traits::CfgMutex,
         {
             Self {
-                st: Mutex::build().finish(cfg),
-                reader_lock: Mutex::build().finish(cfg),
-                writer_lock: Mutex::build().finish(cfg),
+                st: Mutex::define().finish(cfg),
+                reader_lock: Mutex::define().finish(cfg),
+                writer_lock: Mutex::define().finish(cfg),
             }
         }
 

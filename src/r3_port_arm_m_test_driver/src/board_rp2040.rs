@@ -62,7 +62,7 @@ where
     C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
     C::System: traits::KernelInterruptLine,
 {
-    StartupHook::build()
+    StartupHook::define()
         .start(|_| {
             // Set the correct vector table address
             unsafe {

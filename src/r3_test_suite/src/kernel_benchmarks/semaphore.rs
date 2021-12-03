@@ -58,12 +58,12 @@ impl<System: SupportedSystem> AppInner<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        let task1 = Task::build()
+        let task1 = Task::define()
             .start(task1_body::<System, B>)
             .priority(1)
             .finish(b);
 
-        let sem = Semaphore::build().initial(1).maximum(1).finish(b);
+        let sem = Semaphore::define().initial(1).maximum(1).finish(b);
 
         Self { task1, sem }
     }

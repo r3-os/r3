@@ -25,24 +25,24 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::build()
+        Task::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        Task::build()
+        Task::define()
             .start(task3_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let sem = Semaphore::build().initial(0).maximum(2).finish(b);
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let sem = Semaphore::define().initial(0).maximum(2).finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { sem, seq }
     }

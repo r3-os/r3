@@ -45,12 +45,12 @@ impl<System: SupportedSystem, Options: MutexBenchmarkOptions> AppInner<System, O
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        let task1 = Task::build()
+        let task1 = Task::define()
             .start(task1_body::<System, Options, B>)
             .priority(1)
             .finish(b);
 
-        let mtx = Mutex::build().protocol(Options::PROTOCOL).finish(b);
+        let mtx = Mutex::define().protocol(Options::PROTOCOL).finish(b);
 
         Self {
             task1,

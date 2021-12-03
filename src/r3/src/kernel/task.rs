@@ -125,7 +125,7 @@ impl<System: raw::KernelBase> Task<System> {
 impl<System: raw::KernelBase> Task<System> {
     /// Construct a `TaskDefiner` to define a mutex in [a configuration
     /// function](crate#static-configuration).
-    pub const fn build() -> TaskDefiner<System> {
+    pub const fn define() -> TaskDefiner<System> {
         TaskDefiner::new()
     }
 

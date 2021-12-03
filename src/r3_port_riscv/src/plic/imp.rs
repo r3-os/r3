@@ -13,7 +13,7 @@ pub const fn configure<C, Traits: Plic + KernelTraits>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgInterruptLine<System = System<Traits>>,
 {
-    InterruptHandler::build()
+    InterruptHandler::define()
         .line(INTERRUPT_EXTERNAL)
         .start(interrupt_handler::<Traits>)
         .finish(b);

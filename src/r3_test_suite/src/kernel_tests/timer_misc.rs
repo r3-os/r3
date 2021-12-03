@@ -48,38 +48,38 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
-        let timer1 = Timer::build()
+        let timer1 = Timer::define()
             .active(true)
             .delay(Duration::from_millis(200))
             .start(timer1_body::<System, D>)
             .param(42)
             .finish(b);
 
-        let timer2 = Timer::build()
+        let timer2 = Timer::define()
             .active(true)
             .delay(Duration::from_millis(100))
             .start(timer2_body::<System, D>)
             .param(52)
             .finish(b);
 
-        let timer3 = Timer::build()
+        let timer3 = Timer::define()
             .period(Duration::from_millis(0))
             .start(unreachable_timer_body::<System, D>)
             .finish(b);
 
-        let timer4 = Timer::build()
+        let timer4 = Timer::define()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(0))
             .start(unreachable_timer_body::<System, D>)
             .finish(b);
 
-        let task = Task::build()
+        let task = Task::define()
             .active(true)
             .start(task_body::<System, D>)
             .priority(1)
             .finish(b);
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App {
             timer1,

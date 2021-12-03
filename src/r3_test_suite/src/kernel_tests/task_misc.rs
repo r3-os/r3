@@ -27,21 +27,21 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        StartupHook::build()
+        StartupHook::define()
             .start(startup_hook::<System, D>)
             .finish(b);
 
-        let task1 = Task::build()
+        let task1 = Task::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .param(42)
             .finish(b);
-        let task2 = Task::build()
+        let task2 = Task::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task3 = Task::build()
+        let task3 = Task::define()
             .start(task3_body::<System, D>)
             .priority(1)
             .finish(b);

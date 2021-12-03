@@ -21,10 +21,10 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        StartupHook::build()
+        StartupHook::define()
             .start(startup_hook::<System, D>)
             .finish(b);
-        Task::build()
+        Task::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)

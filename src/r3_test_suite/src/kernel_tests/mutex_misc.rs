@@ -53,39 +53,41 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgMutex
             + ~const traits::CfgInterruptLine,
     {
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let task2 = Task::build()
+        let task2 = Task::define()
             .start(task2_body::<System, D>)
             .priority(3)
             .finish(b);
 
-        let task3 = Task::build()
+        let task3 = Task::define()
             .start(task3_body::<System, D>)
             .priority(2)
             .finish(b);
 
         let m = [
-            Mutex::build().protocol(MutexProtocol::None).finish(b),
-            Mutex::build().protocol(MutexProtocol::Ceiling(1)).finish(b),
-            Mutex::build().finish(b),
-            Mutex::build().finish(b),
+            Mutex::define().protocol(MutexProtocol::None).finish(b),
+            Mutex::define()
+                .protocol(MutexProtocol::Ceiling(1))
+                .finish(b),
+            Mutex::define().finish(b),
+            Mutex::define().finish(b),
         ];
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .enabled(true)
                     .priority(int_pri)
@@ -95,7 +97,7 @@ impl<System: SupportedSystem> App<System> {
             None
         };
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App {
             task2,

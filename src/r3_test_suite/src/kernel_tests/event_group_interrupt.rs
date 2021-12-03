@@ -41,19 +41,19 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::build()
+        Task::define()
             .start(task0_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task1 = Task::build()
+        let task1 = Task::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let eg = EventGroup::build().queue_order(QueueOrder::Fifo).finish(b);
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let eg = EventGroup::define().queue_order(QueueOrder::Fifo).finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg, task1, seq }
     }

@@ -24,22 +24,22 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task2 = Task::build()
+        let task2 = Task::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task3 = Task::build()
+        let task3 = Task::define()
             .start(task3_body::<System, D>)
             .priority(0)
             .finish(b);
 
-        let mtx = Mutex::build().finish(b);
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let mtx = Mutex::define().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App {
             task2,

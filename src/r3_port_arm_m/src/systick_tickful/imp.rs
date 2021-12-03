@@ -41,11 +41,11 @@ pub const fn configure<C, Traits: SysTickTickfulInstance>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgInterruptLine,
 {
-    InterruptLine::build()
+    InterruptLine::define()
         .line(INTERRUPT_SYSTICK)
         .priority(Traits::INTERRUPT_PRIORITY)
         .finish(b);
-    InterruptHandler::build()
+    InterruptHandler::define()
         .line(INTERRUPT_SYSTICK)
         .start(
             #[inline]
@@ -53,7 +53,7 @@ where
         )
         .finish(b);
 
-    StartupHook::build()
+    StartupHook::define()
         .start(
             #[inline]
             |_| init(Traits::TICK_PERIOD),

@@ -55,7 +55,7 @@ impl<System: cfg::KernelStatic> Copy for Hunk<System> {}
 impl<System: cfg::KernelStatic> Hunk<System> {
     /// Construct a `HunkDefiner` to define a hunk in [a
     /// configuration function](crate#static-configuration).
-    pub const fn build() -> HunkDefiner<System> {
+    pub const fn define() -> HunkDefiner<System> {
         HunkDefiner::new()
     }
 

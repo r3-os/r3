@@ -66,7 +66,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
 impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     /// Construct a `InterruptLineDefiner` to define an interrupt line in [a
     /// configuration function](crate#static-configuration).
-    pub const fn build() -> InterruptLineDefiner<System> {
+    pub const fn define() -> InterruptLineDefiner<System> {
         InterruptLineDefiner::new()
     }
 
@@ -175,7 +175,7 @@ impl<System: raw::KernelInterruptLine> InterruptHandler<System> {
 
     /// Construct a `InterruptHandlerDefiner` to define an interrupt handler in
     /// [a configuration function](crate#static-configuration).
-    pub const fn build() -> InterruptHandlerDefiner<System> {
+    pub const fn define() -> InterruptHandlerDefiner<System> {
         InterruptHandlerDefiner::new()
     }
 }
@@ -366,7 +366,7 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
         };
 
         // Add a `CfgInterruptLineInfo` at the same time
-        InterruptLine::build().line(line_num).finish(cfg);
+        InterruptLine::define().line(line_num).finish(cfg);
 
         let order = cfg.interrupt_handlers.len();
         cfg.interrupt_handlers.push(CfgInterruptHandler {

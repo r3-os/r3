@@ -43,19 +43,19 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        Task::build()
+        Task::define()
             .start(task0_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task1 = Task::build()
+        let task1 = Task::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(false)
             .finish(b);
 
-        let eg = Mutex::build().finish(b);
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let eg = Mutex::define().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { task1, eg, seq }
     }

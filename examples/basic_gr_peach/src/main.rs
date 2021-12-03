@@ -70,7 +70,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     SystemTraits::configure_os_timer(b);
 
     // Initialize the serial port
-    StartupHook::build()
+    StartupHook::define()
         .start(|_| {
             use support_rza1::serial::ScifExt;
 
@@ -89,12 +89,12 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         })
         .finish(b);
 
-    let task1 = Task::build()
+    let task1 = Task::define()
         .start(task1_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let task2 = Task::build().start(task2_body).priority(3).finish(b);
+    let task2 = Task::define().start(task2_body).priority(3).finish(b);
 
     Objects { task1, task2 }
 }

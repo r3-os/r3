@@ -23,7 +23,7 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        StartupHook::build().start(hook::<System, D>).finish(b);
+        StartupHook::define().start(hook::<System, D>).finish(b);
 
         App {
             _phantom: PhantomData,

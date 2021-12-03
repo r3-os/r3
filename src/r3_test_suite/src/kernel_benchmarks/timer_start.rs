@@ -45,7 +45,7 @@ impl<System: SupportedSystem> AppInner<System> {
             let mut i = 0;
             // FIXME: Work-around for `for` being unsupported in `const fn`
             while i < timers.len() {
-                timers[i] = MaybeUninit::new(Timer::build().start(|_| {}).finish(b));
+                timers[i] = MaybeUninit::new(Timer::define().start(|_| {}).finish(b));
                 i += 1;
             }
 

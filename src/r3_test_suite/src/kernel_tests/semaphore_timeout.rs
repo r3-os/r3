@@ -39,19 +39,19 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        Task::build()
+        Task::define()
             .start(task0_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let eg = Semaphore::build().initial(0).maximum(1).finish(b);
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let eg = Semaphore::define().initial(0).maximum(1).finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg, seq }
     }

@@ -85,7 +85,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     System::configure_systick(b);
 
     Objects {
-        task: Task::build()
+        task: Task::define()
             .start(task_body)
             .priority(2)
             .active(true)

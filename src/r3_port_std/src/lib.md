@@ -25,7 +25,7 @@ const fn configure_app<C>(cfg: &mut Cfg<C>) -> ()
 where
     C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
 {
-    Task::build()
+    Task::define()
         .start(task_body)
         .priority(1)
         .active(true)

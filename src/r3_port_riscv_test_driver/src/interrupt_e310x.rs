@@ -167,14 +167,14 @@ where
 {
     // Automatically clear the interrupt line when an interrupt is taken
     unsafe {
-        InterruptHandler::build()
+        InterruptHandler::define()
             .line(INTERRUPT_GPIO0)
             .start(|_| clear_interrupt_line(INTERRUPT_GPIO0).unwrap())
             .priority(i32::MIN)
             .unmanaged()
             .finish(b);
 
-        InterruptHandler::build()
+        InterruptHandler::define()
             .line(INTERRUPT_GPIO1)
             .start(|_| clear_interrupt_line(INTERRUPT_GPIO1).unwrap())
             .priority(i32::MIN)

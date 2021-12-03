@@ -28,20 +28,20 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        StartupHook::build()
+        StartupHook::define()
             .start(startup_hook::<System, D>)
             .finish(b);
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .priority(int_pri)
                     .finish(b),
@@ -50,7 +50,7 @@ impl<System: SupportedSystem> App<System> {
             None
         };
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { int, seq }
     }

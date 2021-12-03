@@ -87,7 +87,7 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
 impl<System: raw::KernelSemaphore> Semaphore<System> {
     /// Construct a `SemaphoreDefiner` to define a semaphore in [a
     /// configuration function](crate#static-configuration).
-    pub const fn build() -> SemaphoreDefiner<System> {
+    pub const fn define() -> SemaphoreDefiner<System> {
         SemaphoreDefiner::new()
     }
 

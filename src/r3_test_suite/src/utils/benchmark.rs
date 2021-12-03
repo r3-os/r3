@@ -86,13 +86,13 @@ pub const fn configure<C, System: SupportedSystem, Options: BencherOptions<Syste
 where
     C: ~const raw_cfg::CfgBase<System = System> + ~const raw_cfg::CfgTask,
 {
-    let task = Task::build()
+    let task = Task::define()
         .start(main_task::<System, Options>)
         .active(true)
         .priority(3)
         .finish(b);
 
-    let state = Hunk::<System, BencherState>::build().finish(b);
+    let state = Hunk::<System, BencherState>::define().finish(b);
 
     BencherCottage { task, state }
 }

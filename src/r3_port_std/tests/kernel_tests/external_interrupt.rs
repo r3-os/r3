@@ -28,7 +28,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
             + ~const traits::CfgInterruptLine
             + ~const traits::CfgTask,
     {
-        Task::build()
+        Task::define()
             .start(task_body1::<Traits, D>)
             .priority(1)
             .active(true)
@@ -37,13 +37,13 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<Traits, D>)
                 .finish(b);
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .priority(int_pri)
                     .enabled(true)
@@ -53,7 +53,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
             None
         };
 
-        let done = Hunk::<_, AtomicBool>::build().finish(b);
+        let done = Hunk::<_, AtomicBool>::define().finish(b);
 
         App { int, done }
     }

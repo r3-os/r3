@@ -130,7 +130,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
-        let timer = Timer::build()
+        let timer = Timer::define()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(10))
             .start(timer_body::<System, D>)
@@ -143,7 +143,7 @@ impl<System: SupportedSystem> App<System> {
         let mut i = 0;
         while i < NUM_TASKS {
             tasks[i] = Some(
-                Task::build()
+                Task::define()
                     .active(true)
                     .start(worker_body::<System, D>)
                     .priority(2)
@@ -156,12 +156,12 @@ impl<System: SupportedSystem> App<System> {
         // FIXME: Rewrite this with `<[_; 2]>::map` when it's compatible with `const fn`
         let tasks = [tasks[0].unwrap(), tasks[1].unwrap()];
 
-        let judge_task = Task::build()
+        let judge_task = Task::define()
             .start(judge_task_body::<System, D>)
             .priority(3)
             .finish(b);
 
-        let state = Hunk::<_, State>::build().finish(b);
+        let state = Hunk::<_, State>::define().finish(b);
 
         App {
             timer,

@@ -42,21 +42,21 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(3)
             .active(true)
             .finish(b);
-        let task2 = Task::build()
+        let task2 = Task::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task3 = Task::build()
+        let task3 = Task::define()
             .start(task3_body::<System, D>)
             .priority(2)
             .finish(b);
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { task2, task3, seq }
     }

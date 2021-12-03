@@ -180,7 +180,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     SystemTraits::configure_systick(b);
 
-    let task1 = Task::build()
+    let task1 = Task::define()
         .start(task1_body)
         .priority(2)
         .active(true)

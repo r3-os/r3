@@ -281,7 +281,7 @@ use crate::{
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     Timer::build()
+///     Timer::define()
 ///         .delay(Duration::from_millis(70))
 ///         .period(Duration::from_millis(40))
 ///         .active(true)
@@ -321,7 +321,7 @@ use crate::{
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     Timer::build()
+///     Timer::define()
 ///         .active(true)
 ///         .start(|_| dbg!())
 ///         .finish(b)
@@ -415,7 +415,7 @@ impl<System: raw::KernelTimer> Timer<System> {
 impl<System: raw::KernelTimer> Timer<System> {
     /// Construct a `TimerDefiner` to define a timer in [a
     /// configuration function](crate#static-configuration).
-    pub const fn build() -> TimerDefiner<System> {
+    pub const fn define() -> TimerDefiner<System> {
         TimerDefiner::new()
     }
 

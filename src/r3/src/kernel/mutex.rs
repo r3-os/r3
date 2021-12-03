@@ -55,7 +55,7 @@ pub use raw::MutexProtocol;
 ///     C: ~const traits::CfgMutex,
 ///     C::System: traits::KernelMutex, // FIXME: Why not implied by `CfgMutex`?
 /// {
-///     let mutex = Mutex::build()
+///     let mutex = Mutex::define()
 ///         .protocol(MutexProtocol::Ceiling(1))
 ///         .finish(cfg);
 ///     Objects { mutex }
@@ -323,7 +323,7 @@ impl<System: raw::KernelMutex> Mutex<System> {
 impl<System: raw::KernelMutex> Mutex<System> {
     /// Construct a `MutexDefiner` to define a mutex in [a
     /// configuration function](crate#static-configuration).
-    pub const fn build() -> MutexDefiner<System> {
+    pub const fn define() -> MutexDefiner<System> {
         MutexDefiner::new()
     }
 

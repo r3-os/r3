@@ -26,17 +26,25 @@ impl<System: SupportedSystem> App<System> {
     {
         b.num_task_priority_levels(16);
 
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(15)
             .active(true)
             .finish(b);
 
         let m = [
-            Mutex::build().protocol(MutexProtocol::Ceiling(0)).finish(b),
-            Mutex::build().protocol(MutexProtocol::Ceiling(1)).finish(b),
-            Mutex::build().protocol(MutexProtocol::Ceiling(2)).finish(b),
-            Mutex::build().protocol(MutexProtocol::Ceiling(3)).finish(b),
+            Mutex::define()
+                .protocol(MutexProtocol::Ceiling(0))
+                .finish(b),
+            Mutex::define()
+                .protocol(MutexProtocol::Ceiling(1))
+                .finish(b),
+            Mutex::define()
+                .protocol(MutexProtocol::Ceiling(2))
+                .finish(b),
+            Mutex::define()
+                .protocol(MutexProtocol::Ceiling(3))
+                .finish(b),
         ];
 
         App { m }

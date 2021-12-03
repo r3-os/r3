@@ -37,24 +37,24 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgInterruptLine
             + ~const traits::CfgMutex,
     {
-        Task::build()
+        Task::define()
             .start(task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let eg1 = Mutex::build().finish(b);
-        let eg2 = Mutex::build().finish(b);
+        let eg1 = Mutex::define().finish(b);
+        let eg2 = Mutex::define().finish(b);
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);
 
             Some(
-                InterruptLine::build()
+                InterruptLine::define()
                     .line(int_line)
                     .enabled(true)
                     .priority(int_pri)
@@ -64,7 +64,7 @@ impl<System: SupportedSystem> App<System> {
             None
         };
 
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg1, eg2, int, seq }
     }

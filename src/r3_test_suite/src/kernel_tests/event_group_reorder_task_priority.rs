@@ -46,32 +46,32 @@ impl<System: SupportedSystem> App<System> {
     {
         b.num_task_priority_levels(5);
 
-        Task::build()
+        Task::define()
             .start(task0_body::<System, D>)
             .priority(4)
             .active(true)
             .finish(b);
-        let task1 = Task::build()
+        let task1 = Task::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task2 = Task::build()
+        let task2 = Task::define()
             .start(task2_body::<System, D>)
             .priority(2)
             .finish(b);
-        let task3 = Task::build()
+        let task3 = Task::define()
             .start(task3_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task4 = Task::build()
+        let task4 = Task::define()
             .start(task4_body::<System, D>)
             .priority(2)
             .finish(b);
 
-        let eg = EventGroup::build()
+        let eg = EventGroup::define()
             .queue_order(QueueOrder::TaskPriority)
             .finish(b);
-        let seq = Hunk::<_, SeqTracker>::build().finish(b);
+        let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App {
             eg,

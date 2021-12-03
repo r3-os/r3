@@ -38,12 +38,12 @@ pub const fn configure<C, Traits: OsTimerInstance>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgInterruptLine<System = System<Traits>>,
 {
-    InterruptLine::build()
+    InterruptLine::define()
         .line(Traits::INTERRUPT_OSTM)
         .priority(Traits::INTERRUPT_OSTM_PRIORITY)
         .enabled(true)
         .finish(b);
-    InterruptHandler::build()
+    InterruptHandler::define()
         .line(Traits::INTERRUPT_OSTM)
         .start(handle_tick::<Traits>)
         .finish(b);

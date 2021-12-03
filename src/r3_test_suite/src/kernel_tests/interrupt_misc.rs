@@ -26,26 +26,26 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::build()
+        Task::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)
             .finish(b);
 
-        StartupHook::build()
+        StartupHook::define()
             .start(startup_hook::<System, D>)
             .finish(b);
 
         let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
             unsafe {
-                InterruptHandler::build()
+                InterruptHandler::define()
                     .line(int_line)
                     .start(isr::<System, D>)
                     .unmanaged()
                     .finish(b);
             }
 
-            Some(InterruptLine::build().line(int_line).finish(b))
+            Some(InterruptLine::define().line(int_line).finish(b))
         } else {
             None
         };

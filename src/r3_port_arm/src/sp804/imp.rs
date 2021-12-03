@@ -37,12 +37,12 @@ pub const fn configure<C, Traits: Sp804Instance>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgInterruptLine<System = System<Traits>>,
 {
-    InterruptLine::build()
+    InterruptLine::define()
         .line(Traits::INTERRUPT_NUM)
         .priority(Traits::INTERRUPT_PRIORITY)
         .enabled(true)
         .finish(b);
-    InterruptHandler::build()
+    InterruptHandler::define()
         .line(Traits::INTERRUPT_NUM)
         .start(handle_tick::<Traits>)
         .finish(b);

@@ -19,7 +19,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     where
         C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgTask,
     {
-        Task::build()
+        Task::define()
             .start(task_body::<Traits, D>)
             .priority(0)
             .active(true)

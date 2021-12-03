@@ -17,13 +17,13 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::build()
+        Task::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let eg = EventGroup::build().finish(b);
+        let eg = EventGroup::define().finish(b);
 
         App { eg }
     }

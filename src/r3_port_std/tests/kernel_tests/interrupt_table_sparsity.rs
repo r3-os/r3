@@ -20,20 +20,22 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     where
         C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgInterruptLine,
     {
-        StartupHook::build().start(hook_body::<Traits, D>).finish(b);
+        StartupHook::define()
+            .start(hook_body::<Traits, D>)
+            .finish(b);
 
-        InterruptLine::build().line(2).priority(64).finish(b);
-        InterruptLine::build().line(3).priority(64).finish(b);
+        InterruptLine::define().line(2).priority(64).finish(b);
+        InterruptLine::define().line(3).priority(64).finish(b);
 
         unsafe {
-            InterruptHandler::build().line(2).start(|_| {}).finish(b);
-            InterruptHandler::build().line(3).start(|_| {}).finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define().line(2).start(|_| {}).finish(b);
+            InterruptHandler::define().line(3).start(|_| {}).finish(b);
+            InterruptHandler::define()
                 .line(5)
                 .unmanaged()
                 .start(|_| {})
                 .finish(b);
-            InterruptHandler::build()
+            InterruptHandler::define()
                 .line(7)
                 .unmanaged()
                 .start(|_| {})
