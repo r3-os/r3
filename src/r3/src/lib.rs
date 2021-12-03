@@ -7,7 +7,6 @@
 #![feature(maybe_uninit_slice)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
-#![feature(const_raw_ptr_deref)]
 #![feature(const_option)]
 #![feature(const_trait_impl)]
 #![feature(const_refs_to_cell)]

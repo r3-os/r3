@@ -5,7 +5,6 @@
 #![feature(decl_macro)]
 #![feature(generic_const_exprs)]
 #![feature(const_ptr_offset_from)]
-#![feature(const_raw_ptr_deref)]
 #![feature(const_refs_to_cell)]
 #![feature(slice_ptr_len)]
 #![feature(naked_functions)]
