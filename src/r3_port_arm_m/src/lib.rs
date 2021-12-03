@@ -4,7 +4,6 @@
 #![feature(asm)]
 #![feature(decl_macro)]
 #![feature(generic_const_exprs)]
-#![feature(const_maybe_uninit_as_ptr)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_refs_to_cell)]

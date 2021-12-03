@@ -2,7 +2,6 @@
 #![feature(const_ptr_offset)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
-#![feature(const_maybe_uninit_as_ptr)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_refs_to_cell)]
