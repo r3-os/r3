@@ -2199,7 +2199,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt"
 version = "0.6.2"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=cd7b460d1940630d235b5a7b46cc50421c12e39b#cd7b460d1940630d235b5a7b46cc50421c12e39b"
+source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=07ade94990ef49b35bf298f9cbe59c671c6f1101#07ade94990ef49b35bf298f9cbe59c671c6f1101"
 dependencies = [
  "riscv-rt 0.8.0",
 ]
@@ -2207,7 +2207,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt"
 version = "0.8.0"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=cd7b460d1940630d235b5a7b46cc50421c12e39b#cd7b460d1940630d235b5a7b46cc50421c12e39b"
+source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=07ade94990ef49b35bf298f9cbe59c671c6f1101#07ade94990ef49b35bf298f9cbe59c671c6f1101"
 dependencies = [
  "r0 1.0.0",
  "riscv 0.6.0",
@@ -2217,7 +2217,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt-macros"
 version = "0.1.6"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=cd7b460d1940630d235b5a7b46cc50421c12e39b#cd7b460d1940630d235b5a7b46cc50421c12e39b"
+source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=07ade94990ef49b35bf298f9cbe59c671c6f1101#07ade94990ef49b35bf298f9cbe59c671c6f1101"
 dependencies = [
  "proc-macro2",
  "quote",

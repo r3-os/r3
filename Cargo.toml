@@ -43,7 +43,7 @@ branch = "0.5-asm"
 # the precompiled object file with naked functions, which will always be
 # complied with the expected floating-point ABI.
 git = "https://github.com/yvt/rust-riscv-rt.git"
-rev = "cd7b460d1940630d235b5a7b46cc50421c12e39b"
+rev = "07ade94990ef49b35bf298f9cbe59c671c6f1101"
 version = "0.6.2"
 
 [profile.release]
