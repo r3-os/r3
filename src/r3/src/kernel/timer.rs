@@ -542,12 +542,9 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
         let id = c.raw().timer_define(
             raw_cfg::TimerDescriptor {
                 phantom: Init::INIT,
-                // FIXME: Work-around for `Option::expect` being not `const fn`
-                start: if let Some(x) = self.start {
-                    x
-                } else {
-                    panic!("`start` (timer callback function) is not specified")
-                },
+                start: self
+                    .start
+                    .expect("`start` (timer callback function) is not specified"),
                 param: self.param,
                 delay: self.delay,
                 period: self.period,

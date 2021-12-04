@@ -51,12 +51,7 @@ impl Time {
     /// Pancis if `millis` overflows the representable range of `Time`.
     #[inline]
     pub const fn from_millis(millis: u64) -> Self {
-        // FIXME: `Option::expect` is not `const fn` yet
-        Self::from_micros(if let Some(x) = millis.checked_mul(1_000) {
-            x
-        } else {
-            panic!("duration overflow");
-        })
+        Self::from_micros(millis.checked_mul(1_000).expect("duration overflow"))
     }
 
     /// Construct a new `Time` from the specified number of seconds.
@@ -64,12 +59,7 @@ impl Time {
     /// Pancis if `secs` overflows the representable range of `Time`.
     #[inline]
     pub const fn from_secs(secs: u64) -> Self {
-        // FIXME: `Option::expect` is not `const fn` yet
-        Self::from_micros(if let Some(x) = secs.checked_mul(1_000_000) {
-            x
-        } else {
-            panic!("duration overflow");
-        })
+        Self::from_micros(secs.checked_mul(1_000_000).expect("duration overflow"))
     }
 
     /// Get the total number of whole microseconds contained in the time span

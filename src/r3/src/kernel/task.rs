@@ -343,18 +343,14 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
         let id = cfg.raw().task_define(
             raw_cfg::TaskDescriptor {
                 phantom: Init::INIT,
-                start: if let Some(x) = self.start {
-                    x
-                } else {
-                    panic!("`start` (task entry point) is not specified")
-                },
+                start: self
+                    .start
+                    .expect("`start` (task entry point) is not specified"),
                 param: self.param,
                 active: self.active,
-                priority: if let Some(x) = self.priority {
-                    x
-                } else {
-                    panic!("`priority` (task entry point) is not specified")
-                },
+                priority: self
+                    .priority
+                    .expect("`priority` (task entry point) is not specified"),
                 stack_size: self.stack_size,
             },
             (),

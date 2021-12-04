@@ -231,12 +231,7 @@ impl<System: raw::KernelInterruptLine> InterruptLineDefiner<System> {
         self,
         cfg: &mut Cfg<C>,
     ) -> InterruptLine<System> {
-        // FIXME: Work-around for `Option::expect` being not `const fn`
-        let line_num = if let Some(line) = self.line {
-            line
-        } else {
-            panic!("`line` is not specified");
-        };
+        let line_num = self.line.expect("`line` is not specified");
 
         // Create a `CfgBuilderInterruptLine` for `line_num` if it doesn't exist
         // yet
@@ -358,12 +353,7 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
         self,
         cfg: &mut Cfg<C>,
     ) -> InterruptHandler<System> {
-        // FIXME: Work-around for `Option::expect` being not `const fn`
-        let line_num = if let Some(line) = self.line {
-            line
-        } else {
-            panic!("`line` is not specified");
-        };
+        let line_num = self.line.expect("`line` is not specified");
 
         // Add a `CfgInterruptLineInfo` at the same time
         InterruptLine::define().line(line_num).finish(cfg);
@@ -371,12 +361,7 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
         let order = cfg.interrupt_handlers.len();
         cfg.interrupt_handlers.push(CfgInterruptHandler {
             line: line_num,
-            // FIXME: Work-around for `Option::expect` being not `const fn`
-            start: if let Some(x) = self.start {
-                x
-            } else {
-                panic!("`start` is not specified")
-            },
+            start: self.start.expect("`start` is not specified"),
             param: self.param,
             priority: self.priority,
             unmanaged: self.unmanaged,
