@@ -18,7 +18,7 @@ r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
 r3 = { version = "0.1.0", path = "../r3" }
 
 tock-registers = { version = "0.7.0" }
-memoffset = { version = "0.6.1", features = ["unstable_const"] }
+memoffset = { version = "0.6.5", features = ["unstable_const"] }
 r0 = { version = "1.0.0" }
 
 [package.metadata.docs.rs]
