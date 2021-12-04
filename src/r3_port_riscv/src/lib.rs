@@ -2,6 +2,8 @@
 #![feature(decl_macro)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
+#![feature(asm_const)]
+#![feature(asm_sym)]
 #![feature(asm)]
 #![feature(raw_ref_op)]
 #![feature(const_option)]

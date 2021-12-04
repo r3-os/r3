@@ -124,6 +124,8 @@ pub const DEFAULT_FN_ALIGN: usize = if cfg!(target_arch = "aarch64") {
 ///
 /// ```
 /// #![feature(asm)]
+/// #![feature(asm_sym)]
+/// #![feature(asm_const)]
 /// #![feature(naked_functions)]
 /// use r3_portkit::sym::{sym_static, SymStatic, SymStaticExt};
 /// use std::cell::Cell;

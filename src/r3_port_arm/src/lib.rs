@@ -6,6 +6,8 @@
 #![feature(const_refs_to_cell)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
+#![feature(asm_const)]
+#![feature(asm_sym)]
 #![feature(asm)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
