@@ -4,7 +4,6 @@
 //! [R3]: ::r3
 //! [Raspberry Pi Pico]: https://pico.raspberrypi.org
 #![feature(raw_ref_op)]
-#![feature(maybe_uninit_ref)]
 #![feature(asm)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
