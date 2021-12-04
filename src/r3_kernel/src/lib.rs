@@ -1,5 +1,4 @@
 #![feature(const_maybe_uninit_assume_init)]
-#![feature(option_result_unwrap_unchecked)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
