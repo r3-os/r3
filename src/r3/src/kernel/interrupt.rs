@@ -5,7 +5,7 @@ use super::{
     raw, raw_cfg, Cfg, ClearInterruptLineError, EnableInterruptLineError, PendInterruptLineError,
     QueryInterruptLineError, SetInterruptLinePriorityError,
 };
-use crate::utils::{for_times::Nat, ComptimeVec, Init, PhantomInvariant};
+use crate::utils::{for_times::Nat, slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant};
 
 pub use raw::{InterruptNum, InterruptPriority};
 
@@ -458,16 +458,17 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: raw::KernelInt
 
 /// Sort interrupt handlers by (interrupt number, priority, order).
 pub(super) const fn sort_handlers(interrupt_handlers: &mut ComptimeVec<CfgInterruptHandler>) {
-    sort_unstable_by!(
-        interrupt_handlers.len(),
-        |i| interrupt_handlers.get_mut(i),
-        |x, y| if x.line != y.line {
-            x.line < y.line
-        } else if x.priority != y.priority {
-            x.priority < y.priority
-        } else {
-            x.order < y.order
-        }
+    slice_sort_unstable_by(
+        interrupt_handlers.as_mut_slice(),
+        closure!(|x: &CfgInterruptHandler, y: &CfgInterruptHandler| -> bool {
+            if x.line != y.line {
+                x.line < y.line
+            } else if x.priority != y.priority {
+                x.priority < y.priority
+            } else {
+                x.order < y.order
+            }
+        }),
     );
 }
 

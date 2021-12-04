@@ -43,6 +43,7 @@ macro_rules! If {
 mod binary_search;
 #[macro_use]
 mod sort;
+pub(crate) use sort::*;
 #[macro_use]
 mod vec;
 pub use vec::*;

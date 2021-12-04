@@ -4,6 +4,8 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(generic_const_exprs)]
 #![feature(const_ptr_offset)]
+#![feature(const_swap)]
+#![feature(const_slice_first_last)]
 #![feature(maybe_uninit_slice)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]

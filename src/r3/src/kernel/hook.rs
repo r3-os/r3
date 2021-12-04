@@ -1,6 +1,6 @@
 //! Hooks
 use super::{raw, raw_cfg, Cfg};
-use crate::utils::{ComptimeVec, Init, PhantomInvariant};
+use crate::utils::{slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant};
 
 // TODO: Other types of hooks
 
@@ -129,14 +129,15 @@ pub(crate) struct CfgStartupHook {
 
 /// Sort startup hooks by (priority, order).
 pub(crate) const fn sort_hooks(startup_hooks: &mut ComptimeVec<CfgStartupHook>) {
-    sort_unstable_by!(
-        startup_hooks.len(),
-        |i| startup_hooks.get_mut(i),
-        |x, y| if x.priority != y.priority {
-            x.priority < y.priority
-        } else {
-            x.order < y.order
-        }
+    slice_sort_unstable_by(
+        startup_hooks.as_mut_slice(),
+        closure!(|x: &CfgStartupHook, y: &CfgStartupHook| -> bool {
+            if x.priority != y.priority {
+                x.priority < y.priority
+            } else {
+                x.order < y.order
+            }
+        }),
     );
 }
 

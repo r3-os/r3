@@ -83,6 +83,20 @@ impl<T: Copy> ComptimeVec<T> {
         // Safety: `self.storage[0..self.len]` is initialized
         unsafe { MaybeUninit::slice_assume_init_ref(&*slice) }
     }
+
+    // FIXME: Replace this type's several methods with `const DerefMut<Target = [T]>`
+    /// Borrow the storage as a slice.
+    #[inline]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
+        // FIXME: Slicing is not `const fn` yet
+        let slice = core::ptr::slice_from_raw_parts_mut(
+            &mut self.storage as *mut _ as *mut MaybeUninit<T>,
+            self.len,
+        );
+
+        // Safety: `self.storage[0..self.len]` is initialized
+        unsafe { MaybeUninit::slice_assume_init_mut(&mut *slice) }
+    }
 }
 
 impl<T: Copy> ComptimeVec<T> {
