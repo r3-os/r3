@@ -203,7 +203,7 @@ macro_rules! const_array_from_fn {
     ) => {{
         use core::mem::MaybeUninit;
         use $crate::utils::for_times::Nat;
-        let array = [MaybeUninit::uninit(); $len_value];
+        let mut array = [MaybeUninit::uninit(); $len_value];
 
         if array.len() != <$len as Nat>::N {
             unreachable!();
@@ -228,8 +228,7 @@ macro_rules! const_array_from_fn {
             }
 
             (0..$len).for_each(|i| iter::<[$($ctx_t),*], i>(
-                // FIXME: `[T]::as_mut_ptr` is not `const fn` yet
-                &mut ($ctx, array.as_ptr() as *mut _)
+                &mut ($ctx, array.as_mut_ptr())
             ))
         }
 

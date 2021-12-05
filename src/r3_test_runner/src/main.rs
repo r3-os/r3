@@ -1,4 +1,6 @@
 #![feature(decl_macro)] // `macro`
+#![feature(must_not_suspend)] // `must_not_suspend` lint
+#![warn(must_not_suspend)]
 use std::{env, path::Path};
 use structopt::StructOpt;
 use thiserror::Error;

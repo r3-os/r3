@@ -108,12 +108,7 @@ impl<System: raw::KernelBase> StartupHookDefiner<System> {
         let startup_hooks = &mut cfg.startup_hooks;
         let order = startup_hooks.len();
         startup_hooks.push(CfgStartupHook {
-            // FIXME: Work-around for `Option::expect` being not `const fn`
-            start: if let Some(x) = self.start {
-                x
-            } else {
-                panic!("`start` is not specified")
-            },
+            start: self.start.expect("`start` is not specified"),
             param: self.param,
             priority: self.priority,
             order,

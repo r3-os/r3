@@ -1,10 +1,8 @@
 #![feature(const_maybe_uninit_assume_init)]
-#![feature(option_result_unwrap_unchecked)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_fn_trait_bound)]
-#![feature(const_raw_ptr_deref)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(generic_const_exprs)]
 #![feature(const_refs_to_cell)]

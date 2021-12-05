@@ -7,14 +7,12 @@
 #![feature(maybe_uninit_slice)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
-#![feature(const_raw_ptr_deref)]
 #![feature(const_option)]
 #![feature(const_trait_impl)]
 #![feature(const_refs_to_cell)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
-#![feature(option_result_unwrap_unchecked)] // `Option<T>::unwrap_unchecked`
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(never_type)] // `!`
 #![feature(const_type_id)] // `TypeId::of` as `const fn`

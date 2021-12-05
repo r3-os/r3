@@ -231,16 +231,8 @@ impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
         self,
         c: &mut Cfg<C>,
     ) -> Semaphore<System> {
-        let initial_value = if let Some(x) = self.initial_value {
-            x
-        } else {
-            panic!("`initial` is not specified")
-        };
-        let maximum_value = if let Some(x) = self.maximum_value {
-            x
-        } else {
-            panic!("`maximum` is not specified")
-        };
+        let initial_value = self.initial_value.expect("`initial` is not specified");
+        let maximum_value = self.maximum_value.expect("`maximum` is not specified");
 
         let id = c.raw().semaphore_define(
             raw_cfg::SemaphoreDescriptor {
