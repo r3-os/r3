@@ -5,6 +5,8 @@
 //! 3. (`seq`: 5 → 9) `task0` sets the event bit for four times. `task[1-4]`
 //!    should be unblocked in the same order.
 //!
+// TODO: This and some other tests should consider the possibility that some or
+//       all values of `QueueOrder` might not be supported by the target kernel
 use r3::{
     hunk::Hunk,
     kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, QueueOrder, Task},

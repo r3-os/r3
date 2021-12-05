@@ -32,6 +32,14 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     /// The type to identify tasks.
     type RawTaskId: Id;
 
+    /// Used by [`QueueOrder::is_supported`].
+    ///
+    /// `None` elements don't match any values of `QueueOrder`. This might be
+    /// useful for conditionally enabling some of them.
+    ///
+    /// The default value is an empty slice.
+    const RAW_SUPPORTED_QUEUE_ORDERS: &'static [Option<QueueOrderKind>] = &[];
+
     /// Implements [`Kernel::debug`][1].
     ///
     /// [1]: crate::kernel::Kernel::debug
@@ -178,6 +186,10 @@ pub unsafe trait KernelAdjustTime: KernelBase {
 ///
 /// This `enum` type is defined as `#[non_exhaustive]` to allow for potential
 /// future extensions.
+/// The function [`QueueOrder::is_supported`][] indicates whether a
+/// `QueueOrder` is supported by the kernel. The behavior is
+/// implementation-defined (preferably approximating the request or falling back
+/// to a supported option) if a specified `QueueOrder` is not supported.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum QueueOrder {
@@ -185,6 +197,49 @@ pub enum QueueOrder {
     Fifo,
     /// The wait queue is processed in a task priority order. Tasks with the
     /// same priorities follow a FIFO order.
+    TaskPriority,
+}
+
+impl QueueOrder {
+    /// Return a flag indicating whether the kernel supports this `QueueOrder`.
+    ///
+    /// It's possible for this function to return `false` for all possible
+    /// values of `QueueOrder` if the kernel doesn't precisely implement any
+    /// possible options of `QueueOrder`.
+    #[inline]
+    pub const fn is_supported<System: KernelBase>(&self) -> bool {
+        let kind = match self {
+            QueueOrder::Fifo => QueueOrderKind::Fifo,
+            QueueOrder::TaskPriority => QueueOrderKind::TaskPriority,
+        };
+
+        // FIXME: `for` is not usable in `const fn` yet
+        // FIXME: Iterators are still unusable in `const fn`
+        let mut i = 0;
+        let values = System::RAW_SUPPORTED_QUEUE_ORDERS;
+        while i < values.len() {
+            // FIXME: `#[derive(PartialEq)]` doesn't derive `const PartialEq`
+            if let Some(value) = values[i] {
+                if value as u8 == kind as u8 {
+                    return true;
+                }
+            }
+            i += 1;
+        }
+        false
+    }
+}
+
+/// Indicates a variant of [`QueueOrder`][] supported by a kernel.
+///
+/// This type is used as the element type of
+/// [`KernelBase::RAW_SUPPORTED_QUEUE_ORDERS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum QueueOrderKind {
+    /// [`QueueOrder::Fifo`][]
+    Fifo,
+    /// [`QueueOrder::TaskPriority`][]
     TaskPriority,
 }
 

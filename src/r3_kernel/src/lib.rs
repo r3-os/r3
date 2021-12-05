@@ -141,6 +141,11 @@ impl<Traits: KernelStatic<System<Traits>>> DelegateKernelStatic<System<Traits>> 
 }
 
 unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
+    const RAW_SUPPORTED_QUEUE_ORDERS: &'static [Option<raw::QueueOrderKind>] = &[
+        Some(raw::QueueOrderKind::Fifo),
+        Some(raw::QueueOrderKind::TaskPriority),
+    ];
+
     #[inline]
     fn raw_acquire_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
         // Safety: `try_enter_cpu_lock` is only meant to be called by
