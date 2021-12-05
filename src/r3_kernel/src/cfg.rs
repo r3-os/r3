@@ -112,40 +112,40 @@ macro_rules! build {
         // Instantiiate task structures
         $crate::array_item_from_fn! {
             const TASK_ATTR_POOL: [TaskAttr<$Traits>; _] =
-                (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_attr());
+                (0..CFG.tasks.len()).map(|i| CFG.tasks[i].to_attr());
             static TASK_CB_POOL:
                 [TaskCb<$Traits>; _] =
-                    (0..CFG.tasks.len()).map(|i| CFG.tasks.get(i).to_state(&TASK_ATTR_POOL[i]));
+                    (0..CFG.tasks.len()).map(|i| CFG.tasks[i].to_state(&TASK_ATTR_POOL[i]));
         }
 
         // Instantiiate event group structures
         $crate::array_item_from_fn! {
             static EVENT_GROUP_CB_POOL:
                 [EventGroupCb<$Traits>; _] =
-                    (0..CFG.event_groups.len()).map(|i| CFG.event_groups.get(i).to_state());
+                    (0..CFG.event_groups.len()).map(|i| CFG.event_groups[i].to_state());
         }
 
         // Instantiiate mutex structures
         $crate::array_item_from_fn! {
             static MUTEX_CB_POOL:
                 [MutexCb<$Traits>; _] =
-                    (0..CFG.mutexes.len()).map(|i| CFG.mutexes.get(i).to_state());
+                    (0..CFG.mutexes.len()).map(|i| CFG.mutexes[i].to_state());
         }
 
         // Instantiiate semaphore structures
         $crate::array_item_from_fn! {
             static SEMAPHORE_CB_POOL:
                 [SemaphoreCb<$Traits>; _] =
-                    (0..CFG.semaphores.len()).map(|i| CFG.semaphores.get(i).to_state());
+                    (0..CFG.semaphores.len()).map(|i| CFG.semaphores[i].to_state());
         }
 
         // Instantiiate timer structures
         $crate::array_item_from_fn! {
             const TIMER_ATTR_POOL: [TimerAttr<$Traits>; _] =
-                (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_attr());
+                (0..CFG.timers.len()).map(|i| CFG.timers[i].to_attr());
             static TIMER_CB_POOL:
                 [TimerCb<$Traits>; _] =
-                    (0..CFG.timers.len()).map(|i| CFG.timers.get(i).to_state(&TIMER_ATTR_POOL[i], i));
+                    (0..CFG.timers.len()).map(|i| CFG.timers[i].to_state(&TIMER_ATTR_POOL[i], i));
         }
 
         // Instantiate hunks
@@ -167,7 +167,7 @@ macro_rules! build {
         $crate::array_item_from_fn! {
             const INTERRUPT_LINE_INITS:
                 [InterruptLineInit; _] =
-                    (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines.get(i).to_init());
+                    (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines[i].to_init());
         }
 
         // Calculate the required storage of the timeout heap
@@ -328,7 +328,7 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
         let mut i = 0;
         let mut tasks = &mut cfg.raw().inner.tasks;
         while i < tasks.len() {
-            if let Some(size) = tasks.get(i).stack.auto_size() {
+            if let Some(size) = tasks[i].stack.auto_size() {
                 // Round up the stack size
                 let size =
                     (size + Traits::STACK_ALIGN - 1) / Traits::STACK_ALIGN * Traits::STACK_ALIGN;
@@ -342,7 +342,7 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
                 // call to `HunkDefiner::finish`
                 tasks = &mut cfg.raw().inner.tasks;
 
-                tasks.get_mut(i).stack = crate::task::StackHunk::from_hunk(hunk, size);
+                tasks[i].stack = crate::task::StackHunk::from_hunk(hunk, size);
             }
             i += 1;
         }

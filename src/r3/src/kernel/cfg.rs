@@ -109,7 +109,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
 
         let mut i = 0;
         while i < self.interrupt_lines.len() {
-            let interrupt_line = self.interrupt_lines.get(i);
+            let interrupt_line = &self.interrupt_lines[i];
             // FIXME: `<[T]>::get` is not `const fn` yet
             let start = if interrupt_line.num < C::System::CFG_INTERRUPT_HANDLERS.len() {
                 C::System::CFG_INTERRUPT_HANDLERS[interrupt_line.num]
@@ -343,7 +343,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
         array_item_from_fn! {
             const STARTUP_HOOKS: [hook::StartupHookAttr; _] =
                 (0..STATIC_PARAMS.startup_hooks.len())
-                    .map(|i| *STATIC_PARAMS.startup_hooks.get(i));
+                    .map(|i| STATIC_PARAMS.startup_hooks[i]);
         }
 
         // Consturct a table of combined second-level interrupt handlers

@@ -1,4 +1,4 @@
-use core::mem::MaybeUninit;
+use core::{mem::MaybeUninit, ops};
 
 /// `Vec` that can be used in a constant context.
 #[doc(hidden)]
@@ -31,46 +31,18 @@ impl<T: Copy> ComptimeVec<T> {
         self.len += 1;
     }
 
-    pub const fn len(&self) -> usize {
-        self.len
-    }
-
-    pub const fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
-    // FIXME: We can use it now
-    pub const fn get(&self, i: usize) -> &T {
-        assert!(i < self.len(), "out of bounds");
-
-        // Safety: `self.storage[0..self.len]` is initialized, and `i < self.len`
-        // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
-        unsafe { &*(&self.storage[i] as *const _ as *const T) }
-    }
-
-    // FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
-    pub const fn get_mut(&mut self, i: usize) -> &mut T {
-        assert!(i < self.len(), "out of bounds");
-
-        // Safety: `self.storage[0..self.len]` is initialized, and `i < self.len`
-        // FIXME: Waiting for `MaybeUninit::as_ptr` to be stabilized
-        unsafe { &mut *(&mut self.storage[i] as *mut _ as *mut T) }
-    }
-
     /// Return a `ComptimeVec` of the same `len` as `self` with function `f`
     /// applied to each element in order.
     pub const fn map<F: ~const FnMut(&T) -> U + Copy, U: Copy>(&self, mut f: F) -> ComptimeVec<U> {
         let mut out = ComptimeVec::new();
         let mut i = 0;
         while i < self.len() {
-            out.push(f(self.get(i)));
+            out.push(f(&self[i]));
             i += 1;
         }
         out
     }
 
-    // FIXME: Replace this type's several methods with `const Deref<Target = [T]>`
     /// Borrow the storage as a slice.
     #[inline]
     pub const fn as_slice(&self) -> &[T] {
@@ -84,7 +56,6 @@ impl<T: Copy> ComptimeVec<T> {
         unsafe { MaybeUninit::slice_assume_init_ref(&*slice) }
     }
 
-    // FIXME: Replace this type's several methods with `const DerefMut<Target = [T]>`
     /// Borrow the storage as a slice.
     #[inline]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
@@ -97,9 +68,7 @@ impl<T: Copy> ComptimeVec<T> {
         // Safety: `self.storage[0..self.len]` is initialized
         unsafe { MaybeUninit::slice_assume_init_mut(&mut *slice) }
     }
-}
 
-impl<T: Copy> ComptimeVec<T> {
     pub const fn to_array<const LEN: usize>(&self) -> [T; LEN] {
         // FIXME: Work-around for `assert_eq!` being unsupported in `const fn`
         assert!(self.len() == LEN);
@@ -111,6 +80,20 @@ impl<T: Copy> ComptimeVec<T> {
         // We initialized all elements in `storage[0..LEN]`, so it's safe to
         // reinterpret that range as `[T; LEN]`.
         unsafe { *(&self.storage as *const _ as *const [T; LEN]) }
+    }
+}
+
+impl<T: Copy> const ops::Deref for ComptimeVec<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl<T: Copy> const ops::DerefMut for ComptimeVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_slice()
     }
 }
 
@@ -127,7 +110,7 @@ macro_rules! vec_position {
             if i >= $vec.len() {
                 break None;
             }
-            let $item = $vec.get(i);
+            let $item = &$vec[i];
             if $predicate {
                 break Some(i);
             }
@@ -161,7 +144,7 @@ mod tests {
         const VEC_LEN: usize = VEC.len();
         assert_eq!(VEC_LEN, 1);
 
-        const VEC_VAL: u32 = *VEC.get(0);
+        const VEC_VAL: u32 = VEC[0];
         assert_eq!(VEC_VAL, 42);
     }
 
@@ -215,8 +198,8 @@ mod tests {
             v.push(1);
             v.push(2);
             v.push(3);
-            *v.get_mut(1) += 2;
-            *v.get(1)
+            v[1] += 2;
+            v[1]
         }
         assert_eq!(val(), 4);
     }

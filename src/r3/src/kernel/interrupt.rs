@@ -247,7 +247,7 @@ impl<System: raw::KernelInterruptLine> InterruptLineDefiner<System> {
         };
 
         // Update `CfgBuilderInterruptLine` with values from `self`
-        let cfg_interrupt_line = cfg.interrupt_lines.get_mut(i);
+        let cfg_interrupt_line = &mut cfg.interrupt_lines[i];
 
         if let Some(priority) = self.priority {
             assert!(
@@ -422,7 +422,7 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: raw::KernelInt
     // FIXME: Work-around for `for` being unsupported in `const fn`
     let mut i = 0;
     while i < interrupt_handlers.len() {
-        let handler = interrupt_handlers.get(i);
+        let handler = &interrupt_handlers[i];
         i += 1;
         if handler.unmanaged {
             continue;
