@@ -1,7 +1,7 @@
 use core::num::NonZeroUsize;
 use r3::kernel::{
     raw_cfg::{CfgSemaphore, SemaphoreDescriptor},
-    QueueOrder, SemaphoreValue,
+    SemaphoreValue,
 };
 
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, semaphore, wait, KernelTraits, Port};
@@ -27,7 +27,7 @@ unsafe impl<Traits: KernelTraits> const CfgSemaphore for CfgBuilder<Traits> {
         inner.semaphores.push(CfgBuilderSemaphore {
             initial,
             maximum,
-            queue_order,
+            queue_order: wait::QueueOrder::from(queue_order),
         });
 
         unsafe { NonZeroUsize::new_unchecked(inner.semaphores.len()) }
@@ -38,7 +38,7 @@ unsafe impl<Traits: KernelTraits> const CfgSemaphore for CfgBuilder<Traits> {
 pub struct CfgBuilderSemaphore {
     initial: SemaphoreValue,
     maximum: SemaphoreValue,
-    queue_order: QueueOrder,
+    queue_order: wait::QueueOrder,
 }
 
 impl Clone for CfgBuilderSemaphore {

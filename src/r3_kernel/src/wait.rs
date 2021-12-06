@@ -183,8 +183,26 @@ impl<Traits: PortThreading> Init for WaitQueue<Traits> {
     };
 }
 
-// FIXME: provide our own, exhaustive `QueueOrder`
-pub(crate) use r3::kernel::QueueOrder;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub(crate) enum QueueOrder {
+    /// The wait queue is processed in a FIFO order.
+    Fifo,
+    /// The wait queue is processed in a task priority order. Tasks with the
+    /// same priorities follow a FIFO order.
+    TaskPriority,
+}
+
+impl const From<r3::kernel::QueueOrder> for QueueOrder {
+    fn from(x: r3::kernel::QueueOrder) -> Self {
+        match x {
+            r3::kernel::QueueOrder::Fifo => Self::Fifo,
+            r3::kernel::QueueOrder::TaskPriority => Self::TaskPriority,
+            // The default value is implementation-defined
+            _ => Self::TaskPriority,
+        }
+    }
+}
 
 /// The wait state of a task.
 pub(crate) struct TaskWait<Traits: PortThreading> {

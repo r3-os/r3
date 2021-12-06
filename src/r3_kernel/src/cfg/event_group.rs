@@ -1,7 +1,7 @@
 use core::num::NonZeroUsize;
 use r3::kernel::{
     raw_cfg::{CfgEventGroup, EventGroupDescriptor},
-    EventGroupBits, QueueOrder,
+    EventGroupBits,
 };
 
 use crate::{cfg::CfgBuilder, event_group, klock::CpuLockCell, wait, KernelTraits, Port};
@@ -20,7 +20,7 @@ unsafe impl<Traits: KernelTraits> const CfgEventGroup for CfgBuilder<Traits> {
 
         inner.event_groups.push(CfgBuilderEventGroup {
             initial_bits,
-            queue_order,
+            queue_order: wait::QueueOrder::from(queue_order),
         });
 
         unsafe { NonZeroUsize::new_unchecked(inner.event_groups.len()) }
@@ -30,7 +30,7 @@ unsafe impl<Traits: KernelTraits> const CfgEventGroup for CfgBuilder<Traits> {
 #[doc(hidden)]
 pub struct CfgBuilderEventGroup {
     initial_bits: EventGroupBits,
-    queue_order: QueueOrder,
+    queue_order: wait::QueueOrder,
 }
 
 impl Clone for CfgBuilderEventGroup {
