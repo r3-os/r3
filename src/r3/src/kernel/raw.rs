@@ -368,6 +368,9 @@ pub unsafe trait KernelMutex: KernelBase {
 
 /// Specifies the locking protocol to be followed by a [mutex].
 ///
+/// This `enum` type is defined as `#[non_exhaustive]` to allow for potential
+/// future extensions.
+///
 /// [mutex]: crate::kernel::Mutex
 ///
 /// <div class="admonition-follows"></div>
@@ -390,6 +393,7 @@ pub unsafe trait KernelMutex: KernelBase {
 /// > protocol-specific parameters.
 #[doc = include_str!("../common.md")]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum MutexProtocol {
     /// Locking the mutex does not affect the priority of the owning task.
     None,

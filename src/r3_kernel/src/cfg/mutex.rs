@@ -43,6 +43,9 @@ impl CfgBuilderMutex {
                         );
                     }
                 }
+
+                // The default value is implementation-defined
+                _ => None,
             },
             inconsistent: CpuLockCell::new(false),
             wait_queue: wait::WaitQueue::new(wait::QueueOrder::TaskPriority),

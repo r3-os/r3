@@ -183,8 +183,10 @@ fn main() {
 # Implementation-Defined Behaviors
 
 - **[`QueueOrder`]**: This kernel supports `Fifo` and `TaskPriority`. Unsupported values are treated as `TaskPriority`.
+- **[`MutexProtocol`]**: This kernel supports `None` and `Ceiling(_)`. Unsupported values are treated as `None`.
 
 [`QueueOrder`]: r3::kernel::QueueOrder
+[`MutexProtocol`]: r3::kernel::MutexProtocol
 
 # Cargo Features
 
