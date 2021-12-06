@@ -2,7 +2,7 @@
 use core::{assert_matches::debug_assert_matches, fmt};
 use r3::{
     kernel::{
-        LockMutexError, LockMutexTimeoutError, MarkConsistentMutexError, QueryMutexError,
+        raw, LockMutexError, LockMutexTimeoutError, MarkConsistentMutexError, QueryMutexError,
         TryLockMutexError, UnlockMutexError,
     },
     time::Duration,
@@ -24,8 +24,13 @@ impl<Traits: KernelTraits> System<Traits> {
     }
 }
 
-unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelMutex for System<Traits> {
+unsafe impl<Traits: KernelTraits> raw::KernelMutex for System<Traits> {
     type RawMutexId = MutexId;
+
+    const RAW_SUPPORTED_MUTEX_PROTOCOLS: &'static [Option<raw::MutexProtocolKind>] = &[
+        Some(raw::MutexProtocolKind::None),
+        Some(raw::MutexProtocolKind::Ceiling),
+    ];
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_mutex_is_locked(this: MutexId) -> Result<bool, QueryMutexError> {

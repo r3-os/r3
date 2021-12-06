@@ -78,6 +78,12 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 }
 
 fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+    if !MutexProtocol::Ceiling(0).is_supported::<System>() {
+        log::warn!("priority ceiling is not supported, skipping the test");
+        D::success();
+        return;
+    }
+
     assert_eq!(D::app().task2.effective_priority().unwrap(), 2);
     assert_eq!(D::app().task2.priority().unwrap(), 2);
 

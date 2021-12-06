@@ -330,6 +330,14 @@ pub unsafe trait KernelMutex: KernelBase {
     /// The type to identify mutexes.
     type RawMutexId: Id;
 
+    /// Used by [`MutexProtocol::is_supported`].
+    ///
+    /// `None` elements don't match any values of `MutexProtocol`. This might be
+    /// useful for conditionally enabling some of them.
+    ///
+    /// The default value is an empty slice.
+    const RAW_SUPPORTED_MUTEX_PROTOCOLS: &'static [Option<MutexProtocolKind>] = &[];
+
     /// Implements [`Mutex::is_locked`][1].
     ///
     /// [1]: crate::kernel::Mutex::is_locked
@@ -370,6 +378,10 @@ pub unsafe trait KernelMutex: KernelBase {
 ///
 /// This `enum` type is defined as `#[non_exhaustive]` to allow for potential
 /// future extensions.
+/// The function [`MutexProtocol::is_supported`][] indicates whether a
+/// `MutexProtocol` is supported by the kernel. The behavior is
+/// implementation-defined (preferably approximating the request or falling back
+/// to a supported option) if a specified `MutexProtocol` is not supported.
 ///
 /// [mutex]: crate::kernel::Mutex
 ///
@@ -407,6 +419,49 @@ pub enum MutexProtocol {
     /// [`num_task_priority_levels`]: crate::kernel::Cfg::num_task_priority_levels
     /// [the immediate priority ceiling protocol]: https://en.wikipedia.org/wiki/Priority_ceiling_protocol
     Ceiling(usize),
+}
+
+impl MutexProtocol {
+    /// Return a flag indicating whether the kernel supports this `MutexProtocol`.
+    ///
+    /// It's possible for this function to return `false` for all possible
+    /// values of `MutexProtocol` if the kernel doesn't precisely implement any
+    /// possible options of `MutexProtocol`.
+    #[inline]
+    pub const fn is_supported<System: KernelMutex>(&self) -> bool {
+        let kind = match self {
+            MutexProtocol::None => MutexProtocolKind::None,
+            MutexProtocol::Ceiling(_) => MutexProtocolKind::Ceiling,
+        };
+
+        // FIXME: `for` is not usable in `const fn` yet
+        // FIXME: Iterators are still unusable in `const fn`
+        let mut i = 0;
+        let values = System::RAW_SUPPORTED_MUTEX_PROTOCOLS;
+        while i < values.len() {
+            // FIXME: `#[derive(PartialEq)]` doesn't derive `const PartialEq`
+            if let Some(value) = values[i] {
+                if value as u8 == kind as u8 {
+                    return true;
+                }
+            }
+            i += 1;
+        }
+        false
+    }
+}
+
+/// Indicates a variant of [`MutexProtocol`][] supported by a kernel.
+///
+/// This type is used as the element type of
+/// [`KernelBase::RAW_SUPPORTED_QUEUE_ORDERS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum MutexProtocolKind {
+    /// [`MutexProtocol::None`][]
+    None,
+    /// [`MutexProtocol::Ceiling`][]`(_)`
+    Ceiling,
 }
 
 /// Provides access to the semaphore API exposed by a kernel.
