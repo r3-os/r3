@@ -11,12 +11,11 @@ pub use raw::{EventGroupBits, EventGroupWaitFlags};
 
 // ----------------------------------------------------------------------------
 
+define_object! {
 /// Represents a single event group in a system.
 ///
 /// An event group is a set of bits that can be updated and waited for to be
 /// set.
-///
-/// This type is ABI-compatible with `System::`[`RawEventGroupId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
@@ -24,66 +23,8 @@ pub use raw::{EventGroupBits, EventGroupWaitFlags};
 /// > event group (FreeRTOS), event group (Freescale MQX), `EventFlags` (Mbed
 /// > OS), events (OSEK/VDX, assigned to each extended task), event (RT-Thread),
 /// > event set (RTEMS, assigned to each task), Eventflag (μITRON4.0)
-///
-/// [`RawEventGroupId`]: raw::KernelEventGroup::RawEventGroupId
 #[doc = include_str!("../common.md")]
-#[repr(transparent)]
 pub struct EventGroup<System: raw::KernelEventGroup>(System::RawEventGroupId);
-
-impl<System: raw::KernelEventGroup> Clone for EventGroup<System> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self(self.0)
-    }
-}
-
-impl<System: raw::KernelEventGroup> Copy for EventGroup<System> {}
-
-impl<System: raw::KernelEventGroup> PartialEq for EventGroup<System> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System: raw::KernelEventGroup> Eq for EventGroup<System> {}
-
-impl<System: raw::KernelEventGroup> hash::Hash for EventGroup<System> {
-    #[inline]
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System: raw::KernelEventGroup> fmt::Debug for EventGroup<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("EventGroup").field(&self.0).finish()
-    }
-}
-
-impl<System: raw::KernelEventGroup> EventGroup<System> {
-    /// Construct a `EventGroup` from `RawEventGroupId`.
-    ///
-    /// # Safety
-    ///
-    /// The kernel can handle invalid IDs without a problem. However, the
-    /// constructed `EventGroup` may point to an object that is not intended to be
-    /// manipulated except by its creator. This is usually prevented by making
-    /// `EventGroup` an opaque handle, but this safeguard can be circumvented by
-    /// this method.
-    #[inline]
-    pub const unsafe fn from_id(id: System::RawEventGroupId) -> Self {
-        Self(id)
-    }
-
-    /// Get the raw `RawEventGroupId` value representing this event group.
-    #[inline]
-    pub const fn id(self) -> System::RawEventGroupId {
-        self.0
-    }
 }
 
 impl<System: raw::KernelEventGroup> EventGroup<System> {

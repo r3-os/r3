@@ -14,6 +14,7 @@ pub use raw::SemaphoreValue;
 
 // ----------------------------------------------------------------------------
 
+define_object! {
 /// Represents a single semaphore in a system.
 ///
 /// A semaphore maintains a set of permits that can be acquired (possibly
@@ -30,58 +31,7 @@ pub use raw::SemaphoreValue;
 ///
 /// [`RawSemaphoreId`]: raw::KernelSemaphore::RawSemaphoreId
 #[doc = include_str!("../common.md")]
-#[repr(transparent)]
 pub struct Semaphore<System: raw::KernelSemaphore>(System::RawSemaphoreId);
-
-impl<System: raw::KernelSemaphore> Clone for Semaphore<System> {
-    fn clone(&self) -> Self {
-        Self(self.0)
-    }
-}
-
-impl<System: raw::KernelSemaphore> Copy for Semaphore<System> {}
-
-impl<System: raw::KernelSemaphore> PartialEq for Semaphore<System> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System: raw::KernelSemaphore> Eq for Semaphore<System> {}
-
-impl<System: raw::KernelSemaphore> hash::Hash for Semaphore<System> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System: raw::KernelSemaphore> fmt::Debug for Semaphore<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Semaphore").field(&self.0).finish()
-    }
-}
-
-impl<System: raw::KernelSemaphore> Semaphore<System> {
-    /// Construct a `Semaphore` from `RawSemaphoreId`.
-    ///
-    /// # Safety
-    ///
-    /// The kernel can handle invalid IDs without a problem. However, the
-    /// constructed `Semaphore` may point to an object that is not intended to be
-    /// manipulated except by its creator. This is usually prevented by making
-    /// `Semaphore` an opaque handle, but this safeguard can be circumvented by
-    /// this method.
-    pub const unsafe fn from_id(id: System::RawSemaphoreId) -> Self {
-        Self(id)
-    }
-
-    /// Get the raw `RawSemaphoreId` value representing this semaphore.
-    pub const fn id(self) -> System::RawSemaphoreId {
-        self.0
-    }
 }
 
 impl<System: raw::KernelSemaphore> Semaphore<System> {

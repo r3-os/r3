@@ -4,6 +4,9 @@
 //!
 //! [`r3_kernel`]: https://crates.io/crates/r3_kernel
 
+#[macro_use]
+mod macros;
+
 pub mod cfg;
 mod error;
 pub mod event_group;

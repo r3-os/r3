@@ -1090,6 +1090,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "macropol"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbd9d0a4ae261d85abcfba009826a28c8ffcdf5559e6580b0ecf67dbcc47bb79"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "matrixmultiply"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1689,6 +1700,7 @@ dependencies = [
  "elain",
  "env_logger",
  "log",
+ "macropol",
  "num-integer",
  "num-traits",
  "pin-utils",

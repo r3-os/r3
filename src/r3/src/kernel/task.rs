@@ -9,6 +9,7 @@ use crate::utils::{Init, PhantomInvariant};
 
 // ----------------------------------------------------------------------------
 
+define_object! {
 /// Represents a single task in a system.
 ///
 /// This type is ABI-compatible with `System::`[`RawTaskId`][].
@@ -63,63 +64,7 @@ use crate::utils::{Init, PhantomInvariant};
 /// [thread]: crate#threads
 /// [activated]: Task::activate
 #[doc = include_str!("../common.md")]
-#[repr(transparent)]
 pub struct Task<System: raw::KernelBase>(System::RawTaskId);
-
-impl<System: raw::KernelBase> Clone for Task<System> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self(self.0)
-    }
-}
-
-impl<System: raw::KernelBase> Copy for Task<System> {}
-
-impl<System: raw::KernelBase> PartialEq for Task<System> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System: raw::KernelBase> Eq for Task<System> {}
-
-impl<System: raw::KernelBase> hash::Hash for Task<System> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System: raw::KernelBase> fmt::Debug for Task<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Task").field(&self.0).finish()
-    }
-}
-
-impl<System: raw::KernelBase> Task<System> {
-    /// Construct a `Task` from `RawTaskId`.
-    ///
-    /// # Safety
-    ///
-    /// The kernel can handle invalid IDs without a problem. However, the
-    /// constructed `Task` may point to an object that is not intended to be
-    /// manipulated except by its creator. This is usually prevented by making
-    /// `Task` an opaque handle, but this safeguard can be circumvented by
-    /// this method.
-    ///
-    /// Constructing a `Task` for a current task is allowed. This can be safely
-    /// done by [`Task::current`].
-    pub const unsafe fn from_id(id: System::RawTaskId) -> Self {
-        Self(id)
-    }
-
-    /// Get the raw `RawTaskId` value representing this task.
-    pub const fn id(self) -> System::RawTaskId {
-        self.0
-    }
 }
 
 impl<System: raw::KernelBase> Task<System> {

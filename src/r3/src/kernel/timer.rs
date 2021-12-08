@@ -11,6 +11,7 @@ use crate::{
 
 // ----------------------------------------------------------------------------
 
+define_object! {
 /// Represents a single timer in a system.
 ///
 /// This type is ABI-compatible with `System::`[`RawTimerId`][].
@@ -358,58 +359,7 @@ use crate::{
 /// [Reset the delay]: Timer::set_delay
 ///
 #[doc = include_str!("../common.md")]
-#[repr(transparent)]
 pub struct Timer<System: raw::KernelTimer>(System::RawTimerId);
-
-impl<System: raw::KernelTimer> Clone for Timer<System> {
-    fn clone(&self) -> Self {
-        Self(self.0)
-    }
-}
-
-impl<System: raw::KernelTimer> Copy for Timer<System> {}
-
-impl<System: raw::KernelTimer> PartialEq for Timer<System> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System: raw::KernelTimer> Eq for Timer<System> {}
-
-impl<System: raw::KernelTimer> hash::Hash for Timer<System> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System: raw::KernelTimer> fmt::Debug for Timer<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Timer").field(&self.0).finish()
-    }
-}
-
-impl<System: raw::KernelTimer> Timer<System> {
-    /// Construct a `Timer` from `RawTimerId`.
-    ///
-    /// # Safety
-    ///
-    /// The kernel can handle invalid IDs without a problem. However, the
-    /// constructed `Timer` may point to an object that is not intended to be
-    /// manipulated except by its creator. This is usually prevented by making
-    /// `Timer` an opaque handle, but this safeguard can be circumvented by
-    /// this method.
-    pub const unsafe fn from_id(id: System::RawTimerId) -> Self {
-        Self(id)
-    }
-
-    /// Get the raw `RawTimerId` value representing this timer.
-    pub const fn id(self) -> System::RawTimerId {
-        self.0
-    }
 }
 
 impl<System: raw::KernelTimer> Timer<System> {

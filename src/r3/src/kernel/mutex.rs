@@ -11,6 +11,7 @@ pub use raw::MutexProtocol;
 
 // ----------------------------------------------------------------------------
 
+define_object! {
 /// Represents a single mutex in a system.
 ///
 /// This type is ABI-compatible with `System::`[`RawMutexId`][].
@@ -261,63 +262,7 @@ pub use raw::MutexProtocol;
 /// > </details>
 ///
 #[doc = include_str!("../common.md")]
-#[repr(transparent)]
 pub struct Mutex<System: raw::KernelMutex>(System::RawMutexId);
-
-impl<System: raw::KernelMutex> Clone for Mutex<System> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self(self.0)
-    }
-}
-
-impl<System: raw::KernelMutex> Copy for Mutex<System> {}
-
-impl<System: raw::KernelMutex> PartialEq for Mutex<System> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<System: raw::KernelMutex> Eq for Mutex<System> {}
-
-impl<System: raw::KernelMutex> hash::Hash for Mutex<System> {
-    #[inline]
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        hash::Hash::hash(&self.0, state);
-    }
-}
-
-impl<System: raw::KernelMutex> fmt::Debug for Mutex<System> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Mutex").field(&self.0).finish()
-    }
-}
-
-impl<System: raw::KernelMutex> Mutex<System> {
-    /// Construct a `Mutex` from `RawMutexId`.
-    ///
-    /// # Safety
-    ///
-    /// The kernel can handle invalid IDs without a problem. However, the
-    /// constructed `Mutex` may point to an object that is not intended to be
-    /// manipulated except by its creator. This is usually prevented by making
-    /// `Mutex` an opaque handle, but this safeguard can be circumvented by
-    /// this method.
-    #[inline]
-    pub const unsafe fn from_id(id: System::RawMutexId) -> Self {
-        Self(id)
-    }
-
-    /// Get the raw `RawMutexId` value representing this mutex.
-    #[inline]
-    pub const fn id(self) -> System::RawMutexId {
-        self.0
-    }
 }
 
 impl<System: raw::KernelMutex> Mutex<System> {
