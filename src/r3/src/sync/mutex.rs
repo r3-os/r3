@@ -3,7 +3,7 @@ use core::{cell::UnsafeCell, fmt, marker::PhantomData};
 use crate::{
     hunk::{DefaultInitTag, Hunk, HunkDefiner, HunkIniter},
     kernel::{
-        mutex, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
+        mutex, prelude::*, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
         TryLockMutexError,
     },
 };
@@ -34,11 +34,12 @@ where
     System: traits::KernelMutex + traits::KernelStatic,
 {
     hunk: Hunk<System, UnsafeCell<T>>,
-    mutex: mutex::Mutex<System>,
+    mutex: mutex::MutexRef<'static, System>,
 }
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior
+// TODO: Owned version
 
 unsafe impl<System, T: 'static + Send> Send for Mutex<System, T> where
     System: traits::KernelMutex + traits::KernelStatic
@@ -168,7 +169,7 @@ where
     /// function](crate#static-configuration).
     pub const fn define() -> Definer<System, T, DefaultInitTag> {
         Definer {
-            mutex: mutex::Mutex::define(),
+            mutex: mutex::MutexRef::define(),
             hunk: Hunk::define(),
         }
     }

@@ -262,22 +262,34 @@ define_object! {
 /// > </details>
 ///
 #[doc = include_str!("../common.md")]
-pub struct Mutex<System: raw::KernelMutex>(System::RawMutexId);
+pub struct Mutex<System: _>(System::RawMutexId);
+
+/// Represents a single borrowed mutex in a system.
+///
+#[doc = include_str!("../common.md")]
+pub struct MutexRef<System: raw::KernelMutex>(_);
+
+pub trait MutexHandle {}
+pub trait MutexMethods {}
 }
 
-impl<System: raw::KernelMutex> Mutex<System> {
+impl<System: raw::KernelMutex> MutexRef<'_, System> {
     /// Construct a `MutexDefiner` to define a mutex in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> MutexDefiner<System> {
         MutexDefiner::new()
     }
+}
 
+/// The supported operations on [`MutexHandle`].
+#[doc = include_str!("../common.md")]
+pub trait MutexMethods: MutexHandle {
     /// Get a flag indicating whether the mutex is currently locked.
     #[inline]
-    pub fn is_locked(self) -> Result<bool, QueryMutexError> {
+    fn is_locked(&self) -> Result<bool, QueryMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_mutex_is_locked(self.0) }
+        unsafe { <Self::System as raw::KernelMutex>::raw_mutex_is_locked(self.id()) }
     }
 
     /// Unlock the mutex.
@@ -285,10 +297,10 @@ impl<System: raw::KernelMutex> Mutex<System> {
     /// Mutexes must be unlocked in a lock-reverse order, or this method may
     /// return [`UnlockMutexError::BadObjectState`].
     #[inline]
-    pub fn unlock(self) -> Result<(), UnlockMutexError> {
+    fn unlock(&self) -> Result<(), UnlockMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_mutex_unlock(self.0) }
+        unsafe { <Self::System as raw::KernelMutex>::raw_mutex_unlock(self.id()) }
     }
 
     /// Acquire the mutex, blocking the current thread until it is able to do
@@ -305,18 +317,18 @@ impl<System: raw::KernelMutex> Mutex<System> {
     ///
     /// [a non-waitable context]: crate#contexts
     #[inline]
-    pub fn lock(self) -> Result<(), LockMutexError> {
+    fn lock(&self) -> Result<(), LockMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_mutex_lock(self.0) }
+        unsafe { <Self::System as raw::KernelMutex>::raw_mutex_lock(self.id()) }
     }
 
     /// [`lock`](Self::lock) with timeout.
     #[inline]
-    pub fn lock_timeout(self, timeout: Duration) -> Result<(), LockMutexTimeoutError> {
+    fn lock_timeout(&self, timeout: Duration) -> Result<(), LockMutexTimeoutError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_mutex_lock_timeout(self.0, timeout) }
+        unsafe { <Self::System as raw::KernelMutex>::raw_mutex_lock_timeout(self.id(), timeout) }
     }
 
     /// Non-blocking version of [`lock`](Self::lock). Returns
@@ -328,10 +340,10 @@ impl<System: raw::KernelMutex> Mutex<System> {
     ///
     /// [`Semaphore::poll_one`]: crate::kernel::Semaphore::poll_one
     #[inline]
-    pub fn try_lock(self) -> Result<(), TryLockMutexError> {
+    fn try_lock(&self) -> Result<(), TryLockMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_mutex_try_lock(self.0) }
+        unsafe { <Self::System as raw::KernelMutex>::raw_mutex_try_lock(self.id()) }
     }
 
     /// Mark the state protected by the mutex as consistent.
@@ -342,16 +354,18 @@ impl<System: raw::KernelMutex> Mutex<System> {
     /// > `pthread_mutex_consistent` from POSIX.1-2008.
     ///
     #[inline]
-    pub fn mark_consistent(self) -> Result<(), MarkConsistentMutexError> {
+    fn mark_consistent(&self) -> Result<(), MarkConsistentMutexError> {
         // Safety: `Mutex` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_mutex_mark_consistent(self.0) }
+        unsafe { <Self::System as raw::KernelMutex>::raw_mutex_mark_consistent(self.id()) }
     }
 }
 
+impl<T: MutexHandle> MutexMethods for T {}
+
 // ----------------------------------------------------------------------------
 
-/// The definer (static builder) for [`Mutex`][].
+/// The definer (static builder) for [`MutexRef`][].
 #[must_use = "must call `finish()` to complete registration"]
 pub struct MutexDefiner<System> {
     inner: raw_cfg::MutexDescriptor<System>,
@@ -383,8 +397,8 @@ impl<System: raw::KernelMutex> MutexDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgMutex<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> Mutex<System> {
+    ) -> MutexRef<'static, System> {
         let id = c.raw().mutex_define(self.inner, ());
-        unsafe { Mutex::from_id(id) }
+        unsafe { MutexRef::from_id(id) }
     }
 }

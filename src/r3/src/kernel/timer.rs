@@ -359,34 +359,45 @@ define_object! {
 /// [Reset the delay]: Timer::set_delay
 ///
 #[doc = include_str!("../common.md")]
-pub struct Timer<System: raw::KernelTimer>(System::RawTimerId);
+pub struct Timer<System: _>(System::RawTimerId);
+
+/// Represents a single borrowed timer in a system.
+#[doc = include_str!("../common.md")]
+pub struct TimerRef<System: raw::KernelTimer>(_);
+
+pub trait TimerHandle {}
+pub trait TimerMethods {}
 }
 
-impl<System: raw::KernelTimer> Timer<System> {
+impl<System: raw::KernelTimer> TimerRef<'_, System> {
     /// Construct a `TimerDefiner` to define a timer in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> TimerDefiner<System> {
         TimerDefiner::new()
     }
+}
 
+/// The supported operations on [`TimerHandle`].
+#[doc = include_str!("../common.md")]
+pub trait TimerMethods: TimerHandle {
     /// Start the timer (transition it into the Active state).
     ///
     /// This method has no effect if the timer is already in the Active state.
     #[inline]
-    pub fn start(self) -> Result<(), StartTimerError> {
+    fn start(&self) -> Result<(), StartTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_start(self.0) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_start(self.id()) }
     }
 
     /// Stop the timer (transition it into the Dormant state).
     ///
     /// This method has no effect if the timer is already in the Dormant state.
     #[inline]
-    pub fn stop(self) -> Result<(), StopTimerError> {
+    fn stop(&self) -> Result<(), StopTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_stop(self.0) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_stop(self.id()) }
     }
 
     /// Set the duration before the next tick.
@@ -397,10 +408,10 @@ impl<System: raw::KernelTimer> Timer<System> {
     ///
     /// `None` means infinity (the timer will never fire).
     #[inline]
-    pub fn set_delay(self, delay: Option<Duration>) -> Result<(), SetTimerDelayError> {
+    fn set_delay(&self, delay: Option<Duration>) -> Result<(), SetTimerDelayError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_set_delay(self.0, delay) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_set_delay(self.id(), delay) }
     }
 
     /// Set the timer period, which is a quantity to be added to the timer's
@@ -408,16 +419,18 @@ impl<System: raw::KernelTimer> Timer<System> {
     ///
     /// `None` means infinity.
     #[inline]
-    pub fn set_period(self, period: Option<Duration>) -> Result<(), SetTimerPeriodError> {
+    fn set_period(&self, period: Option<Duration>) -> Result<(), SetTimerPeriodError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_set_period(self.0, period) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_set_period(self.id(), period) }
     }
 }
 
+impl<T: TimerHandle> TimerMethods for T {}
+
 // ----------------------------------------------------------------------------
 
-/// The definer (static builder) for [`Timer`].
+/// The definer (static builder) for [`TimerRef`].
 #[must_use = "must call `finish()` to complete registration"]
 pub struct TimerDefiner<System> {
     _phantom: PhantomInvariant<System>,
@@ -488,7 +501,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgTimer<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> Timer<System> {
+    ) -> TimerRef<'static, System> {
         let id = c.raw().timer_define(
             raw_cfg::TimerDescriptor {
                 phantom: Init::INIT,
@@ -502,6 +515,6 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
             },
             (),
         );
-        unsafe { Timer::from_id(id) }
+        unsafe { TimerRef::from_id(id) }
     }
 }

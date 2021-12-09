@@ -31,46 +31,57 @@ define_object! {
 ///
 /// [`RawSemaphoreId`]: raw::KernelSemaphore::RawSemaphoreId
 #[doc = include_str!("../common.md")]
-pub struct Semaphore<System: raw::KernelSemaphore>(System::RawSemaphoreId);
+pub struct Semaphore<System: _>(System::RawSemaphoreId);
+
+/// Represents a single borrowed semaphore in a system.
+#[doc = include_str!("../common.md")]
+pub struct SemaphoreRef<System: raw::KernelSemaphore>(_);
+
+pub trait SemaphoreHandle {}
+pub trait SemaphoreMethods {}
 }
 
-impl<System: raw::KernelSemaphore> Semaphore<System> {
+impl<System: raw::KernelSemaphore> SemaphoreRef<'_, System> {
     /// Construct a `SemaphoreDefiner` to define a semaphore in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> SemaphoreDefiner<System> {
         SemaphoreDefiner::new()
     }
+}
 
+/// The supported operations on [`SemaphoreHandle`].
+#[doc = include_str!("../common.md")]
+pub trait SemaphoreMethods: SemaphoreHandle {
     /// Remove all permits held by the semaphore.
     #[inline]
-    pub fn drain(self) -> Result<(), DrainSemaphoreError> {
+    fn drain(&self) -> Result<(), DrainSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_semaphore_drain(self.0) }
+        unsafe { <Self::System as raw::KernelSemaphore>::raw_semaphore_drain(self.id()) }
     }
 
     /// Get the number of permits currently held by the semaphore.
     #[inline]
-    pub fn get(self) -> Result<SemaphoreValue, GetSemaphoreError> {
+    fn get(&self) -> Result<SemaphoreValue, GetSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_semaphore_get(self.0) }
+        unsafe { <Self::System as raw::KernelSemaphore>::raw_semaphore_get(self.id()) }
     }
 
     /// Release `count` permits, returning them to the semaphore.
     #[inline]
-    pub fn signal(self, count: SemaphoreValue) -> Result<(), SignalSemaphoreError> {
+    fn signal(&self, count: SemaphoreValue) -> Result<(), SignalSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_semaphore_signal(self.0, count) }
+        unsafe { <Self::System as raw::KernelSemaphore>::raw_semaphore_signal(self.id(), count) }
     }
 
     /// Release a permit, returning it to the semaphore.
     #[inline]
-    pub fn signal_one(self) -> Result<(), SignalSemaphoreError> {
+    fn signal_one(&self) -> Result<(), SignalSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_semaphore_signal_one(self.0) }
+        unsafe { <Self::System as raw::KernelSemaphore>::raw_semaphore_signal_one(self.id()) }
     }
 
     /// Acquire a permit, potentially blocking the calling thread until one is
@@ -92,30 +103,37 @@ impl<System: raw::KernelSemaphore> Semaphore<System> {
     /// > It's not supported by POSIX, RTEMS, TOPPERS, VxWorks, nor Win32. The
     /// > rare exception is μT-Kernel.
     #[inline]
-    pub fn wait_one(self) -> Result<(), WaitSemaphoreError> {
+    fn wait_one(&self) -> Result<(), WaitSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_semaphore_wait_one(self.0) }
+        unsafe { <Self::System as raw::KernelSemaphore>::raw_semaphore_wait_one(self.id()) }
     }
 
     /// [`wait_one`](Self::wait_one) with timeout.
     #[inline]
-    pub fn wait_one_timeout(self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
+    fn wait_one_timeout(&self, timeout: Duration) -> Result<(), WaitSemaphoreTimeoutError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_semaphore_wait_one_timeout(self.0, timeout) }
+        unsafe {
+            <Self::System as raw::KernelSemaphore>::raw_semaphore_wait_one_timeout(
+                self.id(),
+                timeout,
+            )
+        }
     }
 
     /// Non-blocking version of [`wait_one`](Self::wait_one). Returns
     /// immediately with [`PollSemaphoreError::Timeout`] if the unblocking
     /// condition is not satisfied.
     #[inline]
-    pub fn poll_one(self) -> Result<(), PollSemaphoreError> {
+    fn poll_one(&self) -> Result<(), PollSemaphoreError> {
         // Safety: `Semaphore` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_semaphore_poll_one(self.0) }
+        unsafe { <Self::System as raw::KernelSemaphore>::raw_semaphore_poll_one(self.id()) }
     }
 }
+
+impl<T: SemaphoreHandle> SemaphoreMethods for T {}
 
 // ----------------------------------------------------------------------------
 
@@ -180,7 +198,7 @@ impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgSemaphore<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> Semaphore<System> {
+    ) -> SemaphoreRef<'static, System> {
         let initial_value = self.initial_value.expect("`initial` is not specified");
         let maximum_value = self.maximum_value.expect("`maximum` is not specified");
 
@@ -193,6 +211,6 @@ impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
             },
             (),
         );
-        unsafe { Semaphore::from_id(id) }
+        unsafe { SemaphoreRef::from_id(id) }
     }
 }

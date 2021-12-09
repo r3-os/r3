@@ -3,7 +3,7 @@ use core::{cell::Cell, fmt, marker::PhantomData};
 use crate::{
     hunk::{DefaultInitTag, Hunk, HunkDefiner, HunkIniter},
     kernel::{
-        mutex, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
+        mutex, prelude::*, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
         TryLockMutexError,
     },
     utils::Init,
@@ -35,11 +35,12 @@ where
     System: traits::KernelMutex + traits::KernelStatic,
 {
     hunk: Hunk<System, MutexInner<T>>,
-    mutex: mutex::Mutex<System>,
+    mutex: mutex::MutexRef<'static, System>,
 }
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior
+// TODO: Owned version
 
 unsafe impl<System, T: 'static + Send> Send for RecursiveMutex<System, T> where
     System: traits::KernelMutex + traits::KernelStatic
@@ -198,7 +199,7 @@ where
     /// function](crate#static-configuration).
     pub const fn define() -> Definer<System, T, DefaultInitTag> {
         Definer {
-            mutex: mutex::Mutex::define(),
+            mutex: mutex::MutexRef::define(),
             hunk: Hunk::define(),
         }
     }

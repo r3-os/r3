@@ -1,6 +1,8 @@
 //! Tasks
 use core::{fmt, hash};
 
+use raw::KernelBase;
+
 use super::{
     cfg, raw, raw_cfg, ActivateTaskError, Cfg, GetCurrentTaskError, GetTaskPriorityError,
     InterruptTaskError, SetTaskPriorityError, UnparkError, UnparkExactError,
@@ -64,16 +66,28 @@ define_object! {
 /// [thread]: crate#threads
 /// [activated]: Task::activate
 #[doc = include_str!("../common.md")]
-pub struct Task<System: raw::KernelBase>(System::RawTaskId);
+pub struct Task<System: _>(System::RawTaskId);
+
+/// Represents a single borrowed task in a system.
+#[doc = include_str!("../common.md")]
+pub struct TaskRef<System: raw::KernelBase>(_);
+
+pub trait TaskHandle {}
+pub trait TaskMethods {}
 }
 
-impl<System: raw::KernelBase> Task<System> {
+impl<System: raw::KernelBase> TaskRef<'_, System> {
     /// Construct a `TaskDefiner` to define a mutex in [a configuration
     /// function](crate#static-configuration).
     pub const fn define() -> TaskDefiner<System> {
         TaskDefiner::new()
     }
+}
 
+/// The supported operations on [`TaskHandle`].
+#[doc = include_str!("../common.md")]
+pub trait TaskMethods: TaskHandle {
+    // TODO: Make `current` actually safe
     /// Get the current task (i.e., the task in the Running state).
     ///
     /// In a task context, this method returns the currently running task.
@@ -83,17 +97,18 @@ impl<System: raw::KernelBase> Task<System> {
     /// handler could be interrupted by another interrrupt, which might do
     /// scheduling on return (whether this happens or not is unspecified).
     #[inline]
-    pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
+    fn current() -> Result<Option<TaskRef<'static, Self::System>>, GetCurrentTaskError> {
         // Safety: "Constructing a `Task` for a current task is allowed."
-        System::raw_task_current().map(|x| x.map(|id| unsafe { Self::from_id(id) }))
+        <Self::System as KernelBase>::raw_task_current()
+            .map(|x| x.map(|id| unsafe { TaskRef::from_id(id) }))
     }
 
     /// Start the execution of the task.
     #[inline]
-    pub fn activate(self) -> Result<(), ActivateTaskError> {
+    fn activate(&self) -> Result<(), ActivateTaskError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_task_activate(self.0) }
+        unsafe { <Self::System as KernelBase>::raw_task_activate(self.id()) }
     }
 
     /// Interrupt any ongoing wait operations undertaken by the task.
@@ -105,10 +120,10 @@ impl<System: raw::KernelBase> Task<System> {
     /// [`WaitError::Interrupted`]: crate::kernel::WaitError::Interrupted
     /// [`WaitTimeoutError::Interrupted`]: crate::kernel::WaitTimeoutError::Interrupted
     #[inline]
-    pub fn interrupt(self) -> Result<(), InterruptTaskError> {
+    fn interrupt(&self) -> Result<(), InterruptTaskError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_task_interrupt(self.0) }
+        unsafe { <Self::System as KernelBase>::raw_task_interrupt(self.id()) }
     }
 
     /// Make the task's token available, unblocking [`Kernel::park`][] now or in
@@ -124,7 +139,7 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// [`Kernel::park`]: crate::kernel::Kernel::park
     #[inline]
-    pub fn unpark(self) -> Result<(), UnparkError> {
+    fn unpark(&self) -> Result<(), UnparkError> {
         match self.unpark_exact() {
             Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
             Err(UnparkExactError::BadContext) => Err(UnparkError::BadContext),
@@ -146,10 +161,10 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// [`Kernel::park`]: crate::kernel::Kernel::park
     #[inline]
-    pub fn unpark_exact(self) -> Result<(), UnparkExactError> {
+    fn unpark_exact(&self) -> Result<(), UnparkExactError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_task_unpark_exact(self.0) }
+        unsafe { <Self::System as KernelBase>::raw_task_unpark_exact(self.id()) }
     }
 
     /// Set the task's base priority.
@@ -170,13 +185,15 @@ impl<System: raw::KernelBase> Task<System> {
     ///
     /// [`num_task_priority_levels`]: crate::kernel::Cfg::num_task_priority_levels
     #[inline]
-    pub fn set_priority(self, priority: usize) -> Result<(), SetTaskPriorityError>
+    fn set_priority(&self, priority: usize) -> Result<(), SetTaskPriorityError>
     where
-        System: raw::KernelTaskSetPriority,
+        Self::System: raw::KernelTaskSetPriority,
     {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_task_set_priority(self.0, priority) }
+        unsafe {
+            <Self::System as raw::KernelTaskSetPriority>::raw_task_set_priority(self.id(), priority)
+        }
     }
 
     /// Get the task's base priority.
@@ -184,10 +201,10 @@ impl<System: raw::KernelBase> Task<System> {
     /// The task shouldn't be in the Dormant state. Otherwise, this method will
     /// return [`GetTaskPriorityError::BadObjectState`].
     #[inline]
-    pub fn priority(self) -> Result<usize, GetTaskPriorityError> {
+    fn priority(&self) -> Result<usize, GetTaskPriorityError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_task_priority(self.0) }
+        unsafe { <Self::System as raw::KernelBase>::raw_task_priority(self.id()) }
     }
 
     /// Get the task's effective priority.
@@ -201,16 +218,18 @@ impl<System: raw::KernelBase> Task<System> {
     /// The task shouldn't be in the Dormant state. Otherwise, this method will
     /// return [`GetTaskPriorityError::BadObjectState`].
     #[inline]
-    pub fn effective_priority(self) -> Result<usize, GetTaskPriorityError> {
+    fn effective_priority(&self) -> Result<usize, GetTaskPriorityError> {
         // Safety: `Task` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_task_effective_priority(self.0) }
+        unsafe { <Self::System as raw::KernelBase>::raw_task_effective_priority(self.id()) }
     }
 }
 
+impl<T: TaskHandle> TaskMethods for T {}
+
 // ----------------------------------------------------------------------------
 
-/// The definer (static builder) for [`Task`].
+/// The definer (static builder) for [`TaskRef`].
 #[must_use = "must call `finish()` to complete registration"]
 pub struct TaskDefiner<System> {
     _phantom: PhantomInvariant<System>,
@@ -284,7 +303,7 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgTask<System = System>>(
         self,
         cfg: &mut Cfg<C>,
-    ) -> Task<System> {
+    ) -> TaskRef<'static, System> {
         let id = cfg.raw().task_define(
             raw_cfg::TaskDescriptor {
                 phantom: Init::INIT,
@@ -300,7 +319,7 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
             },
             (),
         );
-        unsafe { Task::from_id(id) }
+        unsafe { TaskRef::from_id(id) }
     }
 }
 
