@@ -309,6 +309,18 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Deref for Hunk<Syst
     }
 }
 
+// Safety: `Hunk::deref` provides a stable address
+unsafe impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> stable_deref_trait::StableDeref
+    for Hunk<System, T>
+{
+}
+
+// Safety: `Hunk::clone` preserves the address
+unsafe impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized>
+    stable_deref_trait::CloneStableDeref for Hunk<System, T>
+{
+}
+
 /// FIXME: `Ord::max` is not available in `const fn`
 const fn max(x: usize, y: usize) -> usize {
     if x > y {

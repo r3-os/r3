@@ -378,3 +378,9 @@ where
         unsafe { &mut *self.mutex.hunk.get() }
     }
 }
+
+// Safety: `MutexGuard::deref` provides a stable address
+unsafe impl<System, T: 'static> stable_deref_trait::StableDeref for MutexGuard<'_, System, T> where
+    System: traits::KernelMutex + traits::KernelStatic
+{
+}

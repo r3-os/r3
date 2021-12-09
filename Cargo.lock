@@ -1706,6 +1706,7 @@ dependencies = [
  "pin-utils",
  "quickcheck",
  "quickcheck_macros",
+ "stable_deref_trait",
  "svgbobdoc",
  "tokenlock",
 ]

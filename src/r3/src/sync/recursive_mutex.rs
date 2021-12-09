@@ -460,3 +460,9 @@ where
         &self.mutex.hunk.data
     }
 }
+
+// Safety: `MutexGuard::deref` provides a stable address
+unsafe impl<System, T: 'static> stable_deref_trait::StableDeref for MutexGuard<'_, System, T> where
+    System: traits::KernelMutex + traits::KernelStatic
+{
+}
