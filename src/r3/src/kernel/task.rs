@@ -64,7 +64,7 @@ define_object! {
 /// </center>
 ///
 /// [thread]: crate#threads
-/// [activated]: Task::activate
+/// [activated]: TaskMethods::activate
 #[doc = include_str!("../common.md")]
 pub struct Task<System: _>(System::RawTaskId);
 
@@ -130,7 +130,7 @@ pub trait TaskMethods: TaskHandle {
     /// the future.
     ///
     /// If the token is already available, this method will return without doing
-    /// anything. Use [`Task::unpark_exact`] if you need to detect this
+    /// anything. Use [`Self::unpark_exact`] if you need to detect this
     /// condition.
     ///
     /// If the task is currently being blocked by `Kernel::park`, the token will

@@ -58,8 +58,8 @@ define_object! {
 ///
 /// </center>
 ///
-/// [started]: Timer::start
-/// [stopped]: Timer::stop
+/// [started]: TimerMethods::start
+/// [stopped]: TimerMethods::stop
 ///
 /// # Timer Scheduling
 ///
@@ -79,8 +79,8 @@ define_object! {
 ///  - The [period] is an optional non-negative duration value. On expiration,
 ///    the system adds this value to the timer's delay.
 ///
-/// [delay]: Timer::set_delay
-/// [period]: Timer::set_period
+/// [delay]: TimerMethods::set_delay
+/// [period]: TimerMethods::set_period
 /// [duration]: crate::time::Duration
 ///
 /// ## Overdue Timers
@@ -137,8 +137,8 @@ define_object! {
 ///
 ///  - Keep your target platform's performance characteristics in your mind.
 ///
-/// [activated]: crate::kernel::Task::activate
-/// [unparked]: crate::kernel::Task::unpark
+/// [activated]: crate::kernel::task::TaskMethods::activate
+/// [unparked]: crate::kernel::task::TaskMethods::unpark
 ///
 /// ## Start/Stop
 ///
@@ -175,7 +175,7 @@ define_object! {
 /// Another way to stop a timer is to [set the delay or the period to `None`
 /// (infinity)](#infinite-delay-andor-period).
 ///
-/// [stopped]: Timer::stop
+/// [stopped]: TimerMethods::stop
 ///
 /// ## Dynamic Period
 ///
@@ -263,8 +263,8 @@ define_object! {
 ///
 /// </center>
 ///
-/// [`delay` is set]: Timer::set_delay
-/// [`period` is set]: Timer::set_period
+/// [`delay` is set]: TimerMethods::set_delay
+/// [`period` is set]: TimerMethods::set_period
 ///
 /// # Examples
 ///
@@ -356,7 +356,7 @@ define_object! {
 ///
 /// </center>
 ///
-/// [Reset the delay]: Timer::set_delay
+/// [Reset the delay]: TimerMethods::set_delay
 ///
 #[doc = include_str!("../common.md")]
 pub struct Timer<System: _>(System::RawTimerId);
@@ -476,7 +476,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     /// Specify the initial [delay].
     /// Defaults to `None` (infinity; the timer will never fire).
     ///
-    /// [delay]: crate::kernel::Timer::set_delay
+    /// [delay]: TimerMethods::set_delay
     pub const fn delay(self, delay: Duration) -> Self {
         Self {
             delay: Some(delay),
@@ -488,7 +488,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     /// Defaults to `None` (infinity; the timer will stop firing after the next
     /// tick).
     ///
-    /// [period]: crate::kernel::Timer::set_period
+    /// [period]: TimerMethods::set_period
     pub const fn period(self, period: Duration) -> Self {
         Self {
             period: Some(period),

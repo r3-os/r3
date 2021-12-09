@@ -87,7 +87,7 @@ pub enum LockError<Guard> {
     BadContext = LockMutexError::BadContext as i8,
     /// The wait operation was interrupted by [`Task::interrupt`].
     ///
-    /// [`Task::interrupt`]: crate::kernel::Task::interrupt
+    /// [`Task::interrupt`]: crate::kernel::task::TaskMethods::interrupt
     Interrupted = LockMutexError::Interrupted as i8,
     /// The current task already owns the mutex.
     WouldDeadlock = LockMutexError::WouldDeadlock as i8,

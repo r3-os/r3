@@ -93,7 +93,7 @@ define_result_code! {
         Abandoned = -44,
         /// The wait operation was interrupted by [`Task::interrupt`].
         ///
-        /// [`Task::interrupt`]: crate::kernel::Task::interrupt
+        /// [`Task::interrupt`]: crate::kernel::task::TaskMethods::interrupt
         Interrupted = -49,
         /// The operation timed out.
         Timeout = -50,
@@ -225,7 +225,7 @@ define_error! {
     mod activate_task_error {}
     /// Error type for [`Task::activate`].
     ///
-    /// [`Task::activate`]: super::Task::activate
+    /// [`Task::activate`]: super::task::TaskMethods::activate
     pub enum ActivateTaskError {
         /// The task ID is out of range.
         BadId,
@@ -248,7 +248,7 @@ define_error! {
     mod get_current_task_error {}
     /// Error type for [`Task::current`].
     ///
-    /// [`Task::current`]: super::Task::current
+    /// [`Task::current`]: super::task::TaskMethods::current
     pub enum GetCurrentTaskError {
         /// CPU Lock is active.
         BadContext,
@@ -259,7 +259,7 @@ define_error! {
     mod interrupt_task_error {}
     /// Error type for [`Task::interrupt`].
     ///
-    /// [`Task::interrupt`]: super::Task::interrupt
+    /// [`Task::interrupt`]: super::task::TaskMethods::interrupt
     pub enum InterruptTaskError {
         /// The task ID is out of range.
         BadId,
@@ -274,7 +274,7 @@ define_error! {
     mod set_task_priority_error {}
     /// Error type for [`Task::set_priority`].
     ///
-    /// [`Task::set_priority`]: super::Task::set_priority
+    /// [`Task::set_priority`]: super::task::TaskMethods::set_priority
     pub enum SetTaskPriorityError {
         /// The task ID is out of range.
         BadId,
@@ -295,7 +295,7 @@ define_error! {
     mod get_task_priority_error {}
     /// Error type for [`Task::priority`].
     ///
-    /// [`Task::priority`]: super::Task::priority
+    /// [`Task::priority`]: super::task::TaskMethods::priority
     pub enum GetTaskPriorityError {
         /// The task ID is out of range.
         BadId,
@@ -375,7 +375,7 @@ define_error! {
     mod wait_error {}
     /// Error type for wait operations such as [`EventGroup::wait`].
     ///
-    /// [`EventGroup::wait`]: super::EventGroup::wait
+    /// [`EventGroup::wait`]: super::event_group::EventGroupMethods::wait
     pub enum WaitError {
         Interrupted,
     }
@@ -386,7 +386,7 @@ define_error! {
     /// Error type for wait operations with timeout such as
     /// [`EventGroup::wait_timeout`].
     ///
-    /// [`EventGroup::wait_timeout`]: super::EventGroup::wait_timeout
+    /// [`EventGroup::wait_timeout`]: super::event_group::EventGroupMethods::wait_timeout
     pub enum WaitTimeoutError: WaitError {
         Interrupted,
         Timeout,
@@ -428,7 +428,7 @@ define_error! {
     mod unpark_error {}
     /// Error type for [`Task::unpark`].
     ///
-    /// [`Task::unpark`]: super::Task::unpark
+    /// [`Task::unpark`]: super::task::TaskMethods::unpark
     pub enum UnparkError {
         /// CPU Lock is active.
         BadContext,
@@ -443,7 +443,7 @@ define_error! {
     mod unpark_exact_error {}
     /// Error type for [`Task::unpark_exact`].
     ///
-    /// [`Task::unpark_exact`]: super::Task::unpark_exact
+    /// [`Task::unpark_exact`]: super::task::TaskMethods::unpark_exact
     pub enum UnparkExactError {
         /// CPU Lock is active.
         BadContext,
@@ -475,8 +475,8 @@ define_error! {
     mod update_event_group_error {}
     /// Error type for [`EventGroup::set`] and [`EventGroup::clear`].
     ///
-    /// [`EventGroup::set`]: super::EventGroup::set
-    /// [`EventGroup::clear`]: super::EventGroup::clear
+    /// [`EventGroup::set`]: super::event_group::EventGroupMethods::set
+    /// [`EventGroup::clear`]: super::event_group::EventGroupMethods::clear
     pub enum UpdateEventGroupError {
         /// The event group ID is out of range.
         BadId,
@@ -489,7 +489,7 @@ define_error! {
     mod get_event_group_error {}
     /// Error type for [`EventGroup::get`].
     ///
-    /// [`EventGroup::get`]: super::EventGroup::get
+    /// [`EventGroup::get`]: super::event_group::EventGroupMethods::get
     pub enum GetEventGroupError {
         /// The event group ID is out of range.
         BadId,
@@ -502,7 +502,7 @@ define_error! {
     mod poll_event_group_error {}
     /// Error type for [`EventGroup::poll`].
     ///
-    /// [`EventGroup::poll`]: super::EventGroup::poll
+    /// [`EventGroup::poll`]: super::event_group::EventGroupMethods::poll
     pub enum PollEventGroupError {
         /// The event group ID is out of range.
         BadId,
@@ -516,7 +516,7 @@ define_error! {
     mod wait_event_group_error {}
     /// Error type for [`EventGroup::wait`].
     ///
-    /// [`EventGroup::wait`]: super::EventGroup::wait
+    /// [`EventGroup::wait`]: super::event_group::EventGroupMethods::wait
     pub enum WaitEventGroupError: WaitError {
         /// The event group ID is out of range.
         BadId,
@@ -532,7 +532,7 @@ define_error! {
     mod wait_event_group_timeout_error {}
     /// Error type for [`EventGroup::wait_timeout`].
     ///
-    /// [`EventGroup::wait_timeout`]: super::EventGroup::wait_timeout
+    /// [`EventGroup::wait_timeout`]: super::event_group::EventGroupMethods::wait_timeout
     pub enum WaitEventGroupTimeoutError: WaitTimeoutError {
         /// The event group ID is out of range.
         BadId,
@@ -551,7 +551,7 @@ define_error! {
     mod get_semaphore_error {}
     /// Error type for [`Semaphore::get`].
     ///
-    /// [`Semaphore::get`]: super::Semaphore::get
+    /// [`Semaphore::get`]: super::semaphore::SemaphoreMethods::get
     pub enum GetSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
@@ -564,7 +564,7 @@ define_error! {
     mod drain_semaphore_error {}
     /// Error type for [`Semaphore::drain`].
     ///
-    /// [`Semaphore::drain`]: super::Semaphore::drain
+    /// [`Semaphore::drain`]: super::semaphore::SemaphoreMethods::drain
     pub enum DrainSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
@@ -577,7 +577,7 @@ define_error! {
     mod signal_semaphore_error {}
     /// Error type for [`Semaphore::signal`].
     ///
-    /// [`Semaphore::signal`]: super::Semaphore::signal
+    /// [`Semaphore::signal`]: super::semaphore::SemaphoreMethods::signal
     pub enum SignalSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
@@ -592,7 +592,7 @@ define_error! {
     mod poll_semaphore_error {}
     /// Error type for [`Semaphore::poll_one`].
     ///
-    /// [`Semaphore::poll_one`]: super::Semaphore::poll_one
+    /// [`Semaphore::poll_one`]: super::semaphore::SemaphoreMethods::poll_one
     pub enum PollSemaphoreError {
         /// The semaphore ID is out of range.
         BadId,
@@ -606,7 +606,7 @@ define_error! {
     mod wait_semaphore_error {}
     /// Error type for [`Semaphore::wait_one`].
     ///
-    /// [`Semaphore::wait_one`]: super::Semaphore::wait_one
+    /// [`Semaphore::wait_one`]: super::semaphore::SemaphoreMethods::wait_one
     pub enum WaitSemaphoreError: WaitError {
         /// The semaphore ID is out of range.
         BadId,
@@ -622,7 +622,7 @@ define_error! {
     mod wait_semaphore_timeout_error {}
     /// Error type for [`Semaphore::wait_one_timeout`].
     ///
-    /// [`Semaphore::wait_one_timeout`]: super::Semaphore::wait_one_timeout
+    /// [`Semaphore::wait_one_timeout`]: super::semaphore::SemaphoreMethods::wait_one_timeout
     pub enum WaitSemaphoreTimeoutError: WaitTimeoutError {
         /// The semaphore ID is out of range.
         BadId,
@@ -641,7 +641,7 @@ define_error! {
     mod query_mutex_error {}
     /// Error type for [`Mutex::is_locked`].
     ///
-    /// [`Mutex::is_locked`]: super::Mutex::is_locked
+    /// [`Mutex::is_locked`]: super::mutex::MutexMethods::is_locked
     pub enum QueryMutexError {
         /// The mutex ID is out of range.
         BadId,
@@ -654,7 +654,7 @@ define_error! {
     mod unlock_mutex_error {}
     /// Error type for [`Mutex::unlock`].
     ///
-    /// [`Mutex::unlock`]: super::Mutex::unlock
+    /// [`Mutex::unlock`]: super::mutex::MutexMethods::unlock
     pub enum UnlockMutexError {
         /// The mutex ID is out of range.
         BadId,
@@ -673,7 +673,7 @@ define_error! {
     mod try_lock_mutex_error {}
     /// Error type for [`Mutex::try_lock`].
     ///
-    /// [`Mutex::try_lock`]: super::Mutex::try_lock
+    /// [`Mutex::try_lock`]: super::mutex::MutexMethods::try_lock
     pub enum TryLockMutexError {
         /// The mutex ID is out of range.
         BadId,
@@ -701,7 +701,7 @@ define_error! {
     mod lock_mutex_error {}
     /// Error type for [`Mutex::lock`].
     ///
-    /// [`Mutex::lock`]: super::Mutex::lock
+    /// [`Mutex::lock`]: super::mutex::MutexMethods::lock
     pub enum LockMutexError: WaitError
     {
         /// The mutex ID is out of range.
@@ -730,7 +730,7 @@ define_error! {
     mod lock_mutex_timeout_error {}
     /// Error type for [`Mutex::lock_timeout`].
     ///
-    /// [`Mutex::lock_timeout`]: super::Mutex::lock_timeout
+    /// [`Mutex::lock_timeout`]: super::mutex::MutexMethods::lock_timeout
     pub enum LockMutexTimeoutError: WaitTimeoutError {
         /// The mutex ID is out of range.
         BadId,
@@ -759,7 +759,7 @@ define_error! {
     mod mark_consistent_mutex_error {}
     /// Error type for [`Mutex::mark_consistent`].
     ///
-    /// [`Mutex::mark_consistent`]: super::Mutex::mark_consistent
+    /// [`Mutex::mark_consistent`]: super::mutex::MutexMethods::mark_consistent
     pub enum MarkConsistentMutexError {
         /// The mutex ID is out of range.
         BadId,
@@ -862,7 +862,7 @@ define_error! {
     mod start_timer_error {}
     /// Error type for [`Timer::start`].
     ///
-    /// [`Timer::start`]: super::Timer::start
+    /// [`Timer::start`]: super::timer::TimerMethods::start
     pub enum StartTimerError {
         /// The timer ID is out of range.
         BadId,
@@ -875,7 +875,7 @@ define_error! {
     mod stop_timer_error {}
     /// Error type for [`Timer::stop`].
     ///
-    /// [`Timer::stop`]: super::Timer::stop
+    /// [`Timer::stop`]: super::timer::TimerMethods::stop
     pub enum StopTimerError {
         /// The timer ID is out of range.
         BadId,
@@ -888,7 +888,7 @@ define_error! {
     mod set_timer_delay_error {}
     /// Error type for [`Timer::set_delay`].
     ///
-    /// [`Timer::set_delay`]: super::Timer::set_delay
+    /// [`Timer::set_delay`]: super::timer::TimerMethods::set_delay
     pub enum SetTimerDelayError {
         /// The timer ID is out of range.
         BadId,
@@ -903,7 +903,7 @@ define_error! {
     mod set_timer_period_error {}
     /// Error type for [`Timer::set_period`].
     ///
-    /// [`Timer::set_period`]: super::Timer::set_period
+    /// [`Timer::set_period`]: super::timer::TimerMethods::set_period
     pub enum SetTimerPeriodError {
         /// The timer ID is out of range.
         BadId,

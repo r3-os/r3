@@ -123,7 +123,7 @@ pub enum LockError<Guard> {
     BadContext = LockMutexError::BadContext as i8,
     /// The wait operation was interrupted by [`Task::interrupt`].
     ///
-    /// [`Task::interrupt`]: crate::kernel::Task::interrupt
+    /// [`Task::interrupt`]: crate::kernel::task::TaskMethods::interrupt
     Interrupted = LockMutexError::Interrupted as i8,
     /// The mutex was created with the protocol attribute having the value
     /// [`Ceiling`] and the current task's priority is higher than the

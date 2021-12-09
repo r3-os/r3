@@ -317,7 +317,7 @@ pub trait Kernel: private::Sealed {
     /// This system service may block. Therefore, calling this method is not
     /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
     ///
-    /// [`Task::unpark`]: crate::kernel::Task::unpark
+    /// [`Task::unpark`]: crate::kernel::task::TaskMethods::unpark
     /// [a non-waitable context]: crate#contexts
     fn park() -> Result<(), ParkError>;
 

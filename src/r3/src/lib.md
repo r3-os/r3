@@ -192,8 +192,8 @@ A **task** ([`Task`]) is the kernel object that can create a thread whose execut
 [`Task`]: crate::kernel::Task
 [a stack region]: crate::kernel::task::TaskDefiner::stack_size
 [priority]: crate::kernel::task::TaskDefiner::priority
-[parking]: crate::kernel::Task::unpark
-[activating]: crate::kernel::Task::activate
+[parking]: crate::kernel::task::TaskMethods::unpark
+[activating]: crate::kernel::task::TaskMethods::activate
 
 <div class="admonition-follows"></div>
 

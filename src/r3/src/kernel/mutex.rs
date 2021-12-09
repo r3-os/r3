@@ -113,6 +113,8 @@ define_object! {
 /// > </details>
 ///
 /// [Win32 mutex]: https://docs.microsoft.com/en-us/windows/win32/sync/mutex-objects
+/// [`Mutex::lock`]: MutexMethods::lock
+/// [`Mutex::mark_consistent`]: MutexMethods::mark_consistent
 ///
 /// <div class="admonition-follows"></div>
 ///
@@ -338,7 +340,7 @@ pub trait MutexMethods: MutexHandle {
     /// Note that unlike [`Semaphore::poll_one`], this operation is disallowed
     /// in a non-task context because a mutex lock needs an owning task.
     ///
-    /// [`Semaphore::poll_one`]: crate::kernel::Semaphore::poll_one
+    /// [`Semaphore::poll_one`]: crate::kernel::semaphore::SemaphoreMethods::poll_one
     #[inline]
     fn try_lock(&self) -> Result<(), TryLockMutexError> {
         // Safety: `Mutex` represents a permission to access the
