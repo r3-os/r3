@@ -25,7 +25,7 @@ define_object! {
 /// a mutex cannot be locked (even with a non-blocking operation) in a
 /// [non-task context], where there is no task to hold the mutex.
 ///
-/// See [`r3::sync::Mutex`] for a thread-safe container that uses this
+/// See [`r3::sync::mutex`] for a thread-safe container that uses this
 /// `Mutex` internally to protect shared data from concurrent access.
 ///
 /// <div class="admonition-follows"></div>
@@ -35,7 +35,7 @@ define_object! {
 ///
 /// [`RawMutexId`]: raw::KernelMutex::RawMutexId
 /// [non-task context]: crate#contexts
-/// [`r3::sync::Mutex`]: crate::sync::Mutex`
+/// [`r3::sync::mutex`]: crate::sync::mutex
 ///
 /// # Examples
 ///

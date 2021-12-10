@@ -145,7 +145,7 @@ mod m {
 [`kernel::Mutex`]: crate::kernel::Mutex
 [`kernel::Hunk`]: crate::kernel::Hunk
 [`hunk::Hunk`]: crate::hunk::Hunk
-[mutex object]: crate::sync::Mutex
+[mutex object]: crate::sync::StaticMutex
 
 # System States
 
