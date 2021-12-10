@@ -15,7 +15,7 @@
 use r3::{
     hunk::Hunk,
     kernel::{
-        prelude::*, traits, Cfg, EventGroup, EventGroupWaitFlags, QueueOrder, Task,
+        prelude::*, traits, Cfg, EventGroupWaitFlags, QueueOrder, StaticEventGroup, StaticTask,
         WaitEventGroupTimeoutError,
     },
     time::Duration,
@@ -34,7 +34,7 @@ impl<T: traits::KernelBase + traits::KernelEventGroup + traits::KernelStatic> Su
 }
 
 pub struct App<System: SupportedSystem> {
-    eg: EventGroup<System>,
+    eg: StaticEventGroup<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -45,18 +45,20 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::define()
+        StaticTask::define()
             .start(task0_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let eg = EventGroup::define().queue_order(QueueOrder::Fifo).finish(b);
+        let eg = StaticEventGroup::define()
+            .queue_order(QueueOrder::Fifo)
+            .finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg, seq }

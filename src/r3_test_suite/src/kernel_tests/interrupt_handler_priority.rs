@@ -1,7 +1,7 @@
 //! Make sure interrupt handlers are called in the ascending order of priority.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task},
+    kernel::{traits, Cfg, InterruptHandler, InterruptLine, StaticTask},
 };
 
 use super::Driver;
@@ -28,7 +28,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)

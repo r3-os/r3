@@ -11,7 +11,7 @@ Simulator for running [`::r3`] on a hosted environment
 // Require `unsafe` even in `unsafe fn` - highly recommended
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use r3::kernel::{Task, Cfg, traits};
+use r3::kernel::{StaticTask, Cfg, traits};
 
 // Use the simulator port. This macro generates `fn main()`.
 r3_port_std::use_port!(unsafe struct SystemTraits);
@@ -25,7 +25,7 @@ const fn configure_app<C>(cfg: &mut Cfg<C>) -> ()
 where
     C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
 {
-    Task::define()
+    StaticTask::define()
         .start(task_body)
         .priority(1)
         .active(true)

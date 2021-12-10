@@ -3,7 +3,7 @@ use arrayvec::ArrayVec;
 use core::{cell::UnsafeCell, fmt};
 use r3::{
     hunk::Hunk,
-    kernel::{raw_cfg, traits, Cfg, Task},
+    kernel::{raw_cfg, traits, Cfg, StaticTask},
     utils::Init,
 };
 
@@ -50,12 +50,12 @@ pub unsafe trait BencherOptions<System: SupportedSystem> {
 pub trait Bencher<System: SupportedSystem> {
     fn mark_start();
     fn mark_end(int: Interval);
-    fn main_task() -> Task<System>;
+    fn main_task() -> StaticTask<System>;
 }
 
 /// The cottage object of the bencher. Created by [`configure`].
 pub struct BencherCottage<System: SupportedSystem> {
-    task: Task<System>,
+    task: StaticTask<System>,
     state: Hunk<System, BencherState>,
 }
 
@@ -86,7 +86,7 @@ pub const fn configure<C, System: SupportedSystem, Options: BencherOptions<Syste
 where
     C: ~const raw_cfg::CfgBase<System = System> + ~const raw_cfg::CfgTask,
 {
-    let task = Task::define()
+    let task = StaticTask::define()
         .start(main_task::<System, Options>)
         .active(true)
         .priority(3)
@@ -134,7 +134,7 @@ impl<System: SupportedSystem, Options: BencherOptions<System>> Bencher<System> f
     }
 
     #[inline]
-    fn main_task() -> Task<System> {
+    fn main_task() -> StaticTask<System> {
         Options::cottage().task
     }
 }

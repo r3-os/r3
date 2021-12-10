@@ -1,7 +1,7 @@
 //! Checks the return codes of disallowed system calls made in an interrupt
 //! context.
 use core::assert_matches::assert_matches;
-use r3::kernel::{self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task};
+use r3::kernel::{self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StaticTask};
 
 use super::Driver;
 use crate::utils::conditional::KernelBoostPriorityExt;
@@ -26,7 +26,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)

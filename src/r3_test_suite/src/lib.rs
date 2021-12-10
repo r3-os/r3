@@ -376,7 +376,7 @@ pub mod kernel_benchmarks {
         fn mark_start();
         fn mark_end(int: crate::utils::benchmark::Interval);
 
-        fn main_task() -> r3::kernel::Task<System>;
+        fn main_task() -> r3::kernel::StaticTask<System>;
     }
 
     /// Define an `App` type using [the benchmark
@@ -466,7 +466,7 @@ pub mod kernel_benchmarks {
                     <Self as benchmark::Bencher<System>>::mark_end(int)
                 }
 
-                fn main_task() -> r3::kernel::Task<System> {
+                fn main_task() -> r3::kernel::StaticTask<System> {
                     <Self as benchmark::Bencher<System>>::main_task()
                 }
             }

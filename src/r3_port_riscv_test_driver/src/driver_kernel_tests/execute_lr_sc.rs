@@ -1,7 +1,7 @@
 //! Executes LR and SC instructions with various parameters. This test will
 //! exercise the emulation code (`emulate-lr-sc`) on some targets.
 use core::{marker::PhantomData, mem::MaybeUninit, ptr::addr_of_mut};
-use r3::kernel::{prelude::*, traits, Cfg, StartupHook, Task};
+use r3::kernel::{prelude::*, traits, Cfg, StartupHook, StaticTask};
 use r3_portkit::pptext::pp_asm;
 use r3_test_suite::kernel_tests::Driver;
 
@@ -18,7 +18,7 @@ impl<System: traits::KernelBase> App<System> {
             .start(startup_hook_body::<System, D>)
             .finish(b);
 
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)

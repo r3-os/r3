@@ -89,7 +89,7 @@
 //! ```
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
+    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StaticTask},
 };
 
 use super::Driver;
@@ -105,7 +105,7 @@ impl<T: traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic>
 }
 
 pub struct App<System: SupportedSystem> {
-    task: Task<System>,
+    task: StaticTask<System>,
     int: Option<InterruptLine<System>>,
     seq: Hunk<System, SeqTracker>,
     state: Hunk<System, SeqTracker>,
@@ -118,7 +118,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        let task = Task::define()
+        let task = StaticTask::define()
             .start(task_body::<System, D>)
             .priority(2)
             .active(true)

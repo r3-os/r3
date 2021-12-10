@@ -1,5 +1,5 @@
 use core::fmt;
-use r3::kernel::{prelude::*, Task};
+use r3::kernel::{prelude::*, StaticTask};
 use r3_port_arm_m as port;
 
 // --------------------------------------------------------------------------
@@ -170,7 +170,7 @@ pub fn write_fmt(core1: Core1, args: fmt::Arguments<'_>) {
 #[derive(Debug)]
 struct Objects {
     #[allow(dead_code)]
-    task1: Task<System>,
+    task1: StaticTask<System>,
 }
 
 const _COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
@@ -180,7 +180,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     SystemTraits::configure_systick(b);
 
-    let task1 = Task::define()
+    let task1 = StaticTask::define()
         .start(task1_body)
         .priority(2)
         .active(true)

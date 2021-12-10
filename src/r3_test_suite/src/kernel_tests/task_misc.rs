@@ -1,7 +1,7 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
 use core::num::NonZeroUsize;
-use r3::kernel::{prelude::*, traits, Cfg, StartupHook, Task};
+use r3::kernel::{prelude::*, traits, Cfg, StartupHook, StaticTask, TaskRef};
 use wyhash::WyHash;
 
 use super::Driver;
@@ -17,9 +17,9 @@ impl<T: traits::KernelBase<RawTaskId = NonZeroUsize> + traits::KernelTaskSetPrio
 }
 
 pub struct App<System: SupportedSystem> {
-    task1: Task<System>,
-    task2: Task<System>,
-    task3: Task<System>,
+    task1: StaticTask<System>,
+    task2: StaticTask<System>,
+    task3: StaticTask<System>,
 }
 
 impl<System: SupportedSystem> App<System> {
@@ -31,17 +31,17 @@ impl<System: SupportedSystem> App<System> {
             .start(startup_hook::<System, D>)
             .finish(b);
 
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .param(42)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task3 = Task::define()
+        let task3 = StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(1)
             .finish(b);
@@ -56,7 +56,7 @@ impl<System: SupportedSystem> App<System> {
 
 fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(
-        Task::<System>::current(),
+        StaticTask::<System>::current(),
         Err(r3::kernel::GetCurrentTaskError::BadContext)
     );
 }
@@ -71,7 +71,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     assert_eq!(app.task2, app.task2);
 
     // `Hash`
-    let hash = |x: Task<System>| {
+    let hash = |x: TaskRef<'_, System>| {
         use core::hash::{Hash, Hasher};
         let mut hasher = WyHash::with_seed(42);
         x.hash(&mut hasher);
@@ -81,7 +81,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     assert_eq!(hash(app.task2), hash(app.task2));
 
     // Invalid task ID
-    let bad_task: Task<System> = unsafe { Task::from_id(NonZeroUsize::new(42).unwrap()) };
+    let bad_task: TaskRef<'_, System> = unsafe { TaskRef::from_id(NonZeroUsize::new(42).unwrap()) };
     assert_eq!(
         bad_task.activate(),
         Err(r3::kernel::ActivateTaskError::BadId)
@@ -134,7 +134,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     // it's unlikely to catch errors such as dividing a pointer difference by a
     // wrong divisor. For this reason, we check this again in a different
     // task.
-    assert_eq!(Task::current().unwrap(), Some(app.task1));
+    assert_eq!(StaticTask::current().unwrap(), Some(app.task1));
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
@@ -172,7 +172,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
 fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Current task (again)
-    assert_eq!(Task::current().unwrap(), Some(D::app().task3));
+    assert_eq!(StaticTask::current().unwrap(), Some(D::app().task3));
 
     D::success();
 }

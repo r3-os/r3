@@ -1,9 +1,9 @@
-//! Checks miscellaneous properties of [`r3::sync::Mutex`].
+//! Checks miscellaneous properties of [`r3::sync::StaticMutex`].
 use assert_matches::assert_matches;
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Task},
-    sync::mutex::{self, Mutex},
+    kernel::{prelude::*, traits, Cfg, StaticTask},
+    sync::mutex::{self, StaticMutex},
 };
 
 use super::Driver;
@@ -13,8 +13,8 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelMutex + traits::Ke
 impl<T: traits::KernelBase + traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    task2: Task<System>,
-    mutex: Mutex<System, u32>,
+    task2: StaticTask<System>,
+    mutex: StaticMutex<System, u32>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -25,18 +25,18 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .active(false)
             .finish(b);
 
-        let mutex = Mutex::define().finish(b);
+        let mutex = StaticMutex::define().finish(b);
 
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 

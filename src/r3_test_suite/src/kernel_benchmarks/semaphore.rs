@@ -22,7 +22,7 @@
 //!      │ │       │ │                 ┊
 //! ```
 //!
-use r3::kernel::{traits, Cfg, Semaphore, Task};
+use r3::kernel::{prelude::*, traits, Cfg, StaticSemaphore, StaticTask};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;
@@ -41,8 +41,8 @@ pub trait SupportedSystem:
 impl<T: crate::utils::benchmark::SupportedSystem + traits::KernelSemaphore> SupportedSystem for T {}
 
 struct AppInner<System: SupportedSystem> {
-    task1: Task<System>,
-    sem: Semaphore<System>,
+    task1: StaticTask<System>,
+    sem: StaticSemaphore<System>,
 }
 
 const I_WAIT_DISPATCHING: Interval = "wait semaphore with dispatch";
@@ -58,12 +58,12 @@ impl<System: SupportedSystem> AppInner<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, B>)
             .priority(1)
             .finish(b);
 
-        let sem = Semaphore::define().initial(1).maximum(1).finish(b);
+        let sem = StaticSemaphore::define().initial(1).maximum(1).finish(b);
 
         Self { task1, sem }
     }

@@ -16,7 +16,7 @@
 //!
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Task},
+    kernel::{prelude::*, traits, Cfg, StaticTask},
 };
 
 use super::Driver;
@@ -26,8 +26,8 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelStatic + KernelTim
 impl<T: traits::KernelBase + traits::KernelStatic + KernelTimeExt> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    task2: Task<System>,
-    task3: Task<System>,
+    task2: StaticTask<System>,
+    task3: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -36,16 +36,16 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(3)
             .active(true)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task3 = Task::define()
+        let task3 = StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(2)
             .finish(b);

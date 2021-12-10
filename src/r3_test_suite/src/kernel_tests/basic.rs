@@ -1,6 +1,6 @@
 //! Runs a task at startup.
 use core::marker::PhantomData;
-use r3::kernel::{traits, Cfg, Task};
+use r3::kernel::{traits, Cfg, StaticTask};
 
 use super::Driver;
 
@@ -13,7 +13,7 @@ impl<System: traits::KernelBase> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)

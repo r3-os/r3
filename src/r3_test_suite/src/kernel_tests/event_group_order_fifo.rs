@@ -9,7 +9,9 @@
 //       all values of `QueueOrder` might not be supported by the target kernel
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, QueueOrder, Task},
+    kernel::{
+        prelude::*, traits, Cfg, EventGroupWaitFlags, QueueOrder, StaticEventGroup, StaticTask,
+    },
 };
 
 use super::Driver;
@@ -29,11 +31,11 @@ impl<
 }
 
 pub struct App<System: SupportedSystem> {
-    eg: EventGroup<System>,
-    task1: Task<System>,
-    task2: Task<System>,
-    task3: Task<System>,
-    task4: Task<System>,
+    eg: StaticEventGroup<System>,
+    task1: StaticTask<System>,
+    task2: StaticTask<System>,
+    task3: StaticTask<System>,
+    task4: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -44,29 +46,31 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::define()
+        StaticTask::define()
             .start(task0_body::<System, D>)
             .priority(3)
             .active(true)
             .finish(b);
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task3 = Task::define()
+        let task3 = StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(2)
             .finish(b);
-        let task4 = Task::define()
+        let task4 = StaticTask::define()
             .start(task4_body::<System, D>)
             .priority(2)
             .finish(b);
 
-        let eg = EventGroup::define().queue_order(QueueOrder::Fifo).finish(b);
+        let eg = StaticEventGroup::define()
+            .queue_order(QueueOrder::Fifo)
+            .finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App {

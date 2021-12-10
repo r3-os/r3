@@ -1,7 +1,7 @@
 //! Unlocks a mutex, waking up a task.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Mutex, Task},
+    kernel::{prelude::*, traits, Cfg, StaticMutex, StaticTask},
 };
 
 use super::Driver;
@@ -11,9 +11,9 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelMutex + traits::Ke
 impl<T: traits::KernelBase + traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    task2: Task<System>,
-    task3: Task<System>,
-    mtx: Mutex<System>,
+    task2: StaticTask<System>,
+    task3: StaticTask<System>,
+    mtx: StaticMutex<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -24,21 +24,21 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task3 = Task::define()
+        let task3 = StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(0)
             .finish(b);
 
-        let mtx = Mutex::define().finish(b);
+        let mtx = StaticMutex::define().finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App {

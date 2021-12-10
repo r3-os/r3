@@ -1,7 +1,7 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
 use r3::kernel::{
-    self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StartupHook, Task,
+    self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StartupHook, StaticTask,
 };
 
 use super::Driver;
@@ -26,7 +26,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)

@@ -1,7 +1,7 @@
 //! Signals a semaphore, waking up a task.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Semaphore, Task},
+    kernel::{prelude::*, traits, Cfg, StaticSemaphore, StaticTask},
 };
 
 use super::Driver;
@@ -14,7 +14,7 @@ pub trait SupportedSystem:
 impl<T: traits::KernelBase + traits::KernelSemaphore + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    sem: Semaphore<System>,
+    sem: StaticSemaphore<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -25,23 +25,23 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let sem = Semaphore::define().initial(0).maximum(2).finish(b);
+        let sem = StaticSemaphore::define().initial(0).maximum(2).finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { sem, seq }

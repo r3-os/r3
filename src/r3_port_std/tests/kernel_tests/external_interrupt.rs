@@ -1,7 +1,7 @@
 //! Pends an interrupt from an external thread.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Task},
+    kernel::{traits, Cfg, InterruptHandler, InterruptLine, StaticTask},
 };
 use r3_kernel::System;
 use r3_test_suite::kernel_tests::Driver;
@@ -28,7 +28,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
             + ~const traits::CfgInterruptLine
             + ~const traits::CfgTask,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body1::<Traits, D>)
             .priority(1)
             .active(true)

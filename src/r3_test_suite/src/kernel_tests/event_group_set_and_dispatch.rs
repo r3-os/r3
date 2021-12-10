@@ -1,7 +1,7 @@
 //! Sets an event group, waking up a task.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, Task},
+    kernel::{prelude::*, traits, Cfg, EventGroupWaitFlags, StaticEventGroup, StaticTask},
 };
 
 use super::Driver;
@@ -17,7 +17,7 @@ impl<T: traits::KernelBase + traits::KernelEventGroup + traits::KernelStatic> Su
 }
 
 pub struct App<System: SupportedSystem> {
-    eg: EventGroup<System>,
+    eg: StaticEventGroup<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -28,28 +28,28 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task4_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let eg = EventGroup::define().finish(b);
+        let eg = StaticEventGroup::define().finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg, seq }

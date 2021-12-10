@@ -20,7 +20,7 @@
 //!
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, LockMutexTimeoutError, Mutex, Task},
+    kernel::{prelude::*, traits, Cfg, LockMutexTimeoutError, StaticMutex, StaticTask},
     time::Duration,
 };
 
@@ -31,8 +31,8 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelMutex + traits::Ke
 impl<T: traits::KernelBase + traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    eg: Mutex<System>,
-    task1: Task<System>,
+    eg: StaticMutex<System>,
+    task1: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -43,18 +43,18 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        Task::define()
+        StaticTask::define()
             .start(task0_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(false)
             .finish(b);
 
-        let eg = Mutex::define().finish(b);
+        let eg = StaticMutex::define().finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { task1, eg, seq }

@@ -1,10 +1,10 @@
-//! Checks miscellaneous properties of [`r3::sync::RecursiveMutex`].
+//! Checks miscellaneous properties of [`r3::sync::StaticRecursiveMutex`].
 use assert_matches::assert_matches;
 use core::cell::Cell;
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
-    sync::recursive_mutex::{self, RecursiveMutex},
+    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StaticTask},
+    sync::recursive_mutex::{self, StaticRecursiveMutex},
 };
 
 use super::Driver;
@@ -25,8 +25,8 @@ impl<
 
 pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
-    eg1: RecursiveMutex<System, Cell<u32>>,
-    eg2: RecursiveMutex<System, Cell<u32>>,
+    eg1: StaticRecursiveMutex<System, Cell<u32>>,
+    eg2: StaticRecursiveMutex<System, Cell<u32>>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -38,13 +38,13 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgInterruptLine
             + ~const traits::CfgMutex,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let eg1 = RecursiveMutex::define().finish(b);
-        let eg2 = RecursiveMutex::define().finish(b);
+        let eg1 = StaticRecursiveMutex::define().finish(b);
+        let eg2 = StaticRecursiveMutex::define().finish(b);
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)

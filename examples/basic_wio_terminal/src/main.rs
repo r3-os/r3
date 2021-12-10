@@ -24,7 +24,9 @@ use core::{
 use cortex_m::{interrupt::Mutex as PrimaskMutex, singleton};
 use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
 use r3::{
-    kernel::{InterruptLine, InterruptNum, Mutex, StartupHook, Task, Timer},
+    kernel::{
+        prelude::*, InterruptLine, InterruptNum, StartupHook, StaticMutex, StaticTask, StaticTimer,
+    },
     prelude::*,
 };
 use spin::Mutex as SpinMutex;
@@ -96,10 +98,10 @@ const _: () = {
 
 struct Objects {
     console_pipe: queue::Queue<System, u8>,
-    lcd_mutex: Mutex<System>,
-    button_reporter_task: Task<System>,
-    usb_in_task: Task<System>,
-    usb_poll_timer: Timer<System>,
+    lcd_mutex: StaticMutex<System>,
+    button_reporter_task: StaticTask<System>,
+    usb_in_task: StaticTask<System>,
+    usb_poll_timer: StaticTimer<System>,
     usb_interrupt_lines: [InterruptLine<System>; 3],
 }
 
@@ -120,29 +122,29 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     SystemTraits::configure_systick(b);
 
     // Miscellaneous tasks
-    let _noisy_task = Task::define()
+    let _noisy_task = StaticTask::define()
         .start(noisy_task_body)
         .priority(0)
         .active(true)
         .finish(b);
-    let button_reporter_task = Task::define()
+    let button_reporter_task = StaticTask::define()
         .start(button_reporter_task_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let _blink_task = Task::define()
+    let _blink_task = StaticTask::define()
         .start(blink_task_body)
         .priority(1)
         .active(true)
         .finish(b);
 
     // USB input handler
-    let usb_in_task = Task::define()
+    let usb_in_task = StaticTask::define()
         .start(usb_in_task_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let usb_poll_timer = Timer::define()
+    let usb_poll_timer = StaticTimer::define()
         .start(usb_poll_timer_handler)
         .delay(r3::time::Duration::from_millis(0))
         // Should be < 10ms for USB compliance
@@ -167,18 +169,18 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     ];
 
     // Graphics-related tasks and objects
-    let _animation_task = Task::define()
+    let _animation_task = StaticTask::define()
         .start(animation_task_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let _console_task = Task::define()
+    let _console_task = StaticTask::define()
         .start(console_task_body)
         .priority(3)
         .active(true)
         .finish(b);
     let console_pipe = queue::Queue::new(b);
-    let lcd_mutex = Mutex::define().finish(b);
+    let lcd_mutex = StaticMutex::define().finish(b);
 
     Objects {
         console_pipe,
@@ -647,8 +649,8 @@ fn usb_in_task_body(_: usize) {
 
 mod queue {
     use r3::{
-        kernel::{traits, Cfg, Kernel, Task},
-        sync::mutex::Mutex,
+        kernel::{traits, Cfg, Kernel, StaticTask},
+        sync::mutex::StaticMutex,
         utils::Init,
     };
 
@@ -656,9 +658,9 @@ mod queue {
     impl<T: traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
 
     pub struct Queue<System: SupportedSystem, T> {
-        st: Mutex<System, QueueSt<System, T>>,
-        reader_lock: Mutex<System, ()>,
-        writer_lock: Mutex<System, ()>,
+        st: StaticMutex<System, QueueSt<System, T>>,
+        reader_lock: StaticMutex<System, ()>,
+        writer_lock: StaticMutex<System, ()>,
     }
 
     const CAP: usize = 256;
@@ -667,8 +669,8 @@ mod queue {
         buf: [T; CAP],
         read_i: usize,
         len: usize,
-        waiting_reader: Option<Task<System>>,
-        waiting_writer: Option<Task<System>>,
+        waiting_reader: Option<StaticTask<System>>,
+        waiting_writer: Option<StaticTask<System>>,
     }
 
     impl<System: SupportedSystem, T: Init> Init for QueueSt<System, T> {
@@ -687,9 +689,9 @@ mod queue {
             C: ~const traits::CfgBase<System = System> + ~const traits::CfgMutex,
         {
             Self {
-                st: Mutex::define().finish(cfg),
-                reader_lock: Mutex::define().finish(cfg),
-                writer_lock: Mutex::define().finish(cfg),
+                st: StaticMutex::define().finish(cfg),
+                reader_lock: StaticMutex::define().finish(cfg),
+                writer_lock: StaticMutex::define().finish(cfg),
             }
         }
 
@@ -700,7 +702,7 @@ mod queue {
                 let st = &mut *st_guard;
                 if st.len == 0 {
                     // Block the current task while the buffer is empty
-                    st.waiting_reader = Some(Task::current().unwrap().unwrap());
+                    st.waiting_reader = Some(StaticTask::current().unwrap().unwrap());
                     drop(st_guard);
                     System::park().unwrap();
                 } else {
@@ -735,7 +737,7 @@ mod queue {
                 let copied = (CAP - st.len).min(in_buf.len());
                 if copied == 0 {
                     // Block the current task while the buffer is full
-                    st.waiting_writer = Some(Task::current().unwrap().unwrap());
+                    st.waiting_writer = Some(StaticTask::current().unwrap().unwrap());
                     drop(st_guard);
                     System::park().unwrap();
                 } else {
