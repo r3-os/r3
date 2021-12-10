@@ -37,7 +37,7 @@ pub struct GenericRecursiveMutex<Cell, Mutex> {
 
 /// A defined (statically created) [`GenericRecursiveMutex`].
 pub type StaticRecursiveMutex<System, T> =
-    GenericRecursiveMutex<Hunk<System, MutexInner<T>>, mutex::MutexRef<'static, System>>;
+    GenericRecursiveMutex<Hunk<System, MutexInner<T>>, mutex::StaticMutex<System>>;
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior

@@ -8,6 +8,7 @@ macro_rules! define_object {
         pub struct $Name:ident<System: _>(System::$RawId:ident);
         $(#[$meta_ref:meta])*
         pub struct $NameRef:ident<System: $Trait:path>(_);
+        pub type $StaticName:ident<System>;
         pub trait $NameHandle:ident {}
         pub trait $NameMethods:ident {}
     ) => {
@@ -42,6 +43,21 @@ macro_rules! define_object {
             <System as $Trait>::$RawId,
             core::marker::PhantomData<&'a ()>,
         );
+
+        /// [`$&NameRef`][]`<'static, System>`
+        ///
+        /// This type is ABI-compatible with `System::`[`$&RawId`][]. It's
+        /// logically equivalent to `&'static $&Name` but instead stores
+        /// `$&RawId` directly.
+        ///
+        /// See [`$&Name`][] for the owned counterpart and the description of
+        /// this kernel object.
+        /// See [`$&NameMethods`][] for the operations provided by this handle
+        /// type.
+        ///
+        /// [`$&RawId`]: $&Trait::$&RawId
+        /// [`$&NameMethods`]: $&NameRef#impl-$&NameMethods
+        pub type $StaticName<System> = $NameRef<'static, System>;
 
         use private::NotSupportedYet;
         mod private {

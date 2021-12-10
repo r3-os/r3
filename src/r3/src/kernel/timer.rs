@@ -275,14 +275,14 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, TimerRef, traits}, time::Duration};
+/// use r3::{kernel::{Cfg, StaticTimer, traits}, time::Duration};
 ///
-/// const fn configure<C>(b: &mut Cfg<C>) -> TimerRef<'static, C::System>
+/// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     TimerRef::define()
+///     StaticTimer::define()
 ///         .delay(Duration::from_millis(70))
 ///         .period(Duration::from_millis(40))
 ///         .active(true)
@@ -315,14 +315,14 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, TimerRef, traits, prelude::*}, time::Duration};
+/// use r3::{kernel::{Cfg, StaticTimer, traits, prelude::*}, time::Duration};
 ///
-/// const fn configure<C>(b: &mut Cfg<C>) -> TimerRef<'static, C::System>
+/// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     TimerRef::define()
+///     StaticTimer::define()
 ///         .active(true)
 ///         .start(|_| dbg!())
 ///         .finish(b)
@@ -365,11 +365,13 @@ pub struct Timer<System: _>(System::RawTimerId);
 #[doc = include_str!("../common.md")]
 pub struct TimerRef<System: raw::KernelTimer>(_);
 
+pub type StaticTimer<System>;
+
 pub trait TimerHandle {}
 pub trait TimerMethods {}
 }
 
-impl<System: raw::KernelTimer> TimerRef<'_, System> {
+impl<System: raw::KernelTimer> StaticTimer<System> {
     /// Construct a `TimerDefiner` to define a timer in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> TimerDefiner<System> {
@@ -501,7 +503,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgTimer<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> TimerRef<'static, System> {
+    ) -> StaticTimer<System> {
         let id = c.raw().timer_define(
             raw_cfg::TimerDescriptor {
                 phantom: Init::INIT,

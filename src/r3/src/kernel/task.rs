@@ -72,11 +72,13 @@ pub struct Task<System: _>(System::RawTaskId);
 #[doc = include_str!("../common.md")]
 pub struct TaskRef<System: raw::KernelBase>(_);
 
+pub type StaticTask<System>;
+
 pub trait TaskHandle {}
 pub trait TaskMethods {}
 }
 
-impl<System: raw::KernelBase> TaskRef<'_, System> {
+impl<System: raw::KernelBase> StaticTask<System> {
     /// Construct a `TaskDefiner` to define a mutex in [a configuration
     /// function](crate#static-configuration).
     pub const fn define() -> TaskDefiner<System> {
@@ -303,7 +305,7 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgTask<System = System>>(
         self,
         cfg: &mut Cfg<C>,
-    ) -> TaskRef<'static, System> {
+    ) -> StaticTask<System> {
         let id = cfg.raw().task_define(
             raw_cfg::TaskDescriptor {
                 phantom: Init::INIT,

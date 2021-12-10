@@ -41,7 +41,7 @@ pub struct GenericMutex<Cell, Mutex> {
 
 /// A defined (statically created) [`GenericMutex`].
 pub type StaticMutex<System, T> =
-    GenericMutex<Hunk<System, UnsafeCell<T>>, mutex::MutexRef<'static, System>>;
+    GenericMutex<Hunk<System, UnsafeCell<T>>, mutex::StaticMutex<System>>;
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior
@@ -178,7 +178,7 @@ where
     /// function](crate#static-configuration).
     pub const fn define() -> Definer<System, T, DefaultInitTag> {
         Definer {
-            mutex: mutex::MutexRef::define(),
+            mutex: mutex::StaticMutex::define(),
             hunk: Hunk::define(),
         }
     }

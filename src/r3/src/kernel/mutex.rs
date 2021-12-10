@@ -44,11 +44,11 @@ define_object! {
 /// #![feature(const_mut_refs)]
 /// #![feature(const_trait_impl)]
 /// use r3::kernel::{
-///     LockMutexError, MutexRef, MutexProtocol, Cfg, traits, prelude::*,
+///     LockMutexError, StaticMutex, MutexProtocol, Cfg, traits, prelude::*,
 /// };
 ///
 /// struct Objects<System: traits::KernelMutex> {
-///     mutex: MutexRef<'static, System>,
+///     mutex: StaticMutex<System>,
 /// }
 ///
 /// const fn configure<C>(cfg: &mut Cfg<C>) -> Objects<C::System>
@@ -56,7 +56,7 @@ define_object! {
 ///     C: ~const traits::CfgMutex,
 ///     C::System: traits::KernelMutex, // FIXME: Why not implied by `CfgMutex`?
 /// {
-///     let mutex = MutexRef::define()
+///     let mutex = StaticMutex::define()
 ///         .protocol(MutexProtocol::Ceiling(1))
 ///         .finish(cfg);
 ///     Objects { mutex }
@@ -271,11 +271,13 @@ pub struct Mutex<System: _>(System::RawMutexId);
 #[doc = include_str!("../common.md")]
 pub struct MutexRef<System: raw::KernelMutex>(_);
 
+pub type StaticMutex<System>;
+
 pub trait MutexHandle {}
 pub trait MutexMethods {}
 }
 
-impl<System: raw::KernelMutex> MutexRef<'_, System> {
+impl<System: raw::KernelMutex> StaticMutex<System> {
     /// Construct a `MutexDefiner` to define a mutex in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> MutexDefiner<System> {
@@ -399,7 +401,7 @@ impl<System: raw::KernelMutex> MutexDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgMutex<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> MutexRef<'static, System> {
+    ) -> StaticMutex<System> {
         let id = c.raw().mutex_define(self.inner, ());
         unsafe { MutexRef::from_id(id) }
     }

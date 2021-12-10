@@ -30,11 +30,13 @@ pub struct EventGroup<System: _>(System::RawEventGroupId);
 #[doc = include_str!("../common.md")]
 pub struct EventGroupRef<System: raw::KernelEventGroup>(_);
 
+pub type StaticEventGroup<System>;
+
 pub trait EventGroupHandle {}
 pub trait EventGroupMethods {}
 }
 
-impl<System: raw::KernelEventGroup> EventGroupRef<'_, System> {
+impl<System: raw::KernelEventGroup> StaticEventGroup<System> {
     /// Construct a `EventGroupDefiner` to define an event group in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> EventGroupDefiner<System> {
@@ -180,7 +182,7 @@ impl<System: raw::KernelEventGroup> EventGroupDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgEventGroup<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> EventGroupRef<'static, System> {
+    ) -> StaticEventGroup<System> {
         let id = c.raw().event_group_define(self.inner, ());
         unsafe { EventGroupRef::from_id(id) }
     }

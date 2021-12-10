@@ -37,11 +37,13 @@ pub struct Semaphore<System: _>(System::RawSemaphoreId);
 #[doc = include_str!("../common.md")]
 pub struct SemaphoreRef<System: raw::KernelSemaphore>(_);
 
+pub type StaticSemaphore<System>;
+
 pub trait SemaphoreHandle {}
 pub trait SemaphoreMethods {}
 }
 
-impl<System: raw::KernelSemaphore> SemaphoreRef<'_, System> {
+impl<System: raw::KernelSemaphore> StaticSemaphore<System> {
     /// Construct a `SemaphoreDefiner` to define a semaphore in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> SemaphoreDefiner<System> {
@@ -198,7 +200,7 @@ impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgSemaphore<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> SemaphoreRef<'static, System> {
+    ) -> StaticSemaphore<System> {
         let initial_value = self.initial_value.expect("`initial` is not specified");
         let maximum_value = self.maximum_value.expect("`maximum` is not specified");
 

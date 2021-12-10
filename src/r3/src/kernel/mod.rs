@@ -23,16 +23,18 @@ pub mod timer;
 pub use {
     cfg::Cfg,
     error::*,
-    event_group::{EventGroup, EventGroupBits, EventGroupRef, EventGroupWaitFlags},
+    event_group::{
+        EventGroup, EventGroupBits, EventGroupRef, EventGroupWaitFlags, StaticEventGroup,
+    },
     hook::StartupHook,
     hunk::Hunk,
     interrupt::{InterruptHandler, InterruptLine, InterruptNum, InterruptPriority},
     kernel::*,
-    mutex::{Mutex, MutexProtocol, MutexRef},
+    mutex::{Mutex, MutexProtocol, MutexRef, StaticMutex},
     raw::{Id, QueueOrder},
-    semaphore::{Semaphore, SemaphoreRef, SemaphoreValue},
-    task::{Task, TaskRef},
-    timer::{Timer, TimerRef},
+    semaphore::{Semaphore, SemaphoreRef, SemaphoreValue, StaticSemaphore},
+    task::{StaticTask, Task, TaskRef},
+    timer::{StaticTimer, Timer, TimerRef},
 };
 
 /// The prelude module. This module re-exports [`Kernel`][2] and other extension
