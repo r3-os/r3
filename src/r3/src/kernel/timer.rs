@@ -275,14 +275,14 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, Timer, traits}, time::Duration};
+/// use r3::{kernel::{Cfg, TimerRef, traits}, time::Duration};
 ///
-/// const fn configure<C>(b: &mut Cfg<C>) -> Timer<C::System>
+/// const fn configure<C>(b: &mut Cfg<C>) -> TimerRef<'static, C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     Timer::define()
+///     TimerRef::define()
 ///         .delay(Duration::from_millis(70))
 ///         .period(Duration::from_millis(40))
 ///         .active(true)
@@ -315,14 +315,14 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, Timer, traits}, time::Duration};
+/// use r3::{kernel::{Cfg, TimerRef, traits, prelude::*}, time::Duration};
 ///
-/// const fn configure<C>(b: &mut Cfg<C>) -> Timer<C::System>
+/// const fn configure<C>(b: &mut Cfg<C>) -> TimerRef<'static, C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     Timer::define()
+///     TimerRef::define()
 ///         .active(true)
 ///         .start(|_| dbg!())
 ///         .finish(b)
@@ -332,9 +332,9 @@ define_object! {
 /// [Reset the delay] to schedule a call.
 ///
 /// ```rust
-/// use r3::{kernel::{Timer, traits}, time::Duration};
+/// use r3::{kernel::{TimerRef, traits, prelude::*}, time::Duration};
 ///
-/// fn sched<System: traits::KernelTimer>(timer: Timer<System>) {
+/// fn sched<System: traits::KernelTimer>(timer: TimerRef<'_, System>) {
 ///     timer.set_delay(Some(Duration::from_millis(40))).unwrap();
 /// }
 /// ```

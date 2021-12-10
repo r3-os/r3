@@ -67,7 +67,7 @@ Kernel objects are **defined** (we use this specific word for static creation) i
 
 <span class="center">![static_cfg]</span>
 
-The configuration process assigns handles, such as [`Task`][], to the defined kernel objects, which can be returned by a configuration function and passed over up to the build macro, which returns it to the caller. By storing it in a `const` item, application code can access the defined kernel objects from everywhere.
+The configuration process assigns handles, such as [`TaskRef`][]`<'static, System>`, to the defined kernel objects, which can be returned by a configuration function and passed over up to the build macro, which returns it to the caller. By storing it in a `const` item, application code can access the defined kernel objects from everywhere.
 
 <!-- FIXME: When <https://github.com/rust-lang/cargo/issues/4242> is resolved,
             the following code block will be doc-testable  -->
@@ -76,7 +76,7 @@ The configuration process assigns handles, such as [`Task`][], to the defined ke
 type System = r3_kernel::System<SystemTraits>;
 r3_port_std::use_port!(unsafe struct SystemTraits);
 
-struct Objects { task: Task<System> }
+struct Objects { task: TaskRef<'static, System> }
 
 // Does the following things:
 //  - Creates control blocks for the kernel objects defined in `configure_app`.
@@ -92,19 +92,19 @@ where
      + ~const traits::CfgTask,
 {
     b.num_task_priority_levels(4);
-    let task = Task::define()
+    let task = TaskRef::define()
         .start(task_body).priority(3).active(true).finish(b);
     Objects { task }
 }
 
 fn task_body(_: usize) {
-    assert_eq!(COTTAGE.task, Task::current().unwrap());
+    assert_eq!(COTTAGE.task, TaskRef::current().unwrap());
 }
 ```
 
 [`r3::kernel::Cfg`]: crate::kernel::Cfg
 [`r3::kernel::raw_cfg::CfgBase`]: crate::kernel::raw_cfg::CfgBase
-[`Task`]: crate::kernel::Task
+[`TaskRef`]: crate::kernel::TaskRef
 [`~const`]: https://github.com/rust-lang/rust/issues/77463
 
 Configuration functions are highly composable as they can make nested calls to other configuration functions. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, encapsulate them, and expose a higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`kernel::Mutex`]`<System>` (a low-level mutex object) and a [`hunk::Hunk`]`<System, UnsafeCell<T>>` (a typed hunk), which in turn is built on top of [`kernel::Hunk`]`<System>` (a low-level untyped hunk).
@@ -127,13 +127,13 @@ where
 }
 
 mod m {
-#   use r3::kernel::{Cfg, Task, traits};
-#   pub struct MyModule<System: traits::KernelBase> { task: Task<System> }
+#   use r3::kernel::{Cfg, TaskRef, traits};
+#   pub struct MyModule<System: traits::KernelBase> { task: TaskRef<'static, System> }
     pub const fn configure<C>(b: &mut Cfg<C>) -> MyModule<C::System>
     where
         C: ~const traits::CfgBase + ~const traits::CfgTask,
     {
-        let task = Task::define()
+        let task = TaskRef::define()
             .start(task_body).priority(3).active(true).finish(b);
         MyModule { task }
     }

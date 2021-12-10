@@ -44,11 +44,11 @@ define_object! {
 /// #![feature(const_mut_refs)]
 /// #![feature(const_trait_impl)]
 /// use r3::kernel::{
-///     LockMutexError, Mutex, MutexProtocol, Cfg, traits,
+///     LockMutexError, MutexRef, MutexProtocol, Cfg, traits, prelude::*,
 /// };
 ///
 /// struct Objects<System: traits::KernelMutex> {
-///     mutex: Mutex<System>,
+///     mutex: MutexRef<'static, System>,
 /// }
 ///
 /// const fn configure<C>(cfg: &mut Cfg<C>) -> Objects<C::System>
@@ -56,7 +56,7 @@ define_object! {
 ///     C: ~const traits::CfgMutex,
 ///     C::System: traits::KernelMutex, // FIXME: Why not implied by `CfgMutex`?
 /// {
-///     let mutex = Mutex::define()
+///     let mutex = MutexRef::define()
 ///         .protocol(MutexProtocol::Ceiling(1))
 ///         .finish(cfg);
 ///     Objects { mutex }

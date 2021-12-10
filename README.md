@@ -73,10 +73,10 @@ impl port::SysTickOptions for SystemTraits {
 
 // ----------------------------------------------------------------
 
-use r3::kernel::Task;
+use r3::kernel::TaskRef;
 
 struct Objects {
-    task: Task<System>,
+    task: TaskRef<'static, System>,
 }
 
 // Instantiate the kernel, allocate object IDs
@@ -86,7 +86,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     System::configure_systick(b);
 
     Objects {
-        task: Task::define()
+        task: TaskRef::define()
             .start(task_body)
             .priority(2)
             .active(true)
