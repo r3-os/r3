@@ -18,8 +18,8 @@ use crate::{
 
 /// A group of traits that must be implemented by kernel object ID types,
 /// including [`KernelBase::RawTaskId`].
-pub trait Id: fmt::Debug + Copy + Eq + Ord + Hash {}
-impl<T: ?Sized + fmt::Debug + Copy + Eq + Ord + Hash> Id for T {}
+pub trait Id: fmt::Debug + Copy + Eq + Ord + Hash + Send + Sync + 'static {}
+impl<T: ?Sized + fmt::Debug + Copy + Eq + Ord + Hash + Send + Sync + 'static> Id for T {}
 
 /// Provides access to the minimal API exposed by a kernel.
 ///
