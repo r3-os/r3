@@ -166,10 +166,26 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
 ///
 /// There are no operations defined for interrupt handlers, so this type
 /// is only used for static configuration.
-pub struct StaticInterruptHandler<System>(PhantomInvariant<System>);
+pub struct StaticInterruptHandler<System: raw::KernelInterruptLine>(PhantomInvariant<System>);
 
 // TODO: A dynamically registered interrupt handler would be `InterruptHandler`,
 //       which would hold an ID to delete later.
+
+impl<System: raw::KernelInterruptLine> fmt::Debug for StaticInterruptHandler<System> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("InterruptHandler")
+    }
+}
+
+impl<System: raw::KernelInterruptLine> Clone for StaticInterruptHandler<System> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self(self.0)
+    }
+}
+
+impl<System: raw::KernelInterruptLine> Copy for StaticInterruptHandler<System> {}
 
 impl<System: raw::KernelInterruptLine> StaticInterruptHandler<System> {
     const fn new() -> Self {
