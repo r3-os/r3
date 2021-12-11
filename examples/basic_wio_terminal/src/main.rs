@@ -23,11 +23,8 @@ use core::{
 };
 use cortex_m::{interrupt::Mutex as PrimaskMutex, singleton};
 use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
-use r3::{
-    kernel::{
-        prelude::*, InterruptLine, InterruptNum, StartupHook, StaticMutex, StaticTask, StaticTimer,
-    },
-    prelude::*,
+use r3::kernel::{
+    prelude::*, InterruptLine, InterruptNum, StartupHook, StaticMutex, StaticTask, StaticTimer,
 };
 use spin::Mutex as SpinMutex;
 use usb_device::{
@@ -648,8 +645,10 @@ fn usb_in_task_body(_: usize) {
 // ----------------------------------------------------------------------------
 
 mod queue {
+    use cryo::{lock_ty, with_cryo, AtomicLock, CryoRef};
     use r3::{
-        kernel::{traits, Cfg, Kernel, StaticTask},
+        kernel::{traits, Cfg, Kernel, LocalTask},
+        prelude::*,
         sync::mutex::StaticMutex,
         utils::Init,
     };
@@ -669,8 +668,8 @@ mod queue {
         buf: [T; CAP],
         read_i: usize,
         len: usize,
-        waiting_reader: Option<StaticTask<System>>,
-        waiting_writer: Option<StaticTask<System>>,
+        waiting_reader: Option<CryoRef<LocalTask<System>, AtomicLock>>,
+        waiting_writer: Option<CryoRef<LocalTask<System>, AtomicLock>>,
     }
 
     impl<System: SupportedSystem, T: Init> Init for QueueSt<System, T> {
@@ -697,68 +696,91 @@ mod queue {
 
         pub fn read(&self, out_buf: &mut [T]) -> usize {
             let _guard = self.reader_lock.lock().unwrap();
-            loop {
-                let mut st_guard = self.st.lock().unwrap();
-                let st = &mut *st_guard;
-                if st.len == 0 {
-                    // Block the current task while the buffer is empty
-                    st.waiting_reader = Some(StaticTask::current().unwrap().unwrap());
-                    drop(st_guard);
-                    System::park().unwrap();
-                } else {
-                    let copied = st.len.min(out_buf.len());
-                    let (part1, part0) = st.buf.split_at(st.read_i);
-                    if part0.len() >= copied {
-                        out_buf[..copied].copy_from_slice(&part0[..copied]);
-                    } else {
-                        out_buf[..part0.len()].copy_from_slice(part0);
-                        out_buf[part0.len()..copied]
-                            .copy_from_slice(&part1[..copied - part0.len()]);
-                    }
-                    st.read_i = st.read_i.wrapping_add(copied) % CAP;
-                    st.len -= copied;
 
-                    // Wake up any waiting writer
-                    if let Some(t) = st.waiting_writer.take() {
-                        t.unpark().unwrap();
-                    }
+            // `cryo` lets us store `&LocalTask` in `QueueSt: 'static` by
+            // runtime lifetime checking. It'll panic if the created `CryoRef`
+            // lingers longer than this `LocalTask`'s lifetime.
+            with_cryo(
+                (
+                    &LocalTask::current().unwrap().unwrap(),
+                    lock_ty::<AtomicLock>(),
+                ),
+                |current_task| {
+                    loop {
+                        let mut st_guard = self.st.lock().unwrap();
+                        let st = &mut *st_guard;
+                        if st.len == 0 {
+                            // Block the current task while the buffer is empty
+                            st.waiting_reader = Some(current_task.borrow());
+                            drop(st_guard);
+                            System::park().unwrap();
+                        } else {
+                            let copied = st.len.min(out_buf.len());
+                            let (part1, part0) = st.buf.split_at(st.read_i);
+                            if part0.len() >= copied {
+                                out_buf[..copied].copy_from_slice(&part0[..copied]);
+                            } else {
+                                out_buf[..part0.len()].copy_from_slice(part0);
+                                out_buf[part0.len()..copied]
+                                    .copy_from_slice(&part1[..copied - part0.len()]);
+                            }
+                            st.read_i = st.read_i.wrapping_add(copied) % CAP;
+                            st.len -= copied;
 
-                    st.waiting_reader = None;
-                    return copied;
-                }
-            }
+                            // Wake up any waiting writer
+                            if let Some(t) = st.waiting_writer.take() {
+                                t.unpark().unwrap();
+                            }
+
+                            st.waiting_reader = None;
+                            return copied;
+                        }
+                    }
+                },
+            )
         }
 
         pub fn write(&self, mut in_buf: &[T]) {
             let _guard = self.writer_lock.lock().unwrap();
-            while !in_buf.is_empty() {
-                let mut st_guard = self.st.lock().unwrap();
-                let st = &mut *st_guard;
-                let copied = (CAP - st.len).min(in_buf.len());
-                if copied == 0 {
-                    // Block the current task while the buffer is full
-                    st.waiting_writer = Some(StaticTask::current().unwrap().unwrap());
-                    drop(st_guard);
-                    System::park().unwrap();
-                } else {
-                    let (part1, part0) = st.buf.split_at_mut((st.read_i + st.len) % CAP);
-                    if part0.len() >= copied {
-                        part0[..copied].copy_from_slice(&in_buf[..copied]);
-                    } else {
-                        part0.copy_from_slice(&in_buf[..part0.len()]);
-                        part1[..copied - part0.len()].copy_from_slice(&in_buf[part0.len()..copied]);
-                    }
-                    st.len += copied;
 
-                    // Wake up any waiting reader
-                    if let Some(t) = st.waiting_reader.take() {
-                        t.unpark().unwrap();
-                    }
+            // Ditto about `cryo`
+            with_cryo(
+                (
+                    &LocalTask::current().unwrap().unwrap(),
+                    lock_ty::<AtomicLock>(),
+                ),
+                |current_task| {
+                    while !in_buf.is_empty() {
+                        let mut st_guard = self.st.lock().unwrap();
+                        let st = &mut *st_guard;
+                        let copied = (CAP - st.len).min(in_buf.len());
+                        if copied == 0 {
+                            // Block the current task while the buffer is full
+                            st.waiting_writer = Some(current_task.borrow());
+                            drop(st_guard);
+                            System::park().unwrap();
+                        } else {
+                            let (part1, part0) = st.buf.split_at_mut((st.read_i + st.len) % CAP);
+                            if part0.len() >= copied {
+                                part0[..copied].copy_from_slice(&in_buf[..copied]);
+                            } else {
+                                part0.copy_from_slice(&in_buf[..part0.len()]);
+                                part1[..copied - part0.len()]
+                                    .copy_from_slice(&in_buf[part0.len()..copied]);
+                            }
+                            st.len += copied;
 
-                    st.waiting_writer = None;
-                    in_buf = &in_buf[copied..];
-                }
-            }
+                            // Wake up any waiting reader
+                            if let Some(t) = st.waiting_reader.take() {
+                                t.unpark().unwrap();
+                            }
+
+                            st.waiting_writer = None;
+                            in_buf = &in_buf[copied..];
+                        }
+                    }
+                },
+            )
         }
     }
 }

@@ -33,7 +33,7 @@ pub use {
     mutex::{Mutex, MutexProtocol, MutexRef, StaticMutex},
     raw::{Id, QueueOrder},
     semaphore::{Semaphore, SemaphoreRef, SemaphoreValue, StaticSemaphore},
-    task::{StaticTask, Task, TaskRef},
+    task::{LocalTask, StaticTask, Task, TaskRef},
     timer::{StaticTimer, Timer, TimerRef},
 };
 

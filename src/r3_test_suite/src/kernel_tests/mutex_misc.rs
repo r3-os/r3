@@ -5,8 +5,8 @@ use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
     kernel::{
-        prelude::*, traits, Cfg, InterruptHandler, InterruptLine, MutexProtocol, MutexRef,
-        StaticMutex, StaticTask,
+        prelude::*, traits, Cfg, InterruptHandler, InterruptLine, LocalTask, MutexProtocol,
+        MutexRef, StaticMutex, StaticTask,
     },
     time::Duration,
 };
@@ -281,7 +281,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
     // `m2` uses the priority ceiling `1`. Let's use this to test the errors
     // specific to the priority ceiling protocol.
-    let cur_task: StaticTask<System> = StaticTask::current().unwrap().unwrap();
+    let cur_task: LocalTask<System> = LocalTask::current().unwrap().unwrap();
     for pri in 0..=3 {
         let exceeds_ceiling = pri < 1;
         log::trace!(
@@ -438,7 +438,7 @@ fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
     let [_, m2, ..] = app.m;
 
-    let cur_task: StaticTask<System> = StaticTask::current().unwrap().unwrap();
+    let cur_task: LocalTask<System> = LocalTask::current().unwrap().unwrap();
     assert_eq!(cur_task.priority().unwrap(), 2);
     assert_eq!(cur_task.effective_priority().unwrap(), 2);
 

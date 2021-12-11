@@ -1,5 +1,5 @@
 //! Tasks
-use core::{fmt, hash};
+use core::{fmt, hash, marker::PhantomData};
 
 use raw::KernelBase;
 
@@ -86,10 +86,83 @@ impl<System: raw::KernelBase> StaticTask<System> {
     }
 }
 
-/// The supported operations on [`TaskHandle`].
-#[doc = include_str!("../common.md")]
-pub trait TaskMethods: TaskHandle {
-    // TODO: Make `current` actually safe
+/// A non-`Send`, `'static` [task] reference. The lack of `Send`-ness constrains
+/// its lifetime to the owning task and thus allows it to represent a [current
+/// task][1] safely.
+///
+/// See [`TaskRef`][] for the `Send` counterpart.
+/// See [`TaskMethods`][] for the operations provided by this handle
+/// type.
+///
+/// [1]: Self::current
+/// [task]: Task
+/// [`TaskMethods`]: #impl-TaskMethods
+pub struct LocalTask<System: raw::KernelBase>(System::RawTaskId, PhantomData<*const ()>);
+
+// Safety: `RawTaskId` is `Sync` by its definition
+unsafe impl<System: raw::KernelBase> Sync for LocalTask<System> {}
+// `impl Send for LocalTask` is left out intentionally.
+
+unsafe impl<System: raw::KernelBase> const TaskHandle for LocalTask<System> {
+    type System = System;
+
+    #[inline]
+    unsafe fn from_id(id: System::RawTaskId) -> Self {
+        Self(id, PhantomData)
+    }
+
+    #[inline]
+    fn id(&self) -> System::RawTaskId {
+        self.0
+    }
+
+    #[inline]
+    fn borrow(&self) -> TaskRef<'_, Self::System> {
+        TaskRef(self.0, PhantomData)
+    }
+}
+
+// FIXME: Implementing `const PartialEq` would require all provided methods to
+//        be implemented (for now)
+impl<System: raw::KernelBase, T: TaskHandle<System = System>> PartialEq<T> for LocalTask<System> {
+    #[inline]
+    fn eq(&self, other: &T) -> bool {
+        self.0 == other.id()
+    }
+}
+
+impl<System: raw::KernelBase> Eq for LocalTask<System> {}
+
+impl<System: raw::KernelBase> hash::Hash for LocalTask<System> {
+    #[inline]
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        self.borrow().hash(state)
+    }
+}
+
+impl<System: raw::KernelBase> fmt::Debug for LocalTask<System> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.borrow().fmt(f)
+    }
+}
+
+impl<System: raw::KernelBase> Clone for LocalTask<System> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self(self.0, self.1)
+    }
+}
+
+impl<System: raw::KernelBase> Copy for LocalTask<System> {}
+
+impl<System: raw::KernelBase> LocalTask<System> {
+    // TODO: Remove the support for calling this from an interrupt context? If
+    //       the task is migrated to another processor, the current thread may
+    //       outlive the task.
     /// Get the current task (i.e., the task in the Running state).
     ///
     /// In a task context, this method returns the currently running task.
@@ -99,12 +172,17 @@ pub trait TaskMethods: TaskHandle {
     /// handler could be interrupted by another interrrupt, which might do
     /// scheduling on return (whether this happens or not is unspecified).
     #[inline]
-    fn current() -> Result<Option<TaskRef<'static, Self::System>>, GetCurrentTaskError> {
-        // Safety: "Constructing a `Task` for a current task is allowed."
-        <Self::System as KernelBase>::raw_task_current()
-            .map(|x| x.map(|id| unsafe { TaskRef::from_id(id) }))
+    pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
+        // Safety: Constructing a `LocalTask` for a current task is okay.
+        //         `LocalTask` cannot outlive the current thread, i.e.,
+        //         the task or an interrupt handler preempting the task.
+        System::raw_task_current().map(|x| x.map(|id| unsafe { Self::from_id(id) }))
     }
+}
 
+/// The supported operations on [`TaskHandle`].
+#[doc = include_str!("../common.md")]
+pub trait TaskMethods: TaskHandle {
     /// Start the execution of the task.
     #[inline]
     fn activate(&self) -> Result<(), ActivateTaskError> {

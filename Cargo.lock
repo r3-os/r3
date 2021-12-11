@@ -424,6 +424,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccaeedb56da03b09f598226e25e80088cb4cd25f316e6e4df7d695f0feeb1403"
 
 [[package]]
+name = "cryo"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61aaf3d4653638481e708f4d6843893f639395e493d71359da0731ea5fe4dd10"
+dependencies = [
+ "pin-utils",
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "debug-helper"
 version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1755,6 +1765,7 @@ dependencies = [
  "atsamd-hal",
  "cortex-m 0.7.3",
  "cortex-m-rt",
+ "cryo",
  "embedded-graphics",
  "r3",
  "r3_example_common",

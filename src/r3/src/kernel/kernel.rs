@@ -50,13 +50,13 @@ use crate::{
 /// Don't constrain a system type by this trait:
 ///
 /// ```compile_fail,E0277
-/// # use r3::kernel::{traits, Task};
-/// fn current_task<System>() -> Task<System>
+/// # use r3::kernel::{traits, LocalTask};
+/// fn current_task<System>() -> LocalTask<System>
 /// where
 ///     System: traits::Kernel,
 /// {
 ///     // ERROR: `System` doesn't implement `traits::KernelBase`
-///     Task::current().unwrap().unwrap()
+///     LocalTask::current().unwrap().unwrap()
 /// }
 /// ```
 #[doc = include_str!("../common.md")]

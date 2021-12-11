@@ -22,4 +22,5 @@ usb-device = { version = "0.2.7" }
 atsamd-hal = { version = "0.13", features = ["samd51p"] }
 arrayvec = { version = "0.7.1", default-features = false }
 cortex-m = { version = "*" }
+cryo = { version = "0.3.1", default-features = false, features = ["atomic"] }
 spin = { version = "0.9.2", default-features = false, features = ["spin_mutex"] }

@@ -1,7 +1,7 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
 use core::num::NonZeroUsize;
-use r3::kernel::{prelude::*, traits, Cfg, StartupHook, StaticTask, TaskRef};
+use r3::kernel::{prelude::*, traits, Cfg, LocalTask, StartupHook, StaticTask, TaskRef};
 use wyhash::WyHash;
 
 use super::Driver;
@@ -56,7 +56,7 @@ impl<System: SupportedSystem> App<System> {
 
 fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(
-        StaticTask::<System>::current(),
+        LocalTask::<System>::current(),
         Err(r3::kernel::GetCurrentTaskError::BadContext)
     );
 }
@@ -134,7 +134,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     // it's unlikely to catch errors such as dividing a pointer difference by a
     // wrong divisor. For this reason, we check this again in a different
     // task.
-    assert_eq!(StaticTask::current().unwrap(), Some(app.task1));
+    assert_eq!(LocalTask::current().unwrap().unwrap(), app.task1);
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
@@ -172,7 +172,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
 fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Current task (again)
-    assert_eq!(StaticTask::current().unwrap(), Some(D::app().task3));
+    assert_eq!(LocalTask::current().unwrap().unwrap(), D::app().task3);
 
     D::success();
 }

@@ -246,9 +246,9 @@ define_error! {
 
 define_error! {
     mod get_current_task_error {}
-    /// Error type for [`Task::current`].
+    /// Error type for [`LocalTask::current`].
     ///
-    /// [`Task::current`]: super::task::TaskMethods::current
+    /// [`LocalTask::current`]: super::task::LocalTask::current
     pub enum GetCurrentTaskError {
         /// CPU Lock is active.
         BadContext,

@@ -98,7 +98,7 @@ where
 }
 
 fn task_body(_: usize) {
-    assert_eq!(COTTAGE.task, StaticTask::current().unwrap());
+    assert_eq!(LocalTask::current().unwrap(), COTTAGE.task);
 }
 ```
 

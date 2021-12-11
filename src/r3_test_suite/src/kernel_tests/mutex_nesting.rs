@@ -1,6 +1,6 @@
 //! Locks multiple mutexes and makes sure the current task's effective priority
 //! is updated correctly.
-use r3::kernel::{prelude::*, traits, Cfg, MutexProtocol, StaticMutex, StaticTask};
+use r3::kernel::{prelude::*, traits, Cfg, LocalTask, MutexProtocol, StaticMutex, StaticTask};
 
 use super::Driver;
 
@@ -54,7 +54,7 @@ impl<System: SupportedSystem> App<System> {
 fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { m } = D::app();
 
-    let cur_task: StaticTask<System> = StaticTask::current().unwrap().unwrap();
+    let cur_task: LocalTask<System> = LocalTask::current().unwrap().unwrap();
     assert_eq!(cur_task.priority().unwrap(), 15);
     assert_eq!(cur_task.effective_priority().unwrap(), 15);
 
