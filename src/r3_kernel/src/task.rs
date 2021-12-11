@@ -32,13 +32,13 @@ impl<Traits: KernelTraits> System<Traits> {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    pub(super) fn task_current() -> Result<Option<TaskId>, GetCurrentTaskError> {
+    pub(super) fn task_current() -> Result<TaskId, GetCurrentTaskError> {
+        if !Traits::is_task_context() {
+            return Err(GetCurrentTaskError::BadContext);
+        }
+
         let mut lock = klock::lock_cpu::<Traits>()?;
-        let task_cb = if let Some(cb) = Traits::state().running_task(lock.borrow_mut()) {
-            cb
-        } else {
-            return Ok(None);
-        };
+        let task_cb = Traits::state().running_task(lock.borrow_mut()).unwrap();
 
         // Calculate an `Id` from the task CB pointer
         let offset_bytes =
@@ -47,7 +47,7 @@ impl<Traits: KernelTraits> System<Traits> {
 
         let task = Id::new(offset as usize + 1).unwrap();
 
-        Ok(Some(task))
+        Ok(task)
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]

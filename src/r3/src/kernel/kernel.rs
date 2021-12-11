@@ -56,7 +56,7 @@ use crate::{
 ///     System: traits::Kernel,
 /// {
 ///     // ERROR: `System` doesn't implement `traits::KernelBase`
-///     LocalTask::current().unwrap().unwrap()
+///     LocalTask::current().unwrap()
 /// }
 /// ```
 #[doc = include_str!("../common.md")]

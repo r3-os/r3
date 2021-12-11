@@ -134,7 +134,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     // it's unlikely to catch errors such as dividing a pointer difference by a
     // wrong divisor. For this reason, we check this again in a different
     // task.
-    assert_eq!(LocalTask::current().unwrap().unwrap(), app.task1);
+    assert_eq!(LocalTask::current().unwrap(), app.task1);
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
@@ -172,7 +172,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
 fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Current task (again)
-    assert_eq!(LocalTask::current().unwrap().unwrap(), D::app().task3);
+    assert_eq!(LocalTask::current().unwrap(), D::app().task3);
 
     D::success();
 }

@@ -97,6 +97,7 @@ impl<System: raw::KernelBase> StaticTask<System> {
 /// [1]: Self::current
 /// [task]: Task
 /// [`TaskMethods`]: #impl-TaskMethods
+#[doc = include_str!("../common.md")]
 pub struct LocalTask<System: raw::KernelBase>(System::RawTaskId, PhantomData<*const ()>);
 
 // Safety: `RawTaskId` is `Sync` by its definition
@@ -160,23 +161,26 @@ impl<System: raw::KernelBase> Clone for LocalTask<System> {
 impl<System: raw::KernelBase> Copy for LocalTask<System> {}
 
 impl<System: raw::KernelBase> LocalTask<System> {
-    // TODO: Remove the support for calling this from an interrupt context? If
-    //       the task is migrated to another processor, the current thread may
-    //       outlive the task.
-    /// Get the current task (i.e., the task in the Running state).
+    /// Get the current task (i.e., the task that is assigned to the current
+    /// processor and in the Running state).
     ///
-    /// In a task context, this method returns the currently running task.
+    /// Returns [`GetCurrentTaskError::BadContext`] if called from a non-task
+    /// context.
     ///
-    /// In an interrupt context, the result is unreliable because scheduling is
-    /// deferred until the control returns to a task, but the current interrupt
-    /// handler could be interrupted by another interrrupt, which might do
-    /// scheduling on return (whether this happens or not is unspecified).
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Rationale:** Getting a current task in a non-task context does make
+    /// > sense, but the result may be soon invalidated (potentially violating
+    /// > the object safety of `LocalTask`) and made unreliable by various
+    /// > factors.
+    ///
     #[inline]
-    pub fn current() -> Result<Option<Self>, GetCurrentTaskError> {
+    pub fn current() -> Result<Self, GetCurrentTaskError> {
         // Safety: Constructing a `LocalTask` for a current task is okay.
-        //         `LocalTask` cannot outlive the current thread, i.e.,
-        //         the task or an interrupt handler preempting the task.
-        System::raw_task_current().map(|x| x.map(|id| unsafe { Self::from_id(id) }))
+        //         Also, `LocalTask` cannot outlive the current thread because
+        //         it's `!Send`, and consequently it cannot outlive the
+        //         represented task.
+        System::raw_task_current().map(|id| unsafe { Self::from_id(id) })
     }
 }
 

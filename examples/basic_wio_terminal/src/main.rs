@@ -701,10 +701,7 @@ mod queue {
             // runtime lifetime checking. It'll panic if the created `CryoRef`
             // lingers longer than this `LocalTask`'s lifetime.
             with_cryo(
-                (
-                    &LocalTask::current().unwrap().unwrap(),
-                    lock_ty::<AtomicLock>(),
-                ),
+                (&LocalTask::current().unwrap(), lock_ty::<AtomicLock>()),
                 |current_task| {
                     loop {
                         let mut st_guard = self.st.lock().unwrap();
@@ -745,10 +742,7 @@ mod queue {
 
             // Ditto about `cryo`
             with_cryo(
-                (
-                    &LocalTask::current().unwrap().unwrap(),
-                    lock_ty::<AtomicLock>(),
-                ),
+                (&LocalTask::current().unwrap(), lock_ty::<AtomicLock>()),
                 |current_task| {
                     while !in_buf.is_empty() {
                         let mut st_guard = self.st.lock().unwrap();

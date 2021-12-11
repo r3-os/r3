@@ -250,7 +250,7 @@ define_error! {
     ///
     /// [`LocalTask::current`]: super::task::LocalTask::current
     pub enum GetCurrentTaskError {
-        /// CPU Lock is active.
+        /// CPU Lock is active, or the current context is not a task context.
         BadContext,
     }
 }

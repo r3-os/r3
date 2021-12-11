@@ -95,8 +95,8 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     /// [1]: crate::kernel::Kernel::sleep
     fn raw_sleep(duration: Duration) -> Result<(), SleepError>;
 
-    /// Get the current task (i.e., the task in the Running state).
-    fn raw_task_current() -> Result<Option<Self::RawTaskId>, GetCurrentTaskError>;
+    /// Get the current task.
+    fn raw_task_current() -> Result<Self::RawTaskId, GetCurrentTaskError>;
 
     /// Implements [`Task::activate`][1].
     ///

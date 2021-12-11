@@ -54,7 +54,7 @@ impl<System: SupportedSystem> App<System> {
 fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { m } = D::app();
 
-    let cur_task: LocalTask<System> = LocalTask::current().unwrap().unwrap();
+    let cur_task: LocalTask<System> = LocalTask::current().unwrap();
     assert_eq!(cur_task.priority().unwrap(), 15);
     assert_eq!(cur_task.effective_priority().unwrap(), 15);
 
