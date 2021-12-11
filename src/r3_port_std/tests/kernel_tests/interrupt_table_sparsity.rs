@@ -2,7 +2,7 @@
 //! elements corresponding to interrupt lines that have no registered interrupt
 //! handlers.
 use core::marker::PhantomData;
-use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine, StartupHook};
+use r3::kernel::{traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler};
 use r3_kernel::{KernelCfg2, System};
 use r3_test_suite::kernel_tests::Driver;
 
@@ -28,14 +28,20 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
         InterruptLine::define().line(3).priority(64).finish(b);
 
         unsafe {
-            InterruptHandler::define().line(2).start(|_| {}).finish(b);
-            InterruptHandler::define().line(3).start(|_| {}).finish(b);
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
+                .line(2)
+                .start(|_| {})
+                .finish(b);
+            StaticInterruptHandler::define()
+                .line(3)
+                .start(|_| {})
+                .finish(b);
+            StaticInterruptHandler::define()
                 .line(5)
                 .unmanaged()
                 .start(|_| {})
                 .finish(b);
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(7)
                 .unmanaged()
                 .start(|_| {})

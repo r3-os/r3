@@ -1,7 +1,9 @@
 //! Checks the return codes of disallowed system calls made in an interrupt
 //! context.
 use core::assert_matches::assert_matches;
-use r3::kernel::{self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StaticTask};
+use r3::kernel::{
+    self, prelude::*, traits, Cfg, InterruptLine, StaticInterruptHandler, StaticTask,
+};
 
 use super::Driver;
 use crate::utils::conditional::KernelBoostPriorityExt;
@@ -35,7 +37,7 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

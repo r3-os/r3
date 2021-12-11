@@ -2,7 +2,7 @@
 use r3::{
     hunk::Hunk,
     kernel::{
-        prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StaticSemaphore, StaticTask,
+        prelude::*, traits, Cfg, InterruptLine, StaticInterruptHandler, StaticSemaphore, StaticTask,
     },
 };
 
@@ -53,7 +53,7 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

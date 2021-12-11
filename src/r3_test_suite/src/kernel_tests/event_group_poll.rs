@@ -1,7 +1,7 @@
 //! Sets and polls an event group in an interrupt handler.
 use r3::kernel::{
-    prelude::*, traits, Cfg, EventGroupWaitFlags, InterruptHandler, InterruptLine,
-    PollEventGroupError, StartupHook, StaticEventGroup, WaitEventGroupError,
+    prelude::*, traits, Cfg, EventGroupWaitFlags, InterruptLine, PollEventGroupError, StartupHook,
+    StaticEventGroup, StaticInterruptHandler, WaitEventGroupError,
 };
 
 use super::Driver;
@@ -37,7 +37,7 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

@@ -1,7 +1,7 @@
 /// The implementation of the Platform-Level Interrupt Controller driver.
 use r3::kernel::{
-    traits, Cfg, EnableInterruptLineError, InterruptHandler, InterruptNum, InterruptPriority,
-    QueryInterruptLineError, SetInterruptLinePriorityError,
+    traits, Cfg, EnableInterruptLineError, InterruptNum, InterruptPriority,
+    QueryInterruptLineError, SetInterruptLinePriorityError, StaticInterruptHandler,
 };
 use r3_kernel::{KernelTraits, System};
 use tock_registers::interfaces::{Readable, Writeable};
@@ -13,7 +13,7 @@ pub const fn configure<C, Traits: Plic + KernelTraits>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgInterruptLine<System = System<Traits>>,
 {
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(INTERRUPT_EXTERNAL)
         .start(interrupt_handler::<Traits>)
         .finish(b);

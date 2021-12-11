@@ -28,7 +28,7 @@ pub use {
     },
     hook::StartupHook,
     hunk::Hunk,
-    interrupt::{InterruptHandler, InterruptLine, InterruptNum, InterruptPriority},
+    interrupt::{InterruptLine, InterruptNum, InterruptPriority, StaticInterruptHandler},
     kernel::*,
     mutex::{Mutex, MutexProtocol, MutexRef, StaticMutex},
     raw::{Id, QueueOrder},

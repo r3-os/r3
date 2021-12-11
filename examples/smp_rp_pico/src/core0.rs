@@ -1,5 +1,5 @@
 use r3::{
-    kernel::{InterruptHandler, InterruptLine, InterruptNum, StartupHook, StaticTask},
+    kernel::{InterruptLine, InterruptNum, StartupHook, StaticInterruptHandler, StaticTask},
     prelude::*,
     sync::StaticMutex,
 };
@@ -106,7 +106,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .priority(0x40)
         .enabled(true)
         .finish(b);
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(int_fifo)
         .start(|_| {
             let p = unsafe { rp2040::Peripherals::steal() };

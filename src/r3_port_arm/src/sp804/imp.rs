@@ -1,5 +1,5 @@
 //! The implementation of the SP804 Dual Timer driver.
-use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine};
+use r3::kernel::{traits, Cfg, InterruptLine, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
@@ -42,7 +42,7 @@ where
         .priority(Traits::INTERRUPT_PRIORITY)
         .enabled(true)
         .finish(b);
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(Traits::INTERRUPT_NUM)
         .start(handle_tick::<Traits>)
         .finish(b);

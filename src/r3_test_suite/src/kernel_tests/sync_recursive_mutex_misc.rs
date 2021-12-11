@@ -3,7 +3,7 @@ use assert_matches::assert_matches;
 use core::cell::Cell;
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StaticTask},
+    kernel::{prelude::*, traits, Cfg, InterruptLine, StaticInterruptHandler, StaticTask},
     sync::recursive_mutex::{self, StaticRecursiveMutex},
 };
 
@@ -49,7 +49,7 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

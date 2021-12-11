@@ -1,7 +1,7 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
 use r3::kernel::{
-    self, prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StartupHook, StaticTask,
+    self, prelude::*, traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler, StaticTask,
 };
 
 use super::Driver;
@@ -38,7 +38,7 @@ impl<System: SupportedSystem> App<System> {
 
         let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
             unsafe {
-                InterruptHandler::define()
+                StaticInterruptHandler::define()
                     .line(int_line)
                     .start(isr::<System, D>)
                     .unmanaged()

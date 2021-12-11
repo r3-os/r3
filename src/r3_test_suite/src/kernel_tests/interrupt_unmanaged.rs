@@ -1,7 +1,7 @@
 //! Makes sure that CPU Lock doesn't mask unmanaged interrupts.
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, StaticTask},
+    kernel::{prelude::*, traits, Cfg, InterruptLine, StaticInterruptHandler, StaticTask},
 };
 
 use super::Driver;
@@ -38,7 +38,7 @@ impl<System: SupportedSystem> App<System> {
             (D::INTERRUPT_LINES, D::UNMANAGED_INTERRUPT_PRIORITIES)
         {
             unsafe {
-                InterruptHandler::define()
+                StaticInterruptHandler::define()
                     .line(int_line)
                     .unmanaged()
                     .start(isr::<System, D>)
