@@ -14,6 +14,8 @@ pub use raw::{EventGroupBits, EventGroupWaitFlags};
 define_object! {
 /// Represents a single owned event group in a system.
 ///
+#[doc = common_doc_owned_handle!()]
+///
 /// An event group is a set of bits that can be updated and waited for to be
 /// set.
 ///

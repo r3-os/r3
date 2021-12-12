@@ -78,3 +78,11 @@ impl<T, F> TypeFn for Conditional<T, F, false> {
 impl<T, F> TypeFn for Conditional<T, F, true> {
     type Output = T;
 }
+
+/// Unwrap `#[doc = ...]`.
+pub(crate) macro undoc(
+    #[doc = $p0:expr]
+    $( #[doc = $pN:expr] )*
+) {
+    concat!($p0, $( "\n", $pN, )*)
+}

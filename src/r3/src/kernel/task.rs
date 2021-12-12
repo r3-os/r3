@@ -14,7 +14,7 @@ use crate::utils::{Init, PhantomInvariant};
 define_object! {
 /// Represents a single task in a system.
 ///
-/// This type is ABI-compatible with `System::`[`RawTaskId`][].
+#[doc = common_doc_owned_handle!()]
 ///
 /// <div class="admonition-follows"></div>
 ///

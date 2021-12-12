@@ -12,17 +12,20 @@ macro_rules! define_object {
         pub trait $NameHandle:ident {}
         pub trait $NameMethods:ident {}
     ) => {
+        #[deny(unused_macros)]
+        macro common_doc_owned_handle() { crate::utils::undoc!(
+            /// This type is ABI-compatible with `System::`[`$&RawId`][].
+            ///
+            /// See [`$&NameRef`][] for the [borrowed][] counterpart.
+            /// See [`$&NameMethods`][] for the operations provided by this handle
+            /// type.
+            ///
+            /// [`$&RawId`]: $&Trait::$&RawId
+            /// [`$&NameMethods`]: #impl-$&NameMethods
+            /// [borrowed]: crate#object-handles
+        ) }
+
         $(#[$meta])*
-        ///
-        /// This type is ABI-compatible with `System::`[`$&RawId`][].
-        ///
-        /// See [`$&NameRef`][] for the [borrowed][] counterpart.
-        /// See [`$&NameMethods`][] for the operations provided by this handle
-        /// type.
-        ///
-        /// [`$&RawId`]: $&Trait::$&RawId
-        /// [`$&NameMethods`]: #impl-$&NameMethods
-        /// [borrowed]: crate#object-handles
         #[repr(transparent)]
         pub struct $Name<System: NotSupportedYet>(<System as $Trait>::$RawId);
 

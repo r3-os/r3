@@ -14,7 +14,7 @@ pub use raw::MutexProtocol;
 define_object! {
 /// Represents a single mutex in a system.
 ///
-/// This type is ABI-compatible with `System::`[`RawMutexId`][].
+#[doc = common_doc_owned_handle!()]
 ///
 /// Mutexes are similar to binary semaphores (semaphores restricted to one
 /// permit at maximum) but differ in some ways, such as the inclusion of a
@@ -267,7 +267,6 @@ define_object! {
 pub struct Mutex<System: _>(System::RawMutexId);
 
 /// Represents a single borrowed mutex in a system.
-///
 #[doc = include_str!("../common.md")]
 pub struct MutexRef<System: raw::KernelMutex>(_);
 

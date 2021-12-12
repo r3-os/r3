@@ -17,12 +17,12 @@ pub use raw::SemaphoreValue;
 define_object! {
 /// Represents a single semaphore in a system.
 ///
+#[doc = common_doc_owned_handle!()]
+///
 /// A semaphore maintains a set of permits that can be acquired (possibly
 /// blocking) or released by application code. The number of permits held by a
 /// semaphore is called the semaphore's *value* and represented by
 /// [`SemaphoreValue`].
-///
-/// This type is ABI-compatible with `System::`[`RawSemaphoreId`][].
 ///
 /// <div class="admonition-follows"></div>
 ///
