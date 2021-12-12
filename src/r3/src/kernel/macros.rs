@@ -16,12 +16,13 @@ macro_rules! define_object {
         ///
         /// This type is ABI-compatible with `System::`[`$&RawId`][].
         ///
-        /// See [`$&NameRef`][] for the borrowed counterpart.
+        /// See [`$&NameRef`][] for the [borrowed][] counterpart.
         /// See [`$&NameMethods`][] for the operations provided by this handle
         /// type.
         ///
         /// [`$&RawId`]: $&Trait::$&RawId
         /// [`$&NameMethods`]: #impl-$&NameMethods
+        /// [borrowed]: crate#object-handles
         #[repr(transparent)]
         pub struct $Name<System: NotSupportedYet>(<System as $Trait>::$RawId);
 
@@ -31,32 +32,35 @@ macro_rules! define_object {
         /// logically equivalent to `&'a $&Name` but instead stores `$&RawId`
         /// directly.
         ///
-        /// See [`$&Name`][] for the owned counterpart and the description of
-        /// this kernel object.
+        /// See [`$&Name`][] for the [owned][] counterpart and the description
+        /// of this kernel object.
         /// See [`$&NameMethods`][] for the operations provided by this handle
         /// type.
         ///
         /// [`$&RawId`]: $&Trait::$&RawId
         /// [`$&NameMethods`]: #impl-$&NameMethods
+        /// [owned]: crate#object-handles
         #[repr(transparent)]
         pub struct $NameRef<'a, System: $Trait>(
             <System as $Trait>::$RawId,
             core::marker::PhantomData<&'a ()>,
         );
 
-        /// [`$&NameRef`][]`<'static, System>`
+        /// A [static handle][] type: [`$&NameRef`][]`<'static, System>`
         ///
         /// This type is ABI-compatible with `System::`[`$&RawId`][]. It's
         /// logically equivalent to `&'static $&Name` but instead stores
         /// `$&RawId` directly.
         ///
-        /// See [`$&Name`][] for the owned counterpart and the description of
-        /// this kernel object.
+        /// See [`$&Name`][] for the [owned][] counterpart and the description
+        /// of this kernel object.
         /// See [`$&NameMethods`][] for the operations provided by this handle
         /// type.
         ///
         /// [`$&RawId`]: $&Trait::$&RawId
         /// [`$&NameMethods`]: $&NameRef#impl-$&NameMethods
+        /// [Static handle]: crate#object-handles
+        /// [owned]: crate#object-handles
         pub type $StaticName<System> = $NameRef<'static, System>;
 
         use private::NotSupportedYet;
@@ -79,17 +83,18 @@ macro_rules! define_object {
             ///
             /// # Safety
             ///
-            /// The kernel can handle invalid IDs without a problem. However, the
-            /// constructed `$&Name` may point to an object that is not intended to be
-            /// manipulated except by its creator. This is usually prevented by making
-            /// `$&Name` an opaque handle, but this safeguard can be circumvented by
-            /// this method.
+            /// This function is marked as `unsafe` to prevent safe code from
+            /// compromising [object safety][1].
+            ///
+            /// [1]: crate#object-safety
             unsafe fn from_id(id: <Self::System as $Trait>::$RawId) -> Self;
 
             /// Get the raw `$&RawId` value representing this object.
             fn id(&self) -> <Self::System as $Trait>::$RawId;
 
-            /// Borrow `self` as [`$&NameRef`][].
+            /// [Borrow][] `self` as [`$&NameRef`][].
+            ///
+            /// [Borrow]: crate#object-handles
             fn borrow(&self) -> $NameRef<'_, Self::System>;
         }
 

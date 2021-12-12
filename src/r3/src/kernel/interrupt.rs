@@ -49,7 +49,6 @@ impl<System: raw::KernelInterruptLine> fmt::Debug for InterruptLine<System> {
 }
 
 impl<System: raw::KernelInterruptLine> InterruptLine<System> {
-    // FIXME: object safety could be applied to `InterruptLine`?
     /// Construct a `InterruptLine` from `InterruptNum`.
     #[inline]
     pub const fn from_num(num: InterruptNum) -> Self {

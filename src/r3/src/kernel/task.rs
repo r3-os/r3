@@ -88,13 +88,14 @@ impl<System: raw::KernelBase> StaticTask<System> {
 
 /// A non-`Send`, `'static` [task] reference. The lack of `Send`-ness constrains
 /// its lifetime to the owning task and thus allows it to represent a [current
-/// task][1] safely.
+/// task][1] [safely][2].
 ///
 /// See [`TaskRef`][] for the `Send` counterpart.
 /// See [`TaskMethods`][] for the operations provided by this handle
 /// type.
 ///
 /// [1]: Self::current
+/// [2]: crate#object-safety
 /// [task]: Task
 /// [`TaskMethods`]: #impl-TaskMethods
 #[doc = include_str!("../common.md")]
@@ -171,9 +172,11 @@ impl<System: raw::KernelBase> LocalTask<System> {
     ///
     /// > **Rationale:** Getting a current task in a non-task context does make
     /// > sense, but the result may be soon invalidated (potentially violating
-    /// > the object safety of `LocalTask`) and made unreliable by various
+    /// > the [object safety] of `LocalTask`) and made unreliable by various
     /// > factors.
     ///
+    ///
+    /// [1]: crate#object-safety
     #[inline]
     pub fn current() -> Result<Self, GetCurrentTaskError> {
         // Safety: Constructing a `LocalTask` for a current task is okay.
