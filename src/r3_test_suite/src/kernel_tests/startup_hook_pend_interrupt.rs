@@ -61,7 +61,9 @@
 //! (2).
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, StartupHook, Task},
+    kernel::{
+        prelude::*, traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler, StaticTask,
+    },
 };
 
 use super::Driver;
@@ -77,7 +79,7 @@ impl<T: traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic>
 }
 
 pub struct App<System: SupportedSystem> {
-    task: Task<System>,
+    task: StaticTask<System>,
     int: Option<InterruptLine<System>>,
     seq: Hunk<System, SeqTracker>,
 }
@@ -91,7 +93,7 @@ impl<System: SupportedSystem> App<System> {
     {
         StartupHook::define().start(hook::<System, D>).finish(b);
 
-        let task = Task::define()
+        let task = StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .finish(b);
@@ -99,7 +101,7 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

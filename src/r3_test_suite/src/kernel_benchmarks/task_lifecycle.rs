@@ -17,7 +17,7 @@
 //!           │ │                 ┊                  ┊     ┘
 //! ```
 //!
-use r3::kernel::{prelude::*, traits, Cfg, Task};
+use r3::kernel::{prelude::*, traits, Cfg, StaticTask};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;
@@ -32,8 +32,8 @@ pub trait SupportedSystem: crate::utils::benchmark::SupportedSystem {}
 impl<T: crate::utils::benchmark::SupportedSystem> SupportedSystem for T {}
 
 struct AppInner<System: SupportedSystem> {
-    task1: Task<System>,
-    task2: Task<System>,
+    task1: StaticTask<System>,
+    task2: StaticTask<System>,
 }
 
 const I_ACTIVATE_DISPATCHING: Interval = "activating task with dispatch";
@@ -47,12 +47,12 @@ impl<System: SupportedSystem> AppInner<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, B>)
             .priority(1)
             .finish(b);
 
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, B>)
             .priority(2)
             .finish(b);

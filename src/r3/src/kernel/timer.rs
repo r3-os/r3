@@ -14,7 +14,7 @@ use crate::{
 define_object! {
 /// Represents a single timer in a system.
 ///
-/// This type is ABI-compatible with `System::`[`RawTimerId`][].
+#[doc = common_doc_owned_handle!()]
 ///
 /// <div class="admonition-follows"></div>
 ///
@@ -58,8 +58,8 @@ define_object! {
 ///
 /// </center>
 ///
-/// [started]: Timer::start
-/// [stopped]: Timer::stop
+/// [started]: TimerMethods::start
+/// [stopped]: TimerMethods::stop
 ///
 /// # Timer Scheduling
 ///
@@ -79,8 +79,8 @@ define_object! {
 ///  - The [period] is an optional non-negative duration value. On expiration,
 ///    the system adds this value to the timer's delay.
 ///
-/// [delay]: Timer::set_delay
-/// [period]: Timer::set_period
+/// [delay]: TimerMethods::set_delay
+/// [period]: TimerMethods::set_period
 /// [duration]: crate::time::Duration
 ///
 /// ## Overdue Timers
@@ -137,8 +137,8 @@ define_object! {
 ///
 ///  - Keep your target platform's performance characteristics in your mind.
 ///
-/// [activated]: crate::kernel::Task::activate
-/// [unparked]: crate::kernel::Task::unpark
+/// [activated]: crate::kernel::task::TaskMethods::activate
+/// [unparked]: crate::kernel::task::TaskMethods::unpark
 ///
 /// ## Start/Stop
 ///
@@ -175,7 +175,7 @@ define_object! {
 /// Another way to stop a timer is to [set the delay or the period to `None`
 /// (infinity)](#infinite-delay-andor-period).
 ///
-/// [stopped]: Timer::stop
+/// [stopped]: TimerMethods::stop
 ///
 /// ## Dynamic Period
 ///
@@ -263,8 +263,8 @@ define_object! {
 ///
 /// </center>
 ///
-/// [`delay` is set]: Timer::set_delay
-/// [`period` is set]: Timer::set_period
+/// [`delay` is set]: TimerMethods::set_delay
+/// [`period` is set]: TimerMethods::set_period
 ///
 /// # Examples
 ///
@@ -275,14 +275,14 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, Timer, traits}, time::Duration};
+/// use r3::{kernel::{Cfg, StaticTimer, traits}, time::Duration};
 ///
-/// const fn configure<C>(b: &mut Cfg<C>) -> Timer<C::System>
+/// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     Timer::define()
+///     StaticTimer::define()
 ///         .delay(Duration::from_millis(70))
 ///         .period(Duration::from_millis(40))
 ///         .active(true)
@@ -315,14 +315,14 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, Timer, traits}, time::Duration};
+/// use r3::{kernel::{Cfg, StaticTimer, traits, prelude::*}, time::Duration};
 ///
-/// const fn configure<C>(b: &mut Cfg<C>) -> Timer<C::System>
+/// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
 ///     C::System: traits::KernelTimer,
 /// {
-///     Timer::define()
+///     StaticTimer::define()
 ///         .active(true)
 ///         .start(|_| dbg!())
 ///         .finish(b)
@@ -332,9 +332,9 @@ define_object! {
 /// [Reset the delay] to schedule a call.
 ///
 /// ```rust
-/// use r3::{kernel::{Timer, traits}, time::Duration};
+/// use r3::{kernel::{TimerRef, traits, prelude::*}, time::Duration};
 ///
-/// fn sched<System: traits::KernelTimer>(timer: Timer<System>) {
+/// fn sched<System: traits::KernelTimer>(timer: TimerRef<'_, System>) {
 ///     timer.set_delay(Some(Duration::from_millis(40))).unwrap();
 /// }
 /// ```
@@ -356,37 +356,50 @@ define_object! {
 ///
 /// </center>
 ///
-/// [Reset the delay]: Timer::set_delay
+/// [Reset the delay]: TimerMethods::set_delay
 ///
 #[doc = include_str!("../common.md")]
-pub struct Timer<System: raw::KernelTimer>(System::RawTimerId);
+pub struct Timer<System: _>(System::RawTimerId);
+
+/// Represents a single borrowed timer in a system.
+#[doc = include_str!("../common.md")]
+pub struct TimerRef<System: raw::KernelTimer>(_);
+
+pub type StaticTimer<System>;
+
+pub trait TimerHandle {}
+pub trait TimerMethods {}
 }
 
-impl<System: raw::KernelTimer> Timer<System> {
+impl<System: raw::KernelTimer> StaticTimer<System> {
     /// Construct a `TimerDefiner` to define a timer in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> TimerDefiner<System> {
         TimerDefiner::new()
     }
+}
 
+/// The supported operations on [`TimerHandle`].
+#[doc = include_str!("../common.md")]
+pub trait TimerMethods: TimerHandle {
     /// Start the timer (transition it into the Active state).
     ///
     /// This method has no effect if the timer is already in the Active state.
     #[inline]
-    pub fn start(self) -> Result<(), StartTimerError> {
+    fn start(&self) -> Result<(), StartTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_start(self.0) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_start(self.id()) }
     }
 
     /// Stop the timer (transition it into the Dormant state).
     ///
     /// This method has no effect if the timer is already in the Dormant state.
     #[inline]
-    pub fn stop(self) -> Result<(), StopTimerError> {
+    fn stop(&self) -> Result<(), StopTimerError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_stop(self.0) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_stop(self.id()) }
     }
 
     /// Set the duration before the next tick.
@@ -397,10 +410,10 @@ impl<System: raw::KernelTimer> Timer<System> {
     ///
     /// `None` means infinity (the timer will never fire).
     #[inline]
-    pub fn set_delay(self, delay: Option<Duration>) -> Result<(), SetTimerDelayError> {
+    fn set_delay(&self, delay: Option<Duration>) -> Result<(), SetTimerDelayError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_set_delay(self.0, delay) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_set_delay(self.id(), delay) }
     }
 
     /// Set the timer period, which is a quantity to be added to the timer's
@@ -408,16 +421,18 @@ impl<System: raw::KernelTimer> Timer<System> {
     ///
     /// `None` means infinity.
     #[inline]
-    pub fn set_period(self, period: Option<Duration>) -> Result<(), SetTimerPeriodError> {
+    fn set_period(&self, period: Option<Duration>) -> Result<(), SetTimerPeriodError> {
         // Safety: `Timer` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_timer_set_period(self.0, period) }
+        unsafe { <Self::System as raw::KernelTimer>::raw_timer_set_period(self.id(), period) }
     }
 }
 
+impl<T: TimerHandle> TimerMethods for T {}
+
 // ----------------------------------------------------------------------------
 
-/// The definer (static builder) for [`Timer`].
+/// The definer (static builder) for [`TimerRef`].
 #[must_use = "must call `finish()` to complete registration"]
 pub struct TimerDefiner<System> {
     _phantom: PhantomInvariant<System>,
@@ -463,7 +478,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     /// Specify the initial [delay].
     /// Defaults to `None` (infinity; the timer will never fire).
     ///
-    /// [delay]: crate::kernel::Timer::set_delay
+    /// [delay]: TimerMethods::set_delay
     pub const fn delay(self, delay: Duration) -> Self {
         Self {
             delay: Some(delay),
@@ -475,7 +490,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     /// Defaults to `None` (infinity; the timer will stop firing after the next
     /// tick).
     ///
-    /// [period]: crate::kernel::Timer::set_period
+    /// [period]: TimerMethods::set_period
     pub const fn period(self, period: Duration) -> Self {
         Self {
             period: Some(period),
@@ -488,7 +503,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgTimer<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> Timer<System> {
+    ) -> StaticTimer<System> {
         let id = c.raw().timer_define(
             raw_cfg::TimerDescriptor {
                 phantom: Init::INIT,
@@ -502,6 +517,6 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
             },
             (),
         );
-        unsafe { Timer::from_id(id) }
+        unsafe { TimerRef::from_id(id) }
     }
 }

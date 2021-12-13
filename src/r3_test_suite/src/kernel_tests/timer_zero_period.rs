@@ -35,7 +35,7 @@
 //!
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, Task, Timer},
+    kernel::{prelude::*, traits, Cfg, StaticTask, StaticTimer},
     time::Duration,
 };
 
@@ -52,8 +52,8 @@ impl<T: traits::KernelBase + traits::KernelTimer + traits::KernelStatic + Kernel
 }
 
 pub struct App<System: SupportedSystem> {
-    timer: Timer<System>,
-    task: Task<System>,
+    timer: StaticTimer<System>,
+    task: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -64,7 +64,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
-        let timer = Timer::define()
+        let timer = StaticTimer::define()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(0))
             .active(true)
@@ -72,7 +72,7 @@ impl<System: SupportedSystem> App<System> {
             .param(42)
             .finish(b);
 
-        let task = Task::define()
+        let task = StaticTask::define()
             .active(true)
             .start(task_body::<System, D>)
             .priority(1)

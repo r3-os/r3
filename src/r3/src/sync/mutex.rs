@@ -1,14 +1,19 @@
-use core::{cell::UnsafeCell, fmt, marker::PhantomData};
+use core::{
+    cell::UnsafeCell,
+    fmt,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{
     hunk::{DefaultInitTag, Hunk, HunkDefiner, HunkIniter},
     kernel::{
-        mutex, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
+        mutex, prelude::*, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
         TryLockMutexError,
     },
 };
 
-/// The definer (static builder) for [`Mutex`][].
+/// The definer (static builder) for [`StaticMutex`][].
 pub struct Definer<System, T, InitTag> {
     mutex: mutex::MutexDefiner<System>,
     hunk: HunkDefiner<System, UnsafeCell<T>, InitTag>,
@@ -23,29 +28,31 @@ pub struct Definer<System, T, InitTag> {
 ///
 ///  - When trying to lock an abandoned mutex, the lock function will return
 ///    `Err(LockError::Abandoned(lock_guard))`. This state can be exited by
-///    calling [`Mutex::mark_consistent`].
+///    calling [`GenericMutex::mark_consistent`].
 ///
-///  - Mutexes must be unlocked in a lock-reverse order. [`MutexGuard`]`::drop`
-///    might panic if this is violated.
+///  - Mutexes must be unlocked in a lock-reverse order.
+///    [`GenericMutexGuard`]`::drop` might panic if this is violated.
 ///
 /// [`r3::kernel::Mutex`]: crate::kernel::Mutex
-pub struct Mutex<System, T>
-where
-    System: traits::KernelMutex + traits::KernelStatic,
-{
-    hunk: Hunk<System, UnsafeCell<T>>,
-    mutex: mutex::Mutex<System>,
+pub struct GenericMutex<Cell, Mutex> {
+    cell: Cell,
+    mutex: Mutex,
 }
+
+/// A defined (statically created) [`GenericMutex`].
+pub type StaticMutex<System, T> =
+    GenericMutex<Hunk<System, UnsafeCell<T>>, mutex::StaticMutex<System>>;
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior
+// TODO: Owned version
 
-unsafe impl<System, T: 'static + Send> Send for Mutex<System, T> where
-    System: traits::KernelMutex + traits::KernelStatic
+unsafe impl<Cell, Mutex, T: Send> Send for GenericMutex<Cell, Mutex> where
+    Cell: Deref<Target = UnsafeCell<T>>
 {
 }
-unsafe impl<System, T: 'static + Send> Sync for Mutex<System, T> where
-    System: traits::KernelMutex + traits::KernelStatic
+unsafe impl<Cell, Mutex, T: Send> Sync for GenericMutex<Cell, Mutex> where
+    Cell: Deref<Target = UnsafeCell<T>>
 {
 }
 
@@ -53,31 +60,34 @@ unsafe impl<System, T: 'static + Send> Sync for Mutex<System, T> where
 /// is dropped, the lock will be released.
 ///
 /// This structure is created by the [`lock`] and [`try_lock`] methods of
-/// [`Mutex`].
+/// [`GenericMutex`].
 ///
-/// [`lock`]: Mutex::lock
-/// [`try_lock`]: Mutex::try_lock
-#[must_use = "if unused the Mutex will immediately unlock"]
-pub struct MutexGuard<'a, System, T: 'static>
-where
-    System: traits::KernelMutex + traits::KernelStatic,
-{
-    mutex: &'a Mutex<System, T>,
+/// [`lock`]: GenericMutex::lock
+/// [`try_lock`]: GenericMutex::try_lock
+#[must_use = "if unused the GenericMutex will immediately unlock"]
+pub struct GenericMutexGuard<'a, Cell, Mutex: mutex::MutexHandle> {
+    mutex: &'a GenericMutex<Cell, Mutex>,
     _no_send_sync: PhantomData<*mut ()>,
 }
 
-unsafe impl<System, T: 'static + Sync> Sync for MutexGuard<'_, System, T> where
-    System: traits::KernelMutex + traits::KernelStatic
+/// The specialization of [`GenericMutexGuard`] for [`StaticMutex`].
+pub type StaticMutexGuard<'a, System, T> =
+    GenericMutexGuard<'a, Hunk<System, UnsafeCell<T>>, mutex::MutexRef<'a, System>>;
+
+unsafe impl<Cell, Mutex, T: Sync> Sync for GenericMutexGuard<'_, Cell, Mutex>
+where
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
 }
 
-/// Type alias for the result of [`Mutex::lock`].
+/// Type alias for the result of [`GenericMutex::lock`].
 pub type LockResult<Guard> = Result<Guard, LockError<Guard>>;
 
-/// Type alias for the result of [`Mutex::try_lock`].
+/// Type alias for the result of [`GenericMutex::try_lock`].
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
-/// Error type of [`Mutex::lock`].
+/// Error type of [`GenericMutex::lock`].
 #[repr(i8)]
 pub enum LockError<Guard> {
     /// CPU Lock is active, or the current context is not [waitable].
@@ -86,7 +96,7 @@ pub enum LockError<Guard> {
     BadContext = LockMutexError::BadContext as i8,
     /// The wait operation was interrupted by [`Task::interrupt`].
     ///
-    /// [`Task::interrupt`]: crate::kernel::Task::interrupt
+    /// [`Task::interrupt`]: crate::kernel::task::TaskMethods::interrupt
     Interrupted = LockMutexError::Interrupted as i8,
     /// The current task already owns the mutex.
     WouldDeadlock = LockMutexError::WouldDeadlock as i8,
@@ -114,7 +124,7 @@ impl<Guard> fmt::Debug for LockError<Guard> {
     }
 }
 
-/// Error type of [`Mutex::try_lock`].
+/// Error type of [`GenericMutex::try_lock`].
 #[repr(i8)]
 pub enum TryLockError<Guard> {
     /// CPU Lock is active, or the current context is not [a task context].
@@ -150,7 +160,7 @@ impl<Guard> fmt::Debug for TryLockError<Guard> {
     }
 }
 
-/// Error type of [`Mutex::mark_consistent`].
+/// Error type of [`GenericMutex::mark_consistent`].
 #[derive(Debug)]
 #[repr(i8)]
 pub enum MarkConsistentError {
@@ -160,7 +170,7 @@ pub enum MarkConsistentError {
     Consistent = MarkConsistentMutexError::BadObjectState as i8,
 }
 
-impl<System, T: 'static> Mutex<System, T>
+impl<System, T: 'static> StaticMutex<System, T>
 where
     System: traits::KernelMutex + traits::KernelStatic,
 {
@@ -168,7 +178,7 @@ where
     /// function](crate#static-configuration).
     pub const fn define() -> Definer<System, T, DefaultInitTag> {
         Definer {
-            mutex: mutex::Mutex::define(),
+            mutex: mutex::StaticMutex::define(),
             hunk: Hunk::define(),
         }
     }
@@ -196,23 +206,24 @@ where
     pub const fn finish<C: ~const traits::CfgMutex<System = System> + ~const traits::CfgBase>(
         self,
         cfg: &mut Cfg<C>,
-    ) -> Mutex<System, T> {
-        Mutex {
-            hunk: self.hunk.finish(cfg),
+    ) -> StaticMutex<System, T> {
+        GenericMutex {
+            cell: self.hunk.finish(cfg),
             mutex: self.mutex.finish(cfg),
         }
     }
 }
 
-impl<System, T: 'static> Mutex<System, T>
+impl<Cell, Mutex, T> GenericMutex<Cell, Mutex>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
     /// Acquire the mutex, blocking the current thread until it is able to do
     /// so.
-    pub fn lock(&self) -> LockResult<MutexGuard<'_, System, T>> {
+    pub fn lock(&self) -> LockResult<GenericMutexGuard<'_, Cell, Mutex>> {
         match self.mutex.lock() {
-            Ok(()) => Ok(MutexGuard {
+            Ok(()) => Ok(GenericMutexGuard {
                 mutex: self,
                 _no_send_sync: PhantomData,
             }),
@@ -221,7 +232,7 @@ where
             Err(LockMutexError::Interrupted) => Err(LockError::Interrupted),
             Err(LockMutexError::WouldDeadlock) => Err(LockError::WouldDeadlock),
             Err(LockMutexError::BadParam) => Err(LockError::BadParam),
-            Err(LockMutexError::Abandoned) => Err(LockError::Abandoned(MutexGuard {
+            Err(LockMutexError::Abandoned) => Err(LockError::Abandoned(GenericMutexGuard {
                 mutex: self,
                 _no_send_sync: PhantomData,
             })),
@@ -229,9 +240,9 @@ where
     }
 
     /// Attempt to acquire the mutex.
-    pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, System, T>> {
+    pub fn try_lock(&self) -> TryLockResult<GenericMutexGuard<'_, Cell, Mutex>> {
         match self.mutex.try_lock() {
-            Ok(()) => Ok(MutexGuard {
+            Ok(()) => Ok(GenericMutexGuard {
                 mutex: self,
                 _no_send_sync: PhantomData,
             }),
@@ -240,7 +251,7 @@ where
             Err(TryLockMutexError::WouldDeadlock) => Err(TryLockError::WouldDeadlock),
             Err(TryLockMutexError::Timeout) => Err(TryLockError::WouldBlock),
             Err(TryLockMutexError::BadParam) => Err(TryLockError::BadParam),
-            Err(TryLockMutexError::Abandoned) => Err(TryLockError::Abandoned(MutexGuard {
+            Err(TryLockMutexError::Abandoned) => Err(TryLockError::Abandoned(GenericMutexGuard {
                 mutex: self,
                 _no_send_sync: PhantomData,
             })),
@@ -259,17 +270,21 @@ where
     /// Get a raw pointer to the contained data.
     #[inline]
     pub fn get_ptr(&self) -> *mut T {
-        self.hunk.get()
+        self.cell.get()
     }
 }
 
-impl<System, T: fmt::Debug + 'static> fmt::Debug for Mutex<System, T>
+impl<Cell, Mutex, T: fmt::Debug> fmt::Debug for GenericMutex<Cell, Mutex>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_lock() {
-            Ok(guard) => f.debug_struct("Mutex").field("data", &&*guard).finish(),
+            Ok(guard) => f
+                .debug_struct("GenericMutex")
+                .field("data", &&*guard)
+                .finish(),
             Err(TryLockError::BadContext) => {
                 struct BadContextPlaceholder;
                 impl fmt::Debug for BadContextPlaceholder {
@@ -278,7 +293,7 @@ where
                     }
                 }
 
-                f.debug_struct("Mutex")
+                f.debug_struct("GenericMutex")
                     .field("data", &BadContextPlaceholder)
                     .finish()
             }
@@ -290,7 +305,7 @@ where
                     }
                 }
 
-                f.debug_struct("Mutex")
+                f.debug_struct("GenericMutex")
                     .field("data", &LockedPlaceholder)
                     .finish()
             }
@@ -302,7 +317,7 @@ where
                     }
                 }
 
-                f.debug_struct("Mutex")
+                f.debug_struct("GenericMutex")
                     .field("data", &AbandonedPlaceholder)
                     .finish()
             }
@@ -314,7 +329,7 @@ where
                     }
                 }
 
-                f.debug_struct("Mutex")
+                f.debug_struct("GenericMutex")
                     .field("data", &BadParamPlaceholder)
                     .finish()
             }
@@ -322,29 +337,31 @@ where
     }
 }
 
-impl<System, T: fmt::Debug + 'static> fmt::Debug for MutexGuard<'_, System, T>
+impl<Cell, Mutex, T: fmt::Debug> fmt::Debug for GenericMutexGuard<'_, Cell, Mutex>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
-impl<System, T: fmt::Display + 'static> fmt::Display for MutexGuard<'_, System, T>
+impl<Cell, Mutex, T: fmt::Display> fmt::Display for GenericMutexGuard<'_, Cell, Mutex>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
-/// The destructor of `MutexGuard` that releases the lock. It will panic if
+/// The destructor of `GenericMutexGuard` that releases the lock. It will panic if
 /// CPU Lock is active.
-impl<System, T: 'static> Drop for MutexGuard<'_, System, T>
+impl<Cell, Mutex> Drop for GenericMutexGuard<'_, Cell, Mutex>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    Mutex: mutex::MutexHandle,
 {
     #[inline]
     fn drop(&mut self) {
@@ -352,35 +369,39 @@ where
     }
 }
 
-impl<System, T: 'static> core::ops::Deref for MutexGuard<'_, System, T>
+impl<Cell, Mutex, T> Deref for GenericMutexGuard<'_, Cell, Mutex>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
-        // Safety: `MutexGuard` represents a permit acquired from the semaphore,
+        // Safety: `GenericMutexGuard` represents a permit acquired from the semaphore,
         //         which grants the bearer an exclusive access to the underlying
         //         data
-        unsafe { &*self.mutex.hunk.get() }
+        unsafe { &*self.mutex.cell.get() }
     }
 }
 
-impl<System, T: 'static> core::ops::DerefMut for MutexGuard<'_, System, T>
+impl<Cell, Mutex, T> DerefMut for GenericMutexGuard<'_, Cell, Mutex>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        // Safety: `MutexGuard` represents a permit acquired from the semaphore,
+        // Safety: `GenericMutexGuard` represents a permit acquired from the semaphore,
         //         which grants the bearer an exclusive access to the underlying
         //         data
-        unsafe { &mut *self.mutex.hunk.get() }
+        unsafe { &mut *self.mutex.cell.get() }
     }
 }
 
 // Safety: `MutexGuard::deref` provides a stable address
-unsafe impl<System, T: 'static> stable_deref_trait::StableDeref for MutexGuard<'_, System, T> where
-    System: traits::KernelMutex + traits::KernelStatic
+unsafe impl<Cell, Mutex, T> stable_deref_trait::StableDeref for GenericMutexGuard<'_, Cell, Mutex>
+where
+    Cell: Deref<Target = UnsafeCell<T>>,
+    Mutex: mutex::MutexHandle,
 {
 }

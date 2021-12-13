@@ -2,7 +2,7 @@
 use core::mem::MaybeUninit;
 
 use r3::{
-    kernel::{traits, Cfg, Timer},
+    kernel::{prelude::*, traits, Cfg, StaticTimer},
     time::Duration,
 };
 
@@ -20,7 +20,7 @@ pub trait SupportedSystem: crate::utils::benchmark::SupportedSystem + traits::Ke
 impl<T: crate::utils::benchmark::SupportedSystem + traits::KernelTimer> SupportedSystem for T {}
 
 struct AppInner<System: SupportedSystem> {
-    timers: [Timer<System>; 64],
+    timers: [StaticTimer<System>; 64],
 }
 
 const I_START_1: Interval = "start the 1st timer";
@@ -40,12 +40,12 @@ impl<System: SupportedSystem> AppInner<System> {
             + ~const traits::CfgTimer,
     {
         let timers = {
-            let mut timers = [MaybeUninit::<Timer<System>>::uninit(); 64];
+            let mut timers = [MaybeUninit::<StaticTimer<System>>::uninit(); 64];
 
             let mut i = 0;
             // FIXME: Work-around for `for` being unsupported in `const fn`
             while i < timers.len() {
-                timers[i] = MaybeUninit::new(Timer::define().start(|_| {}).finish(b));
+                timers[i] = MaybeUninit::new(StaticTimer::define().start(|_| {}).finish(b));
                 i += 1;
             }
 

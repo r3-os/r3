@@ -1,7 +1,7 @@
 //! The tickful `PortTimer` implementation based on SysTick.
 use core::cell::UnsafeCell;
 use r3::{
-    kernel::{raw, traits, Cfg, InterruptHandler, InterruptLine, StartupHook},
+    kernel::{raw, traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler},
     utils::Init,
 };
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
@@ -45,7 +45,7 @@ where
         .line(INTERRUPT_SYSTICK)
         .priority(Traits::INTERRUPT_PRIORITY)
         .finish(b);
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(INTERRUPT_SYSTICK)
         .start(
             #[inline]

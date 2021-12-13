@@ -1,7 +1,7 @@
 //! Checks that when a stack is automatically allocated, both ends of the
 //! stack region are aligned to a port-specific alignment.
 use core::marker::PhantomData;
-use r3::kernel::{traits, Cfg, Task};
+use r3::kernel::{traits, Cfg, StaticTask};
 use r3_kernel::System;
 use r3_test_suite::kernel_tests::Driver;
 
@@ -19,7 +19,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     where
         C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgTask,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<Traits, D>)
             .priority(0)
             .active(true)

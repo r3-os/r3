@@ -49,7 +49,7 @@ impl support_rza1::OsTimerOptions for SystemTraits {
 // -----------------------------------------------------------------------
 
 use r3::{
-    kernel::{StartupHook, Task},
+    kernel::{StartupHook, StaticTask},
     prelude::*,
 };
 
@@ -59,8 +59,8 @@ mod panic_serial;
 #[derive(Debug)]
 struct Objects {
     #[allow(dead_code)]
-    task1: Task<System>,
-    task2: Task<System>,
+    task1: StaticTask<System>,
+    task2: StaticTask<System>,
 }
 
 const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
@@ -90,12 +90,12 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         })
         .finish(b);
 
-    let task1 = Task::define()
+    let task1 = StaticTask::define()
         .start(task1_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let task2 = Task::define().start(task2_body).priority(3).finish(b);
+    let task2 = StaticTask::define().start(task2_body).priority(3).finish(b);
 
     Objects { task1, task2 }
 }

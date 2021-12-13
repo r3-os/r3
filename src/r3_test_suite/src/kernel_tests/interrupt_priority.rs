@@ -2,7 +2,7 @@
 //! handlers are called.
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
+    kernel::{prelude::*, traits, Cfg, InterruptLine, StaticInterruptHandler, StaticTask},
 };
 
 use super::Driver;
@@ -29,7 +29,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgInterruptLine,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)
@@ -40,7 +40,7 @@ impl<System: SupportedSystem> App<System> {
             if D::INTERRUPT_LINES.len() >= 1 && D::INTERRUPT_PRIORITIES.len() >= 1 {
                 let int_line = D::INTERRUPT_LINES[0];
                 let pri = D::INTERRUPT_PRIORITIES[0];
-                InterruptHandler::define()
+                StaticInterruptHandler::define()
                     .line(int_line)
                     .start(isr0::<System, D>)
                     .finish(b);
@@ -57,7 +57,7 @@ impl<System: SupportedSystem> App<System> {
             if D::INTERRUPT_LINES.len() >= 2 && D::INTERRUPT_PRIORITIES.len() >= 2 {
                 let int_line = D::INTERRUPT_LINES[1];
                 let pri = D::INTERRUPT_PRIORITIES[1];
-                InterruptHandler::define()
+                StaticInterruptHandler::define()
                     .line(int_line)
                     .start(isr1::<System, D>)
                     .finish(b);

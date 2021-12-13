@@ -50,13 +50,13 @@ use crate::{
 /// Don't constrain a system type by this trait:
 ///
 /// ```compile_fail,E0277
-/// # use r3::kernel::{traits, Task};
-/// fn current_task<System>() -> Task<System>
+/// # use r3::kernel::{traits, LocalTask};
+/// fn current_task<System>() -> LocalTask<System>
 /// where
 ///     System: traits::Kernel,
 /// {
 ///     // ERROR: `System` doesn't implement `traits::KernelBase`
-///     Task::current().unwrap().unwrap()
+///     LocalTask::current().unwrap()
 /// }
 /// ```
 #[doc = include_str!("../common.md")]
@@ -317,7 +317,7 @@ pub trait Kernel: private::Sealed {
     /// This system service may block. Therefore, calling this method is not
     /// allowed in [a non-waitable context] and will return `Err(BadContext)`.
     ///
-    /// [`Task::unpark`]: crate::kernel::Task::unpark
+    /// [`Task::unpark`]: crate::kernel::task::TaskMethods::unpark
     /// [a non-waitable context]: crate#contexts
     fn park() -> Result<(), ParkError>;
 

@@ -1,9 +1,9 @@
-//! Checks miscellaneous properties of [`r3::sync::Mutex`].
+//! Checks miscellaneous properties of [`r3::sync::StaticMutex`].
 use assert_matches::assert_matches;
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Task},
-    sync::mutex::{self, Mutex},
+    kernel::{prelude::*, traits, Cfg, InterruptLine, StaticInterruptHandler, StaticTask},
+    sync::mutex::{self, StaticMutex},
 };
 
 use super::Driver;
@@ -24,8 +24,8 @@ impl<
 
 pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
-    eg1: Mutex<System, u32>,
-    eg2: Mutex<System, u32>,
+    eg1: StaticMutex<System, u32>,
+    eg2: StaticMutex<System, u32>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -37,18 +37,18 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgInterruptLine
             + ~const traits::CfgMutex,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let eg1 = Mutex::define().finish(b);
-        let eg2 = Mutex::define().finish(b);
+        let eg1 = StaticMutex::define().finish(b);
+        let eg2 = StaticMutex::define().finish(b);
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

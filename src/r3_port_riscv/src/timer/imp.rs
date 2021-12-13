@@ -1,5 +1,5 @@
 //! The implementation of the RISC-V timer driver.
-use r3::kernel::{traits, Cfg, InterruptHandler};
+use r3::kernel::{traits, Cfg, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use tock_registers::{
@@ -72,7 +72,7 @@ pub const fn configure<C, Traits: TimerInstance>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgInterruptLine<System = System<Traits>>,
 {
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(Traits::INTERRUPT_NUM)
         .start(handle_tick::<Traits>)
         .finish(b);

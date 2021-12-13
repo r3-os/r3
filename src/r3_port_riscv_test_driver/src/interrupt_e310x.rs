@@ -5,7 +5,8 @@
 //! GPIO pins 0 and 1 must not be driven externally.
 use core::sync::atomic::Ordering;
 use r3::kernel::{
-    traits, Cfg, ClearInterruptLineError, InterruptHandler, InterruptNum, PendInterruptLineError,
+    traits, Cfg, ClearInterruptLineError, InterruptNum, PendInterruptLineError,
+    StaticInterruptHandler,
 };
 
 #[macro_export]
@@ -167,14 +168,14 @@ where
 {
     // Automatically clear the interrupt line when an interrupt is taken
     unsafe {
-        InterruptHandler::define()
+        StaticInterruptHandler::define()
             .line(INTERRUPT_GPIO0)
             .start(|_| clear_interrupt_line(INTERRUPT_GPIO0).unwrap())
             .priority(i32::MIN)
             .unmanaged()
             .finish(b);
 
-        InterruptHandler::define()
+        StaticInterruptHandler::define()
             .line(INTERRUPT_GPIO1)
             .start(|_| clear_interrupt_line(INTERRUPT_GPIO1).unwrap())
             .priority(i32::MIN)

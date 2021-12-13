@@ -2,7 +2,7 @@
 //! miscellaneous properties of such methods.
 use core::marker::PhantomData;
 use r3::{
-    kernel::{prelude::*, traits, Cfg, StartupHook, Task},
+    kernel::{prelude::*, traits, Cfg, StartupHook, StaticTask},
     time::{Duration, Time},
 };
 
@@ -24,7 +24,7 @@ impl<System: SupportedSystem> App<System> {
         StartupHook::define()
             .start(startup_hook::<System, D>)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(0)
             .active(true)

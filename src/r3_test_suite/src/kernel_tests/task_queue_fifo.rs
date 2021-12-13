@@ -1,7 +1,7 @@
 //! Asserts that tasks in the same ready queue are processed in a FIFO order.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Task},
+    kernel::{prelude::*, traits, Cfg, StaticTask},
 };
 
 use super::Driver;
@@ -11,9 +11,9 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelStatic {}
 impl<T: traits::KernelBase + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    task2: Task<System>,
-    task3: Task<System>,
-    task4: Task<System>,
+    task2: StaticTask<System>,
+    task3: StaticTask<System>,
+    task4: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -22,22 +22,22 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(2)
             .param(2)
             .finish(b);
-        let task3 = Task::define()
+        let task3 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(2)
             .param(3)
             .finish(b);
-        let task4 = Task::define()
+        let task4 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(2)
             .param(4)

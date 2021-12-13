@@ -1,7 +1,7 @@
 //! The common part of `mutex_*`. See [`super::mutex_none`] for a sequence
 //! diagram.
 use core::marker::PhantomData;
-use r3::kernel::{prelude::*, traits, Cfg, Mutex, MutexProtocol, Task};
+use r3::kernel::{prelude::*, traits, Cfg, MutexProtocol, StaticMutex, StaticTask};
 
 use super::Bencher;
 use crate::utils::benchmark::Interval;
@@ -10,8 +10,8 @@ pub trait SupportedSystem: crate::utils::benchmark::SupportedSystem + traits::Ke
 impl<T: crate::utils::benchmark::SupportedSystem + traits::KernelMutex> SupportedSystem for T {}
 
 pub(super) struct AppInner<System: SupportedSystem, Options> {
-    task1: Task<System>,
-    mtx: Mutex<System>,
+    task1: StaticTask<System>,
+    mtx: StaticMutex<System>,
     _phantom: PhantomData<Options>,
 }
 
@@ -45,12 +45,12 @@ impl<System: SupportedSystem, Options: MutexBenchmarkOptions> AppInner<System, O
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, Options, B>)
             .priority(1)
             .finish(b);
 
-        let mtx = Mutex::define().protocol(Options::PROTOCOL).finish(b);
+        let mtx = StaticMutex::define().protocol(Options::PROTOCOL).finish(b);
 
         Self {
             task1,

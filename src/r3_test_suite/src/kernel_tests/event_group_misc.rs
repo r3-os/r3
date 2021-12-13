@@ -1,7 +1,7 @@
 //! Validates error codes returned by event group manipulation methods. Also,
 //! checks miscellaneous properties of `EventGroup`.
 use core::num::NonZeroUsize;
-use r3::kernel::{prelude::*, traits, Cfg, EventGroup, Task};
+use r3::kernel::{prelude::*, traits, Cfg, EventGroupRef, StaticEventGroup, StaticTask};
 use wyhash::WyHash;
 
 use super::Driver;
@@ -17,8 +17,8 @@ impl<T: traits::KernelBase + traits::KernelEventGroup<RawEventGroupId = NonZeroU
 }
 
 pub struct App<System: SupportedSystem> {
-    eg1: EventGroup<System>,
-    eg2: EventGroup<System>,
+    eg1: StaticEventGroup<System>,
+    eg2: StaticEventGroup<System>,
 }
 
 impl<System: SupportedSystem> App<System> {
@@ -28,13 +28,13 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let eg1 = EventGroup::define().finish(b);
-        let eg2 = EventGroup::define().finish(b);
+        let eg1 = StaticEventGroup::define().finish(b);
+        let eg2 = StaticEventGroup::define().finish(b);
 
         App { eg1, eg2 }
     }
@@ -48,7 +48,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(app.eg2, app.eg2);
 
     // `Hash`
-    let hash = |x: EventGroup<System>| {
+    let hash = |x: EventGroupRef<'_, System>| {
         use core::hash::{Hash, Hasher};
         let mut hasher = WyHash::with_seed(42);
         x.hash(&mut hasher);
@@ -58,7 +58,8 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(hash(app.eg2), hash(app.eg2));
 
     // Invalid event group ID
-    let bad_eg: EventGroup<System> = unsafe { EventGroup::from_id(NonZeroUsize::new(42).unwrap()) };
+    let bad_eg: EventGroupRef<'_, System> =
+        unsafe { EventGroupRef::from_id(NonZeroUsize::new(42).unwrap()) };
     assert_eq!(bad_eg.get(), Err(r3::kernel::GetEventGroupError::BadId));
 
     // CPU Lock active

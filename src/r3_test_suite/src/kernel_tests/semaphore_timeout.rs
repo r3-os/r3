@@ -14,7 +14,7 @@
 //!
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, Semaphore, Task, WaitSemaphoreTimeoutError},
+    kernel::{prelude::*, traits, Cfg, StaticSemaphore, StaticTask, WaitSemaphoreTimeoutError},
     time::Duration,
 };
 
@@ -28,7 +28,7 @@ pub trait SupportedSystem:
 impl<T: traits::KernelBase + traits::KernelSemaphore + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    eg: Semaphore<System>,
+    eg: StaticSemaphore<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -39,18 +39,18 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        Task::define()
+        StaticTask::define()
             .start(task0_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let eg = Semaphore::define().initial(0).maximum(1).finish(b);
+        let eg = StaticSemaphore::define().initial(0).maximum(1).finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg, seq }

@@ -5,7 +5,8 @@ use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
     kernel::{
-        prelude::*, traits, Cfg, InterruptHandler, InterruptLine, Mutex, MutexProtocol, Task,
+        prelude::*, traits, Cfg, InterruptLine, LocalTask, MutexProtocol, MutexRef,
+        StaticInterruptHandler, StaticMutex, StaticTask,
     },
     time::Duration,
 };
@@ -38,10 +39,10 @@ impl<
 }
 
 pub struct App<System: SupportedSystem> {
-    task2: Task<System>,
-    task3: Task<System>,
+    task2: StaticTask<System>,
+    task3: StaticTask<System>,
     int: Option<InterruptLine<System>>,
-    m: [Mutex<System>; N],
+    m: [StaticMutex<System>; N],
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -53,35 +54,37 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgMutex
             + ~const traits::CfgInterruptLine,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(3)
             .finish(b);
 
-        let task3 = Task::define()
+        let task3 = StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(2)
             .finish(b);
 
         let m = [
-            Mutex::define().protocol(MutexProtocol::None).finish(b),
-            Mutex::define()
+            StaticMutex::define()
+                .protocol(MutexProtocol::None)
+                .finish(b),
+            StaticMutex::define()
                 .protocol(MutexProtocol::Ceiling(1))
                 .finish(b),
-            Mutex::define().finish(b),
-            Mutex::define().finish(b),
+            StaticMutex::define().finish(b),
+            StaticMutex::define().finish(b),
         ];
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);
@@ -128,7 +131,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(m2, m2);
 
     // `Hash`
-    let hash = |x: Mutex<System>| {
+    let hash = |x: MutexRef<'_, System>| {
         use core::hash::{Hash, Hasher};
         let mut hasher = WyHash::with_seed(42);
         x.hash(&mut hasher);
@@ -138,7 +141,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(hash(m2), hash(m2));
 
     // Invalid mutex ID
-    let bad_m: Mutex<System> = unsafe { Mutex::from_id(NonZeroUsize::new(42).unwrap()) };
+    let bad_m: MutexRef<System> = unsafe { MutexRef::from_id(NonZeroUsize::new(42).unwrap()) };
     assert_eq!(bad_m.is_locked(), Err(r3::kernel::QueryMutexError::BadId));
 
     // CPU Lock active
@@ -278,7 +281,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
     // `m2` uses the priority ceiling `1`. Let's use this to test the errors
     // specific to the priority ceiling protocol.
-    let cur_task: Task<System> = Task::current().unwrap().unwrap();
+    let cur_task: LocalTask<System> = LocalTask::current().unwrap();
     for pri in 0..=3 {
         let exceeds_ceiling = pri < 1;
         log::trace!(
@@ -435,7 +438,7 @@ fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let app = D::app();
     let [_, m2, ..] = app.m;
 
-    let cur_task: Task<System> = Task::current().unwrap().unwrap();
+    let cur_task: LocalTask<System> = LocalTask::current().unwrap();
     assert_eq!(cur_task.priority().unwrap(), 2);
     assert_eq!(cur_task.effective_priority().unwrap(), 2);
 

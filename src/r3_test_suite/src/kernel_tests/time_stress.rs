@@ -1,6 +1,6 @@
 //! Launches multiple tasks, each of which calls `sleep` repeatedly.
 use r3::{
-    kernel::{prelude::*, traits, Cfg, EventGroup, EventGroupWaitFlags, Task},
+    kernel::{prelude::*, traits, Cfg, EventGroupWaitFlags, StaticEventGroup, StaticTask},
     time::{Duration, Time},
 };
 
@@ -13,7 +13,7 @@ pub trait SupportedSystem:
 impl<T: traits::KernelBase + traits::KernelTime + traits::KernelEventGroup> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    done: EventGroup<System>,
+    done: StaticEventGroup<System>,
 }
 
 const TASKS: &[usize] = &[300, 150, 300, 750, 170];
@@ -28,7 +28,7 @@ impl<System: SupportedSystem> App<System> {
         let mut i = 0;
         // FIXME: Work-around for `for` being unsupported in `const fn`
         while i < TASKS.len() {
-            Task::define()
+            StaticTask::define()
                 .start(task_body::<System, D>)
                 .param(i)
                 .priority(0)
@@ -37,13 +37,13 @@ impl<System: SupportedSystem> App<System> {
             i += 1;
         }
 
-        Task::define()
+        StaticTask::define()
             .start(completion_task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let done = EventGroup::define().finish(b);
+        let done = StaticEventGroup::define().finish(b);
 
         App { done }
     }

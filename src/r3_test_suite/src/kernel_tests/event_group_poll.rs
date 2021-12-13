@@ -1,7 +1,7 @@
 //! Sets and polls an event group in an interrupt handler.
 use r3::kernel::{
-    traits, Cfg, EventGroup, EventGroupWaitFlags, InterruptHandler, InterruptLine,
-    PollEventGroupError, StartupHook, WaitEventGroupError,
+    prelude::*, traits, Cfg, EventGroupWaitFlags, InterruptLine, PollEventGroupError, StartupHook,
+    StaticEventGroup, StaticInterruptHandler, WaitEventGroupError,
 };
 
 use super::Driver;
@@ -17,7 +17,7 @@ impl<T: traits::KernelBase + traits::KernelEventGroup + traits::KernelInterruptL
 
 pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
-    eg: EventGroup<System>,
+    eg: StaticEventGroup<System>,
 }
 
 impl<System: SupportedSystem> App<System> {
@@ -28,7 +28,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgEventGroup
             + ~const traits::CfgInterruptLine,
     {
-        let eg = EventGroup::define().finish(b);
+        let eg = StaticEventGroup::define().finish(b);
 
         StartupHook::define()
             .start(startup_hook::<System, D>)
@@ -37,7 +37,7 @@ impl<System: SupportedSystem> App<System> {
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

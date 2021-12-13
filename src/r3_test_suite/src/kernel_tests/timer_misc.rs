@@ -2,7 +2,7 @@
 use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
-    kernel::{self, prelude::*, traits, Cfg, Task, Timer},
+    kernel::{self, prelude::*, traits, Cfg, StaticTask, StaticTimer, TimerRef},
     time::{Duration, Time},
 };
 use wyhash::WyHash;
@@ -33,11 +33,11 @@ impl<
 }
 
 pub struct App<System: SupportedSystem> {
-    timer1: Timer<System>,
-    timer2: Timer<System>,
-    timer3: Timer<System>,
-    timer4: Timer<System>,
-    task: Task<System>,
+    timer1: StaticTimer<System>,
+    timer2: StaticTimer<System>,
+    timer3: StaticTimer<System>,
+    timer4: StaticTimer<System>,
+    task: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -48,32 +48,32 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
-        let timer1 = Timer::define()
+        let timer1 = StaticTimer::define()
             .active(true)
             .delay(Duration::from_millis(200))
             .start(timer1_body::<System, D>)
             .param(42)
             .finish(b);
 
-        let timer2 = Timer::define()
+        let timer2 = StaticTimer::define()
             .active(true)
             .delay(Duration::from_millis(100))
             .start(timer2_body::<System, D>)
             .param(52)
             .finish(b);
 
-        let timer3 = Timer::define()
+        let timer3 = StaticTimer::define()
             .period(Duration::from_millis(0))
             .start(unreachable_timer_body::<System, D>)
             .finish(b);
 
-        let timer4 = Timer::define()
+        let timer4 = StaticTimer::define()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(0))
             .start(unreachable_timer_body::<System, D>)
             .finish(b);
 
-        let task = Task::define()
+        let task = StaticTask::define()
             .active(true)
             .start(task_body::<System, D>)
             .priority(1)
@@ -164,14 +164,14 @@ fn timer1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     assert_eq!(timer2, timer2);
 
     // `Hash`
-    let hash = |x: &Timer<System>| {
+    let hash = |x: TimerRef<'_, System>| {
         use core::hash::{Hash, Hasher};
         let mut hasher = WyHash::with_seed(42);
         x.hash(&mut hasher);
         hasher.finish()
     };
-    assert_eq!(hash(timer1), hash(timer1));
-    assert_eq!(hash(timer2), hash(timer2));
+    assert_eq!(hash(*timer1), hash(*timer1));
+    assert_eq!(hash(*timer2), hash(*timer2));
 
     // Disallowed in a non-task context
     if let Some(cap) = System::BOOST_PRIORITY_CAPABILITY {
@@ -187,7 +187,8 @@ fn timer1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     assert_eq!(System::park(), Err(kernel::ParkError::BadContext));
 
     // Invalid ID
-    let bad_timer: Timer<System> = unsafe { Timer::from_id(NonZeroUsize::new(42).unwrap()) };
+    let bad_timer: TimerRef<'_, System> =
+        unsafe { TimerRef::from_id(NonZeroUsize::new(42).unwrap()) };
     assert_eq!(bad_timer.start(), Err(r3::kernel::StartTimerError::BadId));
 
     // Disallowed with CPU Lock acitve

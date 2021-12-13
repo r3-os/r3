@@ -10,8 +10,8 @@
 use r3::{
     hunk::Hunk,
     kernel::{
-        traits, Cfg, EventGroup, EventGroupWaitFlags, QueueOrder, Task, WaitEventGroupError,
-        WaitEventGroupTimeoutError,
+        prelude::*, traits, Cfg, EventGroupWaitFlags, QueueOrder, StaticEventGroup, StaticTask,
+        WaitEventGroupError, WaitEventGroupTimeoutError,
     },
     time::Duration,
 };
@@ -29,8 +29,8 @@ impl<T: traits::KernelBase + traits::KernelEventGroup + traits::KernelStatic> Su
 }
 
 pub struct App<System: SupportedSystem> {
-    eg: EventGroup<System>,
-    task1: Task<System>,
+    eg: StaticEventGroup<System>,
+    task1: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -41,18 +41,20 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::define()
+        StaticTask::define()
             .start(task0_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let eg = EventGroup::define().queue_order(QueueOrder::Fifo).finish(b);
+        let eg = StaticEventGroup::define()
+            .queue_order(QueueOrder::Fifo)
+            .finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         App { eg, task1, seq }

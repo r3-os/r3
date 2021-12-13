@@ -1,10 +1,10 @@
-//! Checks miscellaneous properties of [`r3::sync::RecursiveMutex`].
+//! Checks miscellaneous properties of [`r3::sync::StaticRecursiveMutex`].
 use assert_matches::assert_matches;
 use core::cell::Cell;
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Task},
-    sync::recursive_mutex::{self, RecursiveMutex},
+    kernel::{prelude::*, traits, Cfg, StaticTask},
+    sync::recursive_mutex::{self, StaticRecursiveMutex},
 };
 
 use super::Driver;
@@ -14,8 +14,8 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelMutex + traits::Ke
 impl<T: traits::KernelBase + traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    task2: Task<System>,
-    mutex: RecursiveMutex<System, Cell<u32>>,
+    task2: StaticTask<System>,
+    mutex: StaticRecursiveMutex<System, Cell<u32>>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -26,18 +26,18 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .active(false)
             .finish(b);
 
-        let mutex = RecursiveMutex::define().finish(b);
+        let mutex = StaticRecursiveMutex::define().finish(b);
 
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 

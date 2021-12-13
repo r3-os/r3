@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+**The design has been wholly revamped!** `r3` now only defines the interface between an application and a kernel implementation. The current kernel implementation has been moved to `r3_kernel`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
+
 ### Changed
 
-**The design has been wholly revamped!** `r3` now only defines the interface between an application and a kernel implementation. The current kernel implementation has been moved to `r3_kernel`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
+While much of the application-level API has retained its general shape, there are some significant changes that may require attention:
+
+ - Introduces *object safety*. All kernel object handle types now have the following variations: `Mutex<_>` (owned), `MutexRef<'_, _>` (borrowed), `StaticMutex` (static). Owned handles aren't usable yet.
+ - `r3::kernel::Task::current` was moved to `r3::kernel::LocalTask::current` and now requires a task context. It returns `LocalTask`, which cannot be sent to another thread but whose reference (`&LocalTask` or `TaskRef`) can be.
+
+TODO
 
 ## [0.1.3] - 2021-10-29
 

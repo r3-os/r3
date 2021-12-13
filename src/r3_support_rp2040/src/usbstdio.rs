@@ -5,7 +5,7 @@
 use crate::usb::UsbBus;
 use core::cell::RefCell;
 use cortex_m::{interrupt, singleton};
-use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine, InterruptNum, StartupHook};
+use r3::kernel::{traits, Cfg, InterruptLine, InterruptNum, StartupHook, StaticInterruptHandler};
 use usb_device::{
     bus::UsbBusAllocator,
     device::{UsbDevice, UsbDeviceBuilder, UsbVidPid},
@@ -122,7 +122,7 @@ where
         .enabled(true)
         .finish(b);
 
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(int_num)
         .start(|_| {
             poll::<TOptions>();

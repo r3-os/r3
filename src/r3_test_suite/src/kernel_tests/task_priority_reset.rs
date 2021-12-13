@@ -1,7 +1,7 @@
 //! Checks that the task priority is reset whenever a task is activated.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, Task},
+    kernel::{prelude::*, traits, Cfg, StaticTask},
 };
 
 use super::Driver;
@@ -17,7 +17,7 @@ impl<T: traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelStati
 }
 
 pub struct App<System: SupportedSystem> {
-    task2: Task<System>,
+    task2: StaticTask<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -26,12 +26,12 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(2)
             .active(true)

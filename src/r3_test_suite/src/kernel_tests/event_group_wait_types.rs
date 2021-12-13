@@ -1,5 +1,5 @@
 //! Waits for an event group with various wait flags.
-use r3::kernel::{traits, Cfg, EventGroup, EventGroupWaitFlags, Task};
+use r3::kernel::{prelude::*, traits, Cfg, EventGroupWaitFlags, StaticEventGroup, StaticTask};
 
 use super::Driver;
 
@@ -7,7 +7,7 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelEventGroup {}
 impl<T: traits::KernelBase + traits::KernelEventGroup> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    eg: EventGroup<System>,
+    eg: StaticEventGroup<System>,
 }
 
 impl<System: SupportedSystem> App<System> {
@@ -17,13 +17,13 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgEventGroup,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let eg = EventGroup::define().finish(b);
+        let eg = StaticEventGroup::define().finish(b);
 
         App { eg }
     }

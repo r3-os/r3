@@ -7,8 +7,9 @@
 //! top of them.
 //!
 //! The trait methods that operate on a given [`Id`] are all defined as `unsafe
-//! fn` to maintain object safety.
+//! fn` to maintain [object safety][1].
 //!
+//! [1]: crate#object-safety
 use core::{fmt, hash::Hash, ops::Range};
 
 use crate::{
@@ -18,8 +19,8 @@ use crate::{
 
 /// A group of traits that must be implemented by kernel object ID types,
 /// including [`KernelBase::RawTaskId`].
-pub trait Id: fmt::Debug + Copy + Eq + Ord + Hash {}
-impl<T: ?Sized + fmt::Debug + Copy + Eq + Ord + Hash> Id for T {}
+pub trait Id: fmt::Debug + Copy + Eq + Ord + Hash + Send + Sync + 'static {}
+impl<T: ?Sized + fmt::Debug + Copy + Eq + Ord + Hash + Send + Sync + 'static> Id for T {}
 
 /// Provides access to the minimal API exposed by a kernel.
 ///
@@ -95,32 +96,32 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     /// [1]: crate::kernel::Kernel::sleep
     fn raw_sleep(duration: Duration) -> Result<(), SleepError>;
 
-    /// Get the current task (i.e., the task in the Running state).
-    fn raw_task_current() -> Result<Option<Self::RawTaskId>, GetCurrentTaskError>;
+    /// Get the current task.
+    fn raw_task_current() -> Result<Self::RawTaskId, GetCurrentTaskError>;
 
     /// Implements [`Task::activate`][1].
     ///
-    /// [1]: crate::kernel::Task::activate
+    /// [1]: crate::kernel::task::TaskMethods::activate
     unsafe fn raw_task_activate(this: Self::RawTaskId) -> Result<(), ActivateTaskError>;
 
     /// Implements [`Task::interrupt`][1].
     ///
-    /// [1]: crate::kernel::Task::interrupt
+    /// [1]: crate::kernel::task::TaskMethods::interrupt
     unsafe fn raw_task_interrupt(this: Self::RawTaskId) -> Result<(), InterruptTaskError>;
 
     /// Implements [`Task::unpark_exact`][1].
     ///
-    /// [1]: crate::kernel::Task::unpark_exact
+    /// [1]: crate::kernel::task::TaskMethods::unpark_exact
     unsafe fn raw_task_unpark_exact(this: Self::RawTaskId) -> Result<(), UnparkExactError>;
 
     /// Implements [`Task::priority`][1].
     ///
-    /// [1]: crate::kernel::Task::priority
+    /// [1]: crate::kernel::task::TaskMethods::priority
     unsafe fn raw_task_priority(this: Self::RawTaskId) -> Result<usize, GetTaskPriorityError>;
 
     /// Implements [`Task::effective_priority`][1].
     ///
-    /// [1]: crate::kernel::Task::effective_priority
+    /// [1]: crate::kernel::task::TaskMethods::effective_priority
     unsafe fn raw_task_effective_priority(
         this: Self::RawTaskId,
     ) -> Result<usize, GetTaskPriorityError>;
@@ -158,7 +159,7 @@ pub unsafe trait KernelBoostPriority: KernelBase {
 pub unsafe trait KernelTaskSetPriority: KernelBase {
     /// Implements [`Task::set_priority`][1].
     ///
-    /// [1]: crate::kernel::Task::set_priority
+    /// [1]: crate::kernel::task::TaskMethods::set_priority
     unsafe fn raw_task_set_priority(
         this: Self::RawTaskId,
         priority: usize,
@@ -254,7 +255,7 @@ pub unsafe trait KernelEventGroup: KernelBase {
 
     /// Implements [`EventGroup::set`][1].
     ///
-    /// [1]: crate::kernel::EventGroup::set
+    /// [1]: crate::kernel::event_group::EventGroupMethods::set
     unsafe fn raw_event_group_set(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -262,7 +263,7 @@ pub unsafe trait KernelEventGroup: KernelBase {
 
     /// Implements [`EventGroup::clear`][1].
     ///
-    /// [1]: crate::kernel::EventGroup::clear
+    /// [1]: crate::kernel::event_group::EventGroupMethods::clear
     unsafe fn raw_event_group_clear(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -270,14 +271,14 @@ pub unsafe trait KernelEventGroup: KernelBase {
 
     /// Implements [`EventGroup::get`][1].
     ///
-    /// [1]: crate::kernel::EventGroup::get
+    /// [1]: crate::kernel::event_group::EventGroupMethods::get
     unsafe fn raw_event_group_get(
         this: Self::RawEventGroupId,
     ) -> Result<EventGroupBits, GetEventGroupError>;
 
     /// Implements [`EventGroup::wait`][1].
     ///
-    /// [1]: crate::kernel::EventGroup::wait
+    /// [1]: crate::kernel::event_group::EventGroupMethods::wait
     unsafe fn raw_event_group_wait(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -286,7 +287,7 @@ pub unsafe trait KernelEventGroup: KernelBase {
 
     /// Implements [`EventGroup::wait_timeout`][1].
     ///
-    /// [1]: crate::kernel::EventGroup::wait_timeout
+    /// [1]: crate::kernel::event_group::EventGroupMethods::wait_timeout
     unsafe fn raw_event_group_wait_timeout(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -296,7 +297,7 @@ pub unsafe trait KernelEventGroup: KernelBase {
 
     /// Implements [`EventGroup::poll`][1].
     ///
-    /// [1]: crate::kernel::EventGroup::poll
+    /// [1]: crate::kernel::event_group::EventGroupMethods::poll
     unsafe fn raw_event_group_poll(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -307,7 +308,7 @@ pub unsafe trait KernelEventGroup: KernelBase {
 bitflags::bitflags! {
     /// Options for [`EventGroup::wait`][1].
     ///
-    /// [1]: crate::kernel::EventGroup::wait
+    /// [1]: crate::kernel::event_group::EventGroupMethods::wait
     pub struct EventGroupWaitFlags: u8 {
         /// Wait for all of the specified bits to be set.
         const ALL = 1 << 0;
@@ -340,22 +341,22 @@ pub unsafe trait KernelMutex: KernelBase {
 
     /// Implements [`Mutex::is_locked`][1].
     ///
-    /// [1]: crate::kernel::Mutex::is_locked
+    /// [1]: crate::kernel::mutex::MutexMethods::is_locked
     unsafe fn raw_mutex_is_locked(this: Self::RawMutexId) -> Result<bool, QueryMutexError>;
 
     /// Implements [`Mutex::unlock`][1].
     ///
-    /// [1]: crate::kernel::Mutex::unlock
+    /// [1]: crate::kernel::mutex::MutexMethods::unlock
     unsafe fn raw_mutex_unlock(this: Self::RawMutexId) -> Result<(), UnlockMutexError>;
 
     /// Implements [`Mutex::lock`][1].
     ///
-    /// [1]: crate::kernel::Mutex::lock
+    /// [1]: crate::kernel::mutex::MutexMethods::lock
     unsafe fn raw_mutex_lock(this: Self::RawMutexId) -> Result<(), LockMutexError>;
 
     /// Implements [`Mutex::lock_timeout`][1].
     ///
-    /// [1]: crate::kernel::Mutex::lock_timeout
+    /// [1]: crate::kernel::mutex::MutexMethods::lock_timeout
     unsafe fn raw_mutex_lock_timeout(
         this: Self::RawMutexId,
         timeout: Duration,
@@ -363,12 +364,12 @@ pub unsafe trait KernelMutex: KernelBase {
 
     /// Implements [`Mutex::try_lock`][1].
     ///
-    /// [1]: crate::kernel::Mutex::try_lock
+    /// [1]: crate::kernel::mutex::MutexMethods::try_lock
     unsafe fn raw_mutex_try_lock(this: Self::RawMutexId) -> Result<(), TryLockMutexError>;
 
     /// Implements [`Mutex::mark_consistent`][1].
     ///
-    /// [1]: crate::kernel::Mutex::mark_consistent
+    /// [1]: crate::kernel::mutex::MutexMethods::mark_consistent
     unsafe fn raw_mutex_mark_consistent(
         this: Self::RawMutexId,
     ) -> Result<(), MarkConsistentMutexError>;
@@ -475,19 +476,19 @@ pub unsafe trait KernelSemaphore: KernelBase {
 
     /// Implements [`Semaphore::drain`][1].
     ///
-    /// [1]: crate::kernel::Semaphore::drain
+    /// [1]: crate::kernel::semaphore::SemaphoreMethods::drain
     unsafe fn raw_semaphore_drain(this: Self::RawSemaphoreId) -> Result<(), DrainSemaphoreError>;
 
     /// Implements [`Semaphore::get`][1].
     ///
-    /// [1]: crate::kernel::Semaphore::get
+    /// [1]: crate::kernel::semaphore::SemaphoreMethods::get
     unsafe fn raw_semaphore_get(
         this: Self::RawSemaphoreId,
     ) -> Result<SemaphoreValue, GetSemaphoreError>;
 
     /// Implements [`Semaphore::signal`][1].
     ///
-    /// [1]: crate::kernel::Semaphore::signal
+    /// [1]: crate::kernel::semaphore::SemaphoreMethods::signal
     unsafe fn raw_semaphore_signal(
         this: Self::RawSemaphoreId,
         count: SemaphoreValue,
@@ -495,19 +496,19 @@ pub unsafe trait KernelSemaphore: KernelBase {
 
     /// Implements [`Semaphore::signal_one`][1].
     ///
-    /// [1]: crate::kernel::Semaphore::signal_one
+    /// [1]: crate::kernel::semaphore::SemaphoreMethods::signal_one
     unsafe fn raw_semaphore_signal_one(
         this: Self::RawSemaphoreId,
     ) -> Result<(), SignalSemaphoreError>;
 
     /// Implements [`Semaphore::wait_one`][1].
     ///
-    /// [1]: crate::kernel::Semaphore::wait_one
+    /// [1]: crate::kernel::semaphore::SemaphoreMethods::wait_one
     unsafe fn raw_semaphore_wait_one(this: Self::RawSemaphoreId) -> Result<(), WaitSemaphoreError>;
 
     /// Implements [`Semaphore::wait_one_timeout`][1].
     ///
-    /// [1]: crate::kernel::Semaphore::wait_one_timeout
+    /// [1]: crate::kernel::semaphore::SemaphoreMethods::wait_one_timeout
     unsafe fn raw_semaphore_wait_one_timeout(
         this: Self::RawSemaphoreId,
         timeout: Duration,
@@ -515,7 +516,7 @@ pub unsafe trait KernelSemaphore: KernelBase {
 
     /// Implements [`Semaphore::poll_one`][1].
     ///
-    /// [1]: crate::kernel::Semaphore::poll_one
+    /// [1]: crate::kernel::semaphore::SemaphoreMethods::poll_one
     unsafe fn raw_semaphore_poll_one(this: Self::RawSemaphoreId) -> Result<(), PollSemaphoreError>;
 }
 
@@ -546,17 +547,17 @@ pub unsafe trait KernelTimer: KernelBase {
 
     /// Implements [`Timer::start`][1].
     ///
-    /// [1]: crate::kernel::Timer::start
+    /// [1]: crate::kernel::timer::TimerMethods::start
     unsafe fn raw_timer_start(this: Self::RawTimerId) -> Result<(), StartTimerError>;
 
     /// Implements [`Timer::stop`][1].
     ///
-    /// [1]: crate::kernel::Timer::stop
+    /// [1]: crate::kernel::timer::TimerMethods::stop
     unsafe fn raw_timer_stop(this: Self::RawTimerId) -> Result<(), StopTimerError>;
 
     /// Implements [`Timer::set_delay`][1].
     ///
-    /// [1]: crate::kernel::Timer::set_delay
+    /// [1]: crate::kernel::timer::TimerMethods::set_delay
     unsafe fn raw_timer_set_delay(
         this: Self::RawTimerId,
         delay: Option<Duration>,
@@ -564,7 +565,7 @@ pub unsafe trait KernelTimer: KernelBase {
 
     /// Implements [`Timer::set_period`][1].
     ///
-    /// [1]: crate::kernel::Timer::set_period
+    /// [1]: crate::kernel::timer::TimerMethods::set_period
     unsafe fn raw_timer_set_period(
         this: Self::RawTimerId,
         period: Option<Duration>,

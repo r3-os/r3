@@ -230,7 +230,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     type RawTaskId = task::TaskId;
 
     #[inline]
-    fn raw_task_current() -> Result<Option<Self::RawTaskId>, r3::kernel::GetCurrentTaskError> {
+    fn raw_task_current() -> Result<Self::RawTaskId, r3::kernel::GetCurrentTaskError> {
         Self::task_current()
     }
 

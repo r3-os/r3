@@ -10,7 +10,7 @@ use core::{
 };
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, StartupHook, Task, Timer},
+    kernel::{prelude::*, traits, Cfg, StartupHook, StaticTask, StaticTimer},
     time::Duration,
     utils::Init,
 };
@@ -34,8 +34,8 @@ impl<
 }
 
 pub struct App<System: SupportedSystem> {
-    timer: Timer<System>,
-    tasks: [Task<System>; NUM_TASKS],
+    timer: StaticTimer<System>,
+    tasks: [StaticTask<System>; NUM_TASKS],
     state: Hunk<System, State>,
 }
 
@@ -50,7 +50,7 @@ impl<System: SupportedSystem> App<System> {
             .start(hook_body::<System, D>)
             .finish(b);
 
-        let timer = Timer::define()
+        let timer = StaticTimer::define()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(10))
             .start(timer_body::<System, D>)
@@ -63,7 +63,7 @@ impl<System: SupportedSystem> App<System> {
         let mut i = 0;
         while i < NUM_TASKS {
             tasks[i] = Some(
-                Task::define()
+                StaticTask::define()
                     .active(true)
                     .start(worker_body::<System, D>)
                     .priority(3)

@@ -2,7 +2,7 @@
 //! successfully prevents unbounded priority inversion.
 use r3::{
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, Mutex, MutexProtocol, Task},
+    kernel::{prelude::*, traits, Cfg, MutexProtocol, StaticMutex, StaticTask},
     time::Duration,
 };
 
@@ -13,10 +13,10 @@ pub trait SupportedSystem: traits::KernelBase + traits::KernelMutex + traits::Ke
 impl<T: traits::KernelBase + traits::KernelMutex + traits::KernelStatic> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
-    task0: Task<System>,
-    task1: Task<System>,
-    task2: Task<System>,
-    mtx: Mutex<System>,
+    task0: StaticTask<System>,
+    task1: StaticTask<System>,
+    task2: StaticTask<System>,
+    mtx: StaticMutex<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -27,21 +27,21 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgMutex,
     {
-        let task0 = Task::define()
+        let task0 = StaticTask::define()
             .start(task0_body::<System, D>)
             .priority(0)
             .finish(b);
-        let task1 = Task::define()
+        let task1 = StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(1)
             .finish(b);
-        let task2 = Task::define()
+        let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
 
-        let mtx = Mutex::define()
+        let mtx = StaticMutex::define()
             .protocol(MutexProtocol::Ceiling(0))
             .finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);

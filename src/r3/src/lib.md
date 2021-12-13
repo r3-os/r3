@@ -25,6 +25,9 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 - [Defining a System](#defining-a-system)
     - [System Type](#system-type)
     - [Static Configuration](#static-configuration)
+- [Object Handles](#object-handles)
+    - [Object Safety](#object-safety)
+    - [Creation](#creation)
 - [System States](#system-states)
 - [Threads](#threads)
 - [Contexts](#contexts)
@@ -67,7 +70,7 @@ Kernel objects are **defined** (we use this specific word for static creation) i
 
 <span class="center">![static_cfg]</span>
 
-The configuration process assigns handles, such as [`Task`][], to the defined kernel objects, which can be returned by a configuration function and passed over up to the build macro, which returns it to the caller. By storing it in a `const` item, application code can access the defined kernel objects from everywhere.
+The configuration process assigns handles, such as [`StaticTask`][]`<System>`, to the defined kernel objects, which can be returned by a configuration function and passed over up to the build macro, which returns it to the caller. By storing it in a `const` item, application code can access the defined kernel objects from everywhere.
 
 <!-- FIXME: When <https://github.com/rust-lang/cargo/issues/4242> is resolved,
             the following code block will be doc-testable  -->
@@ -76,7 +79,7 @@ The configuration process assigns handles, such as [`Task`][], to the defined ke
 type System = r3_kernel::System<SystemTraits>;
 r3_port_std::use_port!(unsafe struct SystemTraits);
 
-struct Objects { task: Task<System> }
+struct Objects { task: StaticTask<System> }
 
 // Does the following things:
 //  - Creates control blocks for the kernel objects defined in `configure_app`.
@@ -92,19 +95,19 @@ where
      + ~const traits::CfgTask,
 {
     b.num_task_priority_levels(4);
-    let task = Task::define()
+    let task = StaticTask::define()
         .start(task_body).priority(3).active(true).finish(b);
     Objects { task }
 }
 
 fn task_body(_: usize) {
-    assert_eq!(COTTAGE.task, Task::current().unwrap());
+    assert_eq!(LocalTask::current().unwrap(), COTTAGE.task);
 }
 ```
 
 [`r3::kernel::Cfg`]: crate::kernel::Cfg
 [`r3::kernel::raw_cfg::CfgBase`]: crate::kernel::raw_cfg::CfgBase
-[`Task`]: crate::kernel::Task
+[`StaticTask`]: crate::kernel::StaticTask
 [`~const`]: https://github.com/rust-lang/rust/issues/77463
 
 Configuration functions are highly composable as they can make nested calls to other configuration functions. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, encapsulate them, and expose a higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`kernel::Mutex`]`<System>` (a low-level mutex object) and a [`hunk::Hunk`]`<System, UnsafeCell<T>>` (a typed hunk), which in turn is built on top of [`kernel::Hunk`]`<System>` (a low-level untyped hunk).
@@ -127,13 +130,13 @@ where
 }
 
 mod m {
-#   use r3::kernel::{Cfg, Task, traits};
-#   pub struct MyModule<System: traits::KernelBase> { task: Task<System> }
+#   use r3::kernel::{Cfg, StaticTask, traits};
+#   pub struct MyModule<System: traits::KernelBase> { task: StaticTask<System> }
     pub const fn configure<C>(b: &mut Cfg<C>) -> MyModule<C::System>
     where
         C: ~const traits::CfgBase + ~const traits::CfgTask,
     {
-        let task = Task::define()
+        let task = StaticTask::define()
             .start(task_body).priority(3).active(true).finish(b);
         MyModule { task }
     }
@@ -145,7 +148,95 @@ mod m {
 [`kernel::Mutex`]: crate::kernel::Mutex
 [`kernel::Hunk`]: crate::kernel::Hunk
 [`hunk::Hunk`]: crate::hunk::Hunk
-[mutex object]: crate::sync::Mutex
+[mutex object]: crate::sync::StaticMutex
+
+# Object Handles
+
+**Object handles** are opaque wrappers of raw kernel object IDs and provide methods to interact with the represented objects. There are three types of object handles:
+
+ - An **owned handle** represents a [dynamically created][] object. Dropping an owned handle deletes that object.
+ - A **borrowed handle** is a reference to an object owned by a different part of a program. They take a lifetime parameter.
+ - A **static handle** is a subtype of borrowed handle referencing a [statically created][] object.
+
+The following table lists all provided handle types:
+
+| Object             | Owned                | Borrowed                | Static                           |
+| ------------------ | -------------------- | ----------------------- | -------------------------------- |
+| Event groups       | [`EventGroup`][eg-o] | [`EventGroupRef`][eg-r] | [`StaticEventGroup`][eg-s]       |
+| Interrupt handlers | TBD                  | TBD                     | [`StaticInterruptHandler`][ih-s] |
+| Mutexes            | [`Mutex`][m-o]       | [`MutexRef`][m-r]       | [`StaticMutex`][m-s]             |
+| Semaphores         | [`Semaphore`][s-o]   | [`SemaphoreRef`][s-r]   | [`StaticSemaphore`][s-s]         |
+| Tasks              | [`Task`][task-o]     | [`TaskRef`][task-r]     | [`StaticTask`][task-s]           |
+| Timers             | [`Timer`][timer-o]   | [`TimerRef`][timer-r]   | [`StaticTimer`][timer-s]         |
+
+[eg-o]: crate::kernel::EventGroup
+[eg-r]: crate::kernel::EventGroupRef
+[eg-s]: crate::kernel::StaticEventGroup
+[m-o]: crate::kernel::Mutex
+[m-r]: crate::kernel::MutexRef
+[m-s]: crate::kernel::StaticMutex
+[s-o]: crate::kernel::Semaphore
+[s-r]: crate::kernel::SemaphoreRef
+[s-s]: crate::kernel::StaticSemaphore
+[task-o]: crate::kernel::Task
+[task-r]: crate::kernel::TaskRef
+[task-s]: crate::kernel::StaticTask
+[timer-o]: crate::kernel::Timer
+[timer-r]: crate::kernel::TimerRef
+[timer-s]: crate::kernel::StaticTimer
+[ih-s]: crate::kernel::StaticInterruptHandler
+[dynamically created]: #creation
+[statically created]: #creation
+
+## Object Safety
+
+R3 incorporates an idea inspired by I/O safety ([RFC 3128]), which we call **object safety** here, to enforce the ownership rules on kernel object handles. Object safety allows a high-level object to encapsulate its internally held kernel objects, free of interference from other code.
+
+This property is paramount for constructing sound, meaningful abstractions out of raw primitives. For example, a mutex (e.g., [`r3::kernel::Mutex`]) is used to protect data from concurrent accesses, but the mere existence of a mutex doesn't protect anything. Only after it's bundled with protected data does it become a sound abstraction (e.g., [`r3::sync::StaticMutex`], `std::sync::Mutex`). If we didn't have object safety, i.e., arbitrary code could fabricate any random mutex handle and use it, the encapsulation of this mutex abstraction would be broken, and it wouldn't be sound anymore.
+
+R3 implements object safety in the following way:
+
+ - All functions that operate on raw object IDs, forming the majority of the kernel-side interface in [`r3::kernel::raw`], are marked as `unsafe`. Object handles represent permission for safe code to access the represented object and provide non-`unsafe` methods. Creating one from a raw ID (`HandleType::from_id`) is `unsafe`.
+ - The owner of owned handles (e.g., [`Mutex`][]) controls the objects' lifetimes.
+ - It's possible to take a reference to an object as a normal reference (e.g., `&'a Mutex`) or a more efficient “borrowed” handle (e.g., [`MutexRef`][]`<'a, _>`). In either case, Rust's region-based memory management mechanism guarantees the absence of use-after-free at compile time.
+ - [Static configuration] makes the defined objects available as borrowed handles with `'static` lifetime (e.g., `MutexRef<'static, _>`). There are type aliases for them (e.g., [`StaticMutex`]).
+
+[RFC 3128]: https://rust-lang.github.io/rfcs/3128-io-safety.html
+[`r3::kernel::raw`]: crate::kernel::raw
+[`r3::kernel::Mutex`]: crate::kernel::Mutex
+[`r3::sync::StaticMutex`]: crate::sync::StaticMutex
+[`MutexRef`]: crate::kernel::MutexRef
+[`Mutex`]: crate::kernel::Mutex
+[`StaticMutex`]: crate::kernel::StaticMutex
+[Static configuration]: #static-configuration
+
+## Creation
+
+**Static object creation** refers to creating kernel objects in a [configuration function]. The object handles created in this way are static handles (e.g., [`StaticMutex`]), which are borrowed handles with `'static` lifetime (e.g., [`MutexRef`]`<'static, _>`).
+
+**Dynamic object creation** refers to creating and destroying kernel objects at runtime. The object handles created in this way are owned handles (e.g., [`Mutex`]). Dropping an owned handle destroys the object.
+
+<div class="admonition-follows"></div>
+
+> **Unimplemented:** Dynamic object creation is not supported yet. The owned kernel object handle types (e.g., [`Task`]) are currently just placeholders defined to make provision for supporting dynamic object creation in the future.
+
+<div class="admonition-follows"></div>
+
+> **Rationale:** There are strengths in each mode of object creation. Static object creation allows for highly predictable operation and computational efficiency in terms of both processing and memory but wastes memory if the usage spans of the objects are dynamic, and it requires a level of cooperation between a compile-time mechanism and runtime code that is not supported out-of-the-box by most compiled languages. General-purpose OS abstractions, such as C++11 and the Rust standard library, require dynamic object creation for straightforward implementation. Dynamic object creation provides maximum flexibility but is prone to runtime errors and places more data on RAM (instead of ROM) than necessary.
+>
+> Although R3 started as static creation only, it's being envisioned to also support dynamic creation to cover wider use cases.
+
+<div class="admonition-follows"></div>
+
+> **Relation to Other Specifications:** Dynamic creation is prevalent in modern OS standards and abstractions, and despite the demand for predictable execution in embedded systems, there is only a handful of them providing support for *true* static object creation, including OSEK/VDX, [RTIC][], [TOPPERS][] (all versions so far), and [μITRON4.0][]. Those supporting both are even rarer.
+
+[configuration function]: #static-configuration
+[μITRON4.0]: http://www.ertl.jp/ITRON/SPEC/mitron4-e.html
+[TOPPERS]: https://www.toppers.jp/index.html
+[RTIC]: https://rtic.rs/
+[`StaticMutex`]: crate::kernel::StaticMutex
+[`MutexRef`]: crate::kernel::MutexRef
+[`Mutex`]: crate::kernel::Mutex
 
 # System States
 
@@ -181,10 +272,10 @@ The initial thread that starts up the kernel is called the **main thread**. This
 
 [**startup hooks**]: crate::kernel::StartupHook
 
-A **[first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`InterruptHandler`]) as well as the callback functions of **timers** ([`Timer`]) through a timer driver and the kernel timing core.
+A **[first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`StaticInterruptHandler`]) as well as the callback functions of **timers** ([`Timer`]) through a timer driver and the kernel timing core.
 
 [first-level interrupt handler]: #interrupt-handling-framework
-[`InterruptHandler`]: crate::kernel::InterruptHandler
+[`StaticInterruptHandler`]: crate::kernel::StaticInterruptHandler
 [`Timer`]: crate::kernel::Timer
 
 A **task** ([`Task`]) is the kernel object that can create a thread whose execution is controlled by application code. Each task encapsulates a variety of state data necessary for the execution and scheduling of the associated thread, such as [a stack region] to store local variables and activation frames, the current [priority], the [parking] state of the task, and a memory region used to save the state of CPU registers when the task is blocked or preempted. The associated thread can be started by **[activating]** that task. A task-based thread can make blocking system calls, which will temporarily block the execution of the thread until certain conditions are met. Task-based threads can be preempted by any kind of thread.
@@ -192,8 +283,8 @@ A **task** ([`Task`]) is the kernel object that can create a thread whose execut
 [`Task`]: crate::kernel::Task
 [a stack region]: crate::kernel::task::TaskDefiner::stack_size
 [priority]: crate::kernel::task::TaskDefiner::priority
-[parking]: crate::kernel::Task::unpark
-[activating]: crate::kernel::Task::activate
+[parking]: crate::kernel::task::TaskMethods::unpark
+[activating]: crate::kernel::task::TaskMethods::activate
 
 <div class="admonition-follows"></div>
 

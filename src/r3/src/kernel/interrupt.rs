@@ -49,7 +49,6 @@ impl<System: raw::KernelInterruptLine> fmt::Debug for InterruptLine<System> {
 }
 
 impl<System: raw::KernelInterruptLine> InterruptLine<System> {
-    // FIXME: object safety could be applied to `InterruptLine`?
     /// Construct a `InterruptLine` from `InterruptNum`.
     #[inline]
     pub const fn from_num(num: InterruptNum) -> Self {
@@ -166,9 +165,28 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
 ///
 /// There are no operations defined for interrupt handlers, so this type
 /// is only used for static configuration.
-pub struct InterruptHandler<System>(PhantomInvariant<System>);
+pub struct StaticInterruptHandler<System: raw::KernelInterruptLine>(PhantomInvariant<System>);
 
-impl<System: raw::KernelInterruptLine> InterruptHandler<System> {
+// TODO: A dynamically registered interrupt handler would be `InterruptHandler`,
+//       which would hold an ID to delete later.
+
+impl<System: raw::KernelInterruptLine> fmt::Debug for StaticInterruptHandler<System> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("InterruptHandler")
+    }
+}
+
+impl<System: raw::KernelInterruptLine> Clone for StaticInterruptHandler<System> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self(self.0)
+    }
+}
+
+impl<System: raw::KernelInterruptLine> Copy for StaticInterruptHandler<System> {}
+
+impl<System: raw::KernelInterruptLine> StaticInterruptHandler<System> {
     const fn new() -> Self {
         Self(PhantomData)
     }
@@ -267,7 +285,7 @@ impl<System: raw::KernelInterruptLine> InterruptLineDefiner<System> {
 
 // ----------------------------------------------------------------------------
 
-/// The definer (static builder) for [`InterruptHandler`].
+/// The definer (static builder) for [`StaticInterruptHandler`].
 pub struct InterruptHandlerDefiner<System: raw::KernelInterruptLine> {
     _phantom: PhantomInvariant<System>,
     line: Option<InterruptNum>,
@@ -348,11 +366,11 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
     }
 
     /// Complete the registration of an interrupt handler, returning an
-    /// `InterruptHandler` object.
+    /// `StaticInterruptHandler` object.
     pub const fn finish<C: ~const raw_cfg::CfgInterruptLine<System = System>>(
         self,
         cfg: &mut Cfg<C>,
-    ) -> InterruptHandler<System> {
+    ) -> StaticInterruptHandler<System> {
         let line_num = self.line.expect("`line` is not specified");
 
         // Add a `CfgInterruptLineInfo` at the same time
@@ -368,7 +386,7 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
             order,
         });
 
-        InterruptHandler::new()
+        StaticInterruptHandler::new()
     }
 }
 

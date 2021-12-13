@@ -1,7 +1,7 @@
 use r3::{
-    kernel::{InterruptHandler, InterruptLine, InterruptNum, StartupHook, Task},
+    kernel::{InterruptLine, InterruptNum, StartupHook, StaticInterruptHandler, StaticTask},
     prelude::*,
-    sync::Mutex,
+    sync::StaticMutex,
 };
 use r3_port_arm_m as port;
 use r3_support_rp2040 as support_rp2040;
@@ -43,10 +43,10 @@ impl support_rp2040::usbstdio::Options for SystemTraits {
 #[derive(Debug)]
 struct Objects {
     #[allow(dead_code)]
-    task1: Task<System>,
-    task2: Task<System>,
+    task1: StaticTask<System>,
+    task2: StaticTask<System>,
     #[allow(dead_code)]
-    mutex1: Mutex<System, u32>,
+    mutex1: StaticMutex<System, u32>,
 }
 
 const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
@@ -87,14 +87,14 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     SystemTraits::configure_systick(b);
 
-    let task1 = Task::define()
+    let task1 = StaticTask::define()
         .start(task1_body)
         .priority(2)
         .active(true)
         .finish(b);
-    let task2 = Task::define().start(task2_body).priority(3).finish(b);
+    let task2 = StaticTask::define().start(task2_body).priority(3).finish(b);
 
-    let mutex1 = Mutex::define().finish(b);
+    let mutex1 = StaticMutex::define().finish(b);
 
     // Listen for messages from core1
     let int_fifo = rp2040::Interrupt::SIO_IRQ_PROC0 as InterruptNum + port::INTERRUPT_EXTERNAL0;
@@ -106,7 +106,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .priority(0x40)
         .enabled(true)
         .finish(b);
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(int_fifo)
         .start(|_| {
             let p = unsafe { rp2040::Peripherals::steal() };

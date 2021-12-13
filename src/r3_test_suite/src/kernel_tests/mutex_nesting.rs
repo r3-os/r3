@@ -1,6 +1,6 @@
 //! Locks multiple mutexes and makes sure the current task's effective priority
 //! is updated correctly.
-use r3::kernel::{traits, Cfg, Mutex, MutexProtocol, Task};
+use r3::kernel::{prelude::*, traits, Cfg, LocalTask, MutexProtocol, StaticMutex, StaticTask};
 
 use super::Driver;
 
@@ -14,7 +14,7 @@ impl<T: traits::KernelBase + traits::KernelTaskSetPriority + traits::KernelMutex
 }
 
 pub struct App<System: SupportedSystem> {
-    m: [Mutex<System>; 4],
+    m: [StaticMutex<System>; 4],
 }
 
 impl<System: SupportedSystem> App<System> {
@@ -26,23 +26,23 @@ impl<System: SupportedSystem> App<System> {
     {
         b.num_task_priority_levels(16);
 
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(15)
             .active(true)
             .finish(b);
 
         let m = [
-            Mutex::define()
+            StaticMutex::define()
                 .protocol(MutexProtocol::Ceiling(0))
                 .finish(b),
-            Mutex::define()
+            StaticMutex::define()
                 .protocol(MutexProtocol::Ceiling(1))
                 .finish(b),
-            Mutex::define()
+            StaticMutex::define()
                 .protocol(MutexProtocol::Ceiling(2))
                 .finish(b),
-            Mutex::define()
+            StaticMutex::define()
                 .protocol(MutexProtocol::Ceiling(3))
                 .finish(b),
         ];
@@ -54,7 +54,7 @@ impl<System: SupportedSystem> App<System> {
 fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     let App { m } = D::app();
 
-    let cur_task: Task<System> = Task::current().unwrap().unwrap();
+    let cur_task: LocalTask<System> = LocalTask::current().unwrap();
     assert_eq!(cur_task.priority().unwrap(), 15);
     assert_eq!(cur_task.effective_priority().unwrap(), 15);
 

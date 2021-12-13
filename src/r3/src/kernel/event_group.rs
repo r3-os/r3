@@ -12,7 +12,9 @@ pub use raw::{EventGroupBits, EventGroupWaitFlags};
 // ----------------------------------------------------------------------------
 
 define_object! {
-/// Represents a single event group in a system.
+/// Represents a single owned event group in a system.
+///
+#[doc = common_doc_owned_handle!()]
 ///
 /// An event group is a set of bits that can be updated and waited for to be
 /// set.
@@ -24,38 +26,51 @@ define_object! {
 /// > OS), events (OSEK/VDX, assigned to each extended task), event (RT-Thread),
 /// > event set (RTEMS, assigned to each task), Eventflag (μITRON4.0)
 #[doc = include_str!("../common.md")]
-pub struct EventGroup<System: raw::KernelEventGroup>(System::RawEventGroupId);
+pub struct EventGroup<System: _>(System::RawEventGroupId);
+
+/// Represents a single borrowed event group in a system.
+#[doc = include_str!("../common.md")]
+pub struct EventGroupRef<System: raw::KernelEventGroup>(_);
+
+pub type StaticEventGroup<System>;
+
+pub trait EventGroupHandle {}
+pub trait EventGroupMethods {}
 }
 
-impl<System: raw::KernelEventGroup> EventGroup<System> {
+impl<System: raw::KernelEventGroup> StaticEventGroup<System> {
     /// Construct a `EventGroupDefiner` to define an event group in [a
     /// configuration function](crate#static-configuration).
     pub const fn define() -> EventGroupDefiner<System> {
         EventGroupDefiner::new()
     }
+}
 
+/// The supported operations on [`EventGroupHandle`].
+#[doc = include_str!("../common.md")]
+pub trait EventGroupMethods: EventGroupHandle {
     /// Set the specified bits.
     #[inline]
-    pub fn set(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
+    fn set(&self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_event_group_set(self.0, bits) }
+        unsafe { <Self::System as raw::KernelEventGroup>::raw_event_group_set(self.id(), bits) }
     }
 
     /// Clear the specified bits.
     #[inline]
-    pub fn clear(self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
+    fn clear(&self, bits: EventGroupBits) -> Result<(), UpdateEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_event_group_clear(self.0, bits) }
+        unsafe { <Self::System as raw::KernelEventGroup>::raw_event_group_clear(self.id(), bits) }
     }
 
     /// Get the currently set bits.
     #[inline]
-    pub fn get(self) -> Result<EventGroupBits, GetEventGroupError> {
+    fn get(&self) -> Result<EventGroupBits, GetEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_event_group_get(self.0) }
+        unsafe { <Self::System as raw::KernelEventGroup>::raw_event_group_get(self.id()) }
     }
 
     /// Wait for all or any of the specified bits to be set. Optionally, clear
@@ -69,47 +84,60 @@ impl<System: raw::KernelEventGroup> EventGroup<System> {
     ///
     /// [a non-waitable context]: crate#contexts
     #[inline]
-    pub fn wait(
-        self,
+    fn wait(
+        &self,
         bits: EventGroupBits,
         flags: EventGroupWaitFlags,
     ) -> Result<EventGroupBits, WaitEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_event_group_wait(self.0, bits, flags) }
+        unsafe {
+            <Self::System as raw::KernelEventGroup>::raw_event_group_wait(self.id(), bits, flags)
+        }
     }
 
     /// [`wait`](Self::wait) with timeout.
     #[inline]
-    pub fn wait_timeout(
-        self,
+    fn wait_timeout(
+        &self,
         bits: EventGroupBits,
         flags: EventGroupWaitFlags,
         timeout: Duration,
     ) -> Result<EventGroupBits, WaitEventGroupTimeoutError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_event_group_wait_timeout(self.0, bits, flags, timeout) }
+        unsafe {
+            <Self::System as raw::KernelEventGroup>::raw_event_group_wait_timeout(
+                self.id(),
+                bits,
+                flags,
+                timeout,
+            )
+        }
     }
 
     /// Non-blocking version of [`wait`](Self::wait). Returns immediately with
     /// [`PollEventGroupError::Timeout`] if the unblocking condition is not
     #[inline]
     /// satisfied.
-    pub fn poll(
-        self,
+    fn poll(
+        &self,
         bits: EventGroupBits,
         flags: EventGroupWaitFlags,
     ) -> Result<EventGroupBits, PollEventGroupError> {
         // Safety: `EventGroup` represents a permission to access the
         //         referenced object.
-        unsafe { System::raw_event_group_poll(self.0, bits, flags) }
+        unsafe {
+            <Self::System as raw::KernelEventGroup>::raw_event_group_poll(self.id(), bits, flags)
+        }
     }
 }
 
+impl<T: EventGroupHandle> EventGroupMethods for T {}
+
 // ----------------------------------------------------------------------------
 
-/// The definer (static builder) for [`EventGroup`].
+/// The definer (static builder) for [`EventGroupRef`].
 #[must_use = "must call `finish()` to complete definition"]
 pub struct EventGroupDefiner<System: raw::KernelEventGroup> {
     inner: raw_cfg::EventGroupDescriptor<System>,
@@ -156,8 +184,8 @@ impl<System: raw::KernelEventGroup> EventGroupDefiner<System> {
     pub const fn finish<C: ~const raw_cfg::CfgEventGroup<System = System>>(
         self,
         c: &mut Cfg<C>,
-    ) -> EventGroup<System> {
+    ) -> StaticEventGroup<System> {
         let id = c.raw().event_group_define(self.inner, ());
-        unsafe { EventGroup::from_id(id) }
+        unsafe { EventGroupRef::from_id(id) }
     }
 }

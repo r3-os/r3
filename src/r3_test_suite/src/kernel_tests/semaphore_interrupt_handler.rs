@@ -1,7 +1,9 @@
 //! Signals a semaphore in an interrupt handler, waking up a task.
 use r3::{
     hunk::Hunk,
-    kernel::{traits, Cfg, InterruptHandler, InterruptLine, Semaphore, Task},
+    kernel::{
+        prelude::*, traits, Cfg, InterruptLine, StaticInterruptHandler, StaticSemaphore, StaticTask,
+    },
 };
 
 use super::Driver;
@@ -22,7 +24,7 @@ impl<
 
 pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
-    sem: Semaphore<System>,
+    sem: StaticSemaphore<System>,
     seq: Hunk<System, SeqTracker>,
 }
 
@@ -34,24 +36,24 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgSemaphore
             + ~const traits::CfgInterruptLine,
     {
-        Task::define()
+        StaticTask::define()
             .start(task1_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        Task::define()
+        StaticTask::define()
             .start(task2_body::<System, D>)
             .priority(1)
             .active(true)
             .finish(b);
 
-        let sem = Semaphore::define().initial(0).maximum(2).finish(b);
+        let sem = StaticSemaphore::define().initial(0).maximum(2).finish(b);
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
 
         let int = if let (&[int_line, ..], &[int_pri, ..]) =
             (D::INTERRUPT_LINES, D::INTERRUPT_PRIORITIES)
         {
-            InterruptHandler::define()
+            StaticInterruptHandler::define()
                 .line(int_line)
                 .start(isr::<System, D>)
                 .finish(b);

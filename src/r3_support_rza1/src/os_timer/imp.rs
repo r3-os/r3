@@ -1,5 +1,5 @@
 //! The implementation of the RZ/A1 OS Timer driver.
-use r3::kernel::{traits, Cfg, InterruptHandler, InterruptLine};
+use r3::kernel::{traits, Cfg, InterruptLine, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_port_arm::Gic;
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
@@ -43,7 +43,7 @@ where
         .priority(Traits::INTERRUPT_OSTM_PRIORITY)
         .enabled(true)
         .finish(b);
-    InterruptHandler::define()
+    StaticInterruptHandler::define()
         .line(Traits::INTERRUPT_OSTM)
         .start(handle_tick::<Traits>)
         .finish(b);

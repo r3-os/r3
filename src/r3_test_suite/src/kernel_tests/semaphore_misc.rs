@@ -1,7 +1,7 @@
 //! Validates error codes returned by semaphore manipulation methods. Also,
 //! checks miscellaneous properties of `Semaphore`.
 use core::num::NonZeroUsize;
-use r3::kernel::{prelude::*, traits, Cfg, Semaphore, Task};
+use r3::kernel::{prelude::*, traits, Cfg, SemaphoreRef, StaticSemaphore, StaticTask};
 use wyhash::WyHash;
 
 use super::Driver;
@@ -17,8 +17,8 @@ impl<T: traits::KernelBase + traits::KernelSemaphore<RawSemaphoreId = NonZeroUsi
 }
 
 pub struct App<System: SupportedSystem> {
-    eg1: Semaphore<System>,
-    eg2: Semaphore<System>,
+    eg1: StaticSemaphore<System>,
+    eg2: StaticSemaphore<System>,
 }
 
 impl<System: SupportedSystem> App<System> {
@@ -28,13 +28,13 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgSemaphore,
     {
-        Task::define()
+        StaticTask::define()
             .start(task_body::<System, D>)
             .priority(2)
             .active(true)
             .finish(b);
-        let eg1 = Semaphore::define().maximum(1).initial(1).finish(b);
-        let eg2 = Semaphore::define().maximum(2).initial(1).finish(b);
+        let eg1 = StaticSemaphore::define().maximum(1).initial(1).finish(b);
+        let eg2 = StaticSemaphore::define().maximum(2).initial(1).finish(b);
 
         App { eg1, eg2 }
     }
@@ -48,7 +48,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(app.eg2, app.eg2);
 
     // `Hash`
-    let hash = |x: Semaphore<System>| {
+    let hash = |x: SemaphoreRef<'_, System>| {
         use core::hash::{Hash, Hasher};
         let mut hasher = WyHash::with_seed(42);
         x.hash(&mut hasher);
@@ -58,7 +58,8 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(hash(app.eg2), hash(app.eg2));
 
     // Invalid semaphore ID
-    let bad_eg: Semaphore<System> = unsafe { Semaphore::from_id(NonZeroUsize::new(42).unwrap()) };
+    let bad_eg: SemaphoreRef<'_, System> =
+        unsafe { SemaphoreRef::from_id(NonZeroUsize::new(42).unwrap()) };
     assert_eq!(bad_eg.get(), Err(r3::kernel::GetSemaphoreError::BadId));
 
     // CPU Lock active
