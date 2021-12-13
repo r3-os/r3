@@ -242,7 +242,7 @@ R3 implements object safety in the following way:
 
 A system can be in some of the system states described in this section at any point.
 
-**CPU Lock** disables all managed interrupts and dispatching. On a uniprocessor system (which this kernel targets), this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active and will return [`BadContext`]. Application code can use [`acquire_cpu_lock`] to activate CPU Lock.
+**CPU Lock** disables all managed interrupts and dispatching. On a uniprocessor system, this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active and will return [`BadContext`]. Application code can use [`acquire_cpu_lock`] to activate CPU Lock.
 
 [`acquire_cpu_lock`]: crate::kernel::Kernel::acquire_cpu_lock
 [`BadContext`]: crate::kernel::ResultCode::BadContext
@@ -256,7 +256,7 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
 <div class="admonition-follows"></div>
 
-> **Relation to Other Specifications:** Inspired from the μITRON4.0 specification. CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the R3 RTOS. This means phrases like “when the CPU is locked” are not allowed.
+> **Relation to Other Specifications:** Inspired by the μITRON4.0 specification. CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the R3 RTOS. This means phrases like “when the CPU is locked” are not allowed.
 >
 > CPU Lock corresponds to `SuspendOSInterrupts` and `ResumeOSInterrupts` from the OSEK/VDX specification.
 
@@ -294,7 +294,7 @@ A **task** ([`Task`]) is the kernel object that can create a thread whose execut
 
 # Contexts
 
-A context is a general term that is often used to describe the “environment” a function executes in. Terms like *a task context* are used to specify the type of thread a calling thread is expected to be. The following list shows the terms we use to describe contexts throughout this kernel's documentation:
+A context is a general term that is often used to describe the “environment” a function executes in. Terms like *a task context* are used to specify the type of thread a calling thread is expected to be. The following list shows the terms we use to describe contexts throughout this documentation:
 
  - Being in a **task context** means the current [thread] pertains to a task.
  - Being in an **interrupt context** means the current thread pertains to an interrupt handler.
@@ -315,24 +315,25 @@ A context is a general term that is often used to describe the “environment”
 
 # Interrupt Handling Framework
 
-A port may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it's supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. It's **port-defined** whether a port supports managing or *not* managing interrupt lines and interrupt handlers.
+A kernel implementation may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it's supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. Even if the system type implements [`raw::KernelInterruptLine`][], it's **implementation-defined** whether a kernel supports managing interrupt lines and interrupt handlers.
 
 The benefits of providing a standardized interface for interrupts include: (1) increased portability of applications and libraries across target platforms, (2) well-defined semantics of system calls inside an interrupt handler, and (3) decoupling hardware driver components on a system with a non-vectorized interrupt controller or multiplexed interrupt lines. The downsides include: (1) obscuring non-standard hardware features, (2) interference with other ways of managing interrupts (e.g., board support packages, IDEs), (3) additional layer of abstraction that makes the system mechanism unclear.
 
 <div class="admonition-follows"></div>
 
-> **Port Implementation Note:** System calls can provide well-defined semantics inside an interrupt handler only if the port adheres to this interrupt handling framework. If a port developer chooses not to follow this, they are responsible to properly explain the interaction between interrupts and the kernel.
+> **Implementation Note:** System calls can provide well-defined semantics inside an interrupt handler only if the kernel adheres to this interrupt handling framework. If a kernel developer chooses not to follow this, they are responsible to properly explain the interaction between interrupts and the kernel.
 
 An interrupt request is delivered to a processor by sending a hardware signal to an interrupt controller through an **interrupt line**. It's possible that more than one interrupt source is connected to a single interrupt line. Upon receiving an interrupt request, the interrupt controller translates the interrupt line to an **interrupt number** and transfers the control to the **first-level interrupt handler** associated with that interrupt number.
 
-Each interrupt line has configurable attributes such as an **interrupt priority**. An application can instruct the kernel to configure them at boot time by [`InterruptLineDefiner`] or at runtime by [`InterruptLine`]. The interpretation of interrupt priority values is up to a port, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time or allowing a higher-priority interrupt handler to preempt another.
+Each interrupt line has configurable attributes such as an **interrupt priority**. An application can instruct the kernel to configure them at boot time by [`InterruptLineDefiner`] or at runtime by [`InterruptLine`]. The interpretation of interrupt priority values is up to a kernel, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time or allowing a higher-priority interrupt handler to preempt another.
 
+[`raw::KernelInterruptLine`]: crate::kernel::raw::KernelInterruptLine
 [`InterruptLineDefiner`]: crate::kernel::interrupt::InterruptLineDefiner
 [`InterruptLine`]: crate::kernel::InterruptLine
 
-The kernel occasionally disables interrupts by activating CPU Lock. The additional interrupt latency introduced by this can pose a problem for time-sensitive applications. To resolve this problem, a port may implement CPU Lock in a way that doesn't disable interrupt lines with a certain priority value and higher. Such priority values and the first-/second-level interrupt handlers for such interrupt lines are said to be **unmanaged**. The behavior of system calls inside unmanaged interrupt handlers is undefined. Interrupt handlers that aren't unmanaged are said to be **managed**.
+The kernel occasionally disables interrupts by activating CPU Lock. The additional interrupt latency introduced by this can pose a problem for time-sensitive applications. To resolve this problem, a kernel may implement CPU Lock in a way that doesn't disable interrupt lines with a certain priority value and higher. Such priority values and the first-/second-level interrupt handlers for such interrupt lines are said to be **unmanaged**. The behavior of system calls inside unmanaged interrupt handlers is undefined. Interrupt handlers that aren't unmanaged are said to be **managed**.
 
-An application can register one or more **(second-level) interrupt handlers** to an interrupt number. They execute in a serial fashion inside a first-level interrupt handler for the interrupt number. The static configuration system automatically combines multiple second-level interrupt handlers into one (thus taking care of the “execute in a serial fashion” part). **It's up to a port to generate a first-level interrupt handler** that executes in an appropriate situation, takes care of low-level tasks such as saving and restoring registers, and calls the (combined) second-level interrupt handler.
+An application can register one or more **(second-level) interrupt handlers** to an interrupt number. They execute in a serial fashion inside a first-level interrupt handler for the interrupt number. The static configuration system automatically combines multiple second-level interrupt handlers into one (thus taking care of the “execute in a serial fashion” part). **It's up to a kernel to generate a first-level interrupt handler** that executes in an appropriate situation, takes care of low-level tasks such as saving and restoring registers, and calls the (combined) second-level interrupt handler.
 
 Interrupt handlers execute with CPU Lock inactive and may return with CPU Lock either active or inactive. Some system calls are not allowed in there and will return [`BadContext`].
 

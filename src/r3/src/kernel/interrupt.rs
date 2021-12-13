@@ -164,7 +164,9 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
 /// Represents a registered (second-level) interrupt handler in a system.
 ///
 /// There are no operations defined for interrupt handlers, so this type
-/// is only used for static configuration.
+/// is only used for [static configuration][1].
+///
+/// [1]: crate#static-configuration
 pub struct StaticInterruptHandler<System: raw::KernelInterruptLine>(PhantomInvariant<System>);
 
 // TODO: A dynamically registered interrupt handler would be `InterruptHandler`,

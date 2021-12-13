@@ -79,7 +79,7 @@ pub trait TaskMethods {}
 }
 
 impl<System: raw::KernelBase> StaticTask<System> {
-    /// Construct a `TaskDefiner` to define a mutex in [a configuration
+    /// Construct a `TaskDefiner` to define a task in [a configuration
     /// function](crate#static-configuration).
     pub const fn define() -> TaskDefiner<System> {
         TaskDefiner::new()
