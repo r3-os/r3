@@ -1,7 +1,6 @@
 [package]
 name = "r3_example_basic"
 version = "0.0.0"
-authors = ["yvt <i@yvt.jp>"]
 edition = "2021"
 publish = false
 

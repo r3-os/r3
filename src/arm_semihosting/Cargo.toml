@@ -1,13 +1,6 @@
 [package]
 name = "arm_semihosting"
 version = "0.0.0"
-authors = [
-    "yvt <i@yvt.jp>",
-
-    # The authors of `cortex-m-semihosting`
-    "The Cortex-M Team <cortex-m@teams.rust-embedded.org>",
-    "Jorge Aparicio <japaricious@gmail.com>",
-]
 edition = "2021"
 publish = false
 
