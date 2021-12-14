@@ -60,7 +60,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Invalid semaphore ID
     let bad_eg: SemaphoreRef<'_, System> =
         unsafe { SemaphoreRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(bad_eg.get(), Err(r3::kernel::GetSemaphoreError::BadId));
+    assert_eq!(bad_eg.get(), Err(r3::kernel::GetSemaphoreError::NoAccess));
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();

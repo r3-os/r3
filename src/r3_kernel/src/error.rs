@@ -107,7 +107,7 @@ define_suberror! {
 }
 
 define_suberror! {
-    /// `BadId`
+    /// `NoAccess`
     #[into(errors::ActivateTaskError)]
     #[into(errors::DrainSemaphoreError)]
     #[into(errors::GetEventGroupError)]
@@ -135,8 +135,8 @@ define_suberror! {
     #[into(errors::WaitEventGroupTimeoutError)]
     #[into(errors::WaitSemaphoreError)]
     #[into(errors::WaitSemaphoreTimeoutError)]
-    pub(super) enum BadIdError {
-        BadId,
+    pub(super) enum NoAccessError {
+        NoAccess,
     }
 }
 

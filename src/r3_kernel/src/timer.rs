@@ -7,7 +7,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError,
+    error::NoAccessError,
     klock::{assume_cpu_lock, lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     timeout,
     utils::pin::static_pin,
@@ -17,8 +17,8 @@ use crate::{
 pub(super) type TimerId = Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn timer_cb(this: TimerId) -> Result<&'static TimerCb<Traits>, BadIdError> {
-        Traits::get_timer_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    fn timer_cb(this: TimerId) -> Result<&'static TimerCb<Traits>, NoAccessError> {
+        Traits::get_timer_cb(this.get() - 1).ok_or(NoAccessError::NoAccess)
     }
 }
 

@@ -10,7 +10,7 @@ use r3::{
 };
 
 use crate::{
-    error::{BadIdError, LockMutexPrecheckError},
+    error::{LockMutexPrecheckError, NoAccessError},
     klock, state, task, timeout,
     wait::{WaitPayload, WaitQueue},
     Id, KernelCfg1, KernelTraits, PortThreading, System,
@@ -19,8 +19,8 @@ use crate::{
 pub(super) type MutexId = Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn mutex_cb(this: MutexId) -> Result<&'static MutexCb<Traits>, BadIdError> {
-        Traits::get_mutex_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    fn mutex_cb(this: MutexId) -> Result<&'static MutexCb<Traits>, NoAccessError> {
+        Traits::get_mutex_cb(this.get() - 1).ok_or(NoAccessError::NoAccess)
     }
 }
 

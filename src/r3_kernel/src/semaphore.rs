@@ -10,7 +10,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError,
+    error::NoAccessError,
     klock, state, task, timeout,
     wait::{WaitPayload, WaitQueue},
     Id, KernelTraits, Port, System,
@@ -19,8 +19,8 @@ use crate::{
 pub(super) type SemaphoreId = Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn semaphore_cb(this: SemaphoreId) -> Result<&'static SemaphoreCb<Traits>, BadIdError> {
-        Traits::get_semaphore_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    fn semaphore_cb(this: SemaphoreId) -> Result<&'static SemaphoreCb<Traits>, NoAccessError> {
+        Traits::get_semaphore_cb(this.get() - 1).ok_or(NoAccessError::NoAccess)
     }
 }
 

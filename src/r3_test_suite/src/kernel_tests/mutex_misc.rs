@@ -142,7 +142,10 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 
     // Invalid mutex ID
     let bad_m: MutexRef<System> = unsafe { MutexRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(bad_m.is_locked(), Err(r3::kernel::QueryMutexError::BadId));
+    assert_eq!(
+        bad_m.is_locked(),
+        Err(r3::kernel::QueryMutexError::NoAccess)
+    );
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();

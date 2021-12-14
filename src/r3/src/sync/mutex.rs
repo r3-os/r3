@@ -227,7 +227,7 @@ where
                 mutex: self,
                 _no_send_sync: PhantomData,
             }),
-            Err(LockMutexError::BadId) => unreachable!(),
+            Err(LockMutexError::NoAccess) => unreachable!(),
             Err(LockMutexError::BadContext) => Err(LockError::BadContext),
             Err(LockMutexError::Interrupted) => Err(LockError::Interrupted),
             Err(LockMutexError::WouldDeadlock) => Err(LockError::WouldDeadlock),
@@ -246,7 +246,7 @@ where
                 mutex: self,
                 _no_send_sync: PhantomData,
             }),
-            Err(TryLockMutexError::BadId) => unreachable!(),
+            Err(TryLockMutexError::NoAccess) => unreachable!(),
             Err(TryLockMutexError::BadContext) => Err(TryLockError::BadContext),
             Err(TryLockMutexError::WouldDeadlock) => Err(TryLockError::WouldDeadlock),
             Err(TryLockMutexError::Timeout) => Err(TryLockError::WouldBlock),
@@ -261,7 +261,7 @@ where
     /// Mark the state protected by the mutex as consistent.
     pub fn mark_consistent(&self) -> Result<(), MarkConsistentError> {
         self.mutex.mark_consistent().map_err(|e| match e {
-            MarkConsistentMutexError::BadId => unreachable!(),
+            MarkConsistentMutexError::NoAccess => unreachable!(),
             MarkConsistentMutexError::BadContext => MarkConsistentError::BadContext,
             MarkConsistentMutexError::BadObjectState => MarkConsistentError::Consistent,
         })

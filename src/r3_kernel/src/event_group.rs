@@ -10,7 +10,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError,
+    error::NoAccessError,
     klock, state, task, timeout,
     wait::{WaitPayload, WaitQueue},
     KernelTraits, Port, System,
@@ -19,8 +19,8 @@ use crate::{
 pub(super) type EventGroupId = crate::Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn event_group_cb(this: EventGroupId) -> Result<&'static EventGroupCb<Traits>, BadIdError> {
-        Traits::get_event_group_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    fn event_group_cb(this: EventGroupId) -> Result<&'static EventGroupCb<Traits>, NoAccessError> {
+        Traits::get_event_group_cb(this.get() - 1).ok_or(NoAccessError::NoAccess)
     }
 }
 

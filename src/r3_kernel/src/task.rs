@@ -14,7 +14,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError, klock, mutex, state, timeout, wait, Id, KernelCfg1, KernelTraits,
+    error::NoAccessError, klock, mutex, state, timeout, wait, Id, KernelCfg1, KernelTraits,
     PortThreading, System,
 };
 
@@ -27,8 +27,8 @@ pub(super) type TaskId = Id;
 /// These associate functions implement the task-related portion of
 /// [`r3::kernel::raw::KernelBase`].
 impl<Traits: KernelTraits> System<Traits> {
-    fn task_cb(this: TaskId) -> Result<&'static TaskCb<Traits>, BadIdError> {
-        Traits::get_task_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    fn task_cb(this: TaskId) -> Result<&'static TaskCb<Traits>, NoAccessError> {
+        Traits::get_task_cb(this.get() - 1).ok_or(NoAccessError::NoAccess)
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]

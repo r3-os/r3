@@ -7,7 +7,7 @@
 //! top of them.
 //!
 //! The trait methods that operate on a given [`Id`] are all defined as `unsafe
-//! fn` to maintain [object safety][1].
+//! fn` as the caller is responsible for maintaining [object safety][1].
 //!
 //! [1]: crate#object-safety
 use core::{fmt, hash::Hash, ops::Range};

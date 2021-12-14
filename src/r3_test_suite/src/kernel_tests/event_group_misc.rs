@@ -60,7 +60,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Invalid event group ID
     let bad_eg: EventGroupRef<'_, System> =
         unsafe { EventGroupRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(bad_eg.get(), Err(r3::kernel::GetEventGroupError::BadId));
+    assert_eq!(bad_eg.get(), Err(r3::kernel::GetEventGroupError::NoAccess));
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();

@@ -189,7 +189,10 @@ fn timer1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     // Invalid ID
     let bad_timer: TimerRef<'_, System> =
         unsafe { TimerRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(bad_timer.start(), Err(r3::kernel::StartTimerError::BadId));
+    assert_eq!(
+        bad_timer.start(),
+        Err(r3::kernel::StartTimerError::NoAccess)
+    );
 
     // Disallowed with CPU Lock acitve
     System::acquire_cpu_lock().unwrap();

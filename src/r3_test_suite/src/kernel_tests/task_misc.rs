@@ -84,7 +84,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     let bad_task: TaskRef<'_, System> = unsafe { TaskRef::from_id(NonZeroUsize::new(42).unwrap()) };
     assert_eq!(
         bad_task.activate(),
-        Err(r3::kernel::ActivateTaskError::BadId)
+        Err(r3::kernel::ActivateTaskError::NoAccess)
     );
 
     // The task is already active
