@@ -184,9 +184,11 @@ fn main() {
 
 - **[`QueueOrder`]**: This kernel supports `Fifo` and `TaskPriority`. Unsupported values are treated as `TaskPriority`.
 - **[`MutexProtocol`]**: This kernel supports `None` and `Ceiling(_)`. Unsupported values are treated as `None`.
+- **[`ResultCode::NoAccess`]**: Not supported. This kernel causes an undefined behavior (including a potential panic) when an invalid ID is given.
 
 [`QueueOrder`]: r3::kernel::QueueOrder
 [`MutexProtocol`]: r3::kernel::MutexProtocol
+[`ResultCode::NoAccess`]: r3::Kernel::ResultCode::NoAccess
 
 # Cargo Features
 

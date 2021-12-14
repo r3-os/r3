@@ -19,8 +19,14 @@ use crate::{
 pub(super) type MutexId = Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn mutex_cb(this: MutexId) -> Result<&'static MutexCb<Traits>, NoAccessError> {
-        Traits::get_mutex_cb(this.get() - 1).ok_or(NoAccessError::NoAccess)
+    /// Get the [`MutexCb`] for the specified raw ID.
+    ///
+    /// # Safety
+    ///
+    /// See [`crate::bad_id`].
+    #[inline]
+    unsafe fn mutex_cb(this: MutexId) -> Result<&'static MutexCb<Traits>, NoAccessError> {
+        Traits::get_mutex_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
     }
 }
 
@@ -35,7 +41,8 @@ unsafe impl<Traits: KernelTraits> raw::KernelMutex for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_mutex_is_locked(this: MutexId) -> Result<bool, QueryMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let mutex_cb = Self::mutex_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let mutex_cb = unsafe { Self::mutex_cb(this)? };
         Ok(mutex_cb.owning_task.get(&*lock).is_some())
     }
 
@@ -43,7 +50,8 @@ unsafe impl<Traits: KernelTraits> raw::KernelMutex for System<Traits> {
     unsafe fn raw_mutex_unlock(this: MutexId) -> Result<(), UnlockMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
-        let mutex_cb = Self::mutex_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let mutex_cb = unsafe { Self::mutex_cb(this)? };
 
         unlock_mutex(mutex_cb, lock)
     }
@@ -52,7 +60,8 @@ unsafe impl<Traits: KernelTraits> raw::KernelMutex for System<Traits> {
     unsafe fn raw_mutex_lock(this: MutexId) -> Result<(), LockMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
-        let mutex_cb = Self::mutex_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let mutex_cb = unsafe { Self::mutex_cb(this)? };
 
         lock_mutex(mutex_cb, lock)
     }
@@ -65,7 +74,8 @@ unsafe impl<Traits: KernelTraits> raw::KernelMutex for System<Traits> {
         let time32 = timeout::time32_from_duration(timeout)?;
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
-        let mutex_cb = Self::mutex_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let mutex_cb = unsafe { Self::mutex_cb(this)? };
 
         lock_mutex_timeout(mutex_cb, lock, time32)
     }
@@ -74,7 +84,8 @@ unsafe impl<Traits: KernelTraits> raw::KernelMutex for System<Traits> {
     unsafe fn raw_mutex_try_lock(this: MutexId) -> Result<(), TryLockMutexError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_task_context::<Traits>()?;
-        let mutex_cb = Self::mutex_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let mutex_cb = unsafe { Self::mutex_cb(this)? };
 
         try_lock_mutex(mutex_cb, lock)
     }
@@ -82,7 +93,8 @@ unsafe impl<Traits: KernelTraits> raw::KernelMutex for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_mutex_mark_consistent(this: MutexId) -> Result<(), MarkConsistentMutexError> {
         let mut lock = klock::lock_cpu::<Traits>()?;
-        let mutex_cb = Self::mutex_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let mutex_cb = unsafe { Self::mutex_cb(this)? };
 
         if mutex_cb.inconsistent.replace(&mut *lock, false) {
             Ok(())

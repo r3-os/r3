@@ -944,3 +944,25 @@ impl<Traits: KernelCfg2> State<Traits> {
         self.running_task.as_ptr()
     }
 }
+
+/// Report the use of an invalid ID, which is defined to be UB for this is a
+/// violation of [object safety][].
+///
+/// # Safety
+///
+/// This function should only be called when an invalid ID is provided by a
+/// caller. Under the object safety rules, we are allowed to cause an undefined
+/// behavior in such cases.
+///
+/// [object safety]: r3#object-safety
+#[inline]
+unsafe fn bad_id<Traits: KernelCfg2>() -> error::NoAccessError {
+    // TODO: Support returning `NoAccess`
+    let _ = error::NoAccessError::NoAccess;
+    if cfg!(debug_assertion) {
+        panic!("invalid kernel object ID");
+    } else {
+        // Safety: The caller ensures this function is never reached
+        unsafe { core::hint::unreachable_unchecked() }
+    }
+}
