@@ -11,6 +11,14 @@
     /* padding-bottom: ...; — specified by inline style */
 }
 
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container.rust-logo > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container.rust-logo > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
 /* Table of contents */
 .toc-header + ul {
     background: rgba(128, 128, 128, 0.1);

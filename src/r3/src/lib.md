@@ -1,11 +1,12 @@
 <h1 align="center" style="border: none">
-<img src="https://img.shields.io/badge/-𝖱𝟥-222?style=for-the-badge&labelColor=111111" height="100" alt="R3" style="background: #222"><br><img src="https://img.shields.io/badge/-𝖱𝖤𝖠𝖫--𝖳𝖨𝖬𝖤%20𝖮𝖯𝖤𝖱𝖠𝖳𝖨𝖭𝖦%20𝖲𝖸𝖲𝖳𝖤𝖬-eee?style=for-the-badge&labelColor=333333" alt="Real-Time Operating System" style="background: #eee">
+
+![R3 Real-Time Operating System][]
+
 </h1>
 
 <style type="text/css">
-body.theme-ayu h1 img:nth-of-type(1) { filter: sepia(90%) hue-rotate(180deg); }
-body.theme-dark h1 img:nth-of-type(2) { filter: invert(85%); }
-body.theme-ayu h1 img:nth-of-type(2) { filter: contrast(2) invert(90%) sepia(50%) hue-rotate(180deg); }
+body.theme-dark h1 img:nth-of-type(1) { filter: brightness(8) hue-rotate(-120deg) invert(90%) saturate(2.8) brightness(1); }
+body.theme-ayu h1 img:nth-of-type(1) { filter: brightness(8) hue-rotate(-120deg) invert(90%) saturate(2.8) brightness(0.9); }
 </style>
 
 R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).

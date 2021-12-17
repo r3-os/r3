@@ -44,6 +44,11 @@ await log.setup({
     },
 });
 
+const EXPECTED_SOURCE_FRAGMENTS = [
+    // We want published crates to have consistent logos
+    '#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]',
+];
+
 const logger = log.getLogger();
 let hasError = false;
 let expectedRepository: string | null = null;
@@ -70,6 +75,7 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
     for (const crateRelPath of workspaceMeta.workspace.members) {
         const cratePath = path.join(workspacePath, crateRelPath);
         const crateMetaPath = path.join(cratePath, "Cargo.toml");
+        const crateRootSourcePath = path.join(cratePath, "src/lib.rs");
         logger.debug(`Reading crate metadata from '${crateMetaPath}'`);
         const crateMeta: CargoMeta =
             parseToml(cleanToml(await Deno.readTextFile(crateMetaPath))) as any;
@@ -128,6 +134,19 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
                 logger.error(`${crateRelPath}: '.package.repository' must be consistent across the ` +
                     `workspace. The first found value is '${expectedRepository}'.`);
                 hasError = true;
+            }
+        }
+
+        if (publish) {
+            logger.debug(`Reading a source file at '${crateRootSourcePath}'`);
+            const rootSource = await Deno.readTextFile(crateRootSourcePath);
+
+            for (const text of EXPECTED_SOURCE_FRAGMENTS) {
+                if (rootSource.indexOf(text) < 0) {
+                    logger.error(`${crateRelPath}: ${crateRootSourcePath} doesn't ` +
+                        `include the text '${text}'.`);
+                    hasError = true;
+                }
             }
         }
     }

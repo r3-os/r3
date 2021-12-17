@@ -27,8 +27,13 @@
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
+#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]
+// FIXME: Work-around for <https://github.com/rust-lang/rust/issues/32104>
+#![cfg_attr(feature = "doc",
+    doc = embed_doc_image::embed_image!("R3 Real-Time Operating System", "doc/logo-large.svg"),
+)]
 #![doc = include!("../doc/trait_binding.rs")] // `![trait_binding]`
 #![doc = include!("../doc/static_cfg.rs")] // `![static_cfg]`
 #![cfg_attr(

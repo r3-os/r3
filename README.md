@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="https://img.shields.io/badge/-𝖱𝟥-222?style=for-the-badge&labelColor=111111" height="100" alt="R3"><br><img src="https://img.shields.io/badge/-𝖱𝖤𝖠𝖫--𝖳𝖨𝖬𝖤%20𝖮𝖯𝖤𝖱𝖠𝖳𝖨𝖭𝖦%20𝖲𝖸𝖲𝖳𝖤𝖬-eee?style=for-the-badge&labelColor=333333" alt="Real-Time Operating System">
+<img src="doc/logo-large-bg.svg" alt="R3 Real-Time Operating System">
 </h1>
 
 <p align="center">

@@ -521,6 +521,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3522094fae7d65c8313a135fe45fa7e22ec2110c9d387063b66d235281f7f771"
 
 [[package]]
+name = "embed-doc-image"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af36f591236d9d822425cb6896595658fa558fcebf5ee8accac1d4b92c47166e"
+dependencies = [
+ "base64",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "embedded-graphics"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1708,6 +1720,7 @@ dependencies = [
  "chrono",
  "either",
  "elain",
+ "embed-doc-image",
  "env_logger",
  "log",
  "macropol",
