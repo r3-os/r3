@@ -318,7 +318,7 @@ A context is a general term that is often used to describe the “environment”
 
 # Interrupt Handling Framework
 
-A kernel implementation may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it's supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. Even if the system type implements [`raw::KernelInterruptLine`][], it's **implementation-defined** whether a kernel supports managing interrupt lines and interrupt handlers.
+A kernel implementation may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it's supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. The interrupt management interface is provided by the optional trait [`raw::KernelInterruptLine`][]. Even if a system type implements this trait, it's **implementation-defined** whether it actually supports interrupt management (i.e., the functions may fail with [`NotSupported`][] for all possible inputs).
 
 The benefits of providing a standardized interface for interrupts include: (1) increased portability of applications and libraries across target platforms, (2) well-defined semantics of system calls inside an interrupt handler, and (3) decoupling hardware driver components on a system with a non-vectorized interrupt controller or multiplexed interrupt lines. The downsides include: (1) obscuring non-standard hardware features, (2) interference with other ways of managing interrupts (e.g., board support packages, IDEs), (3) additional layer of abstraction that makes the system mechanism unclear.
 
@@ -333,6 +333,7 @@ Each interrupt line has configurable attributes such as an **interrupt priority*
 [`raw::KernelInterruptLine`]: crate::kernel::raw::KernelInterruptLine
 [`InterruptLineDefiner`]: crate::kernel::interrupt::InterruptLineDefiner
 [`InterruptLine`]: crate::kernel::InterruptLine
+[`NotSupported`]: crate::kernel::ResultCode::NotSupported
 
 The kernel occasionally disables interrupts by activating CPU Lock. The additional interrupt latency introduced by this can pose a problem for time-sensitive applications. To resolve this problem, a kernel may implement CPU Lock in a way that doesn't disable interrupt lines with a certain priority value and higher. Such priority values and the first-/second-level interrupt handlers for such interrupt lines are said to be **unmanaged**. The behavior of system calls inside unmanaged interrupt handlers is undefined. Interrupt handlers that aren't unmanaged are said to be **managed**.
 
