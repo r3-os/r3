@@ -1,20 +1,12 @@
 //! Validates error codes returned by event group manipulation methods. Also,
 //! checks miscellaneous properties of `EventGroup`.
-use core::num::NonZeroUsize;
 use r3::kernel::{prelude::*, traits, Cfg, EventGroupRef, StaticEventGroup, StaticTask};
 use wyhash::WyHash;
 
 use super::Driver;
 
-// TODO: Somehow remove the `NonZeroUsize` bound
-pub trait SupportedSystem:
-    traits::KernelBase + traits::KernelEventGroup<RawEventGroupId = NonZeroUsize>
-{
-}
-impl<T: traits::KernelBase + traits::KernelEventGroup<RawEventGroupId = NonZeroUsize>>
-    SupportedSystem for T
-{
-}
+pub trait SupportedSystem: traits::KernelBase + traits::KernelEventGroup {}
+impl<T: traits::KernelBase + traits::KernelEventGroup> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
     eg1: StaticEventGroup<System>,
@@ -22,7 +14,7 @@ pub struct App<System: SupportedSystem> {
 }
 
 impl<System: SupportedSystem> App<System> {
-    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    pub const fn new<C, D: Driver<Self, System = System>>(b: &mut Cfg<C>) -> Self
     where
         C: ~const traits::CfgBase<System = System>
             + ~const traits::CfgTask
@@ -40,7 +32,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(_: usize) {
     // `PartialEq`
     let app = D::app();
     assert_ne!(app.eg1, app.eg2);
@@ -58,9 +50,10 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(hash(app.eg2), hash(app.eg2));
 
     // Invalid event group ID
-    let bad_eg: EventGroupRef<'_, System> =
-        unsafe { EventGroupRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(bad_eg.get(), Err(r3::kernel::GetEventGroupError::NoAccess));
+    if let Some(bad_id) = D::bad_raw_event_group_id() {
+        let bad_eg: EventGroupRef<'_, System> = unsafe { EventGroupRef::from_id(bad_id) };
+        assert_eq!(bad_eg.get(), Err(r3::kernel::GetEventGroupError::NoAccess));
+    }
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();

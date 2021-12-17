@@ -1,20 +1,12 @@
 //! Validates error codes returned by task manipulation methods. Also, checks
 //! miscellaneous properties of `Task`.
-use core::num::NonZeroUsize;
 use r3::kernel::{prelude::*, traits, Cfg, LocalTask, StartupHook, StaticTask, TaskRef};
 use wyhash::WyHash;
 
 use super::Driver;
 
-// TODO: Somehow remove the `NonZeroUsize` bound
-pub trait SupportedSystem:
-    traits::KernelBase<RawTaskId = NonZeroUsize> + traits::KernelTaskSetPriority
-{
-}
-impl<T: traits::KernelBase<RawTaskId = NonZeroUsize> + traits::KernelTaskSetPriority>
-    SupportedSystem for T
-{
-}
+pub trait SupportedSystem: traits::KernelBase + traits::KernelTaskSetPriority {}
+impl<T: traits::KernelBase + traits::KernelTaskSetPriority> SupportedSystem for T {}
 
 pub struct App<System: SupportedSystem> {
     task1: StaticTask<System>,
@@ -23,7 +15,7 @@ pub struct App<System: SupportedSystem> {
 }
 
 impl<System: SupportedSystem> App<System> {
-    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    pub const fn new<C, D: Driver<Self, System = System>>(b: &mut Cfg<C>) -> Self
     where
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
@@ -61,7 +53,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     );
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(param: usize) {
     assert_eq!(param, 42);
 
     // `PartialEq`
@@ -81,11 +73,13 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     assert_eq!(hash(app.task2), hash(app.task2));
 
     // Invalid task ID
-    let bad_task: TaskRef<'_, System> = unsafe { TaskRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(
-        bad_task.activate(),
-        Err(r3::kernel::ActivateTaskError::NoAccess)
-    );
+    if let Some(bad_id) = D::bad_raw_task_id() {
+        let bad_task: TaskRef<'_, System> = unsafe { TaskRef::from_id(bad_id) };
+        assert_eq!(
+            bad_task.activate(),
+            Err(r3::kernel::ActivateTaskError::NoAccess)
+        );
+    }
 
     // The task is already active
     assert_eq!(

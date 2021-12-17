@@ -79,6 +79,8 @@ macro_rules! instantiate_kernel_tests {
             static TEST_UTIL: super::KernelTestUtil = super::KernelTestUtil::new();
 
             impl kernel_tests::Driver<test_case::App<System>> for Driver {
+                type System = System;
+
                 fn app() -> &'static test_case::App<System> {
                     &COTTAGE
                 }

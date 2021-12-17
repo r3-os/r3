@@ -1,5 +1,4 @@
 //! Checks miscellaneous properties of `Timer`.
-use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
     kernel::{self, prelude::*, traits, Cfg, StaticTask, StaticTimer, TimerRef},
@@ -13,10 +12,9 @@ use crate::utils::{
     SeqTracker,
 };
 
-// TODO: Somehow remove the `NonZeroUsize` bound
 pub trait SupportedSystem:
     traits::KernelBase
-    + traits::KernelTimer<RawTimerId = NonZeroUsize>
+    + traits::KernelTimer
     + traits::KernelStatic
     + KernelBoostPriorityExt
     + KernelTimeExt
@@ -24,7 +22,7 @@ pub trait SupportedSystem:
 }
 impl<
         T: traits::KernelBase
-            + traits::KernelTimer<RawTimerId = NonZeroUsize>
+            + traits::KernelTimer
             + traits::KernelStatic
             + KernelBoostPriorityExt
             + KernelTimeExt,
@@ -42,7 +40,7 @@ pub struct App<System: SupportedSystem> {
 }
 
 impl<System: SupportedSystem> App<System> {
-    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    pub const fn new<C, D: Driver<Self, System = System>>(b: &mut Cfg<C>) -> Self
     where
         C: ~const traits::CfgBase<System = System>
             + ~const traits::CfgTask
@@ -139,7 +137,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn timer1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
+fn timer1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(param: usize) {
     let App {
         timer1,
         timer2,
@@ -187,12 +185,13 @@ fn timer1_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     assert_eq!(System::park(), Err(kernel::ParkError::BadContext));
 
     // Invalid ID
-    let bad_timer: TimerRef<'_, System> =
-        unsafe { TimerRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(
-        bad_timer.start(),
-        Err(r3::kernel::StartTimerError::NoAccess)
-    );
+    if let Some(bad_id) = D::bad_raw_timer_id() {
+        let bad_timer: TimerRef<'_, System> = unsafe { TimerRef::from_id(bad_id) };
+        assert_eq!(
+            bad_timer.start(),
+            Err(r3::kernel::StartTimerError::NoAccess)
+        );
+    }
 
     // Disallowed with CPU Lock acitve
     System::acquire_cpu_lock().unwrap();
