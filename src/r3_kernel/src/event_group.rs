@@ -10,7 +10,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError,
+    error::NoAccessError,
     klock, state, task, timeout,
     wait::{WaitPayload, WaitQueue},
     KernelTraits, Port, System,
@@ -19,8 +19,17 @@ use crate::{
 pub(super) type EventGroupId = crate::Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn event_group_cb(this: EventGroupId) -> Result<&'static EventGroupCb<Traits>, BadIdError> {
-        Traits::get_event_group_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    /// Get the [`EventGroupCb`] for the specified raw ID.
+    ///
+    /// # Safety
+    ///
+    /// See [`crate::bad_id`].
+    #[inline]
+    unsafe fn event_group_cb(
+        this: EventGroupId,
+    ) -> Result<&'static EventGroupCb<Traits>, NoAccessError> {
+        Traits::get_event_group_cb(this.get() - 1)
+            .ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
     }
 }
 
@@ -33,7 +42,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
         bits: EventGroupBits,
     ) -> Result<(), UpdateEventGroupError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let event_group_cb = Self::event_group_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let event_group_cb = unsafe { Self::event_group_cb(this) }?;
         set(event_group_cb, lock, bits);
         Ok(())
     }
@@ -44,7 +54,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
         bits: EventGroupBits,
     ) -> Result<(), UpdateEventGroupError> {
         let mut lock = klock::lock_cpu::<Traits>()?;
-        let event_group_cb = Self::event_group_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let event_group_cb = unsafe { Self::event_group_cb(this) }?;
         event_group_cb.bits.replace_with(&mut *lock, |b| *b & !bits);
         Ok(())
     }
@@ -54,7 +65,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
         this: EventGroupId,
     ) -> Result<EventGroupBits, GetEventGroupError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let event_group_cb = Self::event_group_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let event_group_cb = unsafe { Self::event_group_cb(this) }?;
         Ok(event_group_cb.bits.get(&*lock))
     }
 
@@ -66,7 +78,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
     ) -> Result<EventGroupBits, WaitEventGroupError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
-        let event_group_cb = Self::event_group_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let event_group_cb = unsafe { Self::event_group_cb(this) }?;
 
         wait(event_group_cb, lock, bits, flags)
     }
@@ -81,7 +94,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
         let time32 = timeout::time32_from_duration(timeout)?;
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
-        let event_group_cb = Self::event_group_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let event_group_cb = unsafe { Self::event_group_cb(this) }?;
 
         wait_timeout(event_group_cb, lock, bits, flags, time32)
     }
@@ -93,7 +107,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<T
         flags: EventGroupWaitFlags,
     ) -> Result<EventGroupBits, PollEventGroupError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let event_group_cb = Self::event_group_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let event_group_cb = unsafe { Self::event_group_cb(this) }?;
 
         poll(event_group_cb, lock, bits, flags)
     }

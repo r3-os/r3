@@ -201,6 +201,8 @@ R3 implements object safety in the following way:
  - It's possible to take a reference to an object as a normal reference (e.g., `&'a Mutex`) or a more efficient “borrowed” handle (e.g., [`MutexRef`][]`<'a, _>`). In either case, Rust's region-based memory management mechanism guarantees the absence of use-after-free at compile time.
  - [Static configuration] makes the defined objects available as borrowed handles with `'static` lifetime (e.g., `MutexRef<'static, _>`). There are type aliases for them (e.g., [`StaticMutex`]).
 
+When an invalid object ID is passed to a kernel function, it may cause an undefined behavior. If the kernel implementation can detect the use of an invalid ID, it's recommended that it indicate the error condition by returning `Err(NoAccess)`.
+
 [RFC 3128]: https://rust-lang.github.io/rfcs/3128-io-safety.html
 [`r3::kernel::raw`]: crate::kernel::raw
 [`r3::kernel::Mutex`]: crate::kernel::Mutex

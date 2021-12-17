@@ -1,7 +1,6 @@
 //! Validates error codes returned by mutex manipulation methods. Also,
 //! checks miscellaneous properties of [`r3::kernel::Mutex`].
 use arrayvec::ArrayVec;
-use core::num::NonZeroUsize;
 use r3::{
     hunk::Hunk,
     kernel::{
@@ -17,11 +16,10 @@ use crate::utils::{conditional::KernelBoostPriorityExt, SeqTracker};
 
 const N: usize = 4;
 
-// TODO: Somehow remove the `NonZeroUsize` bound
 pub trait SupportedSystem:
     traits::KernelBase
     + traits::KernelTaskSetPriority
-    + traits::KernelMutex<RawMutexId = NonZeroUsize>
+    + traits::KernelMutex
     + traits::KernelInterruptLine
     + traits::KernelStatic
     + KernelBoostPriorityExt
@@ -30,7 +28,7 @@ pub trait SupportedSystem:
 impl<
         T: traits::KernelBase
             + traits::KernelTaskSetPriority
-            + traits::KernelMutex<RawMutexId = NonZeroUsize>
+            + traits::KernelMutex
             + traits::KernelInterruptLine
             + traits::KernelStatic
             + KernelBoostPriorityExt,
@@ -47,7 +45,7 @@ pub struct App<System: SupportedSystem> {
 }
 
 impl<System: SupportedSystem> App<System> {
-    pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
+    pub const fn new<C, D: Driver<Self, System = System>>(b: &mut Cfg<C>) -> Self
     where
         C: ~const traits::CfgBase<System = System>
             + ~const traits::CfgTask
@@ -112,7 +110,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(_: usize) {
     let app = D::app();
 
     app.seq.expect_and_replace(0, 1);
@@ -141,8 +139,13 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     assert_eq!(hash(m2), hash(m2));
 
     // Invalid mutex ID
-    let bad_m: MutexRef<System> = unsafe { MutexRef::from_id(NonZeroUsize::new(42).unwrap()) };
-    assert_eq!(bad_m.is_locked(), Err(r3::kernel::QueryMutexError::BadId));
+    if let Some(bad_id) = D::bad_raw_mutex_id() {
+        let bad_m: MutexRef<System> = unsafe { MutexRef::from_id(bad_id) };
+        assert_eq!(
+            bad_m.is_locked(),
+            Err(r3::kernel::QueryMutexError::NoAccess)
+        );
+    }
 
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();

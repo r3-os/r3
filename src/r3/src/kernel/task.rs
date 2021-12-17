@@ -230,7 +230,7 @@ pub trait TaskMethods: TaskHandle {
         match self.unpark_exact() {
             Ok(()) | Err(UnparkExactError::QueueOverflow) => Ok(()),
             Err(UnparkExactError::BadContext) => Err(UnparkError::BadContext),
-            Err(UnparkExactError::BadId) => Err(UnparkError::BadId),
+            Err(UnparkExactError::NoAccess) => Err(UnparkError::NoAccess),
             Err(UnparkExactError::BadObjectState) => Err(UnparkError::BadObjectState),
         }
     }

@@ -26,13 +26,21 @@ include!(concat!(env!("OUT_DIR"), "/selective_tests.rs"));
 
 /// Kernel tests
 pub mod kernel_tests {
-    use r3::kernel::{InterruptNum, InterruptPriority};
+    use r3::kernel::{raw, InterruptNum, InterruptPriority};
     /// Instantiation parameters of a test case.
     ///
     /// This trait has two purposes: (1) It serves as an interface to a test driver.
     /// It provides methods to notify the test driver of test success or failure.
     /// (2) It provides runtime access to the `App` structure.
     pub trait Driver<App> {
+        // FIXME: Split each trait bound (except `KernelBase`) to a unique
+        //        Cargo feature
+        type System: raw::KernelBase
+            + raw::KernelEventGroup
+            + raw::KernelMutex
+            + raw::KernelSemaphore
+            + raw::KernelTimer;
+
         /// Get a reference to `App` of the current test case.
         fn app() -> &'static App;
 
@@ -108,6 +116,45 @@ pub mod kernel_tests {
         /// [`INTERRUPT_PRIORITIES`]: Self::INTERRUPT_PRIORITIES
         ///
         const UNMANAGED_INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[];
+
+        // TODO: Add instantiations of test suites that provide the following
+        //       items once there appears a kernel supporting `NoAccess`:
+        /// Create a `RawEventGroupId` for which the kernel functions will
+        /// return `Err(NoAccess)`. Returns `None` if this property cannot be
+        /// guarnateed for any object IDs.
+        fn bad_raw_event_group_id(
+        ) -> Option<<Self::System as raw::KernelEventGroup>::RawEventGroupId> {
+            None
+        }
+
+        /// Create a `RawTaskId` for which the kernel functions will
+        /// return `Err(NoAccess)`. Returns `None` if this property cannot be
+        /// guarnateed for any object IDs.
+        fn bad_raw_task_id() -> Option<<Self::System as raw::KernelBase>::RawTaskId> {
+            None
+        }
+
+        /// Create a `RawMutexId` for which the kernel functions will
+        /// return `Err(NoAccess)`. Returns `None` if this property cannot be
+        /// guarnateed for any object IDs.
+        fn bad_raw_mutex_id() -> Option<<Self::System as raw::KernelMutex>::RawMutexId> {
+            None
+        }
+
+        /// Create a `RawSemaphoreId` for which the kernel functions will
+        /// return `Err(NoAccess)`. Returns `None` if this property cannot be
+        /// guarnateed for any object IDs.
+        fn bad_raw_semaphore_id() -> Option<<Self::System as raw::KernelSemaphore>::RawSemaphoreId>
+        {
+            None
+        }
+
+        /// Create a `RawTimerId` for which the kernel functions will
+        /// return `Err(NoAccess)`. Returns `None` if this property cannot be
+        /// guarnateed for any object IDs.
+        fn bad_raw_timer_id() -> Option<<Self::System as raw::KernelTimer>::RawTimerId> {
+            None
+        }
     }
 
     macro_rules! define_kernel_tests {

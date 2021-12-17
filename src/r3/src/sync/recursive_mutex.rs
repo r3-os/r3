@@ -261,7 +261,7 @@ where
                         .expect("nesting count overflow")
                 });
             }
-            Err(LockMutexError::BadId) => unreachable!(),
+            Err(LockMutexError::NoAccess) => unreachable!(),
             Err(LockMutexError::BadContext) => return Err(LockError::BadContext),
             Err(LockMutexError::Interrupted) => return Err(LockError::Interrupted),
             Err(LockMutexError::BadParam) => return Err(LockError::BadParam),
@@ -301,7 +301,7 @@ where
                         .expect("nesting count overflow")
                 });
             }
-            Err(TryLockMutexError::BadId) => unreachable!(),
+            Err(TryLockMutexError::NoAccess) => unreachable!(),
             Err(TryLockMutexError::BadContext) => return Err(TryLockError::BadContext),
             Err(TryLockMutexError::Timeout) => return Err(TryLockError::WouldBlock),
             Err(TryLockMutexError::BadParam) => return Err(TryLockError::BadParam),
@@ -336,7 +336,7 @@ where
                 level.set(0);
                 Ok(())
             }
-            Err(MarkConsistentMutexError::BadId) => unreachable!(),
+            Err(MarkConsistentMutexError::NoAccess) => unreachable!(),
             Err(MarkConsistentMutexError::BadContext) => Err(MarkConsistentError::BadContext),
             Err(MarkConsistentMutexError::BadObjectState) => {
                 // The nesting count is consistent.

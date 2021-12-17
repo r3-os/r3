@@ -7,7 +7,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError,
+    error::NoAccessError,
     klock::{assume_cpu_lock, lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     timeout,
     utils::pin::static_pin,
@@ -17,8 +17,14 @@ use crate::{
 pub(super) type TimerId = Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn timer_cb(this: TimerId) -> Result<&'static TimerCb<Traits>, BadIdError> {
-        Traits::get_timer_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    /// Get the [`TimerCb`] for the specified raw ID.
+    ///
+    /// # Safety
+    ///
+    /// See [`crate::bad_id`].
+    #[inline]
+    unsafe fn timer_cb(this: TimerId) -> Result<&'static TimerCb<Traits>, NoAccessError> {
+        Traits::get_timer_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
     }
 }
 
@@ -28,7 +34,8 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_timer_start(this: TimerId) -> Result<(), StartTimerError> {
         let mut lock = lock_cpu::<Traits>()?;
-        let timer_cb = Self::timer_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let timer_cb = unsafe { Self::timer_cb(this)? };
         start_timer(lock.borrow_mut(), timer_cb);
         Ok(())
     }
@@ -36,7 +43,8 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_timer_stop(this: TimerId) -> Result<(), StopTimerError> {
         let mut lock = lock_cpu::<Traits>()?;
-        let timer_cb = Self::timer_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let timer_cb = unsafe { Self::timer_cb(this)? };
         stop_timer(lock.borrow_mut(), timer_cb);
         Ok(())
     }
@@ -52,7 +60,8 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
             timeout::BAD_DURATION32
         };
         let mut lock = lock_cpu::<Traits>()?;
-        let timer_cb = Self::timer_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let timer_cb = unsafe { Self::timer_cb(this)? };
         set_timer_delay(lock.borrow_mut(), timer_cb, time32);
         Ok(())
     }
@@ -68,7 +77,8 @@ unsafe impl<Traits: KernelTraits> traits::KernelTimer for System<Traits> {
             timeout::BAD_DURATION32
         };
         let mut lock = lock_cpu::<Traits>()?;
-        let timer_cb = Self::timer_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let timer_cb = unsafe { Self::timer_cb(this)? };
         set_timer_period(lock.borrow_mut(), timer_cb, time32);
         Ok(())
     }

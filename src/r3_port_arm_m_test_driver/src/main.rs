@@ -117,6 +117,8 @@ macro_rules! instantiate_test {
 
         #[cfg(feature = "kernel_tests")]
         impl kernel_tests::Driver<test_case::App<System>> for Driver {
+            type System = System;
+
             fn app() -> &'static test_case::App<System> {
                 &COTTAGE
             }

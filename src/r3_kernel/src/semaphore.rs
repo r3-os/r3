@@ -10,7 +10,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError,
+    error::NoAccessError,
     klock, state, task, timeout,
     wait::{WaitPayload, WaitQueue},
     Id, KernelTraits, Port, System,
@@ -19,8 +19,16 @@ use crate::{
 pub(super) type SemaphoreId = Id;
 
 impl<Traits: KernelTraits> System<Traits> {
-    fn semaphore_cb(this: SemaphoreId) -> Result<&'static SemaphoreCb<Traits>, BadIdError> {
-        Traits::get_semaphore_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    /// Get the [`SemaphoreCb`] for the specified raw ID.
+    ///
+    /// # Safety
+    ///
+    /// See [`crate::bad_id`].
+    #[inline]
+    unsafe fn semaphore_cb(
+        this: SemaphoreId,
+    ) -> Result<&'static SemaphoreCb<Traits>, NoAccessError> {
+        Traits::get_semaphore_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
     }
 }
 
@@ -30,7 +38,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_semaphore_drain(this: SemaphoreId) -> Result<(), DrainSemaphoreError> {
         let mut lock = klock::lock_cpu::<Traits>()?;
-        let semaphore_cb = Self::semaphore_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let semaphore_cb = unsafe { Self::semaphore_cb(this)? };
         semaphore_cb.value.replace(&mut *lock, 0);
         Ok(())
     }
@@ -38,7 +47,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_semaphore_get(this: SemaphoreId) -> Result<SemaphoreValue, GetSemaphoreError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let semaphore_cb = Self::semaphore_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let semaphore_cb = unsafe { Self::semaphore_cb(this)? };
         Ok(semaphore_cb.value.get(&*lock))
     }
 
@@ -48,7 +58,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
         count: SemaphoreValue,
     ) -> Result<(), SignalSemaphoreError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let semaphore_cb = Self::semaphore_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let semaphore_cb = unsafe { Self::semaphore_cb(this)? };
         signal(semaphore_cb, lock, count)
     }
 
@@ -60,7 +71,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     unsafe fn raw_semaphore_wait_one(this: SemaphoreId) -> Result<(), WaitSemaphoreError> {
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
-        let semaphore_cb = Self::semaphore_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let semaphore_cb = unsafe { Self::semaphore_cb(this)? };
 
         wait_one(semaphore_cb, lock)
     }
@@ -73,7 +85,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
         let time32 = timeout::time32_from_duration(timeout)?;
         let lock = klock::lock_cpu::<Traits>()?;
         state::expect_waitable_context::<Traits>()?;
-        let semaphore_cb = Self::semaphore_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let semaphore_cb = unsafe { Self::semaphore_cb(this)? };
 
         wait_one_timeout(semaphore_cb, lock, time32)
     }
@@ -81,7 +94,8 @@ unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Tr
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     unsafe fn raw_semaphore_poll_one(this: SemaphoreId) -> Result<(), PollSemaphoreError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let semaphore_cb = Self::semaphore_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let semaphore_cb = unsafe { Self::semaphore_cb(this)? };
 
         poll_one(semaphore_cb, lock)
     }

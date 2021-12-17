@@ -55,8 +55,9 @@ define_result_code! {
     ///
     /// <div class="admonition-follows"></div>
     ///
-    /// > **Relation to Other Specifications:** All error codes are intentionally
-    /// > matched to their equivalents in μITRON4.0 for no particular reasons.
+    /// > **Relation to Other Specifications:** All error codes are
+    /// > intentionally matched to their closest equivalents in μITRON4.0 for no
+    /// > particular reasons.
     ///
     /// <div class="admonition-follows"></div>
     ///
@@ -74,10 +75,48 @@ define_result_code! {
         /// A parameter is invalid in a way that is no covered by any other error
         /// codes.
         BadParam = -17,
-        /// A specified object identifier ([`Id`]) is invalid.
+        /// The current operation was rejected by an optional protection
+        /// mechanism, e.g., because the specified object identifier ([`Id`]) is
+        /// invalid, or the caller lacks the necessary privileges to complete
+        /// the operation.
+        ///
+        /// This error usually indicates an [object safety][1] or memory
+        /// safety violation. A kernel implementation is not required to report
+        /// this as it's not practical in general cases. It's strongly
+        /// recommended that *application code not rely on this error code being
+        /// returned and, should it be returned, escalate it to a panic or abort
+        /// immediately* unless the code is written for a specific kernel
+        /// implementation that makes a special provision.
+        ///
+        /// <div class="admonition-follows"></div>
+        ///
+        /// > **Rationale:** In the original design, R3 was limited to a
+        /// > specific kernel implementation, and this kernel implementation
+        /// > always validated input object identifiers as it was trivial to do
+        /// > so. Now that R3 is being redesigned as a pure interface for
+        /// > unknown kernels, requiring this property might pose a considerable
+        /// > burden on kernel implementations. In addition, the provided object
+        /// > handle types enforces object safety, and creating them from raw
+        /// > object IDs is impossible in safe code. It's for this reason that
+        /// > detecting this error is now optional.
+        /// >
+        /// > One of the avenues being explored is to support RTOS kernels with
+        /// > a security-oriented protection mechanism. From a security point of
+        /// > view, it's preferable not to disclose the state of other
+        /// > protection domains (e.g., if the object IDs were memory addresses,
+        /// > exposing them would undermine the security benefits of address
+        /// > space layout randomization), hence the intentional lack of error
+        /// > code distinction between invalid IDs and inaccessible IDs.
+        /// >
+        /// > Since it's most likely escalated to a panic or abort, it was also
+        /// > considered to remove this error code altogether. However, since
+        /// > error codes are not extensible, this would unnecessarily
+        /// > complicate the rare cases where it can be reasonably handled in
+        /// > other ways.
         ///
         /// [`Id`]: super::Id
-        BadId = -18,
+        /// [1]: crate#object-safety
+        NoAccess = -18,
         /// The current context disallows the operation.
         BadContext = -25,
         /// The caller does not own the resource.
@@ -227,8 +266,8 @@ define_error! {
     ///
     /// [`Task::activate`]: super::task::TaskMethods::activate
     pub enum ActivateTaskError {
-        /// The task ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The task is already active (not in the Dormant state).
@@ -261,8 +300,8 @@ define_error! {
     ///
     /// [`Task::interrupt`]: super::task::TaskMethods::interrupt
     pub enum InterruptTaskError {
-        /// The task ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The task is not in the Waiting state.
@@ -276,8 +315,8 @@ define_error! {
     ///
     /// [`Task::set_priority`]: super::task::TaskMethods::set_priority
     pub enum SetTaskPriorityError {
-        /// The task ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The priority is out of range, or the task owns a mutex created with
@@ -297,8 +336,8 @@ define_error! {
     ///
     /// [`Task::priority`]: super::task::TaskMethods::priority
     pub enum GetTaskPriorityError {
-        /// The task ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The task is in the Dormant state.
@@ -432,8 +471,8 @@ define_error! {
     pub enum UnparkError {
         /// CPU Lock is active.
         BadContext,
-        /// The task ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// The task is in the Dormant state.
         BadObjectState,
     }
@@ -447,8 +486,8 @@ define_error! {
     pub enum UnparkExactError {
         /// CPU Lock is active.
         BadContext,
-        /// The task ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// The task already has a token.
         QueueOverflow,
         /// The task is in the Dormant state.
@@ -478,8 +517,8 @@ define_error! {
     /// [`EventGroup::set`]: super::event_group::EventGroupMethods::set
     /// [`EventGroup::clear`]: super::event_group::EventGroupMethods::clear
     pub enum UpdateEventGroupError {
-        /// The event group ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
     }
@@ -491,8 +530,8 @@ define_error! {
     ///
     /// [`EventGroup::get`]: super::event_group::EventGroupMethods::get
     pub enum GetEventGroupError {
-        /// The event group ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
     }
@@ -504,8 +543,8 @@ define_error! {
     ///
     /// [`EventGroup::poll`]: super::event_group::EventGroupMethods::poll
     pub enum PollEventGroupError {
-        /// The event group ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         Timeout,
@@ -518,8 +557,8 @@ define_error! {
     ///
     /// [`EventGroup::wait`]: super::event_group::EventGroupMethods::wait
     pub enum WaitEventGroupError: WaitError {
-        /// The event group ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -534,8 +573,8 @@ define_error! {
     ///
     /// [`EventGroup::wait_timeout`]: super::event_group::EventGroupMethods::wait_timeout
     pub enum WaitEventGroupTimeoutError: WaitTimeoutError {
-        /// The event group ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -553,8 +592,8 @@ define_error! {
     ///
     /// [`Semaphore::get`]: super::semaphore::SemaphoreMethods::get
     pub enum GetSemaphoreError {
-        /// The semaphore ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
     }
@@ -566,8 +605,8 @@ define_error! {
     ///
     /// [`Semaphore::drain`]: super::semaphore::SemaphoreMethods::drain
     pub enum DrainSemaphoreError {
-        /// The semaphore ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
     }
@@ -579,8 +618,8 @@ define_error! {
     ///
     /// [`Semaphore::signal`]: super::semaphore::SemaphoreMethods::signal
     pub enum SignalSemaphoreError {
-        /// The semaphore ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The semaphore value is already at the maximum value.
@@ -594,8 +633,8 @@ define_error! {
     ///
     /// [`Semaphore::poll_one`]: super::semaphore::SemaphoreMethods::poll_one
     pub enum PollSemaphoreError {
-        /// The semaphore ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         Timeout,
@@ -608,8 +647,8 @@ define_error! {
     ///
     /// [`Semaphore::wait_one`]: super::semaphore::SemaphoreMethods::wait_one
     pub enum WaitSemaphoreError: WaitError {
-        /// The semaphore ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -624,8 +663,8 @@ define_error! {
     ///
     /// [`Semaphore::wait_one_timeout`]: super::semaphore::SemaphoreMethods::wait_one_timeout
     pub enum WaitSemaphoreTimeoutError: WaitTimeoutError {
-        /// The semaphore ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -643,8 +682,8 @@ define_error! {
     ///
     /// [`Mutex::is_locked`]: super::mutex::MutexMethods::is_locked
     pub enum QueryMutexError {
-        /// The mutex ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
     }
@@ -656,8 +695,8 @@ define_error! {
     ///
     /// [`Mutex::unlock`]: super::mutex::MutexMethods::unlock
     pub enum UnlockMutexError {
-        /// The mutex ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -675,8 +714,8 @@ define_error! {
     ///
     /// [`Mutex::try_lock`]: super::mutex::MutexMethods::try_lock
     pub enum TryLockMutexError {
-        /// The mutex ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not a [task context].
         ///
         /// [task context]: crate#contexts
@@ -704,8 +743,8 @@ define_error! {
     /// [`Mutex::lock`]: super::mutex::MutexMethods::lock
     pub enum LockMutexError: WaitError
     {
-        /// The mutex ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -732,8 +771,8 @@ define_error! {
     ///
     /// [`Mutex::lock_timeout`]: super::mutex::MutexMethods::lock_timeout
     pub enum LockMutexTimeoutError: WaitTimeoutError {
-        /// The mutex ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active, or the current context is not [waitable].
         ///
         /// [waitable]: crate#contexts
@@ -761,8 +800,8 @@ define_error! {
     ///
     /// [`Mutex::mark_consistent`]: super::mutex::MutexMethods::mark_consistent
     pub enum MarkConsistentMutexError {
-        /// The mutex ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The mutex does not protect an inconsistent state.
@@ -864,8 +903,8 @@ define_error! {
     ///
     /// [`Timer::start`]: super::timer::TimerMethods::start
     pub enum StartTimerError {
-        /// The timer ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
     }
@@ -877,8 +916,8 @@ define_error! {
     ///
     /// [`Timer::stop`]: super::timer::TimerMethods::stop
     pub enum StopTimerError {
-        /// The timer ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
     }
@@ -890,8 +929,8 @@ define_error! {
     ///
     /// [`Timer::set_delay`]: super::timer::TimerMethods::set_delay
     pub enum SetTimerDelayError {
-        /// The timer ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The duration is negative.
@@ -905,8 +944,8 @@ define_error! {
     ///
     /// [`Timer::set_period`]: super::timer::TimerMethods::set_period
     pub enum SetTimerPeriodError {
-        /// The timer ID is out of range.
-        BadId,
+        /// Invalid object access.
+        NoAccess,
         /// CPU Lock is active.
         BadContext,
         /// The duration is negative.

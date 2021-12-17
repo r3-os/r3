@@ -14,7 +14,7 @@ use r3::{
 };
 
 use crate::{
-    error::BadIdError, klock, mutex, state, timeout, wait, Id, KernelCfg1, KernelTraits,
+    error::NoAccessError, klock, mutex, state, timeout, wait, Id, KernelCfg1, KernelTraits,
     PortThreading, System,
 };
 
@@ -27,8 +27,14 @@ pub(super) type TaskId = Id;
 /// These associate functions implement the task-related portion of
 /// [`r3::kernel::raw::KernelBase`].
 impl<Traits: KernelTraits> System<Traits> {
-    fn task_cb(this: TaskId) -> Result<&'static TaskCb<Traits>, BadIdError> {
-        Traits::get_task_cb(this.get() - 1).ok_or(BadIdError::BadId)
+    /// Get the [`TaskCb`] for the specified raw ID.
+    ///
+    /// # Safety
+    ///
+    /// See [`crate::bad_id`].
+    #[inline]
+    unsafe fn task_cb(this: TaskId) -> Result<&'static TaskCb<Traits>, NoAccessError> {
+        Traits::get_task_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
@@ -53,14 +59,16 @@ impl<Traits: KernelTraits> System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub(super) fn task_activate(this: TaskId) -> Result<(), ActivateTaskError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let task_cb = Self::task_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let task_cb = unsafe { Self::task_cb(this)? };
         activate(lock, task_cb)
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub(super) fn task_interrupt(this: TaskId) -> Result<(), InterruptTaskError> {
         let mut lock = klock::lock_cpu::<Traits>()?;
-        let task_cb = Self::task_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let task_cb = unsafe { Self::task_cb(this)? };
         wait::interrupt_task(
             lock.borrow_mut(),
             task_cb,
@@ -76,7 +84,8 @@ impl<Traits: KernelTraits> System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub(super) fn task_unpark_exact(this: TaskId) -> Result<(), UnparkExactError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let task_cb = Self::task_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let task_cb = unsafe { Self::task_cb(this)? };
         unpark_exact(lock, task_cb)
     }
 
@@ -86,14 +95,16 @@ impl<Traits: KernelTraits> System<Traits> {
         priority: usize,
     ) -> Result<(), SetTaskPriorityError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let task_cb = Self::task_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let task_cb = unsafe { Self::task_cb(this)? };
         set_task_base_priority(lock, task_cb, priority)
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub(super) fn task_priority(this: TaskId) -> Result<usize, GetTaskPriorityError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let task_cb = Self::task_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let task_cb = unsafe { Self::task_cb(this)? };
 
         if *task_cb.st.read(&*lock) == TaskSt::Dormant {
             Err(GetTaskPriorityError::BadObjectState)
@@ -105,7 +116,8 @@ impl<Traits: KernelTraits> System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     pub(super) fn task_effective_priority(this: TaskId) -> Result<usize, GetTaskPriorityError> {
         let lock = klock::lock_cpu::<Traits>()?;
-        let task_cb = Self::task_cb(this)?;
+        // Safety: The caller is responsible for providing a valid object ID
+        let task_cb = unsafe { Self::task_cb(this)? };
 
         if *task_cb.st.read(&*lock) == TaskSt::Dormant {
             Err(GetTaskPriorityError::BadObjectState)
