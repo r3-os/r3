@@ -18,27 +18,27 @@ jobs:
 
       - name: Build Documentation for “r3_port_std”
         uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_std }
+        with: { command: doc, args: -p r3_port_std --all-features }
 
       - name: Build Documentation for “r3_port_arm”
         uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_arm }
+        with: { command: doc, args: -p r3_port_arm --all-features }
 
       - name: Build Documentation for “r3_port_arm_m”
         uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_arm_m }
+        with: { command: doc, args: -p r3_port_arm_m --all-features }
 
       - name: Build Documentation for “r3_port_riscv”
         uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_riscv }
+        with: { command: doc, args: -p r3_port_riscv --all-features }
 
       - name: Build Documentation for “r3_support_rp2040”
         uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_support_rp2040 }
+        with: { command: doc, args: -p r3_support_rp2040 --all-features }
 
       - name: Build Documentation for “r3_support_rza1”
         uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_support_rza1 }
+        with: { command: doc, args: -p r3_support_rza1 --all-features }
 
       - name: Build Documentation for “r3_portkit”
         uses: actions-rs/cargo@v1
