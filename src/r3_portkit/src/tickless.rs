@@ -370,7 +370,7 @@ pub type TicklessState<const CFG: TicklessCfg> = If! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///  HW ticks    ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┬──┐
 ///  ³/₇μs/tick  0                    7                    14                   21
@@ -517,7 +517,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// refers to the past or not.
     ///
     /// <center>
-    #[doc = svgbobdoc::transform_mdstr!(
+    #[doc = svgbobdoc::transform!(
     /// ```svgbob
     ///                          timer interrupt,
     ///                        calls mark_reference
@@ -570,7 +570,7 @@ pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
     /// identically-named private field of [`TicklessStateCore`].
     ///
     /// <center>
-    #[doc = svgbobdoc::transform_mdstr!(
+    #[doc = svgbobdoc::transform!(
     /// ```svgbob
     ///                       ref_hw_tick_count
     ///                                │

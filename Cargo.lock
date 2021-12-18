@@ -2657,9 +2657,9 @@ dependencies = [
 
 [[package]]
 name = "svgbobdoc"
-version = "0.3.0-alpha.3"
+version = "0.3.0-alpha.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61cb54242ebcd38bd8d5f307fb43ea58eb9f9140dac11ed9382229ba9c7f3855"
+checksum = "9908df7c9f79a14455632526a64d45bc7b9b7279de7f9731d7fc668480890ccd"
 dependencies = [
  "base64",
  "proc-macro2",

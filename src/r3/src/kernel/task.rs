@@ -41,7 +41,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                     .-------.
 ///    .--------------->| Ready |<--------------.

@@ -46,7 +46,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 /// .---------------.             start              .--------------.
 /// |               | -----------------------------> |              |
@@ -87,7 +87,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 /// ​
 /// Higher-priority interrupt               __________
@@ -149,7 +149,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                   _____       _____                   _____       _____
 /// Timer callback   |_____|     |_____|                 |_____|     |_____|
@@ -184,7 +184,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                   _____       _____       _____    _____    _____
 /// Timer callback   |_____|     |_____|     |_____|  |_____|  |_____|
@@ -225,7 +225,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                   _____                               _____       _____
 /// Timer callback   |_____|                             |_____|     |_____|
@@ -245,7 +245,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                   _____       _____                   _____       _____
 /// Timer callback   |_____|     |_____|                 |_____|     |_____|
@@ -293,7 +293,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                            _____       _____       _____       _____
 /// Timer callback            |_____|     |_____|     |_____|     |_____|
@@ -341,7 +341,7 @@ define_object! {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                         _____                            _____
 /// Timer callback         |_____|                          |_____|

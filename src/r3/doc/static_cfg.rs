@@ -1,4 +1,4 @@
-svgbobdoc::transform_mdstr! { /**
+svgbobdoc::transform! { /**
 ```svgbob,[static_cfg]
                             &mut Cfg<C>
     const fn configure_app <------------ "r3_kernel::build!(SystemTraits,"

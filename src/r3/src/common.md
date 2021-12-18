@@ -108,6 +108,7 @@ span.center {
 /* Add margins to SvgBob images */
 span.center img, center img {
     border: 10px solid white;
+    background: white;
 }
 
 /* Auto-invert SvgBob images in a dark theme */

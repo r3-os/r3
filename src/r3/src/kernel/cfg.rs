@@ -196,7 +196,7 @@ pub struct KernelStaticParams<System> {
 ///
 /// <center>
 ///
-#[doc = svgbobdoc::transform_mdstr!(
+#[doc = svgbobdoc::transform!(
 /// ```svgbob
 ///                   .--------.
 ///                   | Cfg<C> |

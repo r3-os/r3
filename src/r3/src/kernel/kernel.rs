@@ -217,7 +217,7 @@ pub trait Kernel: private::Sealed {
     ///
     /// <center>
     ///
-    #[doc = svgbobdoc::transform_mdstr!(
+    #[doc = svgbobdoc::transform!(
     /// ```svgbob
     ///                                   system time
     ///                                    ----*------------------------

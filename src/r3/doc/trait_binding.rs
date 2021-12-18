@@ -1,4 +1,4 @@
-svgbobdoc::transform_mdstr! { /**
+svgbobdoc::transform! { /**
 ```svgbob,[trait_binding]
 Application and library code
 
