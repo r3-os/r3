@@ -91,8 +91,8 @@ impl<System: raw::KernelBase> StaticTask<System> {
 /// task][1] [safely][2].
 ///
 /// See [`TaskRef`][] for the `Send` counterpart.
-/// See [`TaskMethods`][] for the operations provided by this handle
-/// type.
+/// **See [`TaskMethods`][] for the operations provided by this handle
+/// type.**
 ///
 /// [1]: Self::current
 /// [2]: crate#object-safety

@@ -17,8 +17,8 @@ macro_rules! define_object {
             /// This type is ABI-compatible with `System::`[`$&RawId`][].
             ///
             /// See [`$&NameRef`][] for the [borrowed][] counterpart.
-            /// See [`$&NameMethods`][] for the operations provided by this handle
-            /// type.
+            /// **See [`$&NameMethods`][] for the operations provided by this handle
+            /// type.**
             ///
             /// [`$&RawId`]: $&Trait::$&RawId
             /// [`$&NameMethods`]: #impl-$&NameMethods
@@ -37,8 +37,8 @@ macro_rules! define_object {
         ///
         /// See [`$&Name`][] for the [owned][] counterpart and the description
         /// of this kernel object.
-        /// See [`$&NameMethods`][] for the operations provided by this handle
-        /// type.
+        /// **See [`$&NameMethods`][] for the operations provided by this handle
+        /// type.**
         ///
         /// [`$&RawId`]: $&Trait::$&RawId
         /// [`$&NameMethods`]: #impl-$&NameMethods
@@ -57,8 +57,8 @@ macro_rules! define_object {
         ///
         /// See [`$&Name`][] for the [owned][] counterpart and the description
         /// of this kernel object.
-        /// See [`$&NameMethods`][] for the operations provided by this handle
-        /// type.
+        /// **See [`$&NameMethods`][] for the operations provided by this handle
+        /// type.**
         ///
         /// [`$&RawId`]: $&Trait::$&RawId
         /// [`$&NameMethods`]: $&NameRef#impl-$&NameMethods
