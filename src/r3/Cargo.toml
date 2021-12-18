@@ -23,6 +23,7 @@ _full = []
 [dependencies]
 stable_deref_trait = { version = "1.2.0", default-features = false }
 embed-doc-image = { version = "0.1.4", optional = true }
+const-default = { version = "1.0.0", features = ["unstable"] }
 svgbobdoc = { version = "0.3.0-alpha.4" }
 tokenlock = { version = "0.3.4", default-features = false }
 arrayvec = { version = "0.7.1", default-features = false }

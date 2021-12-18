@@ -51,14 +51,15 @@ pub use vec::*;
 pub mod for_times;
 
 mod aligned_storage;
-mod init;
 pub mod mem;
 mod rawcell;
 mod zeroinit;
 pub use aligned_storage::*;
-pub use init::*;
 pub use rawcell::*;
 pub use zeroinit::*;
+
+#[doc(no_inline)]
+pub use const_default::ConstDefault;
 
 /// A phantom type that is invariant over `T`.
 pub type PhantomInvariant<T> = core::marker::PhantomData<fn(T) -> T>;
