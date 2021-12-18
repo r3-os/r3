@@ -6,7 +6,12 @@ pub trait Bag: private::Sealed + Copy {
     /// Insert an item and return a new `impl Bag`.
     ///
     /// For `const fn`-ness, this method can't have a provided implementation.
-    fn insert<T: 'static>(self, x: T) -> List<T, Self>;
+    #[inline]
+    #[default_method_body_is_const]
+    fn insert<T: 'static>(self, head: T) -> List<T, Self> {
+        assert!(self.get::<T>().is_none(), "duplicate entry");
+        (head, self)
+    }
 
     /// Borrow a `T` if it's included in `self`.
     fn get<T: 'static>(&self) -> Option<&T>;
@@ -27,17 +32,7 @@ pub type List<Head, Tail> = (Head, Tail);
 #[doc(no_inline)]
 pub use either::Either;
 
-const fn insert_inner<Head: 'static, Tail: ~const Bag>(head: Head, tail: Tail) -> List<Head, Tail> {
-    assert!(tail.get::<Head>().is_none(), "duplicate entry");
-    (head, tail)
-}
-
 impl const Bag for Empty {
-    #[inline]
-    fn insert<T: 'static>(self, x: T) -> List<T, Self> {
-        insert_inner(x, self)
-    }
-
     fn get<T: 'static>(&self) -> Option<&T> {
         None
     }
@@ -48,11 +43,6 @@ impl const Bag for Empty {
 }
 
 impl<Head: 'static + Copy, Tail: ~const Bag> const Bag for List<Head, Tail> {
-    #[inline]
-    fn insert<T: 'static>(self, x: T) -> List<T, Self> {
-        insert_inner(x, self)
-    }
-
     fn get<T: 'static>(&self) -> Option<&T> {
         // Simulate specialization
         if TypeId::of::<T>().eq(&TypeId::of::<Head>()) {
@@ -73,11 +63,6 @@ impl<Head: 'static + Copy, Tail: ~const Bag> const Bag for List<Head, Tail> {
 }
 
 impl<Left: ~const Bag, Right: ~const Bag> const Bag for Either<Left, Right> {
-    #[inline]
-    fn insert<T: 'static>(self, x: T) -> List<T, Self> {
-        insert_inner(x, self)
-    }
-
     fn get<T: 'static>(&self) -> Option<&T> {
         match self {
             Either::Left(x) => x.get(),
