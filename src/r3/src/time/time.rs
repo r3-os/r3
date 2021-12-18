@@ -205,15 +205,15 @@ impl ops::SubAssign<Duration> for Time {
 }
 
 /// Error type returned when a checked timestamp type conversion fails.
-#[cfg(feature = "chrono")]
+#[cfg(feature = "chrono_0p4")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromDateTimeError(());
 
-#[cfg(feature = "chrono")]
-impl TryFrom<chrono::DateTime<chrono::Utc>> for Time {
+#[cfg(feature = "chrono_0p4")]
+impl TryFrom<chrono_0p4::DateTime<chrono_0p4::Utc>> for Time {
     type Error = TryFromDateTimeError;
 
-    /// Try to construct a `Time` from the specified `chrono::DateTime<Utc>`.
+    /// Try to construct a `Time` from the specified `chrono_0p4::DateTime<Utc>`.
     /// Returns an error if the specified `DateTime` overflows the representable
     /// range of the destination type.
     ///
@@ -222,7 +222,7 @@ impl TryFrom<chrono::DateTime<chrono::Utc>> for Time {
     /// # Examples
     ///
     /// ```
-    /// use chrono::{DateTime, Utc, TimeZone};
+    /// use chrono_0p4::{DateTime, Utc, TimeZone};
     /// use r3::time::Time;
     /// assert_eq!(
     ///     Time::try_from(Utc.timestamp(4, 123_456)),
@@ -230,7 +230,7 @@ impl TryFrom<chrono::DateTime<chrono::Utc>> for Time {
     /// );
     /// assert!(Time::try_from(Utc.timestamp(-1, 999_999_999)).is_err());
     /// ```
-    fn try_from(value: chrono::DateTime<chrono::Utc>) -> Result<Self, Self::Error> {
+    fn try_from(value: chrono_0p4::DateTime<chrono_0p4::Utc>) -> Result<Self, Self::Error> {
         let secs: u64 = value
             .timestamp()
             .try_into()
@@ -246,11 +246,11 @@ impl TryFrom<chrono::DateTime<chrono::Utc>> for Time {
     }
 }
 
-#[cfg(feature = "chrono")]
-impl TryFrom<Time> for chrono::DateTime<chrono::Utc> {
+#[cfg(feature = "chrono_0p4")]
+impl TryFrom<Time> for chrono_0p4::DateTime<chrono_0p4::Utc> {
     type Error = TryFromDateTimeError;
 
-    /// Try to construct a `chrono::DateTime<chrono::Utc>` from the specified
+    /// Try to construct a `chrono_0p4::DateTime<chrono_0p4::Utc>` from the specified
     /// `Time`.
     /// Returns an error if the specified `Time` overflows the representable
     /// range of the destination type.
@@ -258,7 +258,7 @@ impl TryFrom<Time> for chrono::DateTime<chrono::Utc> {
     /// # Examples
     ///
     /// ```
-    /// use chrono::{DateTime, Utc, TimeZone};
+    /// use chrono_0p4::{DateTime, Utc, TimeZone};
     /// use r3::time::Time;
     /// assert_eq!(
     ///     DateTime::try_from(Time::from_micros(123_456_789)),
@@ -270,8 +270,8 @@ impl TryFrom<Time> for chrono::DateTime<chrono::Utc> {
     /// );
     /// ```
     fn try_from(value: Time) -> Result<Self, Self::Error> {
-        use chrono::TimeZone;
-        chrono::Utc
+        use chrono_0p4::TimeZone;
+        chrono_0p4::Utc
             .timestamp_opt(
                 (value.micros / 1_000_000) as i64,
                 (value.micros % 1_000_000) as u32 * 1_000,

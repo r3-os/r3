@@ -651,7 +651,7 @@ Kernel {
 
 # Cargo Features
 
-- **`chrono`**: Enables conversion between our [duration] and [timetamp] types and `::chrono`'s types.
+- **`chrono_0p4`**: Enables conversion between our [duration] and [timetamp] types and `chrono ^0.4`'s types.
 
 [duration]: crate::time::Duration
 [timetamp]: crate::time::Time

@@ -334,11 +334,11 @@ impl<'a> core::iter::Sum<&'a Duration> for Duration {
     }
 }
 
-#[cfg(feature = "chrono")]
-impl TryFrom<chrono::Duration> for Duration {
+#[cfg(feature = "chrono_0p4")]
+impl TryFrom<chrono_0p4::Duration> for Duration {
     type Error = TryFromDurationError;
 
-    /// Try to construct a `Duration` from the specified `chrono::Duration`.
+    /// Try to construct a `Duration` from the specified `chrono_0p4::Duration`.
     /// Returns an error if the specified `Duration` overflows the representable
     /// range of the destination type.
     ///
@@ -347,7 +347,7 @@ impl TryFrom<chrono::Duration> for Duration {
     /// # Examples
     ///
     /// ```
-    /// use chrono::Duration as ChronoDuration;
+    /// use chrono_0p4::Duration as ChronoDuration;
     /// use r3::time::Duration as OsDuration;
     /// assert_eq!(
     ///     OsDuration::try_from(ChronoDuration::nanoseconds(123_456)),
@@ -362,7 +362,7 @@ impl TryFrom<chrono::Duration> for Duration {
     ///         .is_err()
     /// );
     /// ```
-    fn try_from(value: chrono::Duration) -> Result<Self, Self::Error> {
+    fn try_from(value: chrono_0p4::Duration) -> Result<Self, Self::Error> {
         Ok(Self::from_micros(
             value
                 .num_microseconds()
@@ -372,14 +372,14 @@ impl TryFrom<chrono::Duration> for Duration {
     }
 }
 
-#[cfg(feature = "chrono")]
-impl From<Duration> for chrono::Duration {
-    /// Construct a `chrono::Duration` from the specified `Duration`.
+#[cfg(feature = "chrono_0p4")]
+impl From<Duration> for chrono_0p4::Duration {
+    /// Construct a `chrono_0p4::Duration` from the specified `Duration`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use chrono::Duration as ChronoDuration;
+    /// use chrono_0p4::Duration as ChronoDuration;
     /// use r3::time::Duration as OsDuration;
     /// assert_eq!(
     ///     ChronoDuration::from(OsDuration::from_micros(123_456)),
