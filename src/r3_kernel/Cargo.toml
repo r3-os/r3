@@ -34,7 +34,7 @@ num-integer = { version = "0.1.42", default-features = false }
 num-traits = { version = "0.2.11", default-features = false }
 pin-utils = { version = "0.1.0" }
 svgbobdoc = { version = "0.3.0-alpha.4" }
-tokenlock = { version = "0.3.4", default-features = false }
+tokenlock = { version = "0.3.7", default-features = false, features = ["const-default_1"] }
 arrayvec = { version = "0.7.1", default-features = false }
 bitflags = { version = "1.2.1" }
 chrono = { version = "0.4.13", optional = true, default-features = false }
