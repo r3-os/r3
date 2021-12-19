@@ -1,7 +1,7 @@
 //! Kernel configuration
 use crate::{
     kernel::{hook, interrupt, raw, raw_cfg},
-    utils::{ComptimeVec, Init, PhantomInvariant},
+    utils::{ComptimeVec, PhantomInvariant},
 };
 
 /// Wraps a [`raw_cfg::CfgBase`] to provide higher-level services.
@@ -72,7 +72,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         interrupt::sort_handlers(&mut self.interrupt_handlers);
 
         KernelStaticParams {
-            _phantom: Init::INIT,
+            _phantom: Default::default(),
             startup_hooks: self.startup_hooks.map(hook::CfgStartupHook::to_attr),
             hunk_pool_len: self.hunk_pool_len,
             hunk_pool_align: self.hunk_pool_align,
@@ -118,7 +118,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
             };
             self.raw.interrupt_line_define(
                 raw_cfg::InterruptLineDescriptor {
-                    phantom: Init::INIT,
+                    phantom: Default::default(),
                     line: interrupt_line.num,
                     priority: interrupt_line.priority,
                     start,

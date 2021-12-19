@@ -214,7 +214,7 @@ pub struct InterruptLineDefiner<System: raw::KernelInterruptLine> {
 impl<System: raw::KernelInterruptLine> InterruptLineDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: Default::default(),
             line: None,
             priority: None,
             enabled: false,
@@ -300,7 +300,7 @@ pub struct InterruptHandlerDefiner<System: raw::KernelInterruptLine> {
 impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: Default::default(),
             line: None,
             start: None,
             param: 0,

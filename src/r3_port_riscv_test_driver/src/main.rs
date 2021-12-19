@@ -4,6 +4,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
+#![feature(const_default_impls)]
 #![feature(naked_functions)]
 #![feature(decl_macro)]
 #![feature(const_ptr_offset)]

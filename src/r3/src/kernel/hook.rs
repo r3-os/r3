@@ -47,7 +47,7 @@ pub struct StartupHookDefiner<System> {
 impl<System: raw::KernelBase> StartupHookDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: Default::default(),
             start: None,
             param: 0,
             priority: 0,

@@ -5,10 +5,7 @@ use super::{
     raw, raw_cfg, Cfg, DrainSemaphoreError, GetSemaphoreError, PollSemaphoreError, QueueOrder,
     SignalSemaphoreError, WaitSemaphoreError, WaitSemaphoreTimeoutError,
 };
-use crate::{
-    time::Duration,
-    utils::{Init, PhantomInvariant},
-};
+use crate::{time::Duration, utils::PhantomInvariant};
 
 pub use raw::SemaphoreValue;
 
@@ -151,7 +148,7 @@ pub struct SemaphoreDefiner<System: raw::KernelSemaphore> {
 impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: Default::default(),
             initial_value: None,
             maximum_value: None,
             queue_order: QueueOrder::TaskPriority,
@@ -206,7 +203,7 @@ impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
 
         let id = c.raw().semaphore_define(
             raw_cfg::SemaphoreDescriptor {
-                phantom: Init::INIT,
+                phantom: Default::default(),
                 initial: initial_value,
                 maximum: maximum_value,
                 queue_order: self.queue_order,

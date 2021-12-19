@@ -191,7 +191,7 @@ macro_rules! build {
             };
 
             const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
-                _phantom: Init::INIT,
+                _phantom: Default::default(),
                 line_inits: &INTERRUPT_LINE_INITS,
             };
 

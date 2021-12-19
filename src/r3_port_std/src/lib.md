@@ -7,6 +7,7 @@ Simulator for running [`::r3`] on a hosted environment
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
+#![feature(const_default_impls)]
 
 // Require `unsafe` even in `unsafe fn` - highly recommended
 #![deny(unsafe_op_in_unsafe_fn)]

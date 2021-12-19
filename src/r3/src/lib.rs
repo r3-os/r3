@@ -10,6 +10,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_option)]
+#![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 #![feature(const_refs_to_cell)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`

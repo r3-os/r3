@@ -50,6 +50,7 @@ The R3 original kernel is provided as a separate package [`r3_kernel`][].
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
+#![feature(const_default_impls)]
 #![no_std]
 #![no_main]
 

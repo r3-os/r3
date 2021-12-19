@@ -2,6 +2,7 @@
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
+#![feature(const_default_impls)]
 #![feature(const_fn_trait_bound)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(generic_const_exprs)]

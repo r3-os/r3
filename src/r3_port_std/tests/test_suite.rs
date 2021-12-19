@@ -4,6 +4,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
+#![feature(const_default_impls)]
 #![feature(slice_ptr_len)]
 
 use r3_port_std::PortInstance;
