@@ -139,7 +139,7 @@ use crate::{
     klock::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     state::expect_task_context,
     task,
-    utils::binary_heap::{BinaryHeap, BinaryHeapCtx},
+    utils::binary_heap::{BinaryHeap, BinaryHeapCtx, VecLike},
     KernelTraits, UTicks,
 };
 
@@ -210,9 +210,7 @@ struct TimeoutHeapAndPropToken<TimeoutHeap: 'static> {
     prop_token: TimeoutPropToken,
 }
 
-impl<Traits, TimeoutHeap: ConstDefault + 'static> ConstDefault
-    for TimeoutGlobals<Traits, TimeoutHeap>
-{
+impl<Traits, TimeoutHeap: VecLike + 'static> ConstDefault for TimeoutGlobals<Traits, TimeoutHeap> {
     const DEFAULT: Self = Self {
         last_tick_count: ConstDefault::DEFAULT,
         last_tick_time: ConstDefault::DEFAULT,
@@ -220,7 +218,7 @@ impl<Traits, TimeoutHeap: ConstDefault + 'static> ConstDefault
         last_tick_sys_time: ConstDefault::DEFAULT,
         frontier_gap: ConstDefault::DEFAULT,
         heap_and_prop_token: CpuLockCell::new(TimeoutHeapAndPropToken {
-            heap: ConstDefault::DEFAULT,
+            heap: VecLike::DEFAULT,
             // Safety: In each particular `Traits`, this is the only instance of
             //         `TimeoutPropToken`. If there are more than one `Traits` in a
             //         program, the singleton property of `UnsyncSingletonToken`

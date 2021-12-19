@@ -768,10 +768,7 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
     // kernel. The rest is not hidden because it's meant to be accessed by port
     // code.
     #[doc(hidden)]
-    type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>>
-        + ConstDefault
-        + fmt::Debug
-        + 'static;
+    type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + fmt::Debug + 'static;
 
     /// The table of combined second-level interrupt handlers.
     ///
@@ -883,7 +880,7 @@ impl<
         PortTaskState: 'static,
         TaskReadyQueue: 'static + ConstDefault,
         TaskPriority: 'static,
-        TimeoutHeap: 'static + ConstDefault,
+        TimeoutHeap: 'static + VecLike,
     > ConstDefault for State<Traits, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
     const DEFAULT: Self = Self {

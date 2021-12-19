@@ -2,6 +2,10 @@ use arrayvec::ArrayVec;
 use core::ops;
 
 pub trait VecLike: ops::Deref<Target = [<Self as VecLike>::Element]> + ops::DerefMut {
+    // FIXME: Work-around for the lack of compiler support for adding a
+    //        `const Default` bound to a non-`const` `impl` and the lack of
+    //        a `ConstDefault` impl for `ArrayVec`
+    const DEFAULT: Self;
     type Element;
     fn is_empty(&self) -> bool;
     fn len(&self) -> usize;
@@ -10,6 +14,7 @@ pub trait VecLike: ops::Deref<Target = [<Self as VecLike>::Element]> + ops::Dere
 }
 
 impl<T, const N: usize> VecLike for ArrayVec<T, N> {
+    const DEFAULT: Self = Self::new_const();
     type Element = T;
     fn is_empty(&self) -> bool {
         self.is_empty()
@@ -27,6 +32,7 @@ impl<T, const N: usize> VecLike for ArrayVec<T, N> {
 
 #[cfg(test)]
 impl<T> VecLike for Vec<T> {
+    const DEFAULT: Self = Vec::new();
     type Element = T;
     fn is_empty(&self) -> bool {
         self.is_empty()
