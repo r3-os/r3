@@ -27,7 +27,7 @@ impl Init for Time {
 //         which is `ZeroInit`
 unsafe impl ZeroInit for Time {}
 
-impl Default for Time {
+impl const Default for Time {
     fn default() -> Self {
         Self::INIT
     }

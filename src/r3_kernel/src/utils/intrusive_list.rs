@@ -11,9 +11,9 @@ pub struct ListHead<Index> {
     pub first: Option<Index>,
 }
 
-impl<Index> Default for ListHead<Index> {
+impl<Index> const Default for ListHead<Index> {
     fn default() -> Self {
-        Self::INIT
+        Self { first: None }
     }
 }
 
@@ -24,7 +24,7 @@ impl<Index: fmt::Debug> fmt::Debug for ListHead<Index> {
 }
 
 impl<Index> Init for ListHead<Index> {
-    const INIT: Self = Self { first: None };
+    const INIT: Self = Self::default();
 }
 
 /// Links to neighbor items.
