@@ -1,6 +1,6 @@
 use core::cell::UnsafeCell;
 
-use crate::utils::{Init, ZeroInit};
+use crate::utils::{ConstDefault, ZeroInit};
 
 /// Like `UnsafeCell`, but implements `Sync`.
 #[derive(Debug)]
@@ -25,7 +25,7 @@ impl<T: ?Sized> RawCell<T> {
     }
 }
 
-impl<T: Init> Init for RawCell<T> {
-    const INIT: Self = RawCell::new(T::INIT);
+impl<T: ConstDefault> ConstDefault for RawCell<T> {
+    const DEFAULT: Self = RawCell::new(T::DEFAULT);
 }
 unsafe impl<T: ZeroInit> ZeroInit for RawCell<T> {}

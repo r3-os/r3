@@ -1,7 +1,7 @@
 //! Kernel configuration
 use crate::{
     kernel::{hook, interrupt, raw, raw_cfg},
-    utils::{ComptimeVec, Init, PhantomInvariant},
+    utils::{ComptimeVec, ConstDefault, PhantomInvariant},
 };
 
 /// Wraps a [`raw_cfg::CfgBase`] to provide higher-level services.
@@ -72,7 +72,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         interrupt::sort_handlers(&mut self.interrupt_handlers);
 
         KernelStaticParams {
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
             startup_hooks: self.startup_hooks.map(hook::CfgStartupHook::to_attr),
             hunk_pool_len: self.hunk_pool_len,
             hunk_pool_align: self.hunk_pool_align,
@@ -118,7 +118,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
             };
             self.raw.interrupt_line_define(
                 raw_cfg::InterruptLineDescriptor {
-                    phantom: Init::INIT,
+                    phantom: ConstDefault::DEFAULT,
                     line: interrupt_line.num,
                     priority: interrupt_line.priority,
                     start,
@@ -329,7 +329,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
     const _: () = {
         use $crate::{
             kernel::{cfg, hook, interrupt},
-            utils::{for_times::U, AlignedStorage, Init, RawCell},
+            utils::{for_times::U, AlignedStorage, ConstDefault, RawCell},
         };
 
         const STATIC_PARAMS: cfg::KernelStaticParams<$System> = $params;
@@ -337,7 +337,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
         // Instantiate hunks
         static HUNK_POOL: RawCell<
             AlignedStorage<{ STATIC_PARAMS.hunk_pool_len }, { STATIC_PARAMS.hunk_pool_align }>,
-        > = Init::INIT;
+        > = ConstDefault::DEFAULT;
 
         // Construct a table of startup hooks
         array_item_from_fn! {

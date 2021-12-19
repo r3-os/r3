@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     time::Duration,
-    utils::{Init, PhantomInvariant},
+    utils::{ConstDefault, PhantomInvariant},
 };
 
 pub use raw::SemaphoreValue;
@@ -151,7 +151,7 @@ pub struct SemaphoreDefiner<System: raw::KernelSemaphore> {
 impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
             initial_value: None,
             maximum_value: None,
             queue_order: QueueOrder::TaskPriority,
@@ -206,7 +206,7 @@ impl<System: raw::KernelSemaphore> SemaphoreDefiner<System> {
 
         let id = c.raw().semaphore_define(
             raw_cfg::SemaphoreDescriptor {
-                phantom: Init::INIT,
+                phantom: ConstDefault::DEFAULT,
                 initial: initial_value,
                 maximum: maximum_value,
                 queue_order: self.queue_order,

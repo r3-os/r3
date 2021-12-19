@@ -1,6 +1,6 @@
 #![allow(dead_code)] // suppress warning when doing selective testing
 use core::sync::atomic::{AtomicUsize, Ordering};
-use r3::utils::Init;
+use r3::utils::ConstDefault;
 
 pub(crate) mod benchmark;
 pub(crate) mod compute;
@@ -13,9 +13,9 @@ pub(crate) struct SeqTracker {
     counter: AtomicUsize,
 }
 
-impl Init for SeqTracker {
+impl ConstDefault for SeqTracker {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self::new();
+    const DEFAULT: Self = Self::new();
 }
 
 impl SeqTracker {

@@ -130,7 +130,7 @@ macro_rules! use_port {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
-                    $crate::r3::utils::Init::INIT;
+                    $crate::r3::utils::ConstDefault::DEFAULT;
 
                 // The minimum stack size for all tests to pass. I found debug
                 // formatting to be particularly memory-hungry.

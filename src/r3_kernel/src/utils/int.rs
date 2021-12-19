@@ -1,7 +1,7 @@
 use core::{fmt, ops};
 use num_integer::Integer;
 
-use super::{Init, ZeroInit};
+use super::{ConstDefault, ZeroInit};
 
 /// Get the smallest unsigned integer type capable of representing the specified
 /// value.
@@ -30,7 +30,7 @@ pub trait BinInteger:
     + ops::MulAssign
     + ops::DivAssign
     + fmt::Debug
-    + Init
+    + ConstDefault
     + ZeroInit
     + Send
     + Sync

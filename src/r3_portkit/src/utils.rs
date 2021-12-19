@@ -5,7 +5,7 @@
 use core::marker::PhantomData;
 
 #[doc(no_inline)]
-pub use r3::utils::Init;
+pub use r3::utils::ConstDefault;
 
 /// Conditional type
 macro_rules! If {

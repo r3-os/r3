@@ -2,7 +2,7 @@ use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
 use memoffset::offset_of;
 use r3::{
     kernel::traits,
-    utils::{Init, ZeroInit},
+    utils::{ConstDefault, ZeroInit},
 };
 use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
 use r3_portkit::sym::{sym_static, SymStaticExt};
@@ -51,8 +51,8 @@ pub struct TaskState {
 
 unsafe impl Sync for TaskState {}
 
-impl Init for TaskState {
-    const INIT: Self = Self {
+impl ConstDefault for TaskState {
+    const DEFAULT: Self = Self {
         sp: UnsafeCell::new(0),
     };
 }

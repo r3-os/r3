@@ -2,7 +2,7 @@
 //! logarithmic-time bit scan operations.
 use core::fmt;
 
-use super::{ctz::trailing_zeros, BinInteger, Init};
+use super::{ctz::trailing_zeros, BinInteger, ConstDefault};
 
 /// The maximum bit count supported by [`FixedPrioBitmap`].
 pub const FIXED_PRIO_BITMAP_MAX_LEN: usize = WORD_LEN * WORD_LEN * WORD_LEN;
@@ -56,7 +56,7 @@ pub type OneLevelPrioBitmap<const LEN: usize> = If! {
 /// Trait for [`FixedPrioBitmap`].
 ///
 /// All methods panic when the given bit position is out of range.
-pub trait PrioBitmap: Init + Send + Sync + Clone + Copy + fmt::Debug + 'static {
+pub trait PrioBitmap: ConstDefault + Send + Sync + Clone + Copy + fmt::Debug + 'static {
     /// Get the bit at the specified position.
     fn get(&self, i: usize) -> bool;
 
@@ -95,8 +95,8 @@ pub struct OneLevelPrioBitmapImpl<T, const LEN: usize> {
     bits: T,
 }
 
-impl<T: BinInteger, const LEN: usize> Init for OneLevelPrioBitmapImpl<T, LEN> {
-    const INIT: Self = Self { bits: T::INIT };
+impl<T: BinInteger, const LEN: usize> ConstDefault for OneLevelPrioBitmapImpl<T, LEN> {
+    const DEFAULT: Self = Self { bits: T::DEFAULT };
 }
 
 impl<T: BinInteger, const LEN: usize> fmt::Debug for OneLevelPrioBitmapImpl<T, LEN> {
@@ -155,9 +155,9 @@ pub struct TwoLevelPrioBitmapImpl<T, const LEN: usize> {
 type Word = usize;
 const WORD_LEN: usize = core::mem::size_of::<Word>() * 8;
 
-impl<T: PrioBitmap, const LEN: usize> Init for TwoLevelPrioBitmapImpl<T, LEN> {
-    const INIT: Self = Self {
-        first: T::INIT,
+impl<T: PrioBitmap, const LEN: usize> ConstDefault for TwoLevelPrioBitmapImpl<T, LEN> {
+    const DEFAULT: Self = Self {
+        first: T::DEFAULT,
         second: [0; LEN],
     };
 }
@@ -283,7 +283,7 @@ mod tests {
     }
 
     fn test_inner<T: PrioBitmap>(bytecode: Vec<u8>, size: usize) {
-        let mut subject = T::INIT;
+        let mut subject = T::DEFAULT;
         let mut reference = BTreePrioBitmap::new();
 
         log::info!("size = {}", size);

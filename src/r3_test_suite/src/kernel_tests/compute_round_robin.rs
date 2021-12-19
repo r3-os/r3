@@ -12,7 +12,7 @@ use r3::{
     hunk::Hunk,
     kernel::{prelude::*, traits, Cfg, StartupHook, StaticTask, StaticTimer},
     time::Duration,
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use super::Driver;
@@ -109,26 +109,26 @@ struct SchedState {
 
 unsafe impl Sync for State {}
 
-impl Init for State {
+impl ConstDefault for State {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        ref_output: Init::INIT,
-        task_state: Init::INIT,
-        run_count: Init::INIT,
-        stop: Init::INIT,
-        sched_state: Init::INIT,
+    const DEFAULT: Self = Self {
+        ref_output: ConstDefault::DEFAULT,
+        task_state: ConstDefault::DEFAULT,
+        run_count: ConstDefault::DEFAULT,
+        stop: ConstDefault::DEFAULT,
+        sched_state: ConstDefault::DEFAULT,
     };
 }
 
-impl Init for TaskState {
-    const INIT: Self = Self {
-        kernel_state: Init::INIT,
-        output: Init::INIT,
+impl ConstDefault for TaskState {
+    const DEFAULT: Self = Self {
+        kernel_state: ConstDefault::DEFAULT,
+        output: ConstDefault::DEFAULT,
     };
 }
 
-impl Init for SchedState {
-    const INIT: Self = Self {
+impl ConstDefault for SchedState {
+    const DEFAULT: Self = Self {
         cur_task: 0,
         time: 0,
     };
@@ -161,7 +161,7 @@ fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize
     while !state.stop.load(Ordering::Relaxed) {
         i += 1;
         log::trace!("[{}] Iteration {}: starting", worker_id, i);
-        task_state.output = Init::INIT;
+        task_state.output = ConstDefault::DEFAULT;
 
         // Run the computation
         task_state.kernel_state.run(&mut task_state.output);

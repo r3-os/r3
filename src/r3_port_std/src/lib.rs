@@ -109,9 +109,9 @@ pub struct TaskState {
     tsm: SpinMutex<Tsm>,
 }
 
-impl Init for TaskState {
+impl ConstDefault for TaskState {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self::new();
+    const DEFAULT: Self = Self::new();
 }
 
 /// Task state machine

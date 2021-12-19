@@ -35,7 +35,7 @@ macro_rules! build {
             TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
             arrayvec::ArrayVec,
             utils::{
-                AlignedStorage, FixedPrioBitmap, Init, RawCell, UIntegerWithBound,
+                AlignedStorage, FixedPrioBitmap, ConstDefault, RawCell, UIntegerWithBound,
             },
         };
 
@@ -150,11 +150,11 @@ macro_rules! build {
 
         // Instantiate hunks
         static HUNK_POOL: RawCell<AlignedStorage<{ CFG.hunk_pool_len }, { CFG.hunk_pool_align }>> =
-            Init::INIT;
+            ConstDefault::DEFAULT;
 
         // Instantiate the global state
         type KernelState = State<$Traits>;
-        static KERNEL_STATE: KernelState = State::INIT;
+        static KERNEL_STATE: KernelState = State::DEFAULT;
 
         // Construct a table of interrupt handlers
         const INTERRUPT_HANDLER_TABLE_LEN: usize =
@@ -191,7 +191,7 @@ macro_rules! build {
             };
 
             const INTERRUPT_ATTR: InterruptAttr<Self> = InterruptAttr {
-                _phantom: Init::INIT,
+                _phantom: ConstDefault::DEFAULT,
                 line_inits: &INTERRUPT_LINE_INITS,
             };
 

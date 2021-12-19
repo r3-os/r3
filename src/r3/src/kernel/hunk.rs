@@ -2,7 +2,7 @@
 use core::{fmt, marker::PhantomData};
 
 use super::{cfg, raw_cfg, Cfg};
-use crate::utils::Init;
+use crate::utils::ConstDefault;
 
 // ----------------------------------------------------------------------------
 
@@ -33,8 +33,8 @@ pub struct Hunk<System: cfg::KernelStatic> {
     _phantom: PhantomData<System>,
 }
 
-impl<System: cfg::KernelStatic> Init for Hunk<System> {
-    const INIT: Self = Self::from_offset(0);
+impl<System: cfg::KernelStatic> ConstDefault for Hunk<System> {
+    const DEFAULT: Self = Self::from_offset(0);
 }
 
 impl<System: cfg::KernelStatic> fmt::Debug for Hunk<System> {

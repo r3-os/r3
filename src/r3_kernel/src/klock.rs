@@ -4,7 +4,7 @@ use tokenlock::UnsyncTokenLock;
 
 use crate::{
     error::BadContextError,
-    utils::{intrusive_list::CellLike, Init},
+    utils::{intrusive_list::CellLike, ConstDefault},
     PortThreading,
 };
 
@@ -24,7 +24,7 @@ pub(super) struct CpuLockCell<Traits, T: ?Sized>(UnsyncTokenLock<T, CpuLockKeyho
 impl<Traits, T> CpuLockCell<Traits, T> {
     #[allow(dead_code)]
     pub(super) const fn new(x: T) -> Self {
-        Self(UnsyncTokenLock::new(CpuLockKeyhole::INIT, x))
+        Self(UnsyncTokenLock::new(CpuLockKeyhole::DEFAULT, x))
     }
 }
 
@@ -115,8 +115,8 @@ impl<Traits: PortThreading, T: fmt::Debug> fmt::Debug for CpuLockCell<Traits, T>
     }
 }
 
-impl<Traits, T: Init> Init for CpuLockCell<Traits, T> {
-    const INIT: Self = Self(Init::INIT);
+impl<Traits, T: ConstDefault> ConstDefault for CpuLockCell<Traits, T> {
+    const DEFAULT: Self = Self(ConstDefault::DEFAULT);
 }
 
 impl<Traits, T> ops::Deref for CpuLockCell<Traits, T> {

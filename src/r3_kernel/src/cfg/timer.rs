@@ -1,7 +1,7 @@
 use core::{mem::ManuallyDrop, num::NonZeroUsize};
 use r3::{
     kernel::raw_cfg::{CfgTimer, TimerDescriptor},
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, timeout, timer, KernelTraits, Port};
@@ -108,7 +108,7 @@ impl CfgBuilderTimer {
             entry_point: self.start,
             entry_param: self.param,
             init_active: self.active,
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
         }
     }
 }

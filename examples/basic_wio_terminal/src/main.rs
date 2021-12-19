@@ -650,7 +650,7 @@ mod queue {
         kernel::{traits, Cfg, Kernel, LocalTask},
         prelude::*,
         sync::mutex::StaticMutex,
-        utils::Init,
+        utils::ConstDefault,
     };
 
     pub trait SupportedSystem: traits::KernelMutex + traits::KernelStatic {}
@@ -672,9 +672,9 @@ mod queue {
         waiting_writer: Option<CryoRef<LocalTask<System>, AtomicLock>>,
     }
 
-    impl<System: SupportedSystem, T: Init> Init for QueueSt<System, T> {
-        const INIT: Self = Self {
-            buf: [T::INIT; CAP],
+    impl<System: SupportedSystem, T: ConstDefault> ConstDefault for QueueSt<System, T> {
+        const DEFAULT: Self = Self {
+            buf: [T::DEFAULT; CAP],
             read_i: 0,
             len: 0,
             waiting_reader: None,
@@ -682,7 +682,7 @@ mod queue {
         };
     }
 
-    impl<System: SupportedSystem, T: Init + Copy + 'static> Queue<System, T> {
+    impl<System: SupportedSystem, T: ConstDefault + Copy + 'static> Queue<System, T> {
         pub const fn new<C>(cfg: &mut Cfg<C>) -> Self
         where
             C: ~const traits::CfgBase<System = System> + ~const traits::CfgMutex,

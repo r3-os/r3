@@ -40,7 +40,7 @@ macro_rules! use_timer {
         const _: () = {
             use $crate::r3::{
                 kernel::{traits, Cfg},
-                utils::Init,
+                utils::ConstDefault,
             };
             use $crate::r3_kernel::{PortTimer, System, UTicks};
             use $crate::r3_portkit::tickless;
@@ -89,7 +89,7 @@ macro_rules! use_timer {
                     Err(e) => e.panic(),
                 };
 
-            static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
+            static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = ConstDefault::DEFAULT;
 
             // Safety: Only `use_timer!` is allowed to `impl` this
             unsafe impl timer::imp::TimerInstance for $Traits {

@@ -1,6 +1,6 @@
 use core::mem::MaybeUninit;
 
-use super::Init;
+use super::ConstDefault;
 
 /// Untyped storage of the specified size and alignment.
 /// This is analogous to C++'s [`std::aligned_storage_t`].
@@ -15,11 +15,11 @@ pub struct AlignedStorage<const LEN: usize, const ALIGN: usize>(
 where
     elain::Align<ALIGN>: elain::Alignment;
 
-impl<const LEN: usize, const ALIGN: usize> Init for AlignedStorage<LEN, ALIGN>
+impl<const LEN: usize, const ALIGN: usize> ConstDefault for AlignedStorage<LEN, ALIGN>
 where
     elain::Align<ALIGN>: elain::Alignment,
 {
-    const INIT: Self = Self(elain::Align::NEW, [MaybeUninit::uninit(); LEN]);
+    const DEFAULT: Self = Self(elain::Align::NEW, [MaybeUninit::uninit(); LEN]);
 }
 
 #[cfg(test)]

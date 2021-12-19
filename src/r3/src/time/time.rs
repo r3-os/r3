@@ -2,7 +2,7 @@ use core::{fmt, ops};
 
 use crate::{
     time::Duration,
-    utils::{Init, ZeroInit},
+    utils::{ConstDefault, ZeroInit},
 };
 
 /// Represents a timestamp used by the API surface of the R3 RTOS.
@@ -19,8 +19,8 @@ pub struct Time {
     micros: u64,
 }
 
-impl Init for Time {
-    const INIT: Self = Self::ZERO;
+impl ConstDefault for Time {
+    const DEFAULT: Self = Self::ZERO;
 }
 
 // Safety: `Time` is `repr(transparent)` and the only inner field is `u64`,
@@ -29,7 +29,7 @@ unsafe impl ZeroInit for Time {}
 
 impl Default for Time {
     fn default() -> Self {
-        Self::INIT
+        Self::DEFAULT
     }
 }
 

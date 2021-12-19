@@ -1,7 +1,7 @@
 //! Simulates a hardware scheduler.
 use r3::{
     kernel::interrupt::{InterruptHandlerFn, InterruptNum, InterruptPriority},
-    utils::Init,
+    utils::ConstDefault,
 };
 use r3_kernel::KernelTraits;
 use std::collections::{BTreeSet, HashMap};
@@ -34,8 +34,8 @@ pub struct IntLine {
     pub pended: bool,
 }
 
-impl Init for IntLine {
-    const INIT: Self = IntLine {
+impl ConstDefault for IntLine {
+    const DEFAULT: Self = IntLine {
         priority: 0,
         start: None,
         enable: false,
@@ -62,7 +62,7 @@ impl SchedState {
                     i as InterruptNum,
                     IntLine {
                         start: Some(handler),
-                        ..IntLine::INIT
+                        ..IntLine::DEFAULT
                     },
                 );
             }
@@ -79,7 +79,7 @@ impl SchedState {
         if i >= NUM_INTERRUPT_LINES {
             return Err(BadIntLineError);
         }
-        let line = self.int_lines.entry(i).or_insert_with(|| IntLine::INIT);
+        let line = self.int_lines.entry(i).or_insert_with(|| IntLine::DEFAULT);
         self.pended_lines.remove(&(line.priority, i));
         f(line);
         if line.enable && line.pended {

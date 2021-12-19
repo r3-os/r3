@@ -1,7 +1,7 @@
 use core::{cell::Cell, fmt, ops, ptr::NonNull};
 use r3::{
     kernel::{EventGroupBits, EventGroupWaitFlags, WaitError, WaitTimeoutError},
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{
@@ -175,10 +175,10 @@ pub(crate) struct WaitQueue<Traits: PortThreading> {
     order: QueueOrder,
 }
 
-impl<Traits: PortThreading> Init for WaitQueue<Traits> {
+impl<Traits: PortThreading> ConstDefault for WaitQueue<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        waits: Init::INIT,
+    const DEFAULT: Self = Self {
+        waits: ConstDefault::DEFAULT,
         order: QueueOrder::Fifo,
     };
 }
@@ -217,10 +217,10 @@ pub(crate) struct TaskWait<Traits: PortThreading> {
     wait_result: CpuLockCell<Traits, Result<(), WaitTimeoutError>>,
 }
 
-impl<Traits: PortThreading> Init for TaskWait<Traits> {
+impl<Traits: PortThreading> ConstDefault for TaskWait<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        current_wait: Init::INIT,
+    const DEFAULT: Self = Self {
+        current_wait: ConstDefault::DEFAULT,
         wait_result: CpuLockCell::new(Ok(())),
     };
 }
@@ -253,7 +253,7 @@ impl<Traits: PortThreading> WaitQueue<Traits> {
     /// Construct a `WaitQueue`.
     pub(super) const fn new(order: QueueOrder) -> Self {
         Self {
-            waits: Init::INIT,
+            waits: ConstDefault::DEFAULT,
             order,
         }
     }

@@ -3,7 +3,7 @@ use core::{fmt, marker::PhantomData, mem::ManuallyDrop};
 use r3::{
     kernel::{traits, SetTimerDelayError, SetTimerPeriodError, StartTimerError, StopTimerError},
     time::Duration,
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{
@@ -113,13 +113,13 @@ pub struct TimerCb<Traits: KernelCfg2> {
     pub(super) period: CpuLockCell<Traits, timeout::Time32>,
 }
 
-impl<Traits: KernelTraits> Init for TimerCb<Traits> {
+impl<Traits: KernelTraits> ConstDefault for TimerCb<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        attr: &Init::INIT,
-        timeout: Init::INIT,
-        active: Init::INIT,
-        period: Init::INIT,
+    const DEFAULT: Self = Self {
+        attr: &ConstDefault::DEFAULT,
+        timeout: ConstDefault::DEFAULT,
+        active: ConstDefault::DEFAULT,
+        period: ConstDefault::DEFAULT,
     };
 }
 
@@ -159,8 +159,8 @@ pub struct TimerAttr<Traits> {
     pub(super) _phantom: PhantomData<Traits>,
 }
 
-impl<Traits> Init for TimerAttr<Traits> {
-    const INIT: Self = Self {
+impl<Traits> ConstDefault for TimerAttr<Traits> {
+    const DEFAULT: Self = Self {
         entry_point: |_| {},
         entry_param: 0,
         init_active: false,

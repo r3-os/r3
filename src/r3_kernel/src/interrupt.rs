@@ -6,7 +6,7 @@ use r3::{
         InterruptNum, InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
         SetInterruptLinePriorityError,
     },
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{klock, KernelTraits, PortInterrupts, System};
@@ -81,10 +81,10 @@ pub struct InterruptLineInit {
     pub(super) flags: InterruptLineInitFlags,
 }
 
-impl Init for InterruptLineInit {
-    const INIT: Self = Self {
+impl ConstDefault for InterruptLineInit {
+    const DEFAULT: Self = Self {
         line: 0,
-        priority: Init::INIT,
+        priority: ConstDefault::DEFAULT,
         flags: InterruptLineInitFlags::empty(),
     };
 }

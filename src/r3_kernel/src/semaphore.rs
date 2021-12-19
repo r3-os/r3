@@ -6,7 +6,7 @@ use r3::{
         SignalSemaphoreError, WaitSemaphoreError, WaitSemaphoreTimeoutError,
     },
     time::Duration,
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{
@@ -110,12 +110,12 @@ pub struct SemaphoreCb<Traits: Port> {
     pub(super) wait_queue: WaitQueue<Traits>,
 }
 
-impl<Traits: Port> Init for SemaphoreCb<Traits> {
+impl<Traits: Port> ConstDefault for SemaphoreCb<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        value: Init::INIT,
-        max_value: Init::INIT,
-        wait_queue: Init::INIT,
+    const DEFAULT: Self = Self {
+        value: ConstDefault::DEFAULT,
+        max_value: ConstDefault::DEFAULT,
+        wait_queue: ConstDefault::DEFAULT,
     };
 }
 

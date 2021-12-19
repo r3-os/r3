@@ -4,7 +4,7 @@ use core::{cell::UnsafeCell, fmt};
 use r3::{
     hunk::Hunk,
     kernel::{raw_cfg, traits, Cfg, StaticTask},
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::utils::sort::insertion_sort;
@@ -72,9 +72,9 @@ struct IntervalRecord {
     samples: ArrayVec<u32, 45>,
 }
 
-impl Init for BencherState {
+impl ConstDefault for BencherState {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self(UnsafeCell::new(BencherStateInner {
+    const DEFAULT: Self = Self(UnsafeCell::new(BencherStateInner {
         mark: 0,
         intervals: ArrayVec::new_const(),
     }));

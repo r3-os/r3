@@ -3,7 +3,7 @@
 //! This is designed to be register-hungry to increase the likelihood of
 //! discovering a bug in context switching.
 use core::ops;
-use r3::utils::Init;
+use r3::utils::ConstDefault;
 
 use super::trig::sincos;
 
@@ -13,7 +13,7 @@ const CHANNELS: usize = 16;
 
 macro_rules! for_each_channel {
     ([|$i:ident| $x:expr]) => {{
-        let mut array = [Init::INIT; CHANNELS];
+        let mut array = [ConstDefault::DEFAULT; CHANNELS];
         for_each_channel!(|$i| {
             array[$i] = $x;
         });
@@ -63,16 +63,16 @@ pub struct KernelOutput {
     samples: [[f32; CHANNELS]; LEN],
 }
 
-impl Init for KernelState {
-    const INIT: Self = Self {
-        filter_states1: Init::INIT,
-        filter_states2: Init::INIT,
+impl ConstDefault for KernelState {
+    const DEFAULT: Self = Self {
+        filter_states1: ConstDefault::DEFAULT,
+        filter_states2: ConstDefault::DEFAULT,
     };
 }
 
-impl Init for KernelOutput {
-    const INIT: Self = Self {
-        samples: Init::INIT,
+impl ConstDefault for KernelOutput {
+    const DEFAULT: Self = Self {
+        samples: ConstDefault::DEFAULT,
     };
 }
 
@@ -85,8 +85,8 @@ impl KernelState {
         let filter_states2 = &mut self.filter_states2;
 
         // Reset the filter state
-        *filter_states1 = Init::INIT;
-        *filter_states2 = Init::INIT;
+        *filter_states1 = ConstDefault::DEFAULT;
+        *filter_states2 = ConstDefault::DEFAULT;
 
         // The input signal
         const PRIMES: [u32; CHANNELS] =
@@ -197,13 +197,13 @@ struct BiquadCoefs<T> {
     a2: T,
 }
 
-impl<T: Init> Init for BiquadCoefs<T> {
-    const INIT: Self = Self {
-        b0: T::INIT,
-        b1: T::INIT,
-        b2: T::INIT,
-        a1: T::INIT,
-        a2: T::INIT,
+impl<T: ConstDefault> ConstDefault for BiquadCoefs<T> {
+    const DEFAULT: Self = Self {
+        b0: T::DEFAULT,
+        b1: T::DEFAULT,
+        b2: T::DEFAULT,
+        a1: T::DEFAULT,
+        a2: T::DEFAULT,
     };
 }
 
@@ -265,8 +265,8 @@ const fn low_pass_filter(f0: f64, q: f64) -> BiquadCoefs<f64> {
 #[derive(Clone, Copy, Default)]
 struct BiquadKernelState<T>(T, T);
 
-impl<T: Init> Init for BiquadKernelState<T> {
-    const INIT: Self = Self(T::INIT, T::INIT);
+impl<T: ConstDefault> ConstDefault for BiquadKernelState<T> {
+    const DEFAULT: Self = Self(T::DEFAULT, T::DEFAULT);
 }
 
 impl<T> BiquadKernelState<T>
@@ -292,8 +292,8 @@ mod tests {
     fn sanity() {
         let _ = env_logger::builder().is_test(true).try_init();
 
-        let mut out = KernelOutput::INIT;
-        let mut state = KernelState::INIT;
+        let mut out = KernelOutput::DEFAULT;
+        let mut state = KernelState::DEFAULT;
         state.run(&mut out);
 
         log::trace!("out = {:#?}", out);

@@ -6,7 +6,7 @@ use crate::{
         mutex, prelude::*, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
         TryLockMutexError,
     },
-    utils::Init,
+    utils::ConstDefault,
 };
 
 /// The definer (static builder) for [`StaticRecursiveMutex`][].
@@ -73,10 +73,10 @@ pub struct MutexInner<T> {
     data: T,
 }
 
-impl<T: Init> Init for MutexInner<T> {
-    const INIT: Self = Self {
+impl<T: ConstDefault> ConstDefault for MutexInner<T> {
+    const DEFAULT: Self = Self {
         level: Cell::new(0),
-        data: Init::INIT,
+        data: ConstDefault::DEFAULT,
     };
 }
 

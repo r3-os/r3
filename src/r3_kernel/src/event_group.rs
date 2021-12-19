@@ -6,7 +6,7 @@ use r3::{
         UpdateEventGroupError, WaitEventGroupError, WaitEventGroupTimeoutError,
     },
     time::Duration,
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{
@@ -122,10 +122,12 @@ pub struct EventGroupCb<Traits: Port, EventGroupBits: 'static = self::EventGroup
     pub(super) wait_queue: WaitQueue<Traits>,
 }
 
-impl<Traits: Port, EventGroupBits: Init + 'static> Init for EventGroupCb<Traits, EventGroupBits> {
-    const INIT: Self = Self {
-        bits: Init::INIT,
-        wait_queue: Init::INIT,
+impl<Traits: Port, EventGroupBits: ConstDefault + 'static> ConstDefault
+    for EventGroupCb<Traits, EventGroupBits>
+{
+    const DEFAULT: Self = Self {
+        bits: ConstDefault::DEFAULT,
+        wait_queue: ConstDefault::DEFAULT,
     };
 }
 
@@ -170,7 +172,7 @@ fn wait<Traits: KernelTraits>(
             WaitPayload::EventGroupBits {
                 bits,
                 flags,
-                orig_bits: Init::INIT,
+                orig_bits: ConstDefault::DEFAULT,
             },
         )?;
 
@@ -200,7 +202,7 @@ fn wait_timeout<Traits: KernelTraits>(
             WaitPayload::EventGroupBits {
                 bits,
                 flags,
-                orig_bits: Init::INIT,
+                orig_bits: ConstDefault::DEFAULT,
             },
             time32,
         )?;

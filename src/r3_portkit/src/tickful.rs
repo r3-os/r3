@@ -7,7 +7,7 @@ use crate::{
         ceil_ratio128, floor_ratio128, reduce_ratio128,
         wrapping::{Wrapping, WrappingTrait},
     },
-    utils::Init,
+    utils::ConstDefault,
 };
 
 /// The parameters of the tickful timing algorithm.
@@ -183,7 +183,7 @@ pub struct TickfulStateCore<Submicros> {
 }
 
 /// Operations implemented by all valid instantiations of [`TickfulState`].
-pub trait TickfulStateTrait: Init {
+pub trait TickfulStateTrait: ConstDefault {
     /// Advance the time by one tick period ([`TickfulOptions::hw_tick_period`]).
     ///
     /// `cfg` must be the instance of [`TickfulCfg`] that was passed to
@@ -194,10 +194,10 @@ pub trait TickfulStateTrait: Init {
     fn tick_count(&self) -> u32;
 }
 
-impl<Submicros: Init> Init for TickfulStateCore<Submicros> {
-    const INIT: Self = Self {
-        tick_count_micros: Init::INIT,
-        tick_count_submicros: Init::INIT,
+impl<Submicros: ConstDefault> ConstDefault for TickfulStateCore<Submicros> {
+    const DEFAULT: Self = Self {
+        tick_count_micros: ConstDefault::DEFAULT,
+        tick_count_submicros: ConstDefault::DEFAULT,
     };
 }
 
@@ -391,7 +391,7 @@ mod tests {
             let mut time = Ratio::new_raw(0, 1u128);
 
             // The port
-            let mut state: TickfulState<CFG> = Init::INIT;
+            let mut state: TickfulState<CFG> = ConstDefault::DEFAULT;
 
             // Kernel state
             let mut kernel_time = 0;

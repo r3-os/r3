@@ -96,7 +96,7 @@ use r3::{
     hunk::Hunk,
     kernel::{prelude::*, traits, Cfg, StaticTask, StaticTimer},
     time::Duration,
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use super::Driver;
@@ -187,18 +187,18 @@ struct SchedState {
 
 unsafe impl Sync for State {}
 
-impl Init for State {
+impl ConstDefault for State {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        counter: Init::INIT,
-        local_counters: Init::INIT,
-        stop: Init::INIT,
-        sched_state: Init::INIT,
+    const DEFAULT: Self = Self {
+        counter: ConstDefault::DEFAULT,
+        local_counters: ConstDefault::DEFAULT,
+        stop: ConstDefault::DEFAULT,
+        sched_state: ConstDefault::DEFAULT,
     };
 }
 
-impl Init for SchedState {
-    const INIT: Self = Self {
+impl ConstDefault for SchedState {
+    const DEFAULT: Self = Self {
         cur_task: 0,
         time: 0,
     };

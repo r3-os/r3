@@ -9,7 +9,7 @@ use core::{
 
 use crate::{
     kernel::{self, cfg, hunk, raw, raw_cfg, Cfg, StartupHook},
-    utils::{Init, ZeroInit},
+    utils::{ConstDefault, ZeroInit},
 };
 
 /// The priority of the [startup hooks] used to initialize [typed hunks]. It has
@@ -56,9 +56,9 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
 }
 
 /// As a generic parameter of [`HunkDefiner`], indicates that the [hunk]
-/// should be initialized with [`Init`].
+/// should be initialized with [`ConstDefault`].
 ///
-/// [`Init`]: crate::utils::Init
+/// [`ConstDefault`]: crate::utils::ConstDefault
 /// [hunk]: crate::kernel::Hunk
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct DefaultInitTag;
@@ -81,10 +81,10 @@ pub trait HunkIniter<T> {
     fn init(dest: &mut mem::MaybeUninit<T>);
 }
 
-impl<T: Init> HunkIniter<T> for DefaultInitTag {
+impl<T: ConstDefault> HunkIniter<T> for DefaultInitTag {
     const NEEDS_INIT: bool = true;
     fn init(dest: &mut mem::MaybeUninit<T>) {
-        *dest = mem::MaybeUninit::new(T::INIT);
+        *dest = mem::MaybeUninit::new(T::DEFAULT);
     }
 }
 
@@ -213,10 +213,10 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
     }
 }
 
-impl<System: raw::KernelBase + cfg::KernelStatic, T> Init for Hunk<System, [T]> {
+impl<System: raw::KernelBase + cfg::KernelStatic, T> ConstDefault for Hunk<System, [T]> {
     // Safety: This is safe because it points to nothing
     #[allow(clippy::invalid_null_ptr_usage)]
-    const INIT: Self = Self {
+    const DEFAULT: Self = Self {
         offset: slice_from_raw_parts_mut(core::ptr::null_mut(), 0),
         _phantom: PhantomData,
     };

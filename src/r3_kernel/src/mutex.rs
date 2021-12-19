@@ -6,7 +6,7 @@ use r3::{
         TryLockMutexError, UnlockMutexError,
     },
     time::Duration,
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{
@@ -125,14 +125,14 @@ pub struct MutexCb<
     pub(super) owning_task: klock::CpuLockCell<Traits, Option<&'static task::TaskCb<Traits>>>,
 }
 
-impl<Traits: PortThreading> Init for MutexCb<Traits> {
+impl<Traits: PortThreading> ConstDefault for MutexCb<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        ceiling: Init::INIT,
-        inconsistent: Init::INIT,
-        wait_queue: Init::INIT,
-        prev_mutex_held: Init::INIT,
-        owning_task: Init::INIT,
+    const DEFAULT: Self = Self {
+        ceiling: ConstDefault::DEFAULT,
+        inconsistent: ConstDefault::DEFAULT,
+        wait_queue: ConstDefault::DEFAULT,
+        prev_mutex_held: ConstDefault::DEFAULT,
+        owning_task: ConstDefault::DEFAULT,
     };
 }
 

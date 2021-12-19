@@ -6,7 +6,7 @@ use crate::{
     task::TaskCb,
     utils::{
         intrusive_list::{Ident, ListAccessorCell, Static, StaticLink, StaticListHead},
-        Init, PrioBitmap,
+        ConstDefault, PrioBitmap,
     },
     KernelCfg1, KernelTraits, PortThreading,
 };
@@ -17,8 +17,10 @@ use num_traits::ToPrimitive;
 /// effective priority order.
 ///
 /// This trait is not intended to be implemented on custom types.
-pub trait Queue<Traits>: Send + Sync + fmt::Debug + Init + 'static + private::Sealed {
-    type PerTaskData: Send + Sync + fmt::Debug + Init + 'static;
+pub trait Queue<Traits>:
+    Send + Sync + fmt::Debug + ConstDefault + 'static + private::Sealed
+{
+    type PerTaskData: Send + Sync + fmt::Debug + ConstDefault + 'static;
 
     /// Return a flag indicating whether there's a task in Ready state whose
     /// priority is in the specified range.
@@ -178,13 +180,13 @@ impl<
         Traits: PortThreading,
         PortTaskState: 'static,
         TaskPriority: 'static,
-        Bitmap: 'static + Init,
+        Bitmap: 'static + ConstDefault,
         const LEN: usize,
-    > Init for BitmapQueue<Traits, PortTaskState, TaskPriority, Bitmap, LEN>
+    > ConstDefault for BitmapQueue<Traits, PortTaskState, TaskPriority, Bitmap, LEN>
 {
-    const INIT: Self = Self {
-        queues: Init::INIT,
-        bitmap: Init::INIT,
+    const DEFAULT: Self = Self {
+        queues: ConstDefault::DEFAULT,
+        bitmap: ConstDefault::DEFAULT,
     };
 }
 
@@ -206,11 +208,13 @@ pub struct BitmapQueuePerTaskData<
     >,
 }
 
-impl<Traits: PortThreading, PortTaskState: 'static, TaskPriority: 'static> Init
+impl<Traits: PortThreading, PortTaskState: 'static, TaskPriority: 'static> ConstDefault
     for BitmapQueuePerTaskData<Traits, PortTaskState, TaskPriority>
 {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self { link: Init::INIT };
+    const DEFAULT: Self = Self {
+        link: ConstDefault::DEFAULT,
+    };
 }
 
 impl<Traits: KernelTraits, PortTaskState: 'static, TaskPriority: 'static> fmt::Debug

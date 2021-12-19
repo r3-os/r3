@@ -10,7 +10,7 @@ use r3::{
         SetTaskPriorityError, SleepError, UnparkExactError, WaitTimeoutError,
     },
     time::Duration,
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{
@@ -158,8 +158,8 @@ impl<Traits: KernelTraits> Clone for StackHunk<Traits> {
 impl<Traits: KernelTraits> Copy for StackHunk<Traits> {}
 
 // TODO: Should we allow zero-sized `StackHunk`?
-impl<Traits: KernelTraits> Init for StackHunk<Traits> {
-    const INIT: Self = Self {
+impl<Traits: KernelTraits> ConstDefault for StackHunk<Traits> {
+    const DEFAULT: Self = Self {
         _phantom: PhantomData,
         hunk_offset: 0,
         len: 0,
@@ -374,8 +374,8 @@ pub enum TaskSt {
     PendingActivation,
 }
 
-impl Init for TaskSt {
-    const INIT: Self = Self::Dormant;
+impl ConstDefault for TaskSt {
+    const DEFAULT: Self = Self::Dormant;
 }
 
 /// Implements `KernelBase::exit_task`.

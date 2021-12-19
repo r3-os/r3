@@ -7,7 +7,7 @@ use super::{
     cfg, raw, raw_cfg, ActivateTaskError, Cfg, GetCurrentTaskError, GetTaskPriorityError,
     InterruptTaskError, SetTaskPriorityError, UnparkError, UnparkExactError,
 };
-use crate::utils::{Init, PhantomInvariant};
+use crate::utils::{ConstDefault, PhantomInvariant};
 
 // ----------------------------------------------------------------------------
 
@@ -330,7 +330,7 @@ pub struct TaskDefiner<System> {
 impl<System: raw::KernelBase> TaskDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
             start: None,
             param: 0,
             stack_size: None,
@@ -393,7 +393,7 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
     ) -> StaticTask<System> {
         let id = cfg.raw().task_define(
             raw_cfg::TaskDescriptor {
-                phantom: Init::INIT,
+                phantom: ConstDefault::DEFAULT,
                 start: self
                     .start
                     .expect("`start` (task entry point) is not specified"),

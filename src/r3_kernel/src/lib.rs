@@ -72,7 +72,7 @@ use r3::{
         raw,
     },
     time::{Duration, Time},
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::utils::{binary_heap::VecLike, BinUInteger};
@@ -387,7 +387,7 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
 #[doc = include_str!("./common.md")]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe trait PortThreading: KernelCfg1 + KernelStatic<System<Self>> {
-    type PortTaskState: Send + Sync + Init + fmt::Debug + 'static;
+    type PortTaskState: Send + Sync + ConstDefault + fmt::Debug + 'static;
 
     /// The initial value of [`TaskCb::port_task_state`] for all tasks.
     #[allow(clippy::declare_interior_mutable_const)] // it's intentional
@@ -768,7 +768,10 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
     // kernel. The rest is not hidden because it's meant to be accessed by port
     // code.
     #[doc(hidden)]
-    type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>> + Init + fmt::Debug + 'static;
+    type TimeoutHeap: VecLike<Element = timeout::TimeoutRef<Self>>
+        + ConstDefault
+        + fmt::Debug
+        + 'static;
 
     /// The table of combined second-level interrupt handlers.
     ///
@@ -878,17 +881,17 @@ pub struct State<
 impl<
         Traits: KernelCfg2,
         PortTaskState: 'static,
-        TaskReadyQueue: 'static + Init,
+        TaskReadyQueue: 'static + ConstDefault,
         TaskPriority: 'static,
-        TimeoutHeap: 'static + Init,
-    > Init for State<Traits, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
+        TimeoutHeap: 'static + ConstDefault,
+    > ConstDefault for State<Traits, PortTaskState, TaskReadyQueue, TaskPriority, TimeoutHeap>
 {
-    const INIT: Self = Self {
+    const DEFAULT: Self = Self {
         running_task: klock::CpuLockCell::new(None),
-        task_ready_queue: Init::INIT,
+        task_ready_queue: ConstDefault::DEFAULT,
         #[cfg(feature = "priority_boost")]
         priority_boost: AtomicBool::new(false),
-        timeout: Init::INIT,
+        timeout: ConstDefault::DEFAULT,
     };
 }
 

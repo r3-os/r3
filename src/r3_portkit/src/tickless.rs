@@ -7,7 +7,7 @@ use crate::{
         ceil_div128, floor_ratio128, gcd128, min128, reduce_ratio128,
         wrapping::{Wrapping, WrappingTrait},
     },
-    utils::Init,
+    utils::ConstDefault,
 };
 
 /// The parameters of the tickless timing algorithm.
@@ -405,14 +405,14 @@ pub struct TicklessStateCore<Subticks> {
 
 /// Operations implemented by all valid instantiations of [`TicklessState`].
 #[doc = include_str!("./common.md")]
-pub trait TicklessStateTrait: Init + Copy + core::fmt::Debug {
+pub trait TicklessStateTrait: ConstDefault + Copy + core::fmt::Debug {
     /// Mark the given hardware tick count as the origin (where
     /// OS tick count is exactly zero).
     ///
     /// To use this method, [`TicklessOptions::resettable`] must be set to
     /// `true` when constructing [`TicklessCfg`].
     ///
-    /// `self` must be in the initial state (`Init::INIT`) when this method is
+    /// `self` must be in the initial state (`ConstDefault::DEFAULT`) when this method is
     /// called.
     fn reset(&mut self, cfg: &TicklessCfg, hw_tick_count: u32);
 
@@ -617,15 +617,15 @@ pub struct Measurement {
     pub hw_ticks: u32,
 }
 
-impl Init for TicklessStatelessCore {
-    const INIT: Self = Self;
+impl ConstDefault for TicklessStatelessCore {
+    const DEFAULT: Self = Self;
 }
 
-impl<Subticks: Init> Init for TicklessStateCore<Subticks> {
-    const INIT: Self = Self {
-        ref_tick_count: Init::INIT,
-        ref_hw_tick_count: Init::INIT,
-        ref_hw_subtick_count: Init::INIT,
+impl<Subticks: ConstDefault> ConstDefault for TicklessStateCore<Subticks> {
+    const DEFAULT: Self = Self {
+        ref_tick_count: ConstDefault::DEFAULT,
+        ref_hw_tick_count: ConstDefault::DEFAULT,
+        ref_hw_subtick_count: ConstDefault::DEFAULT,
     };
 }
 
@@ -961,7 +961,7 @@ mod tests {
             type TheTicklessState = TicklessState<CFG>;
 
             fn do_test(ops: impl IntoIterator<Item = Op>) {
-                let mut state: TheTicklessState = Init::INIT;
+                let mut state: TheTicklessState = ConstDefault::DEFAULT;
                 let mut hw_tick_count: u32 = 0;
 
                 let _ = env_logger::builder().is_test(true).try_init();

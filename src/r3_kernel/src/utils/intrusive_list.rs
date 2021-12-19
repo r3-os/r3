@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 use core::{fmt, ops};
 
-use super::Init;
+use super::ConstDefault;
 
 /// Circualr linked list header.
 #[derive(Copy, Clone)]
@@ -13,7 +13,7 @@ pub struct ListHead<Index> {
 
 impl<Index> Default for ListHead<Index> {
     fn default() -> Self {
-        Self::INIT
+        Self::DEFAULT
     }
 }
 
@@ -23,8 +23,8 @@ impl<Index: fmt::Debug> fmt::Debug for ListHead<Index> {
     }
 }
 
-impl<Index> Init for ListHead<Index> {
-    const INIT: Self = Self { first: None };
+impl<Index> ConstDefault for ListHead<Index> {
+    const DEFAULT: Self = Self { first: None };
 }
 
 /// Links to neighbor items.
@@ -34,16 +34,16 @@ pub struct Link<Index> {
     pub next: Index,
 }
 
-impl<Index: Init> Init for Link<Index> {
-    const INIT: Self = Self {
-        prev: Index::INIT,
-        next: Index::INIT,
+impl<Index: ConstDefault> ConstDefault for Link<Index> {
+    const DEFAULT: Self = Self {
+        prev: Index::DEFAULT,
+        next: Index::DEFAULT,
     };
 }
 
 impl<Index> ListHead<Index> {
     pub const fn new() -> Self {
-        Self::INIT
+        Self::DEFAULT
     }
 
     pub fn is_empty(&self) -> bool {

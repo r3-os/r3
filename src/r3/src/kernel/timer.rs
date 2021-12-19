@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     time::Duration,
-    utils::{Init, PhantomInvariant},
+    utils::{ConstDefault, PhantomInvariant},
 };
 
 // ----------------------------------------------------------------------------
@@ -446,7 +446,7 @@ pub struct TimerDefiner<System> {
 impl<System: raw::KernelTimer> TimerDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
             start: None,
             param: 0,
             delay: None,
@@ -506,7 +506,7 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
     ) -> StaticTimer<System> {
         let id = c.raw().timer_define(
             raw_cfg::TimerDescriptor {
-                phantom: Init::INIT,
+                phantom: ConstDefault::DEFAULT,
                 start: self
                     .start
                     .expect("`start` (timer callback function) is not specified"),

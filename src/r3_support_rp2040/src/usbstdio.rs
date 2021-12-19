@@ -229,11 +229,11 @@ struct Deque<T, const LEN: usize> {
     len: usize,
 }
 
-impl<T: r3::utils::Init + Copy, const LEN: usize> Deque<T, LEN> {
+impl<T: r3::utils::ConstDefault + Copy, const LEN: usize> Deque<T, LEN> {
     #[inline]
     const fn new() -> Self {
         Self {
-            buf: [T::INIT; LEN],
+            buf: [T::DEFAULT; LEN],
             start: 0,
             len: 0,
         }

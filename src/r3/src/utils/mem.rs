@@ -1,7 +1,5 @@
 use core::mem::{ManuallyDrop, MaybeUninit};
 
-use super::Init;
-
 union Xmute<T, U> {
     t: ManuallyDrop<T>,
     u: ManuallyDrop<U>,
@@ -33,7 +31,15 @@ pub const unsafe fn transmute<T, U>(x: T) -> U {
 ///
 /// [unstable]: https://github.com/rust-lang/rust/pull/65580
 pub const fn uninit_array<T, const LEN: usize>() -> [MaybeUninit<T>; LEN] {
-    [MaybeUninit::<T>::INIT; LEN]
+    trait Uninit: Sized {
+        const UNINIT: MaybeUninit<Self>;
+    }
+
+    impl<T> Uninit for T {
+        const UNINIT: MaybeUninit<Self> = MaybeUninit::uninit();
+    }
+
+    [T::UNINIT; LEN]
 }
 
 #[cfg(test)]

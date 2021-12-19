@@ -70,12 +70,12 @@ macro_rules! use_systick_tickful {
         const _: () = {
             use $crate::r3::{
                 kernel::{traits, Cfg},
-                utils::Init,
+                utils::ConstDefault,
             };
             use $crate::r3_kernel::{PortTimer, System, UTicks};
             use $crate::systick_tickful::imp;
 
-            static TIMER_STATE: imp::State<$Traits> = Init::INIT;
+            static TIMER_STATE: imp::State<$Traits> = ConstDefault::DEFAULT;
 
             impl PortTimer for $Traits {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;

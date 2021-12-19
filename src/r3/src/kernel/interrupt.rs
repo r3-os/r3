@@ -5,7 +5,9 @@ use super::{
     raw, raw_cfg, Cfg, ClearInterruptLineError, EnableInterruptLineError, PendInterruptLineError,
     QueryInterruptLineError, SetInterruptLinePriorityError,
 };
-use crate::utils::{for_times::Nat, slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant};
+use crate::utils::{
+    for_times::Nat, slice_sort_unstable_by, ComptimeVec, ConstDefault, PhantomInvariant,
+};
 
 pub use raw::{InterruptNum, InterruptPriority};
 
@@ -52,7 +54,7 @@ impl<System: raw::KernelInterruptLine> InterruptLine<System> {
     /// Construct a `InterruptLine` from `InterruptNum`.
     #[inline]
     pub const fn from_num(num: InterruptNum) -> Self {
-        Self(num, Init::INIT)
+        Self(num, ConstDefault::DEFAULT)
     }
 
     /// Get the raw `InterruptNum` value representing this interrupt line.
@@ -214,7 +216,7 @@ pub struct InterruptLineDefiner<System: raw::KernelInterruptLine> {
 impl<System: raw::KernelInterruptLine> InterruptLineDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
             line: None,
             priority: None,
             enabled: false,
@@ -300,7 +302,7 @@ pub struct InterruptHandlerDefiner<System: raw::KernelInterruptLine> {
 impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
             line: None,
             start: None,
             param: 0,

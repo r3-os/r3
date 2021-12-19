@@ -131,7 +131,7 @@ use core::{fmt, marker::PhantomPinned, pin::Pin, ptr::NonNull};
 use r3::{
     kernel::{AdjustTimeError, TimeError},
     time::{Duration, Time},
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{
@@ -210,15 +210,17 @@ struct TimeoutHeapAndPropToken<TimeoutHeap: 'static> {
     prop_token: TimeoutPropToken,
 }
 
-impl<Traits, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<Traits, TimeoutHeap> {
-    const INIT: Self = Self {
-        last_tick_count: Init::INIT,
-        last_tick_time: Init::INIT,
+impl<Traits, TimeoutHeap: ConstDefault + 'static> ConstDefault
+    for TimeoutGlobals<Traits, TimeoutHeap>
+{
+    const DEFAULT: Self = Self {
+        last_tick_count: ConstDefault::DEFAULT,
+        last_tick_time: ConstDefault::DEFAULT,
         #[cfg(feature = "system_time")]
-        last_tick_sys_time: Init::INIT,
-        frontier_gap: Init::INIT,
+        last_tick_sys_time: ConstDefault::DEFAULT,
+        frontier_gap: ConstDefault::DEFAULT,
         heap_and_prop_token: CpuLockCell::new(TimeoutHeapAndPropToken {
-            heap: Init::INIT,
+            heap: ConstDefault::DEFAULT,
             // Safety: In each particular `Traits`, this is the only instance of
             //         `TimeoutPropToken`. If there are more than one `Traits` in a
             //         program, the singleton property of `UnsyncSingletonToken`
@@ -227,7 +229,7 @@ impl<Traits, TimeoutHeap: Init + 'static> Init for TimeoutGlobals<Traits, Timeou
             //         one `Traits` to unlock another `Traits`'s data structures.
             prop_token: unsafe { TimeoutPropToken::new_unchecked() },
         }),
-        handle_tick_in_progress: Init::INIT,
+        handle_tick_in_progress: ConstDefault::DEFAULT,
     };
 }
 
@@ -419,13 +421,13 @@ pub(super) type TimeoutFn<Traits> = fn(usize, CpuLockGuard<Traits>) -> CpuLockGu
 /// heap.
 const HEAP_POS_NONE: usize = usize::MAX;
 
-impl<Traits: KernelTraits> Init for Timeout<Traits> {
+impl<Traits: KernelTraits> ConstDefault for Timeout<Traits> {
     #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self {
-        at: Init::INIT,
-        heap_pos: Init::INIT,
+    const DEFAULT: Self = Self {
+        at: ConstDefault::DEFAULT,
+        heap_pos: ConstDefault::DEFAULT,
         callback: |_, x| x,
-        callback_param: Init::INIT,
+        callback_param: ConstDefault::DEFAULT,
         _pin: PhantomPinned,
         _phantom: core::marker::PhantomData,
     };
@@ -471,8 +473,8 @@ impl<Traits: KernelTraits> Timeout<Traits> {
     /// unspecified time point otherwise).
     pub(super) const fn new(callback: TimeoutFn<Traits>, callback_param: usize) -> Self {
         Self {
-            at: TimeoutPropCell::new(Init::INIT, 0),
-            heap_pos: TimeoutPropCell::new(Init::INIT, HEAP_POS_NONE),
+            at: TimeoutPropCell::new(ConstDefault::DEFAULT, 0),
+            heap_pos: TimeoutPropCell::new(ConstDefault::DEFAULT, HEAP_POS_NONE),
             callback,
             callback_param,
             _pin: PhantomPinned,
@@ -570,7 +572,7 @@ impl<Traits: KernelTraits> Timeout<Traits> {
     ///
     /// This might be useful for storing arbitrary data in an unlinked `Timeout`.
     pub(super) const fn with_at_raw(mut self, at: Time32) -> Self {
-        self.at = TimeoutPropCell::new(Init::INIT, at);
+        self.at = TimeoutPropCell::new(ConstDefault::DEFAULT, at);
         self
     }
 

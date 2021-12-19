@@ -1,7 +1,7 @@
 //! Wrapping counter types
 use core::ops;
 
-use crate::utils::Init;
+use crate::utils::ConstDefault;
 
 /// Get a type implementing [`WrappingTrait`] that wraps around when incremented
 /// past `MAX`.
@@ -32,7 +32,7 @@ pub type Wrapping<const MAX: u64> = If! {
 
 /// Represents a counter type that wraps around when incremented past a
 /// predetermined upper bound `MAX` (this bound is not exposed).
-pub trait WrappingTrait: Init + Copy + core::fmt::Debug {
+pub trait WrappingTrait: ConstDefault + Copy + core::fmt::Debug {
     /// Add a value to `self`. Returns `true` iff wrap-around has occurred.
     ///
     /// `rhs` must be less than or equal to `MAX`.
@@ -162,8 +162,10 @@ pub struct FractionalWrapping<T, const MAX: u64> {
     inner: T,
 }
 
-impl<T: Init, const MAX: u64> Init for FractionalWrapping<T, MAX> {
-    const INIT: Self = Self { inner: Init::INIT };
+impl<T: ConstDefault, const MAX: u64> ConstDefault for FractionalWrapping<T, MAX> {
+    const DEFAULT: Self = Self {
+        inner: ConstDefault::DEFAULT,
+    };
 }
 
 impl<T, const MAX: u64> WrappingTrait for FractionalWrapping<T, MAX>
@@ -177,7 +179,7 @@ where
         + ops::Rem<Output = T>
         + PartialOrd
         + Copy
-        + Init
+        + ConstDefault
         + core::fmt::Debug,
 {
     #[inline]
@@ -241,8 +243,8 @@ mod tests {
         inner: u128,
     }
 
-    impl<const MAX: u64> Init for NaiveWrapping<MAX> {
-        const INIT: Self = Self { inner: 0 };
+    impl<const MAX: u64> ConstDefault for NaiveWrapping<MAX> {
+        const DEFAULT: Self = Self { inner: 0 };
     }
 
     impl<const MAX: u64> WrappingTrait for NaiveWrapping<MAX> {
@@ -273,8 +275,8 @@ mod tests {
                 const MAX: u128 = $max;
 
                 fn do_test_add_assign64(values: impl IntoIterator<Item = u64>) {
-                    let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
-                    let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
+                    let mut counter_got: Wrapping<{MAX as u64}> = ConstDefault::DEFAULT;
+                    let mut counter_expected: NaiveWrapping<{MAX as u64}> = ConstDefault::DEFAULT;
                     log::trace!("do_test_add_assign64 (MAX = {})", MAX);
                     for value in values {
                         log::trace!(
@@ -326,8 +328,8 @@ mod tests {
                 }
 
                 fn do_test_add_assign128_multi32(values: impl IntoIterator<Item = u128>) {
-                    let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
-                    let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
+                    let mut counter_got: Wrapping<{MAX as u64}> = ConstDefault::DEFAULT;
+                    let mut counter_expected: NaiveWrapping<{MAX as u64}> = ConstDefault::DEFAULT;
                     log::trace!("do_test_add_assign128_multi32 (MAX = {})", MAX);
                     for value in values {
                         log::trace!(

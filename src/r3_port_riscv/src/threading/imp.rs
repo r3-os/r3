@@ -5,7 +5,7 @@ use r3::{
         traits, ClearInterruptLineError, EnableInterruptLineError, InterruptPriority,
         PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
     },
-    utils::Init,
+    utils::ConstDefault,
 };
 use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
 use r3_portkit::pptext::pp_asm;
@@ -308,8 +308,8 @@ impl State {
     }
 }
 
-impl Init for TaskState {
-    const INIT: Self = Self {
+impl ConstDefault for TaskState {
+    const DEFAULT: Self = Self {
         sp: UnsafeCell::new(0),
     };
 }

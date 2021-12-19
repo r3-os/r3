@@ -4,7 +4,7 @@ use r3::{
         raw_cfg::{CfgTask, TaskDescriptor},
         task::StackHunk,
     },
-    utils::Init,
+    utils::ConstDefault,
 };
 
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, task, KernelTraits};
@@ -93,8 +93,8 @@ impl<Traits: KernelTraits> CfgBuilderTask<Traits> {
             } else {
                 task::TaskSt::Dormant
             }),
-            ready_queue_data: Init::INIT,
-            wait: Init::INIT,
+            ready_queue_data: ConstDefault::DEFAULT,
+            wait: ConstDefault::DEFAULT,
             park_token: CpuLockCell::new(false),
             last_mutex_held: CpuLockCell::new(None),
         }

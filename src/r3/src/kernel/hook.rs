@@ -1,6 +1,6 @@
 //! Hooks
 use super::{raw, raw_cfg, Cfg};
-use crate::utils::{slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant};
+use crate::utils::{slice_sort_unstable_by, ComptimeVec, ConstDefault, PhantomInvariant};
 
 // TODO: Other types of hooks
 
@@ -30,7 +30,7 @@ impl<System: raw::KernelBase> StartupHook<System> {
     }
 
     const fn new() -> Self {
-        Self(Init::INIT)
+        Self(ConstDefault::DEFAULT)
     }
 }
 
@@ -47,7 +47,7 @@ pub struct StartupHookDefiner<System> {
 impl<System: raw::KernelBase> StartupHookDefiner<System> {
     const fn new() -> Self {
         Self {
-            _phantom: Init::INIT,
+            _phantom: ConstDefault::DEFAULT,
             start: None,
             param: 0,
             priority: 0,
@@ -154,8 +154,8 @@ pub struct StartupHookAttr {
     pub(super) param: usize,
 }
 
-impl Init for StartupHookAttr {
-    const INIT: Self = Self {
+impl ConstDefault for StartupHookAttr {
+    const DEFAULT: Self = Self {
         start: |_| {},
         param: 0,
     };

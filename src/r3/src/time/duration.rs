@@ -1,6 +1,6 @@
 use core::{fmt, ops};
 
-use crate::utils::{Init, ZeroInit};
+use crate::utils::{ConstDefault, ZeroInit};
 
 /// Represents a signed time span used by the API surface of the R3 RTOS.
 ///
@@ -12,8 +12,8 @@ pub struct Duration {
     micros: i32,
 }
 
-impl Init for Duration {
-    const INIT: Self = Self::ZERO;
+impl ConstDefault for Duration {
+    const DEFAULT: Self = Self::ZERO;
 }
 
 // Safety: `Duration` is `repr(transparent)` and the only inner field is `i32`,
@@ -22,7 +22,7 @@ unsafe impl ZeroInit for Duration {}
 
 impl Default for Duration {
     fn default() -> Self {
-        Self::INIT
+        Self::DEFAULT
     }
 }
 

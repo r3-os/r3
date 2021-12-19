@@ -2,7 +2,7 @@
 use core::cell::UnsafeCell;
 use r3::{
     kernel::{raw, traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler},
-    utils::Init,
+    utils::ConstDefault,
 };
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickful::{TickfulCfg, TickfulOptions, TickfulState, TickfulStateTrait};
@@ -85,8 +85,10 @@ pub struct StateCore<TickfulState> {
 // Safety: `inner` is protected from concurrent access by CPU Lock
 unsafe impl<TickfulState> Sync for StateCore<TickfulState> {}
 
-impl<TickfulState: Init> Init for StateCore<TickfulState> {
-    const INIT: Self = Self { inner: Init::INIT };
+impl<TickfulState: ConstDefault> ConstDefault for StateCore<TickfulState> {
+    const DEFAULT: Self = Self {
+        inner: ConstDefault::DEFAULT,
+    };
 }
 
 impl<TickfulState: TickfulStateTrait> StateCore<TickfulState> {
