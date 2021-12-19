@@ -5,7 +5,7 @@ macro_rules! sys_coproc_read_raw {
         fn get(&self) -> u32 {
             let reg;
             unsafe {
-                asm!(
+                core::arch::asm!(
                     concat!(
                         "mrc ", stringify!($cp), ", ", stringify!($opc1), ", {}, ",
                         stringify!($crn), ", ", stringify!($crm), ", ", stringify!($opc2)
@@ -23,7 +23,7 @@ macro_rules! sys_coproc_write_raw {
         #[inline]
         fn set(&self, value: u32) {
             unsafe {
-                asm!(
+                core::arch::asm!(
                     concat!(
                         "mcr ", stringify!($cp), ", ", stringify!($opc1), ", {}, ",
                         stringify!($crn), ", ", stringify!($crm), ", ", stringify!($opc2)

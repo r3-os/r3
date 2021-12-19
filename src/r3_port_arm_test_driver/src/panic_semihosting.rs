@@ -1,6 +1,6 @@
 use arm_semihosting::{debug, debug::EXIT_FAILURE, hio};
 use arrayvec::ArrayString;
-use core::{fmt::Write, panic::PanicInfo};
+use core::{arch::asm, fmt::Write, panic::PanicInfo};
 
 static mut BUFFER: ArrayString<512> = ArrayString::new_const();
 

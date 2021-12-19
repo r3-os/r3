@@ -32,7 +32,7 @@ macro_rules! use_rt {
                 // recognized the linker as a Thumb function, its address does not have its least
                 // significant bit set to mark a Thumb function. So we set the bit here.
                 unsafe {
-                    asm!(
+                    ::core::arch::asm!(
                         "
                             .global PendSV
                             PendSV = {} + 1

@@ -1,4 +1,4 @@
-use core::{fmt::Write, panic::PanicInfo};
+use core::{arch::asm, fmt::Write, panic::PanicInfo};
 use rtt_target::{ChannelMode, UpChannel};
 
 // Install a global panic handler that uses RTT

@@ -11,6 +11,6 @@ pub fn mp_hook() -> bool {
         _ => {}
     }
     loop {
-        unsafe { asm!("wfi") };
+        unsafe { core::arch::asm!("wfi") };
     }
 }

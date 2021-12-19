@@ -8,7 +8,6 @@
 #![feature(decl_macro)]
 #![feature(asm_const)]
 #![feature(asm_sym)]
-#![feature(asm)]
 #![feature(naked_functions)]
 #![feature(slice_ptr_len)]
 #![deny(unsafe_op_in_unsafe_fn)]

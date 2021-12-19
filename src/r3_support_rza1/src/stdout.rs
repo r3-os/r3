@@ -58,6 +58,8 @@ where
 #[inline]
 #[cfg(target_arch = "arm")]
 fn interrupt_free<T>(x: impl FnOnce() -> T) -> T {
+    use core::arch::asm;
+
     let cpsr: u32;
     unsafe { asm!("mrs {}, cpsr", out(reg)cpsr) };
     let unmask = (cpsr & (1 << 7)) == 0;

@@ -1,7 +1,6 @@
 #![feature(const_fn_trait_bound)]
 #![feature(thread_local)]
 #![feature(deadline_api)]
-#![feature(asm)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
