@@ -72,6 +72,26 @@ In addition, every public item gated by such features must have [`#[doc(cfg(feat
 pub fn time() -> Result<Time, TimeError>;
 ```
 
+### Assume a narrow width for East Asian Ambiguous characters (CC-DOC-EAA)
+
+ASCII diagrams must be formatted for a ̉monospace font that treats [East Asian Ambiguous][TR11] characters as having a narrow width.
+
+```text
+good:
+┌──┬────────┐
+│  │ text   │
+├──┼────────┤
+└──┴────────┘
+
+bad:
+┌─┬────┐
+│  │ text   │
+├─┼────┤
+└─┴────┘
+```
+
+[TR11]: https://www.unicode.org/reports/tr11/#Definitions
+
 ## Testing
 
 ### The CI configuration should cover a variety of combinations of optional features (CC-CI-OPT-FEATURES)
