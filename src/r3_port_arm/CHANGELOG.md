@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Fixed
+
+- The default stack alignment (`PortThreading::STACK_ALIGN`) now conforms to the architectural requirement (double-word alignment).
+
 ## [0.1.2] - 2021-10-29
 
 This release only includes changes to the documentation.

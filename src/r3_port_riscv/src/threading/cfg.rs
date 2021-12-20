@@ -78,6 +78,14 @@ macro_rules! use_port {
                 // formatting to be particularly memory-hungry.
                 const STACK_DEFAULT_SIZE: usize = 512 * $crate::core::mem::size_of::<usize>();
 
+                // RISC-V ELF psABI: "[...] the stack pointer shall be aligned
+                // to a 128-bit boundary upon procedure entry."
+                //
+                // FIXME: This can be relaxed for the ILP32E calling convention
+                // (applicable to RV32E), where `sp` is only required to be
+                // aligned to a word boundary.
+                const STACK_ALIGN: usize = 16;
+
                 unsafe fn dispatch_first_task() -> ! {
                     PORT_STATE.dispatch_first_task::<Self>()
                 }

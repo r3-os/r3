@@ -136,6 +136,15 @@ macro_rules! use_port {
                 // formatting to be particularly memory-hungry.
                 const STACK_DEFAULT_SIZE: usize = 2048;
 
+                // Armv8-M ARM: "R_LDGJ: On exception return the Armv8-M
+                // architecture only supports doubleword aligned stack
+                // pointers."
+                //
+                // AAPCS: "The stack must also conform to the following
+                // constraint at a public interface: SP mod 8 = 0. The stack
+                // must be double-word aligned."
+                const STACK_ALIGN: usize = 8;
+
                 unsafe fn dispatch_first_task() -> ! {
                     port_state().dispatch_first_task::<Self>()
                 }
