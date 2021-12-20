@@ -65,8 +65,7 @@ fn write_image(out: &mut impl Write, dir: &Path, name: &str, image: &RgbaImage) 
     std::fs::write(
         dir.join(&name565),
         pixels565
-            .map(|p| pixelcolor::raw::RawU16::from(p).into_inner().to_le_bytes())
-            .flatten()
+            .flat_map(|p| pixelcolor::raw::RawU16::from(p).into_inner().to_le_bytes())
             .collect::<Vec<u8>>(),
     )
     .unwrap();

@@ -165,17 +165,11 @@ impl<T: PrioBitmap, const LEN: usize> Init for TwoLevelPrioBitmapImpl<T, LEN> {
 impl<T: PrioBitmap, const LEN: usize> fmt::Debug for TwoLevelPrioBitmapImpl<T, LEN> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
-            .entries(
-                self.second
-                    .iter()
-                    .enumerate()
-                    .map(|(group_i, group)| {
-                        group
-                            .one_digits()
-                            .map(move |subgroup_i| subgroup_i as usize + group_i * WORD_LEN)
-                    })
-                    .flatten(),
-            )
+            .entries(self.second.iter().enumerate().flat_map(|(group_i, group)| {
+                group
+                    .one_digits()
+                    .map(move |subgroup_i| subgroup_i as usize + group_i * WORD_LEN)
+            }))
             .finish()
     }
 }
