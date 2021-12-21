@@ -44,7 +44,6 @@
 //!
 //! [pdf]: http://infocenter.arm.com/help/topic/com.arm.doc.dui0471e/DUI0471E_developing_for_arm_processors.pdf
 
-#![feature(asm)]
 #![deny(missing_docs)]
 #![deny(unsupported_naked_functions)]
 #![no_std]
@@ -75,6 +74,7 @@ pub unsafe fn syscall1(_nr: usize, _arg: usize) -> usize {
     match () {
         #[cfg(all(thumb, arm, not(feature = "no-semihosting")))]
         () => {
+            use core::arch::asm;
             let mut nr = _nr;
             asm!("svc 0xAB", inout("r0") nr, in("r1") _arg, out("lr") _);
             nr
@@ -85,6 +85,7 @@ pub unsafe fn syscall1(_nr: usize, _arg: usize) -> usize {
 
         #[cfg(all(not(thumb), arm, not(feature = "no-semihosting")))]
         () => {
+            use core::arch::asm;
             let mut nr = _nr;
             asm!("svc 0x123456", inout("r0") nr, in("r1") _arg, out("lr") _);
             nr

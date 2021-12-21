@@ -360,8 +360,7 @@ dependencies = [
 [[package]]
 name = "cortex-m"
 version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ac919ef424449ec8c08d515590ce15d9262c0ca5f0da5b0c901e971a3b783b3"
+source = "git+https://github.com/rust-embedded/cortex-m.git?rev=441cb87e4095eafbd8b170d8f0848b99fa1ec72e#441cb87e4095eafbd8b170d8f0848b99fa1ec72e"
 dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
@@ -2233,7 +2232,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt"
 version = "0.6.2"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=07ade94990ef49b35bf298f9cbe59c671c6f1101#07ade94990ef49b35bf298f9cbe59c671c6f1101"
+source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=fea31dd51d255f4419246277497a9183e502cc9b#fea31dd51d255f4419246277497a9183e502cc9b"
 dependencies = [
  "riscv-rt 0.8.0",
 ]
@@ -2241,7 +2240,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt"
 version = "0.8.0"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=07ade94990ef49b35bf298f9cbe59c671c6f1101#07ade94990ef49b35bf298f9cbe59c671c6f1101"
+source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=fea31dd51d255f4419246277497a9183e502cc9b#fea31dd51d255f4419246277497a9183e502cc9b"
 dependencies = [
  "r0 1.0.0",
  "riscv 0.6.0",
@@ -2251,7 +2250,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt-macros"
 version = "0.1.6"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=07ade94990ef49b35bf298f9cbe59c671c6f1101#07ade94990ef49b35bf298f9cbe59c671c6f1101"
+source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=fea31dd51d255f4419246277497a9183e502cc9b#fea31dd51d255f4419246277497a9183e502cc9b"
 dependencies = [
  "proc-macro2",
  "quote",

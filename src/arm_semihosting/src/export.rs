@@ -1,9 +1,6 @@
 //! IMPLEMENTATION DETAILS USED BY MACROS
 
-use core::{
-    arch::asm,
-    fmt::{self, Write},
-};
+use core::fmt::{self, Write};
 
 use crate::hio::{self, HStderr, HStdout};
 
@@ -11,6 +8,7 @@ static mut HSTDOUT: Option<HStdout> = None;
 
 #[cfg(arm)]
 fn interrupt_free<R>(f: impl FnOnce() -> R) -> R {
+    use core::arch::asm;
     let cpsr_old: u32;
     unsafe { asm!("mrs {}, cpsr", out(reg) cpsr_old) };
     unsafe { asm!("cpsid i") };

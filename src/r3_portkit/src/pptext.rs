@@ -262,7 +262,6 @@ pub macro pp_llvm_asm {
 /// # Examples
 ///
 /// ```
-/// #![feature(asm)]
 /// #![feature(decl_macro)]
 ///
 /// #[macro_export]  // work-around for mysterious macro hygienics behavior
@@ -337,7 +336,7 @@ pub macro pp_asm {
         $crate::pptext::pp_text_macro! {
             macro pp_asm_code { $($code)* }
         }
-        asm!(pp_asm_code!() $($unprocessed)*);
+        ::core::arch::asm!(pp_asm_code!() $($unprocessed)*);
     }},
     // -------------------------------------------------------------------
     // The entry point

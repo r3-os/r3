@@ -15,7 +15,7 @@ macro_rules! use_startup {
         #[no_mangle]
         #[naked]
         pub unsafe extern "C" fn start() {
-            asm!(
+            ::core::arch::asm!(
                 "b {}",
                 sym $crate::startup::imp::start::<$Traits>,
                 options(noreturn),

@@ -2,6 +2,7 @@
 //! operation ([`Thread::park`]).
 use crate::utils::Atomic;
 use std::{
+    arch::asm,
     cell::Cell,
     mem::MaybeUninit,
     os::raw::c_int,

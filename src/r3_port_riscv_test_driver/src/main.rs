@@ -1,4 +1,3 @@
-#![feature(asm)]
 #![feature(asm_const)]
 #![feature(asm_sym)]
 #![feature(const_fn_trait_bound)]
@@ -6,7 +5,6 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]
-#![feature(global_asm)]
 #![feature(decl_macro)]
 #![feature(const_ptr_offset)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -70,7 +68,7 @@ macro_rules! instantiate_test {
             loop {
                 // prevent the loop from being optimized out
                 // <https://github.com/rust-lang/rust/issues/28728>
-                unsafe { asm!("") };
+                unsafe { core::arch::asm!("") };
             }
         }
 
@@ -144,7 +142,7 @@ macro_rules! instantiate_test {
             fn performance_time() -> u32 {
                 unsafe {
                     let mcycle;
-                    asm!("csrr {}, mcycle", out(reg)mcycle);
+                    core::arch::asm!("csrr {}, mcycle", out(reg)mcycle);
                     mcycle
                 }
             }

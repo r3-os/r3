@@ -270,7 +270,7 @@ impl usb_device::bus::UsbBus for UsbBus {
         // 12 cycle delay
         #[cfg(target_arch = "arm")]
         unsafe {
-            asm!(
+            core::arch::asm!(
                 "b 1f
                     1: b 1f
                     1: b 1f

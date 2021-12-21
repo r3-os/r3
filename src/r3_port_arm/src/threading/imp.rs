@@ -1,4 +1,4 @@
-use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
+use core::{arch::asm, cell::UnsafeCell, mem::MaybeUninit, slice};
 use memoffset::offset_of;
 use r3::{
     kernel::traits,

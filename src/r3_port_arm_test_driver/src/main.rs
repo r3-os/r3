@@ -8,7 +8,6 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(naked_functions)]
 #![feature(const_trait_impl)]
-#![feature(asm)]
 #![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]

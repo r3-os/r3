@@ -1,4 +1,4 @@
-use core::{cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice};
+use core::{arch::asm, cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice};
 use r3::{
     kernel::{
         interrupt::{InterruptHandlerFn, InterruptNum},
@@ -14,6 +14,8 @@ use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INT
 
 /// `mstatus` (Machine Status Register)
 mod mstatus {
+    use core::arch::asm;
+
     pub const MIE: usize = 1 << 3;
     pub const MPIE: usize = 1 << 7;
     pub const MPP_M: usize = 0b11 << 11;
@@ -53,6 +55,8 @@ mod mstatus {
 #[allow(non_upper_case_globals)]
 #[allow(dead_code)]
 mod mcause {
+    use core::arch::asm;
+
     pub const Interrupt: usize = usize::MAX - usize::MAX / 2;
     pub const ExceptionCode_MASK: usize = usize::MAX / 2;
 
@@ -66,6 +70,8 @@ mod mcause {
 
 /// `mip` (Machine Interrupt Pending)
 mod mip {
+    use core::arch::asm;
+
     /// Machine Software Interrupt Pending
     pub const MSIP: usize = 1 << 3;
     /// Machine Timer Interrupt Pending
@@ -93,6 +99,8 @@ mod mip {
 
 /// `mip` (Machine Interrupt Enable)
 mod mie {
+    use core::arch::asm;
+
     /// Machine Software Interrupt Enable
     pub const MSIE: usize = 1 << 3;
     /// Machine Timer Interrupt Enable

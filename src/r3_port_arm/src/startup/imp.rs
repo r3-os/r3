@@ -1,4 +1,5 @@
 //! Provides a standard startup and entry code implementation.
+use core::arch::asm;
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
 use crate::{arm, startup::cfg::MemoryRegionAttributes, EntryPoint, StartupOptions};

@@ -1,4 +1,3 @@
-#![feature(asm)]
 #![feature(asm_sym)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -59,6 +58,7 @@ impl port::SysTickOptions for SystemTraits {
 /// disabled (`default-features = false`), `wio_terminal` fails to compile. So
 /// the only option left ot us is to suppress our `__INTERRUPTS`.
 const _: () = {
+    use core::arch::asm;
     use port::{rt::imp::ExceptionTrampoline, EntryPoint, INTERRUPT_SYSTICK};
     use r3_kernel::KernelCfg2;
 
