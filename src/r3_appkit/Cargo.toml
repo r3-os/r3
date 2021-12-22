@@ -1,0 +1,23 @@
+[package]
+name = "r3_appkit"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Utilities for R3 applications"
+categories = ["embedded", "no-std"]
+keywords = ["r3", "mutex"]
+repository = "https://github.com/r3-os/r3"
+
+[features]
+default = []
+
+# Displays a "some features are disabled" warning in the documentation
+# when disabled so that the user can know some items are missing because of
+# that.
+_full = []
+
+[dependencies]
+r3 = { version = "0.1.0", path = "../r3" }
+
+[package.metadata.docs.rs]
+targets = []

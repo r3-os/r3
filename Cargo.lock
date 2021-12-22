@@ -1731,6 +1731,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "r3_appkit"
+version = "0.1.0"
+dependencies = [
+ "r3",
+]
+
+[[package]]
 name = "r3_example_basic"
 version = "0.0.0"
 dependencies = [
