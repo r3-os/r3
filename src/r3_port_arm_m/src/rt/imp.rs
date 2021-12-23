@@ -5,7 +5,7 @@ use r3_kernel::KernelTraits;
 #[derive(Clone, Copy)]
 pub union InterruptHandler {
     undefined: usize,
-    defined: r3::kernel::interrupt::InterruptHandlerFn,
+    defined: r3_core::kernel::interrupt::InterruptHandlerFn,
 }
 
 const NUM_INTERRUPTS: usize = if cfg!(armv6m) { 32 } else { 240 };

@@ -1,6 +1,6 @@
 #[cfg(feature = "priority_boost")]
 use core::sync::atomic::Ordering;
-use r3::kernel::{traits::KernelBase as _, BoostPriorityError};
+use r3_core::kernel::{traits::KernelBase as _, BoostPriorityError};
 
 use crate::{error::BadContextError, KernelTraits, System};
 #[cfg(feature = "priority_boost")]

@@ -19,7 +19,7 @@
 
 /// Used by `use_port!`
 #[doc(hidden)]
-pub extern crate r3;
+pub extern crate r3_core;
 
 /// Used by `use_port!`
 #[doc(hidden)]

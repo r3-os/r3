@@ -1,6 +1,6 @@
 //! ~~Mutices~~ Mutexes
 use core::{assert_matches::debug_assert_matches, fmt};
-use r3::{
+use r3_core::{
     kernel::{
         raw, LockMutexError, LockMutexTimeoutError, MarkConsistentMutexError, QueryMutexError,
         TryLockMutexError, UnlockMutexError,

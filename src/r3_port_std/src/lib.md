@@ -11,6 +11,7 @@ Simulator for running [`::r3`] on a hosted environment
 // Require `unsafe` even in `unsafe fn` - highly recommended
 #![deny(unsafe_op_in_unsafe_fn)]
 
+# extern crate r3_core as r3;
 use r3::kernel::{StaticTask, Cfg, traits};
 
 // Use the simulator port. This macro generates `fn main()`.
@@ -94,5 +95,5 @@ There are several ways to tackle these problems:
    **Con:** Complicated and requires allocation of system-global resources such as an interrupt line for inbound signaling.
 
 [`lock_scheduler`]: crate::lock_scheduler
-[CPU Lock]: r3::kernel::Kernel::acquire_cpu_lock
-[Priority Boost]: r3::kernel::Kernel::boost_priority
+[CPU Lock]: r3_core::kernel::Kernel::acquire_cpu_lock
+[Priority Boost]: r3_core::kernel::Kernel::boost_priority

@@ -1,5 +1,5 @@
 //! The public interface for the RISC-V timer.
-use r3::kernel::InterruptNum;
+use r3_core::kernel::InterruptNum;
 
 /// Attach the implementation of [`PortTimer`] that is based on the RISC-V timer
 /// (`mtime`/`mtimecfg`) to a given kernel trait type. This macro also
@@ -38,7 +38,7 @@ use r3::kernel::InterruptNum;
 macro_rules! use_timer {
     (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
-            use $crate::r3::{
+            use $crate::r3_core::{
                 kernel::{traits, Cfg},
                 utils::Init,
             };

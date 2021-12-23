@@ -1,5 +1,5 @@
 use core::ops::Range;
-use r3::kernel::{InterruptNum, InterruptPriority};
+use r3_core::kernel::{InterruptNum, InterruptPriority};
 
 pub const INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..256;
 
@@ -106,7 +106,7 @@ macro_rules! use_port {
 
         mod port_arm_m_impl {
             use super::$Traits;
-            use $crate::r3::kernel::{
+            use $crate::r3_core::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
                 PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
             };
@@ -130,7 +130,7 @@ macro_rules! use_port {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
-                    $crate::r3::utils::Init::INIT;
+                    $crate::r3_core::utils::Init::INIT;
 
                 // The minimum stack size for all tests to pass. I found debug
                 // formatting to be particularly memory-hungry.

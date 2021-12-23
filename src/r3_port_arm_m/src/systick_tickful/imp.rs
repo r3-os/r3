@@ -1,6 +1,6 @@
 //! The tickful `PortTimer` implementation based on SysTick.
 use core::cell::UnsafeCell;
-use r3::{
+use r3_core::{
     kernel::{raw, traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler},
     utils::Init,
 };

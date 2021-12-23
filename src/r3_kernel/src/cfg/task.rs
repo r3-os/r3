@@ -1,5 +1,5 @@
 use core::num::NonZeroUsize;
-use r3::{
+use r3_core::{
     kernel::{
         raw_cfg::{CfgTask, TaskDescriptor},
         task::StackHunk,
@@ -10,7 +10,7 @@ use r3::{
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, task, KernelTraits};
 
 unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
-    fn task_define<Properties: ~const r3::bag::Bag>(
+    fn task_define<Properties: ~const r3_core::bag::Bag>(
         &mut self,
         TaskDescriptor {
             phantom: _,

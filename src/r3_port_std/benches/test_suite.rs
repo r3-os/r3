@@ -50,7 +50,7 @@ macro_rules! instantiate_kernel_tests {
         { path: $path:path, name_ident: $name_ident:ident, name_str: $name_str:literal $($rest:tt)* },
     )*) => {
         $(mod $name_ident {
-            use r3::kernel::{InterruptNum, InterruptPriority};
+            use r3_core::kernel::{InterruptNum, InterruptPriority};
             use r3_test_suite::kernel_benchmarks;
             use $path as test_case;
 

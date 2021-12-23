@@ -1,5 +1,5 @@
 /// The implementation of the Platform-Level Interrupt Controller driver.
-use r3::kernel::{
+use r3_core::kernel::{
     traits, Cfg, EnableInterruptLineError, InterruptNum, InterruptPriority,
     QueryInterruptLineError, SetInterruptLinePriorityError, StaticInterruptHandler,
 };

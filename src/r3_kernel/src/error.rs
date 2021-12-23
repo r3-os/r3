@@ -1,5 +1,5 @@
 use core::fmt;
-use r3::kernel as errors;
+use r3_core::kernel as errors;
 
 macro_rules! define_suberror {
     (

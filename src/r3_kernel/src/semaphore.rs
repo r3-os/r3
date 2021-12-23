@@ -1,6 +1,6 @@
 //! Semaphores
 use core::fmt;
-use r3::{
+use r3_core::{
     kernel::{
         DrainSemaphoreError, GetSemaphoreError, PollSemaphoreError, SemaphoreValue,
         SignalSemaphoreError, WaitSemaphoreError, WaitSemaphoreTimeoutError,
@@ -32,7 +32,7 @@ impl<Traits: KernelTraits> System<Traits> {
     }
 }
 
-unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelSemaphore for System<Traits> {
+unsafe impl<Traits: KernelTraits> r3_core::kernel::raw::KernelSemaphore for System<Traits> {
     type RawSemaphoreId = SemaphoreId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]

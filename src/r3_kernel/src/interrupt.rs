@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use r3::{
+use r3_core::{
     kernel::{
         traits::KernelInterruptLine, ClearInterruptLineError, EnableInterruptLineError,
         InterruptNum, InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
@@ -11,7 +11,7 @@ use r3::{
 
 use crate::{klock, KernelTraits, PortInterrupts, System};
 
-unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelInterruptLine for System<Traits> {
+unsafe impl<Traits: KernelTraits> r3_core::kernel::raw::KernelInterruptLine for System<Traits> {
     const RAW_MANAGED_INTERRUPT_PRIORITY_RANGE: core::ops::Range<InterruptPriority> =
         <Traits as PortInterrupts>::MANAGED_INTERRUPT_PRIORITY_RANGE;
 

@@ -1,5 +1,5 @@
 //! The public interface of the GIC driver.
-use r3::kernel::InterruptNum;
+use r3_core::kernel::InterruptNum;
 use tock_registers::{
     fields::FieldValue,
     interfaces::{ReadWriteable, Readable},
@@ -28,7 +28,7 @@ macro_rules! use_gic {
             use $crate::{
                 core::ops::Range,
                 gic::imp,
-                r3::kernel::{
+                r3_core::kernel::{
                     ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
                     InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
                     SetInterruptLinePriorityError,

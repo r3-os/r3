@@ -19,7 +19,7 @@ pub trait InterruptController {
     /// # Safety
     ///
     /// This is only intended to be called by the port in an IRQ handler.
-    unsafe fn acknowledge_interrupt() -> Option<r3::kernel::InterruptNum>;
+    unsafe fn acknowledge_interrupt() -> Option<r3_core::kernel::InterruptNum>;
 
     /// Notify that the kernel has completed the processing of the specified
     /// interrupt.
@@ -27,7 +27,7 @@ pub trait InterruptController {
     /// # Safety
     ///
     /// This is only intended to be called by the port in an IRQ handler.
-    unsafe fn end_interrupt(num: r3::kernel::InterruptNum);
+    unsafe fn end_interrupt(num: r3_core::kernel::InterruptNum);
 }
 
 /// An abstract inferface to a port timer driver. Implemented by
@@ -80,7 +80,7 @@ macro_rules! use_port {
 
         mod port_arm_impl {
             use super::$Traits;
-            use $crate::r3::kernel::{
+            use $crate::r3_core::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
                 PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
             };
@@ -108,7 +108,7 @@ macro_rules! use_port {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
-                    $crate::r3::utils::Init::INIT;
+                    $crate::r3_core::utils::Init::INIT;
 
                 // The minimum stack size for all tests to pass. I found debug
                 // formatting to be particularly memory-hungry.

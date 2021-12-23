@@ -8,7 +8,7 @@
 #![deny(unsupported_naked_functions)]
 use atomic_ref::AtomicRef;
 use once_cell::sync::OnceCell;
-use r3::{
+use r3_core::{
     kernel::{
         ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
         Kernel as _, PendInterruptLineError, QueryInterruptLineError,
@@ -45,7 +45,7 @@ mod utils;
 
 /// Used by `use_port!`
 #[doc(hidden)]
-pub extern crate r3;
+pub extern crate r3_core;
 /// Used by `use_port!`
 #[doc(hidden)]
 pub extern crate r3_kernel;
@@ -685,7 +685,7 @@ pub fn shutdown<Traits: PortInstance>() {
 ///
 /// It's illegal to call this method from a thread managed by the port (i.e.,
 /// you can't call it from a task or an interrupt handler). Use
-/// [`r3::kernel::InterruptLine::pend`] instead in such cases.
+/// [`r3_core::kernel::InterruptLine::pend`] instead in such cases.
 pub fn pend_interrupt_line<Traits: PortInstance>(
     num: InterruptNum,
 ) -> Result<(), PendInterruptLineError> {
@@ -727,7 +727,7 @@ macro_rules! use_port {
 
         mod port_std_impl {
             use super::$SystemTraits;
-            use $crate::r3::kernel::{
+            use $crate::r3_core::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
                 PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
             };

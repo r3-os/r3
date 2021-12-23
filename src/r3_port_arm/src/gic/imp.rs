@@ -1,5 +1,5 @@
 //! Under the hood
-use r3::kernel::{
+use r3_core::kernel::{
     ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
     PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
 };

@@ -55,7 +55,7 @@ mod rawcell;
 #[macro_use]
 mod vec;
 pub use self::{aligned_storage::*, int::*, prio_bitmap::*, rawcell::*, vec::*};
-pub use r3::utils::{Init, ZeroInit};
+pub use r3_core::utils::{Init, ZeroInit};
 
 /// A "type function" producing a type.
 #[doc(hidden)]

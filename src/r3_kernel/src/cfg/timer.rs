@@ -1,5 +1,5 @@
 use core::{mem::ManuallyDrop, num::NonZeroUsize};
-use r3::{
+use r3_core::{
     kernel::raw_cfg::{CfgTimer, TimerDescriptor},
     utils::Init,
 };
@@ -7,7 +7,7 @@ use r3::{
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, timeout, timer, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
-    fn timer_define<Properties: ~const r3::bag::Bag>(
+    fn timer_define<Properties: ~const r3_core::bag::Bag>(
         &mut self,
         TimerDescriptor {
             phantom: _,

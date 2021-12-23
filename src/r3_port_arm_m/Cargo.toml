@@ -14,7 +14,7 @@ preload-registers = []
 [dependencies]
 r3_portkit = { version = "0.1.1", path = "../r3_portkit" }
 r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
-r3 = { version = "0.1.1", path = "../r3" }
+r3_core = { version = "0.1.0", path = "../r3_core" }
 
 memoffset = { version = "0.6.5", features = ["unstable_const"] }
 

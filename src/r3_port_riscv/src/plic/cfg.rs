@@ -1,5 +1,5 @@
 /// The public interface of the Platform-Level Interrupt Controller driver.
-use r3::kernel::{InterruptNum, InterruptPriority};
+use r3_core::kernel::{InterruptNum, InterruptPriority};
 
 use super::plic_regs;
 
@@ -42,7 +42,7 @@ macro_rules! use_plic {
             use $crate::{
                 core::ops::Range,
                 plic::{imp, plic_regs},
-                r3::kernel::{
+                r3_core::kernel::{
                     traits, Cfg, ClearInterruptLineError, EnableInterruptLineError, InterruptNum,
                     InterruptPriority, PendInterruptLineError, QueryInterruptLineError,
                     SetInterruptLinePriorityError,

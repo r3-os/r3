@@ -1,4 +1,4 @@
-use r3::kernel::InterruptNum;
+use r3_core::kernel::InterruptNum;
 
 /// The interrupt number for software interrupts.
 pub const INTERRUPT_SOFTWARE: InterruptNum = 0;
@@ -31,7 +31,7 @@ macro_rules! use_port {
 
         mod port_riscv_impl {
             use super::$Traits;
-            use $crate::r3::kernel::{
+            use $crate::r3_core::kernel::{
                 ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
                 PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
                 interrupt::InterruptHandlerFn,
@@ -72,7 +72,7 @@ macro_rules! use_port {
                 type PortTaskState = TaskState;
                 #[allow(clippy::declare_interior_mutable_const)]
                 const PORT_TASK_STATE_INIT: Self::PortTaskState =
-                    $crate::r3::utils::Init::INIT;
+                    $crate::r3_core::utils::Init::INIT;
 
                 // The minimum stack size for all tests to pass. I found debug
                 // formatting to be particularly memory-hungry.

@@ -1,5 +1,5 @@
 //! Pends an interrupt from an external thread.
-use r3::{
+use r3_core::{
     hunk::Hunk,
     kernel::{traits, Cfg, InterruptLine, StaticInterruptHandler, StaticTask},
 };

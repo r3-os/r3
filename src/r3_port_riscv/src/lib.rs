@@ -17,14 +17,14 @@
 #![doc = include!("../doc/interrupts.rs")] // `![interrupts]`
 #![no_std]
 use core::ops::Range;
-use r3::kernel::{
+use r3_core::kernel::{
     ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
     PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
 };
 
 /// Used by macros
 #[doc(hidden)]
-pub extern crate r3;
+pub extern crate r3_core;
 
 /// Used by macros
 #[doc(hidden)]
@@ -138,7 +138,7 @@ pub trait InterruptController {
     ///
     /// Defaults to `0..0` (empty) when unspecified.
     ///
-    /// [managed]: r3#interrupt-handling-framework
+    /// [managed]: r3_core#interrupt-handling-framework
     #[allow(clippy::reversed_empty_ranges)] // on purpose
     const MANAGED_INTERRUPT_PRIORITY_RANGE: Range<InterruptPriority> = 0..0;
 

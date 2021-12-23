@@ -1834,7 +1834,7 @@ dependencies = [
  "pin-utils",
  "quickcheck",
  "quickcheck_macros",
- "r3",
+ "r3_core",
  "svgbobdoc",
  "tokenlock",
 ]
@@ -1845,7 +1845,7 @@ version = "0.1.2"
 dependencies = [
  "memoffset",
  "r0 1.0.0",
- "r3",
+ "r3_core",
  "r3_kernel",
  "r3_portkit",
  "tock-registers",
@@ -1858,7 +1858,7 @@ dependencies = [
  "cortex-m 0.7.3",
  "cortex-m-rt",
  "memoffset",
- "r3",
+ "r3_core",
  "r3_kernel",
  "r3_portkit",
 ]
@@ -1902,7 +1902,7 @@ dependencies = [
 name = "r3_port_riscv"
 version = "0.1.3"
 dependencies = [
- "r3",
+ "r3_core",
  "r3_kernel",
  "r3_portkit",
  "riscv 0.7.0",
@@ -1941,7 +1941,7 @@ dependencies = [
  "libc",
  "log",
  "once_cell",
- "r3",
+ "r3_core",
  "r3_kernel",
  "r3_test_suite",
  "slab",
@@ -1960,7 +1960,7 @@ dependencies = [
  "num-rational 0.4.0",
  "quickcheck",
  "quickcheck_macros",
- "r3",
+ "r3_core",
  "r3_kernel",
  "svgbobdoc",
 ]
