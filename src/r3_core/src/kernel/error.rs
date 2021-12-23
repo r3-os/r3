@@ -25,7 +25,7 @@ macro_rules! define_result_code {
             /// # Examples
             ///
             /// ```
-            /// use r3::kernel::ResultCode;
+            /// use r3_core::kernel::ResultCode;
             /// assert_eq!(ResultCode::BadObjectState.as_str(), "BadObjectState");
             /// ```
             pub fn as_str(self) -> &'static str {

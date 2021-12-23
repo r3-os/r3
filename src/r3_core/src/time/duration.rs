@@ -81,7 +81,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use r3::time::Duration;
+    /// use r3_core::time::Duration;
     ///
     /// let dur = Duration::from_micros(1_201_250_000);
     /// assert_eq!(dur.as_secs_f64(), 1201.25);
@@ -96,7 +96,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use r3::time::Duration;
+    /// use r3_core::time::Duration;
     ///
     /// let dur = Duration::from_micros(1_201_250_000);
     /// assert_eq!(dur.as_secs_f32(), 1201.25);
@@ -348,7 +348,7 @@ impl TryFrom<chrono_0p4::Duration> for Duration {
     ///
     /// ```
     /// use chrono_0p4::Duration as ChronoDuration;
-    /// use r3::time::Duration as OsDuration;
+    /// use r3_core::time::Duration as OsDuration;
     /// assert_eq!(
     ///     OsDuration::try_from(ChronoDuration::nanoseconds(123_456)),
     ///     Ok(OsDuration::from_micros(123)),
@@ -380,7 +380,7 @@ impl From<Duration> for chrono_0p4::Duration {
     ///
     /// ```
     /// use chrono_0p4::Duration as ChronoDuration;
-    /// use r3::time::Duration as OsDuration;
+    /// use r3_core::time::Duration as OsDuration;
     /// assert_eq!(
     ///     ChronoDuration::from(OsDuration::from_micros(123_456)),
     ///     ChronoDuration::microseconds(123_456),

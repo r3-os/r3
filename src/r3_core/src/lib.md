@@ -104,7 +104,7 @@ Configuration functions are highly composable as they can make nested calls to o
 # #![feature(const_mut_refs)]
 # #![feature(const_fn_fn_ptr_basics)]
 # #![feature(const_trait_impl)]
-# use r3::kernel::{Cfg, traits};
+# use r3_core::kernel::{Cfg, traits};
 # struct Objects<System: traits::KernelBase> { my_module: m::MyModule<System> }
 // Top-level configuration function
 const fn configure_app<C>(b: &mut Cfg<C>) -> Objects<C::System>
@@ -117,7 +117,7 @@ where
 }
 
 mod m {
-#   use r3::kernel::{Cfg, StaticTask, traits};
+#   use r3_core::kernel::{Cfg, StaticTask, traits};
 #   pub struct MyModule<System: traits::KernelBase> { task: StaticTask<System> }
     pub const fn configure<C>(b: &mut Cfg<C>) -> MyModule<C::System>
     where

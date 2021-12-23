@@ -275,7 +275,7 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, StaticTimer, traits}, time::Duration};
+/// use r3_core::{kernel::{Cfg, StaticTimer, traits}, time::Duration};
 ///
 /// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
@@ -315,7 +315,7 @@ define_object! {
 /// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
 /// # #![feature(const_trait_impl)]
-/// use r3::{kernel::{Cfg, StaticTimer, traits, prelude::*}, time::Duration};
+/// use r3_core::{kernel::{Cfg, StaticTimer, traits, prelude::*}, time::Duration};
 ///
 /// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
@@ -332,7 +332,7 @@ define_object! {
 /// [Reset the delay] to schedule a call.
 ///
 /// ```rust
-/// use r3::{kernel::{TimerRef, traits, prelude::*}, time::Duration};
+/// use r3_core::{kernel::{TimerRef, traits, prelude::*}, time::Duration};
 ///
 /// fn sched<System: traits::KernelTimer>(timer: TimerRef<'_, System>) {
 ///     timer.set_delay(Some(Duration::from_millis(40))).unwrap();

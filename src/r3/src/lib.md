@@ -16,7 +16,9 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 - The kernel API is **not tied to a specific kernel implementation**. Kernels are provided as separate crates, one of which an application chooses and instantiates using the trait system.
 - Leverages Rust's type safety for access control of kernel objects. Safe code can't access an object that it doesn't own.
 
-TODO
+<div class="admonition-follows"></div>
+
+> **Notes:** Many items of this crate are re-exported frm [`r3_core`][], and consequently their example code refers to them through paths starting with `r3_core::`. You can replace them with `r3::` in your application code.
 
 <!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
 <div class="admonition-follows"></div>

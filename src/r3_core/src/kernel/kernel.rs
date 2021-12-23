@@ -23,7 +23,7 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use r3::kernel::{prelude::*, traits, Task, ParkError, BoostPriorityError};
+/// use r3_core::kernel::{prelude::*, traits, Task, ParkError, BoostPriorityError};
 ///
 /// fn park_while<System>(mut f: impl FnMut() -> bool) -> Result<(), ParkError>
 /// where
@@ -50,7 +50,7 @@ use crate::{
 /// Don't constrain a system type by this trait:
 ///
 /// ```compile_fail,E0277
-/// # use r3::kernel::{traits, LocalTask};
+/// # use r3_core::kernel::{traits, LocalTask};
 /// fn current_task<System>() -> LocalTask<System>
 /// where
 ///     System: traits::Kernel,

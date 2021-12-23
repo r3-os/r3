@@ -43,7 +43,7 @@ define_object! {
 /// #![feature(const_fn_trait_bound)]
 /// #![feature(const_mut_refs)]
 /// #![feature(const_trait_impl)]
-/// use r3::kernel::{
+/// use r3_core::kernel::{
 ///     LockMutexError, StaticMutex, MutexProtocol, Cfg, traits, prelude::*,
 /// };
 ///
