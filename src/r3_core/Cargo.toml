@@ -5,11 +5,14 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "R3 core API definition"
 categories = ["embedded", "no-std"]
-keywords = ["r3", "mutex"]
+keywords = ["r3", "rtos"]
 repository = "https://github.com/r3-os/r3"
 
 [features]
 default = []
+
+# Enable the diagram rendering by svgbob and other fancy stuff
+doc = ["svgbobdoc/enable"]
 
 # Displays a "some features are disabled" warning in the documentation
 # when disabled so that the user can know some items are missing because of
@@ -17,6 +20,22 @@ default = []
 _full = []
 
 [dependencies]
+stable_deref_trait = { version = "1.2.0", default-features = false }
+svgbobdoc = { version = "0.3.0-alpha.4" }
+tokenlock = { version = "0.3.4", default-features = false }
+arrayvec = { version = "0.7.1", default-features = false }
+bitflags = { version = "1.2.1" }
+macropol = { version = "0.1.2" }
+chrono_0p4 = { version = "0.4.13", package = "chrono", optional = true, default-features = false }
+either = { version = "1.6.1", default-features = false }
+elain = { version = "0.3.0" }
+
+[dev-dependencies]
+quickcheck_macros = "1.0.0"
+env_logger = "0.8.4"
+quickcheck = "1.0.3"
+log = "0.4.8"
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []

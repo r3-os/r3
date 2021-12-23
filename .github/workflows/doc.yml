@@ -16,6 +16,9 @@ jobs:
         with:
           profile: minimal
 
+      # The invocations must be in dependency order to make sure `--all-features`
+      # for `--all-features` to apply to every documented crate
+      # FIXME: Or can we just specify multiple packages with `-p`?
       - name: Build Documentation for “r3_port_std”
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3_port_std --all-features }
@@ -51,6 +54,10 @@ jobs:
       - name: Build Documentation for “r3”
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3 --all-features }
+
+      - name: Build Documentation for “r3_core”
+        uses: actions-rs/cargo@v1
+        with: { command: doc, args: -p r3_core --all-features }
 
       - name: Generate Badge
         run: |
