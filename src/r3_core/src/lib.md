@@ -1,6 +1,9 @@
-The core API definition for [R3 RTOS][].
+The core API definition for [R3 RTOS][r3].
 
-[R3 RTOS]: ../r3/index.html
+The core API represents the low-level interface between kernel and application code. It includes [`raw`](crate::kernel::raw) and [`raw_cfg`](crate::kernel::raw_cfg) traits implemented by kernel implementations as well as common data types, such as [`Time`](crate::time::Time). Because breaking changes in the core API would result in ecosystem split, it's designed to be more stable than the façade API ([`r3`][r3]).
+
+<!-- FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481> -->
+[r3]: ../r3/index.html
 
 <!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
 <div class="admonition-follows"></div>
