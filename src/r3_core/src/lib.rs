@@ -56,7 +56,6 @@ pub mod utils;
 pub mod kernel;
 pub mod bag;
 pub mod hunk;
-pub mod sync;
 pub mod time;
 
 /// The prelude module.

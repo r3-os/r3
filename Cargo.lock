@@ -1716,6 +1716,7 @@ version = "0.1.3"
 dependencies = [
  "embed-doc-image",
  "r3_core",
+ "stable_deref_trait",
  "svgbobdoc",
 ]
 

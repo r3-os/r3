@@ -1,3 +1,8 @@
+#![feature(arbitrary_enum_discriminant)]
+#![feature(const_fn_trait_bound)]
+#![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
+#![feature(cell_update)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
@@ -37,8 +42,9 @@
 #[doc = include_str!("../CHANGELOG.md")]
 pub mod _changelog_ {}
 
-// TODO: Move `sync` to this crate
-pub use r3_core::{bag, hunk, kernel, sync, time, utils};
+pub mod sync;
+
+pub use r3_core::{bag, hunk, kernel, time, utils};
 
 /// The prelude module.
 pub mod prelude {

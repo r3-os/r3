@@ -138,7 +138,8 @@ mod m {
 [`kernel::Mutex`]: crate::kernel::Mutex
 [`kernel::Hunk`]: crate::kernel::Hunk
 [`hunk::Hunk`]: crate::hunk::Hunk
-[mutex object]: crate::sync::StaticMutex
+<!-- FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481> -->
+[mutex object]: ../r3/sync/mutex/type.StaticMutex.html
 
 # Object Handles
 
@@ -196,7 +197,8 @@ When an invalid object ID is passed to a kernel function, it may cause an undefi
 [RFC 3128]: https://rust-lang.github.io/rfcs/3128-io-safety.html
 [`r3::kernel::raw`]: crate::kernel::raw
 [`r3::kernel::Mutex`]: crate::kernel::Mutex
-[`r3::sync::StaticMutex`]: crate::sync::StaticMutex
+<!-- FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481> -->
+[`r3::sync::StaticMutex`]: ../r3/sync/mutex/type.StaticMutex.html
 [`MutexRef`]: crate::kernel::MutexRef
 [`Mutex`]: crate::kernel::Mutex
 [`StaticMutex`]: crate::kernel::StaticMutex

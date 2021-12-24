@@ -35,7 +35,8 @@ define_object! {
 ///
 /// [`RawMutexId`]: raw::KernelMutex::RawMutexId
 /// [non-task context]: crate#contexts
-/// [`r3::sync::mutex`]: crate::sync::mutex
+// FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481>
+/// [`r3::sync::mutex`]: ../../r3/sync/mutex/index.html
 ///
 /// # Examples
 ///

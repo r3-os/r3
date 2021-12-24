@@ -24,6 +24,7 @@ doc = ["svgbobdoc/enable", "embed-doc-image", "r3_core/doc"]
 _full = []
 
 [dependencies]
+stable_deref_trait = { version = "1.2.0", default-features = false }
 embed-doc-image = { version = "0.1.4", optional = true }
 svgbobdoc = { version = "0.3.0-alpha.4" }
 r3_core = { version = "0.1.0", path = "../r3_core" }
