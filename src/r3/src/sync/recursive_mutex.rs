@@ -29,6 +29,10 @@ pub struct Definer<System, T, InitTag> {
 ///  - Mutexes must be unlocked in a lock-reverse order.
 ///    [`GenericMutexGuard`]`::drop` might panic if this is violated.
 ///
+/// # Example
+///
+/// See [`StaticRecursiveMutex`].
+///
 /// [`r3::kernel::Mutex`]: crate::kernel::Mutex
 pub struct GenericRecursiveMutex<Cell, Mutex> {
     cell: Cell,
@@ -36,6 +40,52 @@ pub struct GenericRecursiveMutex<Cell, Mutex> {
 }
 
 /// A defined (statically created) [`GenericRecursiveMutex`].
+///
+/// # Example
+///
+#[doc = crate::tests::doc_test!(
+/// ```rust
+/// use core::cell::Cell;
+/// use r3::{kernel::StaticTask, sync::StaticRecursiveMutex};
+///
+/// struct Objects {
+///     mutex: StaticRecursiveMutex<System, Cell<i32>>,
+/// }
+///
+/// const fn configure_app<C>(cfg: &mut Cfg<C>) -> Objects
+/// where
+///     C: ~const traits::CfgBase<System = System> +
+///        ~const traits::CfgTask +
+///        ~const traits::CfgMutex,
+/// {
+///     StaticTask::define()
+///         .start(task1_body)
+///         .priority(2)
+///         .active(true)
+///         .finish(cfg);
+///
+///     let mutex = StaticRecursiveMutex::define().finish(cfg);
+///
+///     Objects { mutex }
+/// }
+///
+/// fn task1_body(_: usize) {
+///     let guard = COTTAGE.mutex.lock().unwrap();
+///     assert_eq!(guard.get(), 0);
+///     guard.set(1);
+///
+///     {
+///         // Recursive lock is allowed
+///         let guard2 = COTTAGE.mutex.lock().unwrap();
+///         assert_eq!(guard2.get(), 1);
+///         guard2.set(2);
+///     }
+///
+///     assert_eq!(guard.get(), 2);
+/// #   exit(0);
+/// }
+/// ```
+)]
 pub type StaticRecursiveMutex<System, T> =
     GenericRecursiveMutex<Hunk<System, MutexInner<T>>, mutex::StaticMutex<System>>;
 
