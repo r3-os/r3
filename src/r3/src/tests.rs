@@ -6,8 +6,8 @@ pub(crate) macro doc_test(
     #[doc = r" ```rust"]
     $( #[doc = $doc:expr] )*
 ) {concat!(
-" ```rust
- #   #![feature(const_fn_trait_bound)]
+" ```rust", ignore_if_port_std_does_not_support_target!(), "\n ",
+"#   #![feature(const_fn_trait_bound)]
  #   #![feature(const_mut_refs)]
  #   #![feature(const_fn_fn_ptr_basics)]
  #   #![feature(const_trait_impl)]
@@ -27,3 +27,14 @@ pub(crate) macro doc_test(
 ",
 $( $doc, "\n", )*
 )}
+
+// `r3_port_std`'s target support is limited
+#[cfg(unix)]
+macro ignore_if_port_std_does_not_support_target() {
+    ""
+}
+
+#[cfg(not(unix))]
+macro ignore_if_port_std_does_not_support_target() {
+    ",ignore"
+}
