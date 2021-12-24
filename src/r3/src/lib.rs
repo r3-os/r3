@@ -3,6 +3,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(cell_update)]
+#![feature(decl_macro)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
@@ -43,6 +44,7 @@
 pub mod _changelog_ {}
 
 pub mod sync;
+mod tests;
 
 pub use r3_core::{bag, hunk, kernel, time, utils};
 
