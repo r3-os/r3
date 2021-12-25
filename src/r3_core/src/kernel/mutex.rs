@@ -35,7 +35,8 @@ define_object! {
 ///
 /// [`RawMutexId`]: raw::KernelMutex::RawMutexId
 /// [non-task context]: crate#contexts
-/// [`r3::sync::mutex`]: crate::sync::mutex
+// FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481>
+/// [`r3::sync::mutex`]: ../../r3/sync/mutex/index.html
 ///
 /// # Examples
 ///
@@ -43,7 +44,7 @@ define_object! {
 /// #![feature(const_fn_trait_bound)]
 /// #![feature(const_mut_refs)]
 /// #![feature(const_trait_impl)]
-/// use r3::kernel::{
+/// use r3_core::kernel::{
 ///     LockMutexError, StaticMutex, MutexProtocol, Cfg, traits, prelude::*,
 /// };
 ///

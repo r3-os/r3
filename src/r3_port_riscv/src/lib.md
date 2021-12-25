@@ -28,10 +28,10 @@ The interrupt handler of a particular interrupt number can re-enable the interru
 
 The local interrupts are always enabled from an API point of view. **[`InterruptLine::disable`] will always return [`NotSupported`]**.
 
-[second-level interrupt handlers]: r3::kernel::StaticInterruptHandler
-[`InterruptLine::disable`]: r3::kernel::InterruptLine::disable
-[Pend]: r3::kernel::InterruptLine::pend
-[`NotSupported`]: r3::kernel::EnableInterruptLineError::NotSupported
+[second-level interrupt handlers]: r3_core::kernel::StaticInterruptHandler
+[`InterruptLine::disable`]: r3_core::kernel::InterruptLine::disable
+[Pend]: r3_core::kernel::InterruptLine::pend
+[`NotSupported`]: r3_core::kernel::EnableInterruptLineError::NotSupported
 [*managed*]: r3#interrupt-handling-framework
 
 <div class="admonition-follows"></div>

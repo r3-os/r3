@@ -2,7 +2,7 @@
 //! elements corresponding to interrupt lines that have no registered interrupt
 //! handlers.
 use core::marker::PhantomData;
-use r3::kernel::{traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler};
+use r3_core::kernel::{traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler};
 use r3_kernel::{KernelCfg2, System};
 use r3_test_suite::kernel_tests::Driver;
 

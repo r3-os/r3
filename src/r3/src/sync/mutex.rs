@@ -33,6 +33,10 @@ pub struct Definer<System, T, InitTag> {
 ///  - Mutexes must be unlocked in a lock-reverse order.
 ///    [`GenericMutexGuard`]`::drop` might panic if this is violated.
 ///
+/// # Example
+///
+/// See [`StaticMutex`].
+///
 /// [`r3::kernel::Mutex`]: crate::kernel::Mutex
 pub struct GenericMutex<Cell, Mutex> {
     cell: Cell,
@@ -40,6 +44,59 @@ pub struct GenericMutex<Cell, Mutex> {
 }
 
 /// A defined (statically created) [`GenericMutex`].
+///
+/// # Example
+///
+#[doc = crate::tests::doc_test!(
+/// ```rust
+/// use r3::{kernel::StaticTask, sync::StaticMutex};
+///
+/// struct Objects {
+///     task2: StaticTask<System>,
+///     mutex: StaticMutex<System, i32>,
+/// }
+///
+/// const fn configure_app<C>(cfg: &mut Cfg<C>) -> Objects
+/// where
+///     C: ~const traits::CfgBase<System = System> +
+///        ~const traits::CfgTask +
+///        ~const traits::CfgMutex,
+/// {
+///     StaticTask::define()
+///         .start(task1_body)
+///         .priority(2)
+///         .active(true)
+///         .finish(cfg);
+///
+///     let task2 = StaticTask::define()
+///         .start(task2_body)
+///         .priority(1)
+///         .finish(cfg);
+///
+///     let mutex = StaticMutex::define().finish(cfg);
+///
+///     Objects { task2, mutex }
+/// }
+///
+/// fn task1_body(_: usize) {
+///     let mut guard = COTTAGE.mutex.lock().unwrap();
+///
+///     // Although `task2` has a higher priority, it's unable to
+///     // access `*guard` until `task1` releases the lock
+///     COTTAGE.task2.activate().unwrap();
+///
+///     assert_eq!(*guard, 0);
+///     *guard = 1;
+/// }
+///
+/// fn task2_body(_: usize) {
+///     let mut guard = COTTAGE.mutex.lock().unwrap();
+///     assert_eq!(*guard, 1);
+///     *guard = 2;
+/// #   exit(0);
+/// }
+/// ```
+)]
 pub type StaticMutex<System, T> =
     GenericMutex<Hunk<System, UnsafeCell<T>>, mutex::StaticMutex<System>>;
 

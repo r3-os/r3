@@ -3,7 +3,7 @@
 use core::sync::atomic::Ordering;
 use core::{fmt, marker::PhantomData, mem};
 use num_traits::ToPrimitive;
-use r3::{
+use r3_core::{
     kernel::{
         raw::KernelBase, ActivateTaskError, ExitTaskError, GetCurrentTaskError,
         GetTaskPriorityError, Hunk, InterruptTaskError, ParkError, ParkTimeoutError,
@@ -25,7 +25,7 @@ use self::readyqueue::Queue as _;
 pub(super) type TaskId = Id;
 
 /// These associate functions implement the task-related portion of
-/// [`r3::kernel::raw::KernelBase`].
+/// [`r3_core::kernel::raw::KernelBase`].
 impl<Traits: KernelTraits> System<Traits> {
     /// Get the [`TaskCb`] for the specified raw ID.
     ///

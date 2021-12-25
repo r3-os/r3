@@ -12,8 +12,13 @@ repository = "https://github.com/r3-os/r3"
 [features]
 default = []
 
+sync = []
+
+# Exposes `r3_core`'s features'
+chrono_0p4 = ["r3_core/chrono_0p4"]
+
 # Enable the diagram rendering by svgbob and other fancy stuff
-doc = ["svgbobdoc/enable", "embed-doc-image"]
+doc = ["svgbobdoc/enable", "embed-doc-image", "r3_core/doc"]
 
 # Displays a "some features are disabled" warning in the documentation
 # when disabled so that the user can know some items are missing because of
@@ -24,19 +29,11 @@ _full = []
 stable_deref_trait = { version = "1.2.0", default-features = false }
 embed-doc-image = { version = "0.1.4", optional = true }
 svgbobdoc = { version = "0.3.0-alpha.4" }
-tokenlock = { version = "0.3.4", default-features = false }
-arrayvec = { version = "0.7.1", default-features = false }
-bitflags = { version = "1.2.1" }
-macropol = { version = "0.1.2" }
-chrono_0p4 = { version = "0.4.13", package = "chrono", optional = true, default-features = false }
-either = { version = "1.6.1", default-features = false }
-elain = { version = "0.3.0" }
+r3_core = { version = "0.1.0", path = "../r3_core" }
 
 [dev-dependencies]
-quickcheck_macros = "1.0.0"
-env_logger = "0.8.4"
-quickcheck = "1.0.3"
-log = "0.4.8"
+r3_kernel = { path = "../r3_kernel" }
+r3_port_std = { path = "../r3_port_std" }
 
 [package.metadata.docs.rs]
 all-features = true

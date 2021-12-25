@@ -1,5 +1,5 @@
 //! The implementation of the RISC-V timer driver.
-use r3::kernel::{traits, Cfg, StaticInterruptHandler};
+use r3_core::kernel::{traits, Cfg, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use tock_registers::{

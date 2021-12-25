@@ -1,5 +1,5 @@
 //! Simulates a hardware scheduler.
-use r3::{
+use r3_core::{
     kernel::interrupt::{InterruptHandlerFn, InterruptNum, InterruptPriority},
     utils::Init,
 };

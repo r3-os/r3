@@ -1,4 +1,4 @@
-use r3::kernel::{
+use r3_core::kernel::{
     interrupt::{InterruptHandlerFn, InterruptNum, InterruptPriority},
     raw_cfg::{CfgInterruptLine, InterruptLineDescriptor},
 };
@@ -6,7 +6,7 @@ use r3::kernel::{
 use crate::{cfg::CfgBuilder, interrupt, KernelTraits};
 
 unsafe impl<Traits: KernelTraits> const CfgInterruptLine for CfgBuilder<Traits> {
-    fn interrupt_line_define<Properties: ~const r3::bag::Bag>(
+    fn interrupt_line_define<Properties: ~const r3_core::bag::Bag>(
         &mut self,
         InterruptLineDescriptor {
             phantom: _,

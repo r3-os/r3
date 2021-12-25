@@ -89,7 +89,7 @@ impl Time {
     /// # Examples
     ///
     /// ```
-    /// use r3::time::Time;
+    /// use r3_core::time::Time;
     ///
     /// let dur = Time::from_micros(1_201_250_000);
     /// assert_eq!(dur.as_secs_f64(), 1201.25);
@@ -105,7 +105,7 @@ impl Time {
     /// # Examples
     ///
     /// ```
-    /// use r3::time::Time;
+    /// use r3_core::time::Time;
     ///
     /// let dur = Time::from_micros(1_201_250_000);
     /// assert_eq!(dur.as_secs_f32(), 1201.25);
@@ -223,7 +223,7 @@ impl TryFrom<chrono_0p4::DateTime<chrono_0p4::Utc>> for Time {
     ///
     /// ```
     /// use chrono_0p4::{DateTime, Utc, TimeZone};
-    /// use r3::time::Time;
+    /// use r3_core::time::Time;
     /// assert_eq!(
     ///     Time::try_from(Utc.timestamp(4, 123_456)),
     ///     Ok(Time::from_micros(4_000_123)),
@@ -259,7 +259,7 @@ impl TryFrom<Time> for chrono_0p4::DateTime<chrono_0p4::Utc> {
     ///
     /// ```
     /// use chrono_0p4::{DateTime, Utc, TimeZone};
-    /// use r3::time::Time;
+    /// use r3_core::time::Time;
     /// assert_eq!(
     ///     DateTime::try_from(Time::from_micros(123_456_789)),
     ///     Ok(Utc.timestamp(123, 456_789_000)),

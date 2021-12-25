@@ -1,6 +1,6 @@
 use core::{arch::asm, cell::UnsafeCell, mem::MaybeUninit, slice};
 use memoffset::offset_of;
-use r3::{
+use r3_core::{
     kernel::traits,
     utils::{Init, ZeroInit},
 };

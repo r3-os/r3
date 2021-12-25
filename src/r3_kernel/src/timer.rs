@@ -1,6 +1,6 @@
 //! Timers
 use core::{fmt, marker::PhantomData, mem::ManuallyDrop};
-use r3::{
+use r3_core::{
     kernel::{traits, SetTimerDelayError, SetTimerPeriodError, StartTimerError, StopTimerError},
     time::Duration,
     utils::Init,

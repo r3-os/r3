@@ -1,7 +1,7 @@
 //! Checks that when a stack is automatically allocated, both ends of the
 //! stack region are aligned to a port-specific alignment.
 use core::marker::PhantomData;
-use r3::kernel::{traits, Cfg, StaticTask};
+use r3_core::kernel::{traits, Cfg, StaticTask};
 use r3_kernel::System;
 use r3_test_suite::kernel_tests::Driver;
 

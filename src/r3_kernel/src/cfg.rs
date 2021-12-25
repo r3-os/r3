@@ -1,7 +1,7 @@
 //! Static configuration mechanism for the kernel
 use core::marker::PhantomData;
 
-use r3::kernel::Hunk;
+use r3_core::kernel::Hunk;
 
 use crate::{
     utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN},
@@ -19,7 +19,7 @@ pub use self::{event_group::*, interrupt::*, mutex::*, semaphore::*, task::*, ti
 /// Attach [a configuration function][1] to a [kernel trait type][2] by
 /// implementing [`KernelCfg2`].
 ///
-/// [1]: r3#static-configuration
+/// [1]: r3_core#static-configuration
 /// [2]: crate#kernel-trait-type
 /// [`KernelCfg2`]: crate::KernelCfg2
 #[macro_export]
@@ -28,7 +28,7 @@ macro_rules! build {
     // r3_kernel::System<$Traits>>) -> $IdMap`
     ($Traits:ty, $configure:expr => $IdMap:ty) => {{
         use $crate::{
-            r3,
+            r3_core,
             cfg::{self, CfgBuilder, CfgBuilderInner},
             EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
             KernelCfg2, Port, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
@@ -41,10 +41,10 @@ macro_rules! build {
 
         type System = $crate::System<$Traits>;
 
-        const fn build_cfg_pre() -> r3::kernel::cfg::KernelStaticParams<System> {
+        const fn build_cfg_pre() -> r3_core::kernel::cfg::KernelStaticParams<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut my_cfg = unsafe { CfgBuilder::new() };
-            let mut cfg = r3::kernel::cfg::Cfg::new(&mut my_cfg);
+            let mut cfg = r3_core::kernel::cfg::Cfg::new(&mut my_cfg);
             $configure(&mut cfg);
             CfgBuilder::finalize_in_cfg(&mut cfg);
 
@@ -55,7 +55,7 @@ macro_rules! build {
 
         // Implement `KernelStatic` on `$Traits` using the information
         // collected in the first part of the finalization
-        r3::kernel::cfg::attach_static!(
+        r3_core::kernel::cfg::attach_static!(
             build_cfg_pre(),
             impl KernelStatic<System> for $Traits,
         );
@@ -65,7 +65,7 @@ macro_rules! build {
         const fn build_cfg_post() -> (CfgBuilderInner<$Traits>, $IdMap) {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut my_cfg = unsafe { CfgBuilder::new() };
-            let mut cfg = r3::kernel::cfg::Cfg::new(&mut my_cfg);
+            let mut cfg = r3_core::kernel::cfg::Cfg::new(&mut my_cfg);
             let id_map = $configure(&mut cfg);
             CfgBuilder::finalize_in_cfg(&mut cfg);
 
@@ -160,7 +160,7 @@ macro_rules! build {
         const INTERRUPT_HANDLER_TABLE_LEN: usize =
             cfg::interrupt_handler_table_len(CFG.interrupt_lines.as_slice());
         const INTERRUPT_HANDLER_TABLE:
-            [Option<r3::kernel::interrupt::InterruptHandlerFn>; INTERRUPT_HANDLER_TABLE_LEN] =
+            [Option<r3_core::kernel::interrupt::InterruptHandlerFn>; INTERRUPT_HANDLER_TABLE_LEN] =
             cfg::interrupt_handler_table(CFG.interrupt_lines.as_slice());
 
         // Construct a table of interrupt line initiializers
@@ -321,9 +321,9 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
         self.inner
     }
 
-    /// Apply post-processing before [`r3::kernel::Cfg`] is finalized.
+    /// Apply post-processing before [`r3_core::kernel::Cfg`] is finalized.
     #[doc(hidden)]
-    pub const fn finalize_in_cfg(cfg: &mut r3::kernel::Cfg<Self>) {
+    pub const fn finalize_in_cfg(cfg: &mut r3_core::kernel::Cfg<Self>) {
         // Create hunks for task stacks.
         let mut i = 0;
         let mut tasks = &mut cfg.raw().inner.tasks;
@@ -349,7 +349,7 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
     }
 }
 
-unsafe impl<Traits: KernelTraits> const r3::kernel::raw_cfg::CfgBase for CfgBuilder<Traits> {
+unsafe impl<Traits: KernelTraits> const r3_core::kernel::raw_cfg::CfgBase for CfgBuilder<Traits> {
     type System = System<Traits>;
 
     fn num_task_priority_levels(&mut self, new_value: usize) {

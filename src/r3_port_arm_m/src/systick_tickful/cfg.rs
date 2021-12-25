@@ -1,4 +1,4 @@
-use r3::kernel::InterruptPriority;
+use r3_core::kernel::InterruptPriority;
 
 /// The configuration for the implementation of `PortTimer` based on SysTick
 /// ([tickful]).
@@ -68,7 +68,7 @@ pub trait SysTickOptions {
 macro_rules! use_systick_tickful {
     (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
-            use $crate::r3::{
+            use $crate::r3_core::{
                 kernel::{traits, Cfg},
                 utils::Init,
             };

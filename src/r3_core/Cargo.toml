@@ -1,28 +1,18 @@
 [package]
-name = "r3_kernel"
-version = "0.0.0"
+name = "r3_core"
+version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "An RTOS kernel implementing the R3 API"
+description = "R3 core API definition"
 categories = ["embedded", "no-std"]
-keywords = ["r3"]
+keywords = ["r3", "rtos"]
 repository = "https://github.com/r3-os/r3"
-publish = false  # it's not ready yet
 
 [features]
 default = []
-inline_syscall = []
-priority_boost = []
-system_time = []
 
-# Enable the diagram rendering by svgbob
+# Enable the diagram rendering by svgbob and other fancy stuff
 doc = ["svgbobdoc/enable"]
-
-# Enable all optional kernel features
-full = [
-    "priority_boost",
-    "system_time",
-]
 
 # Displays a "some features are disabled" warning in the documentation
 # when disabled so that the user can know some items are missing because of
@@ -30,19 +20,15 @@ full = [
 _full = []
 
 [dependencies]
-num-integer = { version = "0.1.42", default-features = false }
-num-traits = { version = "0.2.11", default-features = false }
-pin-utils = { version = "0.1.0" }
+stable_deref_trait = { version = "1.2.0", default-features = false }
 svgbobdoc = { version = "0.3.0-alpha.4" }
 tokenlock = { version = "0.3.4", default-features = false }
 arrayvec = { version = "0.7.1", default-features = false }
 bitflags = { version = "1.2.1" }
-chrono = { version = "0.4.13", optional = true, default-features = false }
+macropol = { version = "0.1.2" }
+chrono_0p4 = { version = "0.4.13", package = "chrono", optional = true, default-features = false }
 either = { version = "1.6.1", default-features = false }
 elain = { version = "0.3.0" }
-
-# FIXME: specify r3_core version
-r3_core = { path = "../r3_core" }
 
 [dev-dependencies]
 quickcheck_macros = "1.0.0"

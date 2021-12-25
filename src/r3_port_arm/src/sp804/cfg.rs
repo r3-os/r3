@@ -1,5 +1,5 @@
 //! The public interface for the SP804 Dual Timer driver.
-use r3::kernel::{InterruptNum, InterruptPriority};
+use r3_core::kernel::{InterruptNum, InterruptPriority};
 
 /// Attach the implementation of [`PortTimer`] that is based on
 /// [Arm PrimeCell SP804 Dual Timer] to a given kernel trait type. This macro
@@ -42,7 +42,7 @@ use r3::kernel::{InterruptNum, InterruptPriority};
 macro_rules! use_sp804 {
     (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
-            use $crate::r3::{
+            use $crate::r3_core::{
                 kernel::{traits, Cfg},
                 utils::Init,
             };

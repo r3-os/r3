@@ -92,9 +92,9 @@ r3_xxx_port::use_port!(unsafe struct SystemTraits);
 
 // ----- The above macro invocation also produces: -----
 /*  ⋮  */
-unsafe impl r3::PortThreading for SystemTraits { /* ... */ }
-unsafe impl r3::PortInterrupts for SystemTraits { /* ... */ }
-unsafe impl r3::PortTimer for SystemTraits { /* ... */ }
+unsafe impl r3_kernel::PortThreading for SystemTraits { /* ... */ }
+unsafe impl r3_kernel::PortInterrupts for SystemTraits { /* ... */ }
+unsafe impl r3_kernel::PortTimer for SystemTraits { /* ... */ }
 /*  ⋮  */
 
 // `Port` gets implemented automatically when
@@ -120,7 +120,7 @@ static COTTAGE: Objects = {
 
     const CFG: /* ... */ = {
         let mut raw_cfg = r3_kernel::cfg::CfgBuilder::new();
-        let mut cfg = r3::kernel::cfg::Cfg::new(&mut raw_cfg);
+        let mut cfg = r3_core::kernel::cfg::Cfg::new(&mut raw_cfg);
         configure_app(&mut cfg);
         raw_cfg
     };
@@ -186,9 +186,9 @@ fn main() {
 - **[`MutexProtocol`]**: This kernel supports `None` and `Ceiling(_)`. Unsupported values are treated as `None`.
 - **[`ResultCode::NoAccess`]**: Not supported. This kernel causes an undefined behavior (including a potential panic) when an invalid ID is given.
 
-[`QueueOrder`]: r3::kernel::QueueOrder
-[`MutexProtocol`]: r3::kernel::MutexProtocol
-[`ResultCode::NoAccess`]: r3::Kernel::ResultCode::NoAccess
+[`QueueOrder`]: r3_core::kernel::QueueOrder
+[`MutexProtocol`]: r3_core::kernel::MutexProtocol
+[`ResultCode::NoAccess`]: r3_core::Kernel::ResultCode::NoAccess
 
 # Cargo Features
 
@@ -201,7 +201,7 @@ Enabling the following features might affect the kernel's runtime performance an
 - **`priority_boost`**: Enables [Priority Boost][] ([`raw::KernelBoostPriority`][]).
 - **`system_time`**: Enables the tracking of a global system time ([`raw::KernelTime`][]).
 
-[Priority Boost]: r3::kernel::Kernel::boost_priority
-[`raw::KernelBoostPriority`]: r3::kernel::raw::KernelBoostPriority
-[`raw::KernelTime`]: r3::kernel::raw::KernelTime
+[Priority Boost]: r3_core::kernel::Kernel::boost_priority
+[`raw::KernelBoostPriority`]: r3_core::kernel::raw::KernelBoostPriority
+[`raw::KernelTime`]: r3_core::kernel::raw::KernelTime
 

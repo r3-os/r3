@@ -1,5 +1,5 @@
 //! The implementation of the SP804 Dual Timer driver.
-use r3::kernel::{traits, Cfg, InterruptLine, StaticInterruptHandler};
+use r3_core::kernel::{traits, Cfg, InterruptLine, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};

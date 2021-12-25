@@ -1,5 +1,5 @@
 use core::num::NonZeroUsize;
-use r3::kernel::{
+use r3_core::kernel::{
     raw_cfg::{CfgEventGroup, EventGroupDescriptor},
     EventGroupBits,
 };
@@ -7,7 +7,7 @@ use r3::kernel::{
 use crate::{cfg::CfgBuilder, event_group, klock::CpuLockCell, wait, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgEventGroup for CfgBuilder<Traits> {
-    fn event_group_define<Properties: ~const r3::bag::Bag>(
+    fn event_group_define<Properties: ~const r3_core::bag::Bag>(
         &mut self,
         EventGroupDescriptor {
             phantom: _,

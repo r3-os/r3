@@ -56,9 +56,9 @@ pub extern crate core;
 #[doc(hidden)]
 pub extern crate arrayvec;
 
-// `build!` requires `r3`
+// `build!` requires `r3_core`
 #[doc(hidden)]
-pub extern crate r3;
+pub extern crate r3_core;
 
 pub mod utils;
 
@@ -66,7 +66,7 @@ pub mod utils;
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::{fmt, marker::PhantomData, mem::forget, num::NonZeroUsize, ops::Range};
 
-use r3::{
+use r3_core::{
     kernel::{
         cfg::{DelegateKernelStatic, KernelStatic},
         raw,
@@ -98,7 +98,7 @@ pub use {event_group::*, interrupt::*, mutex::*, semaphore::*, task::*, timeout:
 pub type Id = NonZeroUsize;
 
 /// Wraps a provided [trait type][1] `Traits` to instantiate a kernel. This type
-/// implements the traits from [`r3::kernel::raw`], making it usable as a
+/// implements the traits from [`r3_core::kernel::raw`], making it usable as a
 /// kernel, if `Traits` implements some appropriate traits, which consequently
 /// make it implement [`KernelTraits`].
 ///
@@ -119,14 +119,14 @@ impl<Traits> core::fmt::Debug for System<Traits> {
     }
 }
 
-/// The instantiation of [`r3::kernel::Cfg`] used by [`build!`] to configure
+/// The instantiation of [`r3_core::kernel::Cfg`] used by [`build!`] to configure
 /// a kernel. `CfgBuilder<...>` in this alias Implements
 /// [`~const`]` `[`raw_cfg::CfgBase`]`<`[`System`]`<Traits>>` and many other
 /// `raw_cfg` traits.
 ///
 /// [`~const`]: https://github.com/rust-lang/rust/issues/77463
-/// [`raw_cfg::CfgBase`]: r3::kernel::raw_cfg::CfgBase
-pub type Cfg<'c, Traits> = r3::kernel::Cfg<'c, cfg::CfgBuilder<Traits>>;
+/// [`raw_cfg::CfgBase`]: r3_core::kernel::raw_cfg::CfgBase
+pub type Cfg<'c, Traits> = r3_core::kernel::Cfg<'c, cfg::CfgBuilder<Traits>>;
 
 /// Represents a complete [kernel trait type][1].
 ///
@@ -148,20 +148,20 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     ];
 
     #[inline]
-    fn raw_acquire_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
+    fn raw_acquire_cpu_lock() -> Result<(), r3_core::kernel::CpuLockError> {
         // Safety: `try_enter_cpu_lock` is only meant to be called by
         //         the kernel
         if unsafe { Traits::try_enter_cpu_lock() } {
             Ok(())
         } else {
-            Err(r3::kernel::CpuLockError::BadContext)
+            Err(r3_core::kernel::CpuLockError::BadContext)
         }
     }
 
     #[inline]
-    unsafe fn raw_release_cpu_lock() -> Result<(), r3::kernel::CpuLockError> {
+    unsafe fn raw_release_cpu_lock() -> Result<(), r3_core::kernel::CpuLockError> {
         if !Traits::is_cpu_lock_active() {
-            Err(r3::kernel::CpuLockError::BadContext)
+            Err(r3_core::kernel::CpuLockError::BadContext)
         } else {
             // Safety: CPU Lock active
             unsafe { Traits::leave_cpu_lock() };
@@ -175,7 +175,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn raw_unboost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
+    unsafe fn raw_unboost_priority() -> Result<(), r3_core::kernel::BoostPriorityError> {
         state::unboost_priority::<Traits>()
     }
 
@@ -192,27 +192,27 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn raw_set_time(time: Time) -> Result<(), r3::kernel::TimeError> {
+    fn raw_set_time(time: Time) -> Result<(), r3_core::kernel::TimeError> {
         timeout::set_system_time::<Traits>(time)
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    unsafe fn raw_exit_task() -> Result<!, r3::kernel::ExitTaskError> {
+    unsafe fn raw_exit_task() -> Result<!, r3_core::kernel::ExitTaskError> {
         // Safety: Just forwarding the function call
         unsafe { task::exit_current_task::<Traits>() }
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn raw_park() -> Result<(), r3::kernel::ParkError> {
+    fn raw_park() -> Result<(), r3_core::kernel::ParkError> {
         task::park_current_task::<Traits>()
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn raw_park_timeout(timeout: Duration) -> Result<(), r3::kernel::ParkTimeoutError> {
+    fn raw_park_timeout(timeout: Duration) -> Result<(), r3_core::kernel::ParkTimeoutError> {
         task::park_current_task_timeout::<Traits>(timeout)
     }
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn raw_sleep(timeout: Duration) -> Result<(), r3::kernel::SleepError> {
+    fn raw_sleep(timeout: Duration) -> Result<(), r3_core::kernel::SleepError> {
         task::put_current_task_on_sleep_timeout::<Traits>(timeout)
     }
 
@@ -231,42 +231,42 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
     type RawTaskId = task::TaskId;
 
     #[inline]
-    fn raw_task_current() -> Result<Self::RawTaskId, r3::kernel::GetCurrentTaskError> {
+    fn raw_task_current() -> Result<Self::RawTaskId, r3_core::kernel::GetCurrentTaskError> {
         Self::task_current()
     }
 
     #[inline]
     unsafe fn raw_task_activate(
         this: Self::RawTaskId,
-    ) -> Result<(), r3::kernel::ActivateTaskError> {
+    ) -> Result<(), r3_core::kernel::ActivateTaskError> {
         Self::task_activate(this)
     }
 
     #[inline]
     unsafe fn raw_task_interrupt(
         this: Self::RawTaskId,
-    ) -> Result<(), r3::kernel::InterruptTaskError> {
+    ) -> Result<(), r3_core::kernel::InterruptTaskError> {
         Self::task_interrupt(this)
     }
 
     #[inline]
     unsafe fn raw_task_unpark_exact(
         this: Self::RawTaskId,
-    ) -> Result<(), r3::kernel::UnparkExactError> {
+    ) -> Result<(), r3_core::kernel::UnparkExactError> {
         Self::task_unpark_exact(this)
     }
 
     #[inline]
     unsafe fn raw_task_priority(
         this: Self::RawTaskId,
-    ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
+    ) -> Result<usize, r3_core::kernel::GetTaskPriorityError> {
         Self::task_priority(this)
     }
 
     #[inline]
     unsafe fn raw_task_effective_priority(
         this: Self::RawTaskId,
-    ) -> Result<usize, r3::kernel::GetTaskPriorityError> {
+    ) -> Result<usize, r3_core::kernel::GetTaskPriorityError> {
         Self::task_effective_priority(this)
     }
 }
@@ -276,7 +276,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> 
     unsafe fn raw_task_set_priority(
         this: Self::RawTaskId,
         priority: usize,
-    ) -> Result<(), r3::kernel::SetTaskPriorityError> {
+    ) -> Result<(), r3_core::kernel::SetTaskPriorityError> {
         Self::task_set_priority(this, priority)
     }
 }
@@ -285,7 +285,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelTaskSetPriority for System<Traits> 
 #[doc(cfg(feature = "priority_boost"))]
 unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn raw_boost_priority() -> Result<(), r3::kernel::BoostPriorityError> {
+    fn raw_boost_priority() -> Result<(), r3_core::kernel::BoostPriorityError> {
         state::boost_priority::<Traits>()
     }
 }
@@ -294,7 +294,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelBoostPriority for System<Traits> {
 #[doc(cfg(feature = "system_time"))]
 unsafe impl<Traits: KernelTraits> raw::KernelTime for System<Traits> {
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn raw_time() -> Result<Time, r3::kernel::TimeError> {
+    fn raw_time() -> Result<Time, r3_core::kernel::TimeError> {
         timeout::system_time::<Traits>()
     }
 }
@@ -303,7 +303,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelAdjustTime for System<Traits> {
     const RAW_TIME_USER_HEADROOM: Duration = TIME_USER_HEADROOM;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
-    fn raw_adjust_time(delta: Duration) -> Result<(), r3::kernel::AdjustTimeError> {
+    fn raw_adjust_time(delta: Duration) -> Result<(), r3_core::kernel::AdjustTimeError> {
         timeout::adjust_system_and_event_time::<Traits>(delta)
     }
 }
@@ -313,7 +313,7 @@ unsafe impl<Traits: KernelTraits> raw::KernelAdjustTime for System<Traits> {
 ///
 /// **This type is exempt from the API stability guarantee.**
 ///
-/// [`KernelBase`]: r3::kernel::raw::KernelBase
+/// [`KernelBase`]: r3_core::kernel::raw::KernelBase
 pub struct KernelDebugPrinter<T>(PhantomData<T>);
 
 impl<T: KernelTraits> fmt::Debug for KernelDebugPrinter<T> {
@@ -404,7 +404,7 @@ pub unsafe trait PortThreading: KernelCfg1 + KernelStatic<System<Self>> {
     /// [`StackHunk`]). The kernel configurator does not check the alignemnt
     /// for manually-allocated stack regions.
     ///
-    /// [`StackHunk`]: r3::kernel::task::StackHunk
+    /// [`StackHunk`]: r3_core::kernel::task::StackHunk
     const STACK_ALIGN: usize = core::mem::size_of::<usize>();
 
     /// Transfer the control to the dispatcher, discarding the current
@@ -536,43 +536,43 @@ pub unsafe trait PortInterrupts: KernelCfg1 {
     unsafe fn set_interrupt_line_priority(
         _line: raw::InterruptNum,
         _priority: raw::InterruptPriority,
-    ) -> Result<(), r3::kernel::SetInterruptLinePriorityError> {
-        Err(r3::kernel::SetInterruptLinePriorityError::NotSupported)
+    ) -> Result<(), r3_core::kernel::SetInterruptLinePriorityError> {
+        Err(r3_core::kernel::SetInterruptLinePriorityError::NotSupported)
     }
 
     /// Enable the specified interrupt line.
     unsafe fn enable_interrupt_line(
         _line: raw::InterruptNum,
-    ) -> Result<(), r3::kernel::EnableInterruptLineError> {
-        Err(r3::kernel::EnableInterruptLineError::NotSupported)
+    ) -> Result<(), r3_core::kernel::EnableInterruptLineError> {
+        Err(r3_core::kernel::EnableInterruptLineError::NotSupported)
     }
 
     /// Disable the specified interrupt line.
     unsafe fn disable_interrupt_line(
         _line: raw::InterruptNum,
-    ) -> Result<(), r3::kernel::EnableInterruptLineError> {
-        Err(r3::kernel::EnableInterruptLineError::NotSupported)
+    ) -> Result<(), r3_core::kernel::EnableInterruptLineError> {
+        Err(r3_core::kernel::EnableInterruptLineError::NotSupported)
     }
 
     /// Set the pending flag of the specified interrupt line.
     unsafe fn pend_interrupt_line(
         _line: raw::InterruptNum,
-    ) -> Result<(), r3::kernel::PendInterruptLineError> {
-        Err(r3::kernel::PendInterruptLineError::NotSupported)
+    ) -> Result<(), r3_core::kernel::PendInterruptLineError> {
+        Err(r3_core::kernel::PendInterruptLineError::NotSupported)
     }
 
     /// Clear the pending flag of the specified interrupt line.
     unsafe fn clear_interrupt_line(
         _line: raw::InterruptNum,
-    ) -> Result<(), r3::kernel::ClearInterruptLineError> {
-        Err(r3::kernel::ClearInterruptLineError::NotSupported)
+    ) -> Result<(), r3_core::kernel::ClearInterruptLineError> {
+        Err(r3_core::kernel::ClearInterruptLineError::NotSupported)
     }
 
     /// Read the pending flag of the specified interrupt line.
     unsafe fn is_interrupt_line_pending(
         _line: raw::InterruptNum,
-    ) -> Result<bool, r3::kernel::QueryInterruptLineError> {
-        Err(r3::kernel::QueryInterruptLineError::NotSupported)
+    ) -> Result<bool, r3_core::kernel::QueryInterruptLineError> {
+        Err(r3_core::kernel::QueryInterruptLineError::NotSupported)
     }
 }
 
@@ -955,7 +955,7 @@ impl<Traits: KernelCfg2> State<Traits> {
 /// caller. Under the object safety rules, we are allowed to cause an undefined
 /// behavior in such cases.
 ///
-/// [object safety]: r3#object-safety
+/// [object safety]: r3_core#object-safety
 #[inline]
 unsafe fn bad_id<Traits: KernelCfg2>() -> error::NoAccessError {
     // TODO: Support returning `NoAccess`

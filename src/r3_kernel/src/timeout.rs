@@ -124,11 +124,11 @@
 //!     CET         enqueueable       user headroom
 //! ```
 //!
-//! [`raw_time`]: r3::kernel::raw::KernelTime::raw_time
-//! [`raw_set_time`]: r3::kernel::raw::KernelBase::raw_set_time
-//! [`raw_adjust_time`]: r3::kernel::raw::KernelAdjustTime::raw_adjust_time
+//! [`raw_time`]: r3_core::kernel::raw::KernelTime::raw_time
+//! [`raw_set_time`]: r3_core::kernel::raw::KernelBase::raw_set_time
+//! [`raw_adjust_time`]: r3_core::kernel::raw::KernelAdjustTime::raw_adjust_time
 use core::{fmt, marker::PhantomPinned, pin::Pin, ptr::NonNull};
-use r3::{
+use r3_core::{
     kernel::{AdjustTimeError, TimeError},
     time::{Duration, Time},
     utils::Init,
@@ -345,7 +345,7 @@ const HARD_HEADROOM: Time32 = 1 << 30;
 /// The extent of how overdue a timed event can be made or how far a timed event
 /// can be delayed past `Duration::MAX` by a call to [`raw_adjust_time`].
 ///
-/// [`raw_adjust_time`]: r3::kernel::raw::KernelAdjustTime::raw_adjust_time
+/// [`raw_adjust_time`]: r3_core::kernel::raw::KernelAdjustTime::raw_adjust_time
 ///
 /// The value is `1 << 29` microseconds.
 pub const TIME_USER_HEADROOM: Duration = Duration::from_micros(USER_HEADROOM as i32);

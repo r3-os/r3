@@ -1,5 +1,5 @@
 use core::{arch::asm, cell::UnsafeCell, hint::unreachable_unchecked, mem::MaybeUninit, slice};
-use r3::{
+use r3_core::{
     kernel::{
         interrupt::{InterruptHandlerFn, InterruptNum},
         traits, ClearInterruptLineError, EnableInterruptLineError, InterruptPriority,

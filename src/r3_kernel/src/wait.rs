@@ -1,5 +1,5 @@
 use core::{cell::Cell, fmt, ops, ptr::NonNull};
-use r3::{
+use r3_core::{
     kernel::{EventGroupBits, EventGroupWaitFlags, WaitError, WaitTimeoutError},
     utils::Init,
 };
@@ -193,11 +193,11 @@ pub(crate) enum QueueOrder {
     TaskPriority,
 }
 
-impl const From<r3::kernel::QueueOrder> for QueueOrder {
-    fn from(x: r3::kernel::QueueOrder) -> Self {
+impl const From<r3_core::kernel::QueueOrder> for QueueOrder {
+    fn from(x: r3_core::kernel::QueueOrder) -> Self {
         match x {
-            r3::kernel::QueueOrder::Fifo => Self::Fifo,
-            r3::kernel::QueueOrder::TaskPriority => Self::TaskPriority,
+            r3_core::kernel::QueueOrder::Fifo => Self::Fifo,
+            r3_core::kernel::QueueOrder::TaskPriority => Self::TaskPriority,
             // The default value is implementation-defined
             _ => Self::TaskPriority,
         }

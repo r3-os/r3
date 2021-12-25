@@ -1,5 +1,5 @@
 use core::num::NonZeroUsize;
-use r3::kernel::{
+use r3_core::kernel::{
     raw_cfg::{CfgMutex, MutexDescriptor},
     MutexProtocol,
 };
@@ -7,7 +7,7 @@ use r3::kernel::{
 use crate::{cfg::CfgBuilder, klock::CpuLockCell, mutex, wait, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgMutex for CfgBuilder<Traits> {
-    fn mutex_define<Properties: ~const r3::bag::Bag>(
+    fn mutex_define<Properties: ~const r3_core::bag::Bag>(
         &mut self,
         MutexDescriptor {
             phantom: _,

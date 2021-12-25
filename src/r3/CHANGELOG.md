@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-**The design has been wholly revamped!** `r3` now only defines the interface between an application and a kernel implementation. The current kernel implementation has been moved to `r3_kernel`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
+**The design has been wholly revamped!** `r3_core` defines the interface between an application and a kernel implementation. `r3` re-exports all of `r3_core` and provides additional items. The current kernel implementation has been moved to `r3_kernel`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
 
 ### Changed
 
@@ -17,6 +17,7 @@ While much of the application-level API has retained its general shape, there ar
  - `r3::kernel::Task::current` was moved to `r3::kernel::LocalTask::current` and now requires a task context. It returns `LocalTask`, which cannot be sent to another thread but whose reference (`&LocalTask` or `TaskRef`) can be.
  - `r3::kernel::ResultCode::BadId` was renamed to `NoAccess` and covers general protection failures detected by a now-optional protection mechanism. This means that application and library code can't rely on `NoAccess` being returned reliably anymore (it can't anyway once owned handles are implemented), and that a kernel implementation may use this error code to indicate that a given kernel object ID might be valid, but the caller lacks the necessary privileges to access that object.
  - The `chrono` Cargo feature was renamed to `chrono_0p4`.
+ - `r3::sync` is now gated by `cfg(feature = "sync")`.
 
 TODO
 

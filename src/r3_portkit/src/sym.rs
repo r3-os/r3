@@ -1,7 +1,7 @@
 //! Simulates associated `static`s in traits.
 // FIXME: Remove this module when real `static`s are supported in traits
 use core::{marker::PhantomData, mem::align_of};
-use r3::utils::ZeroInit;
+use r3_core::utils::ZeroInit;
 
 /// Used as a parameter for the [`SymStatic`] function pointer type.
 ///
@@ -131,7 +131,7 @@ pub const DEFAULT_FN_ALIGN: usize = if cfg!(target_arch = "aarch64") {
 ///
 /// struct InteriorMutable(Cell<usize>);
 /// unsafe impl Sync for InteriorMutable {}
-/// unsafe impl r3::utils::ZeroInit for InteriorMutable {}
+/// unsafe impl r3_core::utils::ZeroInit for InteriorMutable {}
 ///
 /// trait Tr {
 ///     sym_static!(static VAR: SymStatic<InteriorMutable> = zeroed!());

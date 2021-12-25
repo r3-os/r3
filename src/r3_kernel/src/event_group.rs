@@ -1,6 +1,6 @@
 //! Event groups
 use core::fmt;
-use r3::{
+use r3_core::{
     kernel::{
         EventGroupBits, EventGroupWaitFlags, GetEventGroupError, PollEventGroupError,
         UpdateEventGroupError, WaitEventGroupError, WaitEventGroupTimeoutError,
@@ -33,7 +33,7 @@ impl<Traits: KernelTraits> System<Traits> {
     }
 }
 
-unsafe impl<Traits: KernelTraits> r3::kernel::raw::KernelEventGroup for System<Traits> {
+unsafe impl<Traits: KernelTraits> r3_core::kernel::raw::KernelEventGroup for System<Traits> {
     type RawEventGroupId = EventGroupId;
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
