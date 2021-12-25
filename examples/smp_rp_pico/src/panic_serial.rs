@@ -1,4 +1,4 @@
-use core::panic::PanicInfo;
+use core::{arch::asm, panic::PanicInfo};
 
 // Install a global panic handler that uses the serial port
 #[inline(never)]

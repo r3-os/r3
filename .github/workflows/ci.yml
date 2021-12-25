@@ -51,6 +51,46 @@ jobs:
       - name: Check crate metadata
         run: deno run --allow-read scripts/check-workspace.ts
 
+  # Build examples
+  build-examples:
+    name: Build examples
+    needs: check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # TODO: Add `macos-10.15`, which needs `arm-none-eabi-gcc`
+        # TODO: Add `windows-2019`, which doesn't support `r3_port_std`
+        os: [ubuntu-20.04]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Install additional target of the Rust toolchain (Arm)
+        run: |
+          rustup target add thumbv6m-none-eabi thumbv7em-none-eabihf
+          rustup target add armv7a-none-eabi
+
+      - name: Install dependencies (Linux)
+        if: startsWith(matrix.os, 'ubuntu-')
+        run: sudo apt-get install gcc-arm-none-eabi
+
+      - name: Build examples
+        shell: bash
+        run: |
+          for d in examples/*; do
+            echo "::group::$d"
+            pushd $d
+            cargo build --release
+            popd
+            echo "::endgroup::"
+          done
+
   # Run tests on the host system
   test-hosted:
     name: Test
