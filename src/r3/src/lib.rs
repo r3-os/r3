@@ -4,6 +4,7 @@
 #![feature(const_mut_refs)]
 #![feature(cell_update)]
 #![feature(decl_macro)]
+#![feature(doc_cfg)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
@@ -43,6 +44,8 @@
 #[doc = include_str!("../CHANGELOG.md")]
 pub mod _changelog_ {}
 
+#[cfg(feature = "sync")]
+#[doc(cfg(feature = "sync"))]
 pub mod sync;
 mod tests;
 

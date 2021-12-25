@@ -12,6 +12,8 @@ repository = "https://github.com/r3-os/r3"
 [features]
 default = []
 
+sync = []
+
 # Exposes `r3_core`'s features'
 chrono_0p4 = ["r3_core/chrono_0p4"]
 

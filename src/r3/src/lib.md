@@ -74,6 +74,8 @@ The `r3` package is built on top on [`r3_core`] and provides useful abstractions
 
 # Cargo Features
 
-This package re-exports the Cargo features of [`r3_core`][]. Please refer to [its documentation][1].
+ - **`sync`** exports [`r3::sync`](crate::sync).
+
+This package also exposes the Cargo features of [`r3_core`][]. Please refer to [its documentation][1].
 
 [1]: r3_core#cargo-features
