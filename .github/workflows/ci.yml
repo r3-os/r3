@@ -18,10 +18,10 @@ jobs:
           profile: minimal
           components: clippy, rustfmt
 
-      - name: Install Dependencies (Linux)
+      - name: Install dependencies (Linux)
         run: sudo apt-get install libusb-1.0-0-dev libudev-dev
 
-      - name: Exclude Crates
+      - name: Exclude crates
         run: |
           # Example crates will fail to compile unless an appropriate target
           # triple is provided.
@@ -45,10 +45,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Install Dependencies (Linux)
+      - name: Install dependencies (Linux)
         run: sudo snap install deno
 
-      - name: Check Crate Metadata
+      - name: Check crate metadata
         run: deno run --allow-read scripts/check-workspace.ts
 
   # Run tests on the host system
@@ -72,11 +72,11 @@ jobs:
         with:
           profile: minimal
 
-      - name: Install Dependencies (Linux)
+      - name: Install dependencies (Linux)
         if: startsWith(matrix.os, 'ubuntu-')
         run: sudo apt-get install libusb-1.0-0-dev libudev-dev
 
-      - name: Exclude Crates (Windows)
+      - name: Exclude crates (Windows)
         if: startsWith(matrix.os, 'windows-')
         shell: bash
         run: |
@@ -85,7 +85,7 @@ jobs:
           sed -E -i.bak 's/.*r3_port_std.*//' src/r3/Cargo.toml
           sed -E -i.bak 's/.*basic.*//' Cargo.toml
 
-      - name: Exclude Crates
+      - name: Exclude crates
         shell: bash
         run: |
           sed -E -i.bak 's/.*basic_.*//' Cargo.toml
@@ -121,10 +121,10 @@ jobs:
         with:
           profile: minimal
 
-      - name: Install Dependencies (Linux)
+      - name: Install dependencies (Linux)
         run: sudo apt-get install libusb-1.0-0-dev libudev-dev
 
-      - name: Convert Feature List to Cargo Parameter
+      - name: Convert feature list to Cargo parameter
         run: |
           features='${{ matrix.features }}'
           if [ "$features" ]; then
@@ -187,36 +187,36 @@ jobs:
           profile: minimal
           components: rust-src
 
-      - name: Install Dependencies (Linux)
+      - name: Install dependencies (Linux)
         run: |
           sudo apt-get update
           sudo apt-get install libusb-1.0-0-dev libudev-dev
 
-      - name: Cache QEMU's Built Binaries
+      - name: Cache QEMU's built binaries
         uses: actions/cache@v2
         with:
           path: ~/.qemu
           key: ${{ runner.os }}-ci-qemu-arm_riscv
 
-      - name: Install QEMU 5.1.0 from Source
+      - name: Install QEMU 5.1.0 from source
         uses: ./.github/actions/install-qemu
         with:
           target-list: arm-softmmu,riscv32-softmmu,riscv64-softmmu
 
-      - name: Install Additional Target of the Rust Toolchain (Arm)
+      - name: Install additional target of the Rust toolchain (Arm)
         if: matrix.ty == 'arm'
         run: |
           rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabihf
           rustup target add thumbv8m.base-none-eabi thumbv8m.main-none-eabi thumbv8m.main-none-eabihf
           rustup target add armv7a-none-eabi
 
-      - name: Install Additional Target of the Rust Toolchain (RISC-V)
+      - name: Install additional target of the Rust toolchain (RISC-V)
         if: matrix.ty == 'riscv'
         run: |
           rustup target add riscv32imac-unknown-none-elf
           rustup target add riscv64imac-unknown-none-elf riscv64gc-unknown-none-elf
 
-      - name: Cache Test Runner's Binary
+      - name: Cache test runner's binary
         uses: actions/cache@v2
         with:
           path: ./target/debug
