@@ -1944,6 +1944,8 @@ dependencies = [
  "libc",
  "log",
  "once_cell",
+ "quickcheck",
+ "quickcheck_macros",
  "r3_core",
  "r3_kernel",
  "r3_test_suite",

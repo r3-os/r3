@@ -8,7 +8,7 @@ use std::{
     os::raw::c_int,
     ptr::{null_mut, NonNull},
     sync::{
-        atomic::{AtomicPtr, AtomicUsize, Ordering},
+        atomic::{AtomicIsize, AtomicPtr, Ordering},
         Arc, Once,
     },
     thread,
@@ -109,7 +109,8 @@ pub struct Thread {
 #[derive(Debug)]
 struct ThreadData {
     park_sock: [c_int; 2],
-    park_count: AtomicUsize,
+    park_requests_pending: AtomicIsize,
+    park_requests_accepted: AtomicIsize,
     pthread_id: Atomic<libc::pthread_t>,
 }
 
@@ -129,7 +130,8 @@ impl ThreadData {
 
         Self {
             park_sock,
-            park_count: AtomicUsize::new(0),
+            park_requests_pending: AtomicIsize::new(0),
+            park_requests_accepted: AtomicIsize::new(0),
             pthread_id: Atomic::<libc::pthread_t>::new(0),
         }
     }
@@ -224,13 +226,15 @@ fn park_inner(data: &ThreadData) {
 impl Thread {
     /// Make a new park token available for the thread.
     ///
-    /// Unlike [`std::thread::Thread::unpark`], **a thread can have multiple
-    /// tokens**. Each call to `park` will consume one token. The maximum number
-    /// of tokens a thread can have is unspecified.
+    /// If the thread is currently parked, the new token will be consumed
+    /// immediately. The maximum number of tokens per thread is unspecified
+    /// (i.e., it can be more than one).
     pub fn unpark(&self) {
         let data = &self.data;
 
-        // Make a token available
+        // Make a token available. Actually the token will be consumed
+        // asynchronously, but the unboundedness of the stream allows us to
+        // realize the required semantics.
         isize_ok_or_errno(unsafe {
             libc::send(data.park_sock_token_sink(), &0u8 as *const _ as _, 1, 0)
         })
@@ -243,6 +247,13 @@ impl Thread {
     /// However, this method can be called from any thread. (I call this “remote
     /// park”.)
     ///
+    /// This operation completes synchronously. That is, assuming no additional
+    /// park tokens are provided, the parked thread will no longer produce any
+    /// side effects after this method returns.
+    ///
+    /// Multiple park attempts accumulate. They essentially act as a negative
+    /// park token count.
+    ///
     /// The result is unspecified if the thread has already exited.
     pub fn park(&self) {
         // Make sure the signal handler is registered
@@ -251,16 +262,28 @@ impl Thread {
 
         let pthread_id = self.data.pthread_id.load(Ordering::Relaxed);
 
-        self.data.park_count.fetch_add(1, Ordering::Relaxed);
+        let ticket_num = self
+            .data
+            .park_requests_pending
+            .fetch_add(1, Ordering::Relaxed);
 
         // Raise the signal `SIGNAL_REMOTE_PARK`. This will force the target
-        // thread to execute `remote_park_signal_handler`.
+        // thread to execute `remote_park_signal_handler`. This will happen even
+        // if it's already executing `remote_park_signal_handler` because of
+        // `SA_NODEFER`.
         ok_or_errno(unsafe { libc::pthread_kill(pthread_id, SIGNAL_REMOTE_PARK) }).unwrap();
 
         // Wait until the signal is delivered.
-        while self.data.park_count.load(Ordering::Relaxed) != 0 {
+        while self
+            .data
+            .park_requests_accepted
+            .load(Ordering::Relaxed)
+            .wrapping_sub(ticket_num)
+            <= 0
+        {
             std::thread::yield_now();
         }
+        // []
     }
 }
 
@@ -275,7 +298,8 @@ fn register_remote_park_signal_handler() {
             &libc::sigaction {
                 sa_sigaction: remote_park_signal_handler as libc::sighandler_t,
                 // `SA_SIGINFO`: The handler uses the three-parameter signature.
-                sa_flags: libc::SA_SIGINFO,
+                // `SA_NODEFER`: The handler can preempt itself.
+                sa_flags: libc::SA_SIGINFO | libc::SA_NODEFER,
                 ..std::mem::zeroed()
             },
             null_mut(),
@@ -293,11 +317,47 @@ fn register_remote_park_signal_handler() {
         assert!(!current_ptr.is_null());
         let current = unsafe { &*current_ptr };
 
-        while current.park_count.load(Ordering::Relaxed) != 0 {
-            current.park_count.fetch_sub(1, Ordering::Relaxed);
+        // Take any remaining requests. The handler may be called a fewer number
+        // of times than the generated signals if the operating system
+        // implementation doesn't support queueing (IEEE Std 1003.1-2017,
+        // System Interfaces, "2.4.2 Realtime Signal Generation and Delivery"),
+        // which is why we can't just return after processing one request.
+        //
+        // `SA_NODEFER` means the handler may be preempted by another `SIGNAL_
+        // REMOTE_PARK` signal.
 
-            // Park the current thread
-            park_inner(current);
+        let mut park_requests_accepted = current.park_requests_accepted.load(Ordering::Relaxed);
+        loop {
+            // Make the preceding load single-thread acquiring
+            // (`park_requests_accepted ← current.park_requests_accepted`)
+            std::sync::atomic::compiler_fence(Ordering::Acquire);
+
+            let park_requests_pending = current.park_requests_pending.load(Ordering::Relaxed);
+            // [park_requests_accepted <= park_requests_pending]
+            if park_requests_accepted == park_requests_pending {
+                break;
+            }
+            // [park_requests_accepted < park_requests_pending]
+
+            // Make the subsequent store single-thread releasing
+            // (`current.park_requests_accepted += 1
+            // if current.park_requests_accepted == park_requests_accepted`)
+            std::sync::atomic::compiler_fence(Ordering::Release);
+
+            match current.park_requests_accepted.compare_exchange_weak(
+                park_requests_accepted,
+                park_requests_accepted.wrapping_add(1),
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => {
+                    // Process the park request
+                    park_inner(current);
+                }
+                Err(actual_park_requests_accepted) => {
+                    park_requests_accepted = actual_park_requests_accepted
+                }
+            }
         }
     }
 }

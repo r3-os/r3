@@ -18,6 +18,10 @@ spin = { version = "0.9.2", default-features = false, features = ["spin_mutex"] 
 slab = { version = "0.4.5" }
 log = { version = "0.4.8" }
 
+[dev-dependencies]
+quickcheck_macros = "1.0.0"
+quickcheck = "1.0.3"
+
 [dev-dependencies.r3_test_suite]
 path = "../r3_test_suite"
 default-features = false
