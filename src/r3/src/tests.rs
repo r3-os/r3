@@ -29,12 +29,12 @@ $( $doc, "\n", )*
 )}
 
 // `r3_port_std`'s target support is limited
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 macro ignore_if_port_std_does_not_support_target() {
     ""
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 macro ignore_if_port_std_does_not_support_target() {
     ",ignore"
 }

@@ -62,8 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TODO: Add `windows-2019`, which doesn't support `r3_port_std`
-        os: [ubuntu-20.04, macos-10.15]
+        os: [ubuntu-20.04, macos-10.15, windows-2019]
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -114,15 +113,6 @@ jobs:
       - name: Install dependencies (Linux)
         if: startsWith(matrix.os, 'ubuntu-')
         run: sudo apt-get install libusb-1.0-0-dev libudev-dev
-
-      - name: Exclude crates (Windows)
-        if: startsWith(matrix.os, 'windows-')
-        shell: bash
-        run: |
-          # `r3_port_std` doesn't support Windows yet
-          sed -E -i.bak 's/.*r3_port_std.*//' Cargo.toml
-          sed -E -i.bak 's/.*r3_port_std.*//' src/r3/Cargo.toml
-          sed -E -i.bak 's/.*basic.*//' Cargo.toml
 
       - name: Exclude crates
         shell: bash
