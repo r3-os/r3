@@ -59,9 +59,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TODO: Add `macos-10.15`, which needs `arm-none-eabi-gcc`
         # TODO: Add `windows-2019`, which doesn't support `r3_port_std`
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, macos-10.15]
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -75,10 +74,6 @@ jobs:
         run: |
           rustup target add thumbv6m-none-eabi thumbv7em-none-eabihf
           rustup target add armv7a-none-eabi
-
-      - name: Install dependencies (Linux)
-        if: startsWith(matrix.os, 'ubuntu-')
-        run: sudo apt-get install gcc-arm-none-eabi
 
       - name: Build examples
         shell: bash
