@@ -45,4 +45,5 @@ impl HasAtomicEquivalent for isize {
     type AtomicEquivalent = atomic::AtomicIsize;
 }
 
+#[allow(dead_code)]
 pub type Atomic<T> = <T as HasAtomicEquivalent>::AtomicEquivalent;

@@ -1,4 +1,5 @@
 #![feature(const_fn_trait_bound)]
+#![feature(atomic_mut_ptr)]
 #![feature(thread_local)]
 #![feature(deadline_api)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
@@ -31,9 +32,11 @@ pub mod _changelog_ {}
 #[cfg(unix)]
 #[path = "threading_unix.rs"]
 mod threading;
-
 #[cfg(windows)]
-#[path = "threading_win.rs"]
+#[path = "threading_windows.rs"]
+mod threading;
+#[cfg(not(any(unix, windows)))]
+#[path = "unsupported.rs"]
 mod threading;
 
 #[cfg(test)]
