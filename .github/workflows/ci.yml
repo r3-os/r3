@@ -8,6 +8,7 @@ jobs:
   check:
     name: Quick check
     runs-on: ubuntu-20.04
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -41,6 +42,7 @@ jobs:
   workspace:
     name: Check crate metadata
     runs-on: ubuntu-20.04
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -56,6 +58,7 @@ jobs:
     name: Build examples
     needs: check
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -91,6 +94,7 @@ jobs:
     name: Test
     needs: check
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -139,6 +143,7 @@ jobs:
     name: Test
     needs: check
     runs-on: ubuntu-20.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -177,10 +182,11 @@ jobs:
 
 
   # Run tests on freestanding targets
-  test-freestanding-arm:
+  test-freestanding:
     name: Test
     needs: check
     runs-on: ubuntu-20.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
