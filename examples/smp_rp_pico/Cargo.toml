@@ -13,7 +13,7 @@ r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
 r3_kernel = { path = "../../src/r3_kernel", features = ["system_time"] }
 r3 = { path = "../../src/r3", features = ["sync"] }
 
-rp2040-boot2 = { version = "0.1.2" }
+rp2040-boot2 = { version = "0.2.0" }
 cortex-m-rt = { version = "0.6.12", features = ["device"] }
 cortex-m = { version = "0.7.3", features = ["inline-asm"] }
 rp2040 = { version = "0.1.0" }

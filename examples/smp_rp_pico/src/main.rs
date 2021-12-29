@@ -17,4 +17,4 @@ mod panic_serial;
 // place. The bootrom copies this into SRAM and executes it.
 #[link_section = ".boot_loader"]
 #[used]
-pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER;
+pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
