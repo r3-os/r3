@@ -8,7 +8,7 @@ use std::{
     os::raw::c_int,
     ptr::{null_mut, NonNull},
     sync::{
-        atomic::{AtomicIsize, AtomicPtr, Ordering},
+        atomic::{AtomicBool, AtomicIsize, AtomicPtr, Ordering},
         Arc, Once,
     },
     thread,
@@ -30,6 +30,7 @@ pub unsafe fn exit_thread() -> ! {
 /// [`std::thread::JoinHandle`] with extra functionalities.
 #[derive(Debug)]
 pub struct JoinHandle<T> {
+    #[allow(dead_code)]
     std_handle: thread::JoinHandle<T>,
     thread: Thread,
 }
@@ -60,10 +61,7 @@ pub fn spawn(f: impl FnOnce() + Send + 'static) -> JoinHandle<()> {
         });
     });
 
-    let thread = Thread {
-        std_thread: std_handle.thread().clone(),
-        data,
-    };
+    let thread = Thread { data };
 
     // Wait until the just-spawned thread configures its own `THREAD_DATA`.
     thread::park();
@@ -102,7 +100,6 @@ impl Drop for ThreadDataDestructor {
 /// [`std::thread::Thread`] with extra functionalities.
 #[derive(Debug, Clone)]
 pub struct Thread {
-    std_thread: thread::Thread,
     data: Arc<ThreadData>,
 }
 
@@ -112,6 +109,7 @@ struct ThreadData {
     park_requests_pending: AtomicIsize,
     park_requests_accepted: AtomicIsize,
     pthread_id: Atomic<libc::pthread_t>,
+    in_remote_park_signal_handler: AtomicBool,
 }
 
 impl ThreadData {
@@ -133,6 +131,7 @@ impl ThreadData {
             park_requests_pending: AtomicIsize::new(0),
             park_requests_accepted: AtomicIsize::new(0),
             pthread_id: Atomic::<libc::pthread_t>::new(0),
+            in_remote_park_signal_handler: AtomicBool::new(false),
         }
     }
 
@@ -183,10 +182,7 @@ pub fn current() -> Thread {
         Arc::clone(&data)
     };
 
-    Thread {
-        std_thread: thread::current(),
-        data,
-    }
+    Thread { data }
 }
 
 pub fn park() {
@@ -260,30 +256,26 @@ impl Thread {
         static SIGNAL_HANDLER_ONCE: Once = Once::new();
         SIGNAL_HANDLER_ONCE.call_once(register_remote_park_signal_handler);
 
-        let pthread_id = self.data.pthread_id.load(Ordering::Relaxed);
+        let data = &*self.data;
 
-        let ticket_num = self
-            .data
-            .park_requests_pending
-            .fetch_add(1, Ordering::Relaxed);
+        let pthread_id = data.pthread_id.load(Ordering::Relaxed);
+
+        let ticket_num = data.park_requests_pending.fetch_add(1, Ordering::Relaxed);
 
         // Raise the signal `SIGNAL_REMOTE_PARK`. This will force the target
-        // thread to execute `remote_park_signal_handler`. This will happen even
-        // if it's already executing `remote_park_signal_handler` because of
-        // `SA_NODEFER`.
+        // thread to execute `remote_park_signal_handler`.
         ok_or_errno(unsafe { libc::pthread_kill(pthread_id, SIGNAL_REMOTE_PARK) }).unwrap();
 
-        // Wait until the signal is delivered.
-        while self
-            .data
-            .park_requests_accepted
-            .load(Ordering::Relaxed)
-            .wrapping_sub(ticket_num)
-            <= 0
+        // Wait until the thread ceases execution
+        while !data.in_remote_park_signal_handler.load(Ordering::Relaxed)
+            && data
+                .park_requests_accepted
+                .load(Ordering::Relaxed)
+                .wrapping_sub(ticket_num)
+                <= 0
         {
             std::thread::yield_now();
         }
-        // []
     }
 }
 
@@ -298,8 +290,7 @@ fn register_remote_park_signal_handler() {
             &libc::sigaction {
                 sa_sigaction: remote_park_signal_handler as libc::sighandler_t,
                 // `SA_SIGINFO`: The handler uses the three-parameter signature.
-                // `SA_NODEFER`: The handler can preempt itself.
-                sa_flags: libc::SA_SIGINFO | libc::SA_NODEFER,
+                sa_flags: libc::SA_SIGINFO,
                 ..std::mem::zeroed()
             },
             null_mut(),
@@ -317,48 +308,31 @@ fn register_remote_park_signal_handler() {
         assert!(!current_ptr.is_null());
         let current = unsafe { &*current_ptr };
 
-        // Take any remaining requests. The handler may be called a fewer number
-        // of times than the generated signals if the operating system
-        // implementation doesn't support queueing (IEEE Std 1003.1-2017,
-        // System Interfaces, "2.4.2 Realtime Signal Generation and Delivery"),
-        // which is why we can't just return after processing one request.
-        //
-        // `SA_NODEFER` means the handler may be preempted by another `SIGNAL_
-        // REMOTE_PARK` signal.
+        // This function is not reentrant for each thread
+        assert!(!current
+            .in_remote_park_signal_handler
+            .load(Ordering::Relaxed));
 
+        current
+            .in_remote_park_signal_handler
+            .store(true, Ordering::Relaxed);
+
+        // Process pending requests
         let mut park_requests_accepted = current.park_requests_accepted.load(Ordering::Relaxed);
-        loop {
-            // Make the preceding load single-thread acquiring
-            // (`park_requests_accepted ← current.park_requests_accepted`)
-            std::sync::atomic::compiler_fence(Ordering::Acquire);
+        while park_requests_accepted != current.park_requests_pending.load(Ordering::Relaxed) {
+            park_requests_accepted = park_requests_accepted.wrapping_add(1);
 
-            let park_requests_pending = current.park_requests_pending.load(Ordering::Relaxed);
-            // [park_requests_accepted <= park_requests_pending]
-            if park_requests_accepted == park_requests_pending {
-                break;
-            }
-            // [park_requests_accepted < park_requests_pending]
-
-            // Make the subsequent store single-thread releasing
-            // (`current.park_requests_accepted += 1
-            // if current.park_requests_accepted == park_requests_accepted`)
-            std::sync::atomic::compiler_fence(Ordering::Release);
-
-            match current.park_requests_accepted.compare_exchange_weak(
-                park_requests_accepted,
-                park_requests_accepted.wrapping_add(1),
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => {
-                    // Process the park request
-                    park_inner(current);
-                }
-                Err(actual_park_requests_accepted) => {
-                    park_requests_accepted = actual_park_requests_accepted
-                }
-            }
+            // Process the park request
+            park_inner(current);
         }
+
+        current
+            .park_requests_accepted
+            .store(park_requests_accepted, Ordering::Relaxed);
+
+        current
+            .in_remote_park_signal_handler
+            .store(false, Ordering::Relaxed);
     }
 }
 
