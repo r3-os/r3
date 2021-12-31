@@ -32,7 +32,9 @@ enum MainError {
     TestDriver(#[source] driverinterface::TestDriverNewError),
     #[error("Could not connect to the target.")]
     ConnectTarget(#[source] anyhow::Error),
-    #[error("Could not build or run the test '{0}'.")]
+    #[error("Could not build the test '{0}'.")]
+    BuildTest(String, #[source] driverinterface::TestDriverRunError),
+    #[error("Could not run the test '{0}'.")]
     RunTest(String, #[source] driverinterface::TestDriverRunError),
     #[error("Test failed.")]
     TestFail,
@@ -74,6 +76,9 @@ struct Opt {
     /// Keep going until N tests fail (0 means infinity)
     #[structopt(short = "k", long = "keep-going", default_value = "5")]
     keep_going: usize,
+    /// Don't execute the test driver nor attempt to connect to a target
+    #[structopt(long = "norun")]
+    norun: bool,
 }
 
 lazy_static::lazy_static! {
@@ -160,12 +165,18 @@ async fn main_inner() -> anyhow::Result<()> {
     log::info!("Performing {} test run(s)", test_runs.len());
 
     // Connect to the target
-    log::debug!("Connecting to the target");
-    let mut debug_probe = opt
-        .target
-        .connect()
-        .await
-        .map_err(MainError::ConnectTarget)?;
+    let mut debug_probe = if opt.norun {
+        log::debug!("Not nonnecting to the target because `--norun` is specified");
+        None
+    } else {
+        log::debug!("Connecting to the target");
+        Some(
+            opt.target
+                .connect()
+                .await
+                .map_err(MainError::ConnectTarget)?,
+        )
+    };
 
     let mut failed_tests = Vec::new();
     let mut tests_skipped_to_fail_fast = Vec::new();
@@ -180,18 +191,25 @@ async fn main_inner() -> anyhow::Result<()> {
         let full_test_name = test_run.case.to_string();
         log::info!(" - {}", test_run);
 
-        // Build and run the test driver
-        let test_result = test_driver
-            .run(
+        // Build the test driver
+        test_driver
+            .compile(
                 test_run,
                 driverinterface::BuildOpt {
                     verbose: opt.verbose,
                     log_level: opt.log_level,
                 },
-                &mut *debug_probe,
             )
             .await
-            .map_err(|e| MainError::RunTest(full_test_name, e))?;
+            .map_err(|e| MainError::BuildTest(full_test_name.clone(), e))?;
+
+        // Build and run the test driver
+        let test_result = if let Some(debug_probe) = &mut debug_probe {
+            test_driver.run(test_run, &mut **debug_probe).await
+        } else {
+            Ok(Ok(()))
+        }
+        .map_err(|e| MainError::RunTest(full_test_name, e))?;
 
         match test_result {
             Ok(()) => {

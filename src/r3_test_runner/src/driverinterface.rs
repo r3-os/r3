@@ -230,16 +230,13 @@ impl TestDriver {
         self.meta.tests.kernel_tests.clone()
     }
 
-    /// Compile an executable of the test driver and run it using the specified
-    /// debug probe interface.
+    /// Run the test driver using the specified debug probe interface. The test
+    /// driver must be compiled first by [`Self::compile`].
     pub(crate) async fn run(
         &self,
         test_run: &selection::TestRun<'_>,
-        build_opt: BuildOpt,
         debug_probe: &mut (impl targets::DebugProbe + ?Sized),
     ) -> Result<Result<(), TestRunError>, TestDriverRunError> {
-        self.compile(test_run, build_opt).await?;
-
         log::debug!("Running the test");
         let acquisition_result = debug_probe_program_and_get_output_until(
             debug_probe,
@@ -274,7 +271,7 @@ impl TestDriver {
     }
 
     /// Compile an executable of the test driver.
-    async fn compile(
+    pub(crate) async fn compile(
         &self,
         test_run: &selection::TestRun<'_>,
         BuildOpt { verbose, log_level }: BuildOpt,
