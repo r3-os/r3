@@ -1,6 +1,7 @@
 #![feature(decl_macro)] // `macro`
 #![feature(must_not_suspend)] // `must_not_suspend` lint
 #![warn(must_not_suspend)]
+use anyhow::Context;
 use std::{env, path::Path};
 use structopt::StructOpt;
 use thiserror::Error;
@@ -26,6 +27,7 @@ async fn main() {
     }
 }
 
+// TODO: Top-level error enum is useless; replace it with `anyhow`
 #[derive(Error, Debug)]
 enum MainError {
     #[error("Could not initialize the test driver interface.")]
@@ -79,6 +81,15 @@ struct Opt {
     /// Don't execute the test driver nor attempt to connect to a target
     #[structopt(long = "norun")]
     norun: bool,
+    /// Execute the specified command with `{}` replaced with the current
+    /// test executable path and terminated by `;`
+    #[structopt(
+        long = "exec",
+        multiple = true,
+        value_terminator = ";",
+        allow_hyphen_values = true
+    )]
+    exec: Vec<String>,
 }
 
 lazy_static::lazy_static! {
@@ -203,13 +214,36 @@ async fn main_inner() -> anyhow::Result<()> {
             .await
             .map_err(|e| MainError::BuildTest(full_test_name.clone(), e))?;
 
-        // Build and run the test driver
-        let test_result = if let Some(debug_probe) = &mut debug_probe {
-            test_driver.run(test_run, &mut **debug_probe).await
+        // Run the specified program
+        let mut test_result = if opt.exec.is_empty() {
+            Ok(())
         } else {
-            Ok(Ok(()))
+            let exe_path = test_driver.exe_path();
+            let exe_path = exe_path
+                .to_str()
+                .context("Non-UTF-8 path doesn't work with `--exec`, sorry...")?;
+            match exec_substituting(&opt.exec, exe_path, opt.verbose).await {
+                Ok(()) => Ok(()),
+                e @ Err(subprocess::SubprocessError::Spawn { .. }) => {
+                    e.context("Failed to spanw the program specified by `--exec`.")?;
+                    unreachable!();
+                }
+                Err(e @ subprocess::SubprocessError::FailStatus { .. }) => {
+                    Err(driverinterface::TestRunError::General(e.to_string()))
+                }
+                Err(subprocess::SubprocessError::WriteInput { .. }) => unreachable!(),
+            }
+        };
+
+        // Build and run the test driver
+        if test_result.is_ok() {
+            if let Some(debug_probe) = &mut debug_probe {
+                test_result = test_driver
+                    .run(test_run, &mut **debug_probe)
+                    .await
+                    .map_err(|e| MainError::RunTest(full_test_name, e))?;
+            }
         }
-        .map_err(|e| MainError::RunTest(full_test_name, e))?;
 
         match test_result {
             Ok(()) => {
@@ -251,4 +285,26 @@ async fn main_inner() -> anyhow::Result<()> {
     assert!(tests_skipped_to_fail_fast.is_empty());
 
     Ok(())
+}
+
+async fn exec_substituting(
+    cmd: &[String],
+    param: &str,
+    verbose: bool,
+) -> Result<(), subprocess::SubprocessError> {
+    let mut cmd = cmd.iter();
+    let mut cmd_builder = subprocess::CmdBuilder::new(cmd.next().unwrap().as_str());
+    for arg in cmd {
+        cmd_builder = if arg.contains("{}") {
+            cmd_builder.arg(arg.replace("{}", param))
+        } else {
+            cmd_builder.arg(arg)
+        };
+    }
+    if verbose {
+        cmd_builder.spawn_expecting_success().await
+    } else {
+        // Hide `stderr` unless the command fails
+        cmd_builder.spawn_expecting_success_quiet().await
+    }
 }

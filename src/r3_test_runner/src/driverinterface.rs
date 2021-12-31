@@ -270,6 +270,11 @@ impl TestDriver {
         Ok(test_result)
     }
 
+    /// Get the path of the executable file produced by [`Self::compile`].
+    pub(crate) fn exe_path(&self) -> PathBuf {
+        self.exe_path.clone()
+    }
+
     /// Compile an executable of the test driver.
     pub(crate) async fn compile(
         &self,
