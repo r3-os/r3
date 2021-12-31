@@ -59,6 +59,13 @@ struct Opt {
     /// Print the list of supported targets and their architecture strings
     #[structopt(long = "help-targets")]
     help_targets: bool,
+    /// Use a stripped-down build of the standard library
+    ///
+    /// This option lowers the output binary size by building the `core`
+    /// library with `panic_immediate_abort` feature at cost of disabling panic
+    /// reporting.
+    #[structopt(long = "small-rt")]
+    small_rt: bool,
     /// If specified, only run tests containing this string in their names
     ///
     /// See the documentation of `TestFilter::from_str` for full syntax.
@@ -209,6 +216,7 @@ async fn main_inner() -> anyhow::Result<()> {
                 driverinterface::BuildOpt {
                     verbose: opt.verbose,
                     log_level: opt.log_level,
+                    small_rt: opt.small_rt,
                 },
             )
             .await

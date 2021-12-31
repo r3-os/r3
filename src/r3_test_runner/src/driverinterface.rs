@@ -45,6 +45,7 @@ pub(crate) enum TestDriverNewError {
 pub(crate) struct BuildOpt {
     pub verbose: bool,
     pub log_level: LogLevel,
+    pub small_rt: bool,
 }
 
 #[derive(Clone, Copy, arg_enum_proc_macro::ArgEnum)]
@@ -279,7 +280,11 @@ impl TestDriver {
     pub(crate) async fn compile(
         &self,
         test_run: &selection::TestRun<'_>,
-        BuildOpt { verbose, log_level }: BuildOpt,
+        BuildOpt {
+            verbose,
+            log_level,
+            small_rt,
+        }: BuildOpt,
     ) -> Result<(), TestDriverRunError> {
         let Self {
             exe_path,
@@ -299,6 +304,14 @@ impl TestDriver {
                 log::warn!("Failed to remove '{}': {}", exe_path.display(), e);
             }
         }
+
+        let build_std = (!target_arch_opt.target_features.is_empty() && {
+            log::debug!("Specifying `-Zbuild-std=core` because of a custom target feature set");
+            true
+        }) | (small_rt && {
+            log::debug!("Specifying `-Zbuild-std=core` because `BuildOpt::small_rt` is enabled");
+            true
+        });
 
         // Build the test driver
         log::debug!("Building the test");
@@ -333,14 +346,9 @@ impl TestDriver {
                     LogLevel::Trace => "--features=log/max_level_trace",
                 })
                 .args(if verbose { None } else { Some("-q") })
-                .args(if target_arch_opt.target_features.is_empty() {
-                    None
-                } else {
-                    log::debug!(
-                        "Specifying `-Zbuild-std=core` because of a custom target feature set"
-                    );
-                    Some("-Zbuild-std=core")
-                })
+                // TODO: Use `bool::then` in other places
+                .args(build_std.then(|| "-Zbuild-std=core"))
+                .args(small_rt.then(|| "-Zbuild-std-features=panic_immediate_abort"))
                 .env("R3_TEST_DRIVER_LINK_SEARCH", link_dir.path())
                 // Tell `r3_test_suite/build.rs` which test to run
                 .env(
