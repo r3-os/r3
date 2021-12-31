@@ -48,6 +48,16 @@ fn with_uart(f: impl FnOnce(fn(u8))) {
     );
 }
 
+pub fn stdout_write_str(s: &str) {
+    with_uart(|uart0| {
+        // Switch to the primary message channel using our multiplexing protocol
+        uart0(0x17);
+        uart0(b'1');
+
+        let _ = SerialWrapper(uart0).write_str(s);
+    });
+}
+
 pub fn stdout_write_fmt(args: fmt::Arguments<'_>) {
     with_uart(|uart0| {
         // Switch to the primary message channel using our multiplexing protocol

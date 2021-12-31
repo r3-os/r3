@@ -58,6 +58,12 @@ fn with_uart(f: impl FnOnce(&mut (Tx<UART0>, Tx<UART1>))) {
     );
 }
 
+pub fn stdout_write_str(s: &str) {
+    with_uart(|(uart0, _uart1)| {
+        let _ = SerialWrapper(uart0).write_str(s);
+    });
+}
+
 pub fn stdout_write_fmt(args: fmt::Arguments<'_>) {
     with_uart(|(uart0, _uart1)| {
         let _ = SerialWrapper(uart0).write_fmt(args);

@@ -3,6 +3,12 @@
 use core::fmt::{self, Write};
 use riscv::interrupt;
 
+pub fn stdout_write_str(s: &str) {
+    interrupt::free(|_| {
+        let _ = SerialWrapper(0x10010000 as *mut u32).write_str(s);
+    });
+}
+
 pub fn stdout_write_fmt(args: fmt::Arguments<'_>) {
     interrupt::free(|_| {
         let _ = SerialWrapper(0x10010000 as *mut u32).write_fmt(args);

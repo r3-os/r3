@@ -63,7 +63,7 @@ macro_rules! instantiate_test {
             rtt_target::rprintln!("!- TEST WAS SUCCESSFUL -!");
 
             #[cfg(feature = "output-uart")]
-            uart::stdout_write_fmt(format_args!("!- TEST WAS SUCCESSFUL -!"));
+            uart::stdout_write_str("!- TEST WAS SUCCESSFUL -!");
 
             loop {
                 // prevent the loop from being optimized out
