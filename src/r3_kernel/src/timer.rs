@@ -178,6 +178,7 @@ impl<Traits: KernelTraits> fmt::Debug for TimerAttr<Traits> {
 }
 
 /// Initialize a timer at boot time.
+#[inline]
 pub(super) fn init_timer<Traits: KernelTraits>(
     mut lock: CpuLockTokenRefMut<'_, Traits>,
     timer_cb: &'static TimerCb<Traits>,
@@ -196,6 +197,7 @@ pub(super) fn init_timer<Traits: KernelTraits>(
 }
 
 /// The core portion of [`Timer::start`].
+#[inline]
 fn start_timer<Traits: KernelTraits>(
     mut lock: CpuLockTokenRefMut<'_, Traits>,
     timer_cb: &'static TimerCb<Traits>,
@@ -219,6 +221,7 @@ fn start_timer<Traits: KernelTraits>(
 }
 
 /// The core portion of [`Timer::stop`].
+#[inline]
 fn stop_timer<Traits: KernelTraits>(
     mut lock: CpuLockTokenRefMut<'_, Traits>,
     timer_cb: &TimerCb<Traits>,
@@ -242,6 +245,7 @@ fn stop_timer<Traits: KernelTraits>(
 }
 
 /// The core portion of [`Timer::set_delay`].
+#[inline]
 fn set_timer_delay<Traits: KernelTraits>(
     mut lock: CpuLockTokenRefMut<'_, Traits>,
     timer_cb: &'static TimerCb<Traits>,
@@ -264,6 +268,7 @@ fn set_timer_delay<Traits: KernelTraits>(
 }
 
 /// The core portion of [`Timer::set_period`].
+#[inline]
 fn set_timer_period<Traits: KernelTraits>(
     mut lock: CpuLockTokenRefMut<'_, Traits>,
     timer: &TimerCb<Traits>,

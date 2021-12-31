@@ -130,6 +130,7 @@ impl<Traits: KernelTraits> fmt::Debug for SemaphoreCb<Traits> {
     }
 }
 
+#[inline]
 fn poll_one<Traits: KernelTraits>(
     semaphore_cb: &'static SemaphoreCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,
@@ -141,6 +142,7 @@ fn poll_one<Traits: KernelTraits>(
     }
 }
 
+#[inline]
 fn wait_one<Traits: KernelTraits>(
     semaphore_cb: &'static SemaphoreCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,
@@ -159,6 +161,7 @@ fn wait_one<Traits: KernelTraits>(
     }
 }
 
+#[inline]
 fn wait_one_timeout<Traits: KernelTraits>(
     semaphore_cb: &'static SemaphoreCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,
@@ -193,6 +196,7 @@ fn poll_core(value: &mut SemaphoreValue) -> bool {
     }
 }
 
+#[inline]
 fn signal<Traits: KernelTraits>(
     semaphore_cb: &'static SemaphoreCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,

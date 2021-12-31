@@ -696,6 +696,7 @@ pub(super) fn wait_until_woken_up<Traits: KernelTraits>(
 }
 
 /// Implements `KernelBase::park`.
+#[inline]
 pub(super) fn park_current_task<Traits: KernelTraits>() -> Result<(), ParkError> {
     let mut lock = klock::lock_cpu::<Traits>()?;
     state::expect_waitable_context::<Traits>()?;
@@ -714,6 +715,7 @@ pub(super) fn park_current_task<Traits: KernelTraits>() -> Result<(), ParkError>
 }
 
 /// Implements `KernelBase::park_timeout`.
+#[inline]
 pub(super) fn park_current_task_timeout<Traits: KernelTraits>(
     timeout: Duration,
 ) -> Result<(), ParkTimeoutError> {
@@ -735,6 +737,7 @@ pub(super) fn park_current_task_timeout<Traits: KernelTraits>(
 }
 
 /// Implements [`Task::unpark_exact`].
+#[inline]
 fn unpark_exact<Traits: KernelTraits>(
     mut lock: klock::CpuLockGuard<Traits>,
     task_cb: &'static TaskCb<Traits>,
@@ -769,6 +772,7 @@ fn unpark_exact<Traits: KernelTraits>(
 }
 
 /// Implements `KernelBase::sleep`.
+#[inline]
 pub(super) fn put_current_task_on_sleep_timeout<Traits: KernelTraits>(
     timeout: Duration,
 ) -> Result<(), SleepError> {
@@ -785,6 +789,7 @@ pub(super) fn put_current_task_on_sleep_timeout<Traits: KernelTraits>(
 }
 
 /// Implements [`Task::set_priority`].
+#[inline]
 fn set_task_base_priority<Traits: KernelTraits>(
     mut lock: klock::CpuLockGuard<Traits>,
     task_cb: &'static TaskCb<Traits>,

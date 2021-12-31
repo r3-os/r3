@@ -308,6 +308,7 @@ fn lock_core<Traits: KernelTraits>(
     }
 }
 
+#[inline]
 fn lock_mutex<Traits: KernelTraits>(
     mutex_cb: &'static MutexCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,
@@ -330,6 +331,7 @@ fn lock_mutex<Traits: KernelTraits>(
     }
 }
 
+#[inline]
 fn try_lock_mutex<Traits: KernelTraits>(
     mutex_cb: &'static MutexCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,
@@ -347,6 +349,7 @@ fn try_lock_mutex<Traits: KernelTraits>(
     }
 }
 
+#[inline]
 fn lock_mutex_timeout<Traits: KernelTraits>(
     mutex_cb: &'static MutexCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,
@@ -372,6 +375,7 @@ fn lock_mutex_timeout<Traits: KernelTraits>(
     }
 }
 
+#[inline]
 fn unlock_mutex<Traits: KernelTraits>(
     mutex_cb: &'static MutexCb<Traits>,
     mut lock: klock::CpuLockGuard<Traits>,
