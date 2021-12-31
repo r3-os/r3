@@ -1,7 +1,7 @@
 //! Tasks
 #[cfg(feature = "priority_boost")]
 use core::sync::atomic::Ordering;
-use core::{fmt, marker::PhantomData, mem};
+use core::{fmt, marker::PhantomData};
 use num_traits::ToPrimitive;
 use r3_core::{
     kernel::{
@@ -47,9 +47,9 @@ impl<Traits: KernelTraits> System<Traits> {
         let task_cb = Traits::state().running_task(lock.borrow_mut()).unwrap();
 
         // Calculate an `Id` from the task CB pointer
-        let offset_bytes =
-            task_cb as *const TaskCb<_> as usize - Traits::task_cb_pool().as_ptr() as usize;
-        let offset = offset_bytes / mem::size_of::<TaskCb<Traits>>();
+        // Safety: `task_cb` refers to an element of `Traits::task_cb_pool()`
+        let offset =
+            unsafe { (task_cb as *const TaskCb<_>).offset_from(Traits::task_cb_pool().as_ptr()) };
 
         let task = Id::new(offset as usize + 1).unwrap();
 

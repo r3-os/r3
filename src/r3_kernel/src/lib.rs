@@ -861,6 +861,8 @@ pub struct State<
     /// The currently or recently running task. Can be in a Running, Waiting, or
     /// Ready state. The last two only can be observed momentarily around a
     /// call to `yield_cpu` or in an interrupt handler.
+    ///
+    /// It must refer to an element of [`KernelCfg2::task_cb_pool`].
     running_task:
         klock::CpuLockCell<Traits, Option<&'static TaskCb<Traits, PortTaskState, TaskPriority>>>,
 
