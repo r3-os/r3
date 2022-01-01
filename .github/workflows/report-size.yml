@@ -1,0 +1,71 @@
+name: Size report
+on:
+  push:
+
+jobs:
+  # Report the binary size of the test suite
+  size-freestanding:
+    name: Test
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # MPS2+ AN505, Armv7-M + FPU + DSP
+          - { ty: arm, runner_target: qemu_mps2_an505, runner_args: --arch cortex_m4f }
+          # MPS2+ AN385, Armv7-M
+          - { ty: arm, runner_target: qemu_mps2_an385, runner_args: "" }
+          # MPS2+ AN385, Armv6-M
+          - { ty: arm, runner_target: qemu_mps2_an385, runner_args: --arch cortex_m0 }
+
+          # SiFive U, RV64GC
+          - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: "" }
+          # SiFive U, RV64IMAC
+          - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a+c }
+          # SiFive U, RV64IMA
+          - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a }
+          # SiFive E, RV32IMAC
+          - { ty: riscv, runner_target: qemu_sifive_e_rv32, runner_args: "" }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: rust-src,llvm-tools-preview
+
+      - name: Install dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev libudev-dev
+          .github/scripts/install-deno.sh
+
+      - name: Install cargo-binutils
+        run: cargo install cargo-binutils
+
+      - name: Cache test runner's binary
+        uses: actions/cache@v2
+        with:
+          path: ./target/debug
+          key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/r3_test_runner/**', 'src/r3_test_suite/**') }}
+
+      - name: Enable LTO
+        run: |
+          echo "lto = true" >> Cargo.toml
+
+      - name: Generate a size report
+        run: |
+          deno run -A scripts/report-size.ts -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} -- event_group-basepri > size-report.md
+
+      - name: Publish the report as a check run
+        uses: LouisBrunner/checks-action@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: "Size report: ${{ matrix.runner_target }} ${{ matrix.runner_args }}"
+          output: |
+            {"summary": "Test suite size report"}
+          output_text_description_file: size-report.md
+          conclusion: success
