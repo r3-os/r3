@@ -132,7 +132,11 @@ impl<System: SupportedSystem> App<System> {
     {
         let timer = StaticTimer::define()
             .delay(Duration::from_millis(0))
-            .period(Duration::from_millis(10))
+            .period(Duration::from_millis(if cfg!(target_os = "none") {
+                10
+            } else {
+                50
+            }))
             .start(timer_body::<System, D>)
             .active(true)
             .finish(b);
