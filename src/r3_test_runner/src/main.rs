@@ -2,8 +2,8 @@
 #![feature(must_not_suspend)] // `must_not_suspend` lint
 #![warn(must_not_suspend)]
 use anyhow::Context;
+use clap::Parser;
 use std::{env, path::Path};
-use structopt::StructOpt;
 use thiserror::Error;
 
 mod driverinterface;
@@ -45,54 +45,58 @@ enum MainError {
 }
 
 /// Test runner for the Arm-M port of R3
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Opt {
     /// Target chip/board
-    #[structopt(short = "t", long = "target", parse(try_from_str = try_parse_target),
-        possible_values(&TARGET_POSSIBLE_VALUES))]
+    #[clap(short = 't', long = "target", parse(try_from_str = try_parse_target),
+        possible_values(&*TARGET_POSSIBLE_VALUES))]
     target: &'static dyn targets::Target,
     /// Override target architecture
     ///
     /// See the documentation of `Arch::from_str` for full syntax.
-    #[structopt(short = "a", long = "arch", parse(try_from_str = std::str::FromStr::from_str))]
+    #[clap(short = 'a', long = "arch", parse(try_from_str = std::str::FromStr::from_str))]
     target_arch: Option<targets::Arch>,
     /// Print the list of supported targets and their architecture strings
-    #[structopt(long = "help-targets")]
+    #[clap(long = "help-targets")]
     help_targets: bool,
     /// Use a stripped-down build of the standard library
     ///
     /// This option lowers the output binary size by building the `core`
     /// library with `panic_immediate_abort` feature at cost of disabling panic
     /// reporting.
-    #[structopt(long = "small-rt")]
+    #[clap(long = "small-rt")]
     small_rt: bool,
     /// If specified, only run tests containing this string in their names
     ///
     /// See the documentation of `TestFilter::from_str` for full syntax.
-    #[structopt(parse(try_from_str = std::str::FromStr::from_str))]
+    #[clap(parse(try_from_str = std::str::FromStr::from_str))]
     tests: Vec<selection::TestFilter>,
     /// Select benchmark tests
-    #[structopt(short = "b", long = "bench")]
+    #[clap(short = 'b', long = "bench")]
     bench: bool,
     /// Log level of the test program
-    #[structopt(short = "l", long = "log-level",
-        possible_values(&driverinterface::LogLevel::variants()), case_insensitive = true,
-        default_value = "info")]
+    #[clap(
+        short = 'l',
+        long = "log-level",
+        possible_values(driverinterface::LogLevel::variants()),
+        ignore_case = true,
+        default_value = "info"
+    )]
     log_level: driverinterface::LogLevel,
     /// Display build progress and warnings
-    #[structopt(short = "v")]
+    #[clap(short = 'v')]
     verbose: bool,
     /// Keep going until N tests fail (0 means infinity)
-    #[structopt(short = "k", long = "keep-going", default_value = "5")]
+    #[clap(short = 'k', long = "keep-going", default_value = "5")]
     keep_going: usize,
     /// Don't execute the test driver nor attempt to connect to a target
-    #[structopt(long = "norun")]
+    #[clap(long = "norun")]
     norun: bool,
     /// Execute the specified command with `{}` replaced with the current
     /// test executable path and terminated by `;`
-    #[structopt(
+    #[clap(
         long = "exec",
-        multiple = true,
+        multiple_values = true,
         value_terminator = ";",
         allow_hyphen_values = true
     )]
@@ -114,7 +118,7 @@ fn try_parse_target(arg_target: &str) -> Result<&'static dyn targets::Target, &'
 
 async fn main_inner() -> anyhow::Result<()> {
     // Parse arguments
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     // If `--help-targets` is specified, print all targets and exit,
     if opt.help_targets {
