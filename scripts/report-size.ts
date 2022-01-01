@@ -6,9 +6,10 @@ import { parse as parseFlags } from "https://deno.land/std@0.75.0/flags/mod.ts";
 import * as path from "https://deno.land/std@0.75.0/path/mod.ts";
 import * as log from "https://deno.land/std@0.75.0/log/mod.ts";
 import { BufReader } from "https://deno.land/std@0.75.0/io/bufio.ts";
+import { Buffer } from "https://deno.land/std@0.75.0/node/buffer.ts";
 import AsciiTable from "https://deno.land/x/ascii_table@v0.1.0/mod.ts";
+import elfy from "https://esm.sh/elfy@1.0.0";
 
-const ENV_SIZE = "REPORT_SIZE_SIZE";
 const ENV_TEST_NAME = "R3_TEST"; // should be synched with `r3_test_runner`!
 
 const SAMPLE_MARKER = "### ";
@@ -25,7 +26,6 @@ const parsedArgs = parseFlags(Deno.args, {
         h: "help",
     },
     "string": [
-        "size",
         "exe-handler",
     ],
     "boolean": [
@@ -37,53 +37,8 @@ const parsedArgs = parseFlags(Deno.args, {
 if (parsedArgs["help"]) {
     console.log("Arguments:");
     console.log("  -h --help     Displays this message");
-    console.log("  -s --size=... Path to the `size` utility from binutils");
     console.log("  -- ARGS...    Passed to `r3_test_runner`");
-}
-
-if (parsedArgs["exe-handler"]) {
-    // This argument is set when this script is called back by `r3_test_runner`.
-    // The argument value contains the executable's path.
-    const exePath = parsedArgs["exe-handler"];
-
-    const sizePath = Deno.env.get(ENV_SIZE);
-    if (!sizePath) {
-        throw new Error(`\$${ENV_SIZE} is not set`);
-    }
-
-    const testName = Deno.env.get(ENV_TEST_NAME);
-    if (!testName) {
-        throw new Error(`\$${ENV_TEST_NAME} is not set`);
-    }
-
-    const process = Deno.run({
-        cmd: [sizePath, exePath],
-        stdout: "piped",
-    });
-    const [stdoutBytes, status] = await Promise.all([process.output(), process.status()]);
-    if (!status.success) {
-        Deno.exit(status.code);
-    }
-    const stdout = new TextDecoder().decode(stdoutBytes);
-
-    const lines = stdout.split('\n');
-    if (lines.length < 2) {
-        throw new Error(`\`${sizePath}\` did not produce an expected output: ${stdout}`);
-    }
-    const matches = lines[1].match(/^\s*([0-9]+)\s+([0-9]+)\s+([0-9]+)/);
-    if (matches == null) {
-        throw new Error(`\`${sizePath}\` did not produce an expected output line: ${lines[1]}`);
-    }
-    const [_, text, data, bss] = matches;
-
-    console.log(SAMPLE_MARKER + JSON.stringify({
-        name: testName,
-        text: parseInt(text, 10),
-        data: parseInt(data, 10),
-        bss: parseInt(bss, 10),
-    } as Sample));
-
-    Deno.exit();
+    Deno.exit(1);
 }
 
 await log.setup({
@@ -100,6 +55,54 @@ await log.setup({
 
 const logger = log.getLogger();
 
+if (parsedArgs["exe-handler"]) {
+    // This argument is set when this script is called back by `r3_test_runner`.
+    // The argument value contains the executable's path.
+    const exePath = parsedArgs["exe-handler"];
+
+    const testName = Deno.env.get(ENV_TEST_NAME);
+    if (!testName) {
+        throw new Error(`\$${ENV_TEST_NAME} is not set`);
+    }
+
+
+    interface Section {
+        name: string,
+        size: number,
+    }
+
+    interface Elfy {
+        body: {
+            sections: Section[],
+        },
+    }
+
+    const exeData = await Deno.readFile(exePath);
+    const info: Elfy = elfy.parse(Buffer.from(exeData));
+    logger.debug(info);
+
+    const textSize = info.body.sections
+        .filter(section => section.name == ".text" || section.name == ".rodata")
+        .reduce((acc, section) => acc + section.size, 0);
+
+    const dataSize = info.body.sections
+        .filter(section => section.name == ".data")
+        .reduce((acc, section) => acc + section.size, 0);
+
+    const bssSize = info.body.sections
+        .filter(section => section.name == ".bss")
+        .reduce((acc, section) => acc + section.size, 0);
+
+    console.log(SAMPLE_MARKER + JSON.stringify({
+        name: testName,
+        text: textSize,
+        data: dataSize,
+        bss: bssSize,
+    } as Sample));
+
+    Deno.exit();
+}
+
 const denoPath = Deno.execPath();
 const selfPath = path.join(Deno.cwd(), "scripts", "report-size.ts");
 
@@ -113,12 +116,6 @@ const process = Deno.run({
         "-l", "off",
     ]
         .concat(parsedArgs['--']),
-    env: {
-        // `ENV_SIZE` is taken by this script (`report_size.ts`) when
-        // it's called back. The default value uses
-        // <https://crates.io/crates/cargo-binutils>.
-        [ENV_SIZE]: parsedArgs['size'] ?? 'rust-size',
-    },
     // Capture the output of the callback invocations
     stdout: "piped",
 });

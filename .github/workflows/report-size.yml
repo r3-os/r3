@@ -35,16 +35,13 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          components: rust-src,llvm-tools-preview
+          components: rust-src
 
       - name: Install dependencies (Linux)
         run: |
           sudo apt-get update
           sudo apt-get install libusb-1.0-0-dev libudev-dev
           .github/scripts/install-deno.sh
-
-      - name: Install cargo-binutils
-        run: cargo install cargo-binutils
 
       - name: Cache test runner's binary
         uses: actions/cache@v2
