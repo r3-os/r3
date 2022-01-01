@@ -170,8 +170,7 @@ jobs:
         env:
           RUST_LOG: debug
 
-
-  # Run tests on freestanding targets
+  # Run tests on emulated freestanding targets
   test-freestanding:
     name: Test
     needs: check
@@ -256,3 +255,57 @@ jobs:
       - name: Test
         run: |
           cargo run --package r3_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --log-level debug
+
+  # Build a small subset of tests for real freestanding targets
+  build-freestanding:
+    name: Build
+    needs: check
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { ty: arm, runner_target: nucleo_f401re, runner_args: "" }
+          - { ty: arm, runner_target: gr_peach, runner_args: "" }
+          - { ty: arm, runner_target: rp_pico, runner_args: "" }
+
+          - { ty: riscv, runner_target: red_v, runner_args: "" }
+          - { ty: riscv, runner_target: maix, runner_args: "" }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: rust-src
+
+      - name: Install dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev libudev-dev
+
+      - name: Install additional target of the Rust toolchain (Arm)
+        if: matrix.ty == 'arm'
+        run: |
+          rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabihf
+          rustup target add thumbv8m.base-none-eabi thumbv8m.main-none-eabi thumbv8m.main-none-eabihf
+          rustup target add armv7a-none-eabi
+
+      - name: Install additional target of the Rust toolchain (RISC-V)
+        if: matrix.ty == 'riscv'
+        run: |
+          rustup target add riscv32imac-unknown-none-elf
+          rustup target add riscv64imac-unknown-none-elf riscv64gc-unknown-none-elf
+
+      - name: Cache test runner's binary
+        uses: actions/cache@v2
+        with:
+          path: ./target/debug
+          key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/r3_test_runner/**', 'src/r3_test_suite/**') }}
+
+      - name: Build tests
+        run: |
+          cargo run --package r3_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --norun basic
