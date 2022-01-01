@@ -13,7 +13,7 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record) {
         interrupt::free(move |cs| {
-            let mut log_channel = LOG_CHANNEL.borrow(cs).borrow_mut();
+            let mut log_channel = LOG_CHANNEL.borrow(*cs).borrow_mut();
             if let Some(channel) = &mut *log_channel {
                 writeln!(
                     channel,
@@ -32,7 +32,7 @@ impl log::Log for Logger {
 
 pub fn init(channel: rtt_target::UpChannel) {
     interrupt::free(move |cs| {
-        *LOG_CHANNEL.borrow(cs).borrow_mut() = Some(channel);
+        *LOG_CHANNEL.borrow(*cs).borrow_mut() = Some(channel);
     });
     log::set_logger(&Logger).unwrap();
     log::set_max_level(log::LevelFilter::Trace);
