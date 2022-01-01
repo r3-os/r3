@@ -230,10 +230,16 @@ async fn main_inner() -> anyhow::Result<()> {
             let exe_path = exe_path
                 .to_str()
                 .context("Non-UTF-8 path doesn't work with `--exec`, sorry...")?;
-            match exec_substituting(&opt.exec, exe_path, opt.verbose).await {
+
+            let exec_result = exec_substituting(&opt.exec, exe_path, opt.verbose, &mut |cmd| {
+                cmd.env("R3_TEST", &full_test_name)
+            })
+            .await;
+
+            match exec_result {
                 Ok(()) => Ok(()),
                 e @ Err(subprocess::SubprocessError::Spawn { .. }) => {
-                    e.context("Failed to spanw the program specified by `--exec`.")?;
+                    e.context("Failed to spawn the program specified by `--exec`.")?;
                     unreachable!();
                 }
                 Err(e @ subprocess::SubprocessError::FailStatus { .. }) => {
@@ -299,6 +305,7 @@ async fn exec_substituting(
     cmd: &[String],
     param: &str,
     verbose: bool,
+    modifier: &mut dyn FnMut(subprocess::CmdBuilder) -> subprocess::CmdBuilder,
 ) -> Result<(), subprocess::SubprocessError> {
     let mut cmd = cmd.iter();
     let mut cmd_builder = subprocess::CmdBuilder::new(cmd.next().unwrap().as_str());
@@ -309,6 +316,7 @@ async fn exec_substituting(
             cmd_builder.arg(arg)
         };
     }
+    cmd_builder = modifier(cmd_builder);
     if verbose {
         cmd_builder.spawn_expecting_success().await
     } else {
