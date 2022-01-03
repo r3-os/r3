@@ -47,12 +47,5 @@ git = "https://github.com/yvt/rust-riscv-rt.git"
 rev = "fea31dd51d255f4419246277497a9183e502cc9b"
 version = "0.6.2"
 
-[patch.crates-io.cortex-m]
-# FIXME: Waiting for a version including
-# <https://github.com/rust-embedded/cortex-m/pull/372> to be released
-git = "https://github.com/rust-embedded/cortex-m.git"
-rev = "441cb87e4095eafbd8b170d8f0848b99fa1ec72e"
-version = "0.7.3"
-
 [profile.release]
 debug = true

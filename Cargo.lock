@@ -359,14 +359,15 @@ dependencies = [
  "aligned",
  "bare-metal 0.2.5",
  "bitfield",
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "volatile-register",
 ]
 
 [[package]]
 name = "cortex-m"
-version = "0.7.3"
-source = "git+https://github.com/rust-embedded/cortex-m.git?rev=441cb87e4095eafbd8b170d8f0848b99fa1ec72e#441cb87e4095eafbd8b170d8f0848b99fa1ec72e"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37ff967e867ca14eba0c34ac25cd71ea98c678e741e3915d923999bb2fe7c826"
 dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
@@ -401,7 +402,7 @@ version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bffa6c1454368a6aa4811ae60964c38e6996d397ff8095a8b9211b1c1f749bc"
 dependencies = [
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
 ]
 
 [[package]]
@@ -1462,7 +1463,7 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ab67bc881453e4c90f958c657c1303670ea87bc1a16e87fd71a40f656dce9"
 dependencies = [
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "rtt-target 0.3.1",
 ]
 
@@ -1472,7 +1473,7 @@ version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d55dedd501dfd02514646e0af4d7016ce36bc12ae177ef52056989966a1eec"
 dependencies = [
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "cortex-m-semihosting",
 ]
 
@@ -1798,7 +1799,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "atsamd-hal",
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "cortex-m-rt",
  "cryo",
  "embedded-graphics",
@@ -1826,7 +1827,7 @@ dependencies = [
 name = "r3_example_smp_rp_pico"
 version = "0.0.0"
 dependencies = [
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "cortex-m-rt",
  "r3",
  "r3_kernel",
@@ -1873,7 +1874,7 @@ dependencies = [
 name = "r3_port_arm_m"
 version = "0.2.1"
 dependencies = [
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "cortex-m-rt",
  "memoffset",
  "r3_core",
@@ -1885,7 +1886,7 @@ dependencies = [
 name = "r3_port_arm_m_test_driver"
 version = "0.0.0"
 dependencies = [
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "cortex-m-rt",
  "cortex-m-semihosting",
  "log",
@@ -1989,7 +1990,7 @@ dependencies = [
 name = "r3_support_rp2040"
 version = "0.1.1"
 dependencies = [
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "embedded-hal",
  "inline_dyn",
  "nb 1.0.0",
@@ -2303,7 +2304,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ed6f0ca1c2a3e4e602719212574a8692e52c51fd26e8c5a582424ae20fcd784"
 dependencies = [
  "bare-metal 0.2.5",
- "cortex-m 0.7.3",
+ "cortex-m 0.7.4",
  "vcell",
 ]
 
