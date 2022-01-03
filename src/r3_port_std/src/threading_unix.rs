@@ -14,7 +14,10 @@ use std::{
     thread,
 };
 
-pub use self::thread::ThreadId;
+pub use std::{
+    sync::{Mutex, MutexGuard},
+    thread::ThreadId,
+};
 
 thread_local! {
     static EXIT_JMP_BUF: Cell<Option<JmpBuf>> = Cell::new(None);

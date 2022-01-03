@@ -2,7 +2,7 @@ use std::{
     mem::MaybeUninit,
     sync::{
         atomic::{AtomicIsize, Ordering},
-        mpsc, Arc, Mutex,
+        mpsc, Arc,
     },
     thread,
 };
@@ -17,7 +17,7 @@ pub unsafe fn exit_thread() -> ! {
     unreachable!();
 }
 
-pub use self::thread::ThreadId;
+pub use std::thread::ThreadId;
 
 /// [`std::thread::JoinHandle`] with extra functionalities.
 #[derive(Debug)]
@@ -207,4 +207,96 @@ fn panic_last_error() -> ! {
     panic!("Win32 error 0x{:08x}", unsafe {
         errhandlingapi::GetLastError()
     });
+}
+
+// `std::sync::Mutex` isn't remote-park-friendly
+pub use mutex::{Mutex, MutexGuard};
+
+mod mutex {
+    use std::{
+        cell::UnsafeCell,
+        fmt,
+        sync::atomic::{AtomicBool, Ordering},
+    };
+    use winapi::um::{synchapi, winbase::INFINITE};
+
+    /// Remote-park-friendly [`std::sync::Mutex`].
+    pub struct Mutex<T: ?Sized> {
+        locked: AtomicBool,
+        data: UnsafeCell<T>,
+    }
+
+    unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
+
+    pub struct MutexGuard<'a, T: ?Sized> {
+        data: &'a mut T,
+        locked: &'a AtomicBool,
+    }
+
+    impl<T> Mutex<T> {
+        #[inline]
+        pub const fn new(x: T) -> Self {
+            Self {
+                data: UnsafeCell::new(x),
+                locked: AtomicBool::new(false),
+            }
+        }
+    }
+
+    impl<T: ?Sized> Mutex<T> {
+        #[inline]
+        pub fn lock(&self) -> Result<MutexGuard<'_, T>, ()> {
+            while self
+                .locked
+                .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .is_err()
+            {
+                unsafe {
+                    synchapi::WaitOnAddress(
+                        self.locked.as_mut_ptr().cast(),  // location to watch
+                        (&true) as *const bool as *mut _, // undesired value
+                        std::mem::size_of::<bool>(),      // value size
+                        INFINITE,                         // timeout
+                    );
+                }
+            }
+
+            // Poisoning is not supported by this `Mutex`
+
+            Ok(MutexGuard {
+                data: unsafe { &mut *self.data.get() },
+                locked: &self.locked,
+            })
+        }
+    }
+
+    impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("Mutex")
+        }
+    }
+
+    impl<T: ?Sized> Drop for MutexGuard<'_, T> {
+        #[inline]
+        fn drop(&mut self) {
+            self.locked.store(false, Ordering::Release);
+            unsafe { synchapi::WakeByAddressSingle(self.locked.as_mut_ptr().cast()) };
+        }
+    }
+
+    impl<T: ?Sized> std::ops::Deref for MutexGuard<'_, T> {
+        type Target = T;
+
+        #[inline]
+        fn deref(&self) -> &Self::Target {
+            self.data
+        }
+    }
+
+    impl<T: ?Sized> std::ops::DerefMut for MutexGuard<'_, T> {
+        #[inline]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            self.data
+        }
+    }
 }

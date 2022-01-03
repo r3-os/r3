@@ -3,7 +3,7 @@ use once_cell::sync::OnceCell;
 use slab::Slab;
 use std::{
     panic::{catch_unwind, AssertUnwindSafe},
-    sync::{mpsc, Arc, Mutex, MutexGuard},
+    sync::{mpsc, Arc},
     thread::Result,
 };
 
@@ -18,7 +18,7 @@ mod tests;
 /// `Sched: `[`Scheduler`].
 #[derive(Debug)]
 pub struct ThreadGroup<Sched: ?Sized> {
-    state: Arc<Mutex<State<Sched>>>,
+    state: Arc<threading::Mutex<State<Sched>>>,
 }
 
 impl<Sched: ?Sized> Clone for ThreadGroup<Sched> {
@@ -37,8 +37,8 @@ pub struct ThreadGroupJoinHandle {
 
 /// RAII guard returned by [`ThreadGroup::lock`].
 pub struct ThreadGroupLockGuard<'a, Sched: ?Sized> {
-    state_ref: &'a Arc<Mutex<State<Sched>>>,
-    guard: MutexGuard<'a, State<Sched>>,
+    state_ref: &'a Arc<threading::Mutex<State<Sched>>>,
+    guard: threading::MutexGuard<'a, State<Sched>>,
 }
 
 /// Identifies a thread in [`ThreadGroup`].
@@ -82,7 +82,7 @@ struct ThreadLocalBlock {
     /// The current thread ID.
     thread_id: ThreadId,
     /// The thread group the current worker thread belongs to.
-    state: Arc<Mutex<State<dyn Scheduler>>>,
+    state: Arc<threading::Mutex<State<dyn Scheduler>>>,
 }
 
 impl<Sched: Scheduler> ThreadGroup<Sched> {
@@ -91,7 +91,7 @@ impl<Sched: Scheduler> ThreadGroup<Sched> {
     pub fn new(sched: Sched) -> (Self, ThreadGroupJoinHandle) {
         let (send, recv) = mpsc::channel();
 
-        let state = Arc::new(Mutex::new(State {
+        let state = Arc::new(threading::Mutex::new(State {
             threads: Slab::new(),
             num_threads: 0,
             cur_thread_id: None,
@@ -264,7 +264,7 @@ impl State<dyn Scheduler> {
 ///
 /// Panics if the current thread is not a worker thread of some [`ThreadGroup`].
 pub fn yield_now() {
-    let thread_group: Arc<Mutex<State<dyn Scheduler>>> = TLB
+    let thread_group: Arc<threading::Mutex<State<dyn Scheduler>>> = TLB
         .with(|cell| cell.get().map(|tlb| Arc::clone(&tlb.state)))
         .expect("current thread does not belong to a thread group");
 
@@ -303,7 +303,7 @@ pub unsafe fn exit_thread() -> ! {
 
 /// Mark the specified thread as exited.
 fn finalize_thread(
-    thread_group: Arc<Mutex<State<dyn Scheduler>>>,
+    thread_group: Arc<threading::Mutex<State<dyn Scheduler>>>,
     thread_id: ThreadId,
     result: Result<()>,
 ) {
