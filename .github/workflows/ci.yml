@@ -254,7 +254,7 @@ jobs:
 
       - name: Test
         run: |
-          cargo run --package r3_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --log-level debug
+          cargo r3test --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --log-level debug
 
   # Build a small subset of tests for real freestanding targets
   build-freestanding:
@@ -308,4 +308,4 @@ jobs:
 
       - name: Build tests
         run: |
-          cargo run --package r3_test_runner -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --norun basic
+          cargo r3test --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --norun basic

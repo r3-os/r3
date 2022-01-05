@@ -21,26 +21,28 @@ This document explains how to use the test suite and what is needed to do so.
 
 `cargo test --all` runs all tests including the kernel test suite (with all optional features enabled) on the host environment.
 
+`cargo r3test` is an alias of `cargo run -p r3_test_runner` (defined in `.cargo/config.toml`).
+
 The following table shows how to run the kernel test suite for each target.
 
-|   Architecture  |                   Board                   |                                Command                                |
-|-----------------|-------------------------------------------|-----------------------------------------------------------------------|
-| Host            | Host                                      | `cargo test -p r3_port_std --features r3_test_suite/full`             |
-| Armv7-M+FPU+DSP | [NUCLEO-F401RE][]                         | `cargo run -p r3_test_runner -- -t nucleo_f401re`                     |
-| Armv8-MML+FPU   | [Arm MPS2+][] [AN505][] (QEMU)            | `cargo run -p r3_test_runner -- -t qemu_mps2_an505`                   |
-| Armv8-MML       | Arm MPS2+ AN505 (QEMU)                    | `cargo run -p r3_test_runner -- -t qemu_mps2_an505 -a cortex_m33`     |
-| Armv8-MBL       | Arm MPS2+ AN505 (QEMU)                    | `cargo run -p r3_test_runner -- -t qemu_mps2_an505 -a cortex_m23`     |
-| Armv7-M         | Arm MPS2+ [AN385][] (QEMU)                | `cargo run -p r3_test_runner -- -t qemu_mps2_an385`                   |
-| Armv6-M         | Arm MPS2+ AN385 (QEMU)                    | `cargo run -p r3_test_runner -- -t qemu_mps2_an385 -a cortex_m0`      |
-| Armv6-M         | [Raspberry Pi Pico][] (USB)               | `cargo run -p r3_test_runner -- -t rp_pico`                           |
-| Armv7-A         | [GR-PEACH][]                              | `cargo run -p r3_test_runner -- -t gr_peach`                          |
-| Armv7-A         | [Arm RealView PBX for Cortex-A9][] (QEMU) | `cargo run -p r3_test_runner -- -t qemu_realview_pbx_a9`              |
-| RV32IMAC        | [SiFive E][] (QEMU)                       | `cargo run -p r3_test_runner -- -t qemu_sifive_e_rv32`                |
-| RV32GC          | [SiFive U][] (QEMU)                       | `cargo run -p r3_test_runner -- -t qemu_sifive_u_rv32`                |
-| RV64IMAC        | SiFive U (QEMU)                           | `cargo run -p r3_test_runner -- -t qemu_sifive_u_rv64 -a rv64i+m+a+c` |
-| RV64GC          | SiFive U (QEMU)                           | `cargo run -p r3_test_runner -- -t qemu_sifive_u_rv64`                |
-| RV32IMAC        | [RED-V][] (SPI flash XIP)                 | `cargo run -p r3_test_runner -- -t red_v`                             |
-| RV64GC          | [Maix][] boards (UART ISP)                | `cargo run -p r3_test_runner -- -t maix`                              |
+|   Architecture  |                   Board                   |                          Command                          |
+|-----------------|-------------------------------------------|-----------------------------------------------------------|
+| Host            | Host                                      | `cargo test -p r3_port_std --features r3_test_suite/full` |
+| Armv7-M+FPU+DSP | [NUCLEO-F401RE][]                         | `cargo r3test -t nucleo_f401re`                           |
+| Armv8-MML+FPU   | [Arm MPS2+][] [AN505][] (QEMU)            | `cargo r3test -t qemu_mps2_an505`                         |
+| Armv8-MML       | Arm MPS2+ AN505 (QEMU)                    | `cargo r3test -t qemu_mps2_an505 -a cortex_m33`           |
+| Armv8-MBL       | Arm MPS2+ AN505 (QEMU)                    | `cargo r3test -t qemu_mps2_an505 -a cortex_m23`           |
+| Armv7-M         | Arm MPS2+ [AN385][] (QEMU)                | `cargo r3test -t qemu_mps2_an385`                         |
+| Armv6-M         | Arm MPS2+ AN385 (QEMU)                    | `cargo r3test -t qemu_mps2_an385 -a cortex_m0`            |
+| Armv6-M         | [Raspberry Pi Pico][] (USB)               | `cargo r3test -t rp_pico`                                 |
+| Armv7-A         | [GR-PEACH][]                              | `cargo r3test -t gr_peach`                                |
+| Armv7-A         | [Arm RealView PBX for Cortex-A9][] (QEMU) | `cargo r3test -t qemu_realview_pbx_a9`                    |
+| RV32IMAC        | [SiFive E][] (QEMU)                       | `cargo r3test -t qemu_sifive_e_rv32`                      |
+| RV32GC          | [SiFive U][] (QEMU)                       | `cargo r3test -t qemu_sifive_u_rv32`                      |
+| RV64IMAC        | SiFive U (QEMU)                           | `cargo r3test -t qemu_sifive_u_rv64 -a rv64i+m+a+c`       |
+| RV64GC          | SiFive U (QEMU)                           | `cargo r3test -t qemu_sifive_u_rv64`                      |
+| RV32IMAC        | [RED-V][] (SPI flash XIP)                 | `cargo r3test -t red_v`                                   |
+| RV64GC          | [Maix][] boards (UART ISP)                | `cargo r3test -t maix`                                    |
 
 [NUCLEO-F401RE]: https://www.st.com/en/evaluation-tools/nucleo-f401re.html
 [Arm MPS2+]: https://developer.arm.com/tools-and-software/development-boards/fpga-prototyping-boards/mps2
@@ -58,14 +60,14 @@ The following table shows how to run the kernel test suite for each target.
 
 The `-b` option instructs `r3_test_runner` to run benchmark tests. Note that some targets (notably QEMU Arm-M machines, which lack DWT) don't support benchmarking and the test code might crash, stall, or simply fail to compile on such targets.
 
-| Architecture |          Board          |                           Command                           |
-| ------------ | ----------------------- | ----------------------------------------------------------- |
-| Host         | Host                    | `cargo bench -p r3_port_std`                         |
-| Armv7-M      | NUCLEO-F401RE           | `cargo run -p r3_test_runner -- -t nucleo_f401re -b` |
-| Armv7-A      | GR-PEACH                | `cargo run -p r3_test_runner -- -t gr_peach -b`      |
-| Armv6-M      | Raspberry Pi Pico (USB) | `cargo run -p r3_test_runner -- -t rp_pico -b`       |
-| RV32IMAC     | RED-V (SPI flash XIP)   | `cargo run -p r3_test_runner -- -t red_v -b`         |
-| RV64GC       | Maix boards (UART ISP)  | `cargo run -p r3_test_runner -- -t maix -b`          |
+| Architecture |          Board          |              Command               |
+|--------------|-------------------------|------------------------------------|
+| Host         | Host                    | `cargo bench -p r3_port_std`       |
+| Armv7-M      | NUCLEO-F401RE           | `cargo r3test -t nucleo_f401re -b` |
+| Armv7-A      | GR-PEACH                | `cargo r3test -t gr_peach -b`      |
+| Armv6-M      | Raspberry Pi Pico (USB) | `cargo r3test -t rp_pico -b`       |
+| RV32IMAC     | RED-V (SPI flash XIP)   | `cargo r3test -t red_v -b`         |
+| RV64GC       | Maix boards (UART ISP)  | `cargo r3test -t maix -b`          |
 
 
 ## Configuring udev

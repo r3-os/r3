@@ -1,0 +1,2 @@
+[alias]
+r3test = "run --package r3_test_runner --quiet --"
