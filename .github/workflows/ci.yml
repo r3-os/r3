@@ -97,8 +97,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TODO: Add `macos-10.15` after addressing the time inaccuracy that
-        #       causes some tests to fail
+        # TODO: Add `macos-10.15` after addressing `riscv-rt` build failure
         os: [ubuntu-20.04, windows-2019]
         features: [all-features]
     steps:
@@ -114,6 +113,12 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu-')
         run: sudo apt-get install libusb-1.0-0-dev libudev-dev
 
+      # Some tests are sensitive to timing and can fail
+      # in Windows and macOS VMs
+      - name: Limit concurrency
+        if: "!startsWith(matrix.os, 'ubuntu-')"
+        run: echo "testflags=--test-threads=1" >> $GITHUB_ENV
+
       - name: Exclude crates
         shell: bash
         run: |
@@ -124,7 +129,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --workspace
+          args: --workspace -- ${{ env.testflags }}
         env:
           RUST_LOG: debug
 
