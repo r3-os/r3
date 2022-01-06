@@ -20,7 +20,9 @@ jobs:
           components: clippy, rustfmt
 
       - name: Install dependencies (Linux)
-        run: sudo apt-get install libusb-1.0-0-dev libudev-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev libudev-dev
 
       - name: Exclude crates
         run: |
@@ -111,7 +113,9 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: startsWith(matrix.os, 'ubuntu-')
-        run: sudo apt-get install libusb-1.0-0-dev libudev-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev libudev-dev
 
       # Some tests are sensitive to timing and can fail
       # in Windows and macOS VMs
@@ -157,7 +161,9 @@ jobs:
           profile: minimal
 
       - name: Install dependencies (Linux)
-        run: sudo apt-get install libusb-1.0-0-dev libudev-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libusb-1.0-0-dev libudev-dev
 
       - name: Convert feature list to Cargo parameter
         run: |
