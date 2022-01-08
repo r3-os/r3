@@ -9,6 +9,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
+#![feature(generic_const_exprs)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
@@ -78,6 +79,12 @@ pub use self::rt::cfg::*;
 pub use self::threading::cfg::*;
 pub use self::timer::cfg::*;
 
+// Due to a weird macro hygiene behavior, local macro invocations in `pp_asm!`
+// have to refer by absolute paths, which is inconvenient for macros that are
+// supposed to used in the middle of an instruction.
+#[cfg(target_os = "none")]
+use self::threading::imp::csrexpr;
+
 /// Defines the entry points of a port instantiation. Implemented by
 /// [`use_port!`].
 pub trait EntryPoint {
@@ -85,7 +92,9 @@ pub trait EntryPoint {
     ///
     /// # Safety
     ///
-    ///  - The processor should be in M-mode and have M-mode interrupts masked.
+    ///  - The processor should be in the privilege mode specified by
+    ///    [`ThreadingOptions::PRIVILEGE_LEVEL`] and have interrupts masked for
+    //     this privilege level.
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;
@@ -96,7 +105,9 @@ pub trait EntryPoint {
     ///
     /// # Safety
     ///
-    ///  - The processor should be in M-mode and have M-mode interrupts masked.
+    ///  - The processor should be in the privilege mode specified by
+    ///    [`ThreadingOptions::PRIVILEGE_LEVEL`] and have interrupts masked for
+    //     this privilege level
     ///  - The register state of the background context should be preserved so
     ///    that the handler can restore it later.
     ///
