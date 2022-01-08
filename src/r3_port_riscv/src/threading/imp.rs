@@ -234,9 +234,9 @@ impl State {
         // Enable local interrupts
         {
             let mut clear_set = [0usize; 2];
-            clear_set[Traits::USE_INTERRUPT_SOFTWARE as usize] |= csr::XIE_MSIE;
-            clear_set[Traits::USE_INTERRUPT_TIMER as usize] |= csr::XIE_MTIE;
-            clear_set[Traits::USE_INTERRUPT_EXTERNAL as usize] |= csr::XIE_MEIE;
+            clear_set[Traits::USE_INTERRUPT_SOFTWARE as usize] |= Traits::Csr::XIE_XSIE;
+            clear_set[Traits::USE_INTERRUPT_TIMER as usize] |= Traits::Csr::XIE_XTIE;
+            clear_set[Traits::USE_INTERRUPT_EXTERNAL as usize] |= Traits::Csr::XIE_XEIE;
             if clear_set[0] != 0 {
                 Traits::Csr::xie().clear(clear_set[0]);
             }
@@ -263,9 +263,9 @@ impl State {
                 # Save the stack pointer for later use
                 STORE sp, ({MAIN_STACK}), a0
 
-                # `xstatus.MPIE` will be `1` all the time except in a software
+                # `xstatus.XPIE` will be `1` all the time except in a software
                 # exception handler
-                li a0, {MPIE}
+                li a0, " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
                 csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
 
                 tail {push_second_level_state_and_dispatch}.dispatch
@@ -274,7 +274,6 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
                 PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
-                MPIE = const csr::XSTATUS_MPIE,
                 options(noreturn),
             );
         }
@@ -332,8 +331,9 @@ impl State {
                 STORE t6, ({X_SIZE} * 15)(sp)
                 STORE ra, ({X_SIZE} * 16)(sp)
 
-                # MIE := 0
-                csrrci a0, " crate::threading::imp::csr::csrexpr!(XSTATUS) ", {MIE}
+                # XIE := 0
+                csrrci a0, " crate::threading::imp::csr::csrexpr!(XSTATUS) ",       "
+                    crate::threading::imp::csr::csrexpr!(XSTATUS_XIE)               "
 
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push FLS.F
@@ -386,7 +386,6 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
                 PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
-                MIE = const csr::XSTATUS_MIE,
                 FS_1 = const csr::XSTATUS_FS_1,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
@@ -425,7 +424,7 @@ impl State {
     ///
     /// All entry points:
     ///
-    ///  - `xstatus.MIE` must be equal to `1`.
+    ///  - `xstatus.XIE` must be equal to `1`.
     ///
     /// All entry points but `dispatch`:
     ///
@@ -713,15 +712,30 @@ impl State {
                     # unused: {F_SIZE} {FLSF_SIZE}
             "   }                                                                   "
 
-                # xstatus.MPP := M
-                # xstatus.MPIE := 1 (if `maintain-mpie` is enabled)
-            "   if cfg!(feature = "maintain-pie") {                                "
-                    li a0, {MPP_M} | {MPIE}
-            "   } else {                                                            "
-                    li a0, {MPP_M}
-                    # unused: {MPIE}
-            "   }                                                                   "
-                csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
+                # xstatus.XPP := X (if `PRIVILEGE_LEVEL != U`)
+                # xstatus.XPIE := 1 (if `maintain-mpie` is enabled)
+                .if {PRIV} == 3
+            "       if cfg!(feature = "maintain-pie") {                             "
+                        li a0, {MPP_M} | " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
+            "       } else {                                                        "
+                        li a0, {MPP_M}
+            "       }                                                               "
+                    csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
+                .elseif {PRIV} == 1
+            "       if cfg!(feature = "maintain-pie") {                             "
+                        li a0, {SPP_S} | " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
+            "       } else {                                                        "
+                        li a0, {SPP_S}
+            "       }                                                               "
+                    csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
+                .elseif {PRIV} == 0
+            "       if cfg!(feature = "maintain-pie") {                             "
+                        csrsi " crate::threading::imp::csr::csrexpr!(XSTATUS) ",    "
+                            crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE)      "
+            "       }                                                               "
+                .else
+                    .error \"unsupported `PRIVILEGE_LEVEL`\"
+                .endif
 
                 # Resume the next task by restoring FLS.X
                 #
@@ -764,12 +778,13 @@ impl State {
                 # debugging.
                 #
                 #   sp = 0;
-                #   xstatus.MIE = 1;
+                #   xstatus.XIE = 1;
                 #   loop:
                 #       wfi();
                 #
                 mv sp, zero
-                csrsi " crate::threading::imp::csr::csrexpr!(XSTATUS) ", {MIE}
+                csrsi " crate::threading::imp::csr::csrexpr!(XSTATUS) ",            "
+                    crate::threading::imp::csr::csrexpr!(XSTATUS_XIE)               "
             3:
                 wfi
                 j 3b
@@ -781,10 +796,9 @@ impl State {
                 MAIN_STACK = sym MAIN_STACK,
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
                 MPP_M = const csr::XSTATUS_MPP_M,
+                SPP_S = const csr::XSTATUS_SPP_S,
                 PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
-                MIE = const csr::XSTATUS_MIE,
                 FS_1 = const csr::XSTATUS_FS_1,
-                MPIE = const csr::XSTATUS_MPIE,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
                 FLSF_SIZE = const FLSF_SIZE,
@@ -799,13 +813,13 @@ impl State {
     ) -> ! {
         unsafe {
             pp_asm!("
-                # MIE := 0
-                csrci " crate::threading::imp::csr::csrexpr!(XSTATUS) ", {MIE}
+                # XIE := 0
+                csrci " crate::threading::imp::csr::csrexpr!(XSTATUS) ",            "
+                    crate::threading::imp::csr::csrexpr!(XSTATUS_XIE)               "
 
                 j {push_second_level_state_and_dispatch}.dispatch
                 ",
                 PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
-                MIE = const csr::XSTATUS_MIE,
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
                 options(noreturn, nostack),
@@ -815,17 +829,17 @@ impl State {
 
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<Traits: PortInstance>(&self) {
-        Traits::Csr::xstatus_clear_mie();
+        Traits::Csr::xstatus_clear_xie();
     }
 
     #[inline(always)]
     pub unsafe fn try_enter_cpu_lock<Traits: PortInstance>(&self) -> bool {
-        (Traits::Csr::xstatus_fetch_clear_mie() & csr::XSTATUS_MIE) != 0
+        (Traits::Csr::xstatus_fetch_clear_xie() & Traits::Csr::XSTATUS_XIE) != 0
     }
 
     #[inline(always)]
     pub unsafe fn leave_cpu_lock<Traits: PortInstance>(&'static self) {
-        Traits::Csr::xstatus_set_mie();
+        Traits::Csr::xstatus_set_xie();
     }
 
     pub unsafe fn initialize_task_state<Traits: PortInstance>(
@@ -928,7 +942,7 @@ impl State {
 
     #[inline(always)]
     pub fn is_cpu_lock_active<Traits: PortInstance>(&self) -> bool {
-        (Traits::Csr::xstatus().read() & csr::XSTATUS_MIE) == 0
+        (Traits::Csr::xstatus().read() & Traits::Csr::XSTATUS_XIE) == 0
     }
 
     pub fn is_task_context<Traits: PortInstance>(&self) -> bool {
@@ -982,7 +996,7 @@ impl State {
         num: InterruptNum,
     ) -> Result<(), PendInterruptLineError> {
         if num == INTERRUPT_SOFTWARE {
-            Traits::Csr::xip().set(csr::XIP_MSIP);
+            Traits::Csr::xip().set(Traits::Csr::XIP_XSIP);
             Ok(())
         } else if num < INTERRUPT_PLATFORM_START {
             Err(PendInterruptLineError::BadParam)
@@ -998,7 +1012,7 @@ impl State {
         num: InterruptNum,
     ) -> Result<(), ClearInterruptLineError> {
         if num == INTERRUPT_SOFTWARE {
-            Traits::Csr::xip().clear(csr::XIP_MSIP);
+            Traits::Csr::xip().clear(Traits::Csr::XIP_XSIP);
             Ok(())
         } else if num < INTERRUPT_PLATFORM_START {
             Err(ClearInterruptLineError::BadParam)
@@ -1014,7 +1028,7 @@ impl State {
         num: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
         if num < INTERRUPT_PLATFORM_START {
-            Ok((Traits::Csr::xip().read() & (csr::XIP_MSIP << (num * 4))) != 0)
+            Ok((Traits::Csr::xip().read() & (Traits::Csr::XIP_XSIP << (num * 4))) != 0)
         } else {
             // Safety: We are delegating the call in the intended way
             unsafe { <Traits as InterruptController>::is_interrupt_line_pending(num) }
@@ -1343,9 +1357,10 @@ impl State {
     }
 
     unsafe fn handle_interrupt<Traits: PortInstance>() {
-        let all_local_interrupts = [0, csr::XIE_MSIE][Traits::USE_INTERRUPT_SOFTWARE as usize]
-            | [0, csr::XIE_MTIE][Traits::USE_INTERRUPT_TIMER as usize]
-            | [0, csr::XIE_MEIE][Traits::USE_INTERRUPT_EXTERNAL as usize];
+        let all_local_interrupts = [0, Traits::Csr::XIE_XSIE]
+            [Traits::USE_INTERRUPT_SOFTWARE as usize]
+            | [0, Traits::Csr::XIE_XTIE][Traits::USE_INTERRUPT_TIMER as usize]
+            | [0, Traits::Csr::XIE_XEIE][Traits::USE_INTERRUPT_EXTERNAL as usize];
 
         // `M[EST]IE` is used to simulate execution priority levels.
         //
@@ -1397,18 +1412,18 @@ impl State {
         let mut xie_pending = 0;
 
         // Re-enable interrupts globally.
-        Traits::Csr::xstatus_set_mie();
+        Traits::Csr::xstatus_set_xie();
 
         let mut xip = Traits::Csr::xip().read();
 
         // Check the pending flags and call the respective handlers in the
         // descending order of priority.
-        if Traits::USE_INTERRUPT_EXTERNAL && (old_mie & csr::XIE_MEIE) != 0 {
+        if Traits::USE_INTERRUPT_EXTERNAL && (old_mie & Traits::Csr::XIE_XEIE) != 0 {
             // Safety: `USE_INTERRUPT_EXTERNAL == true`
             let handler = Traits::INTERRUPT_EXTERNAL_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
-            while (xip & csr::XIP_MEIP) != 0 {
+            while (xip & Traits::Csr::XIP_XEIP) != 0 {
                 // Safety: The first-level interrupt handler is allowed to call
                 //         a second-level interrupt handler
                 unsafe { handler() };
@@ -1416,22 +1431,22 @@ impl State {
                 xip = Traits::Csr::xip().read();
             }
 
-            xie_pending = csr::XIE_MEIE;
+            xie_pending = Traits::Csr::XIE_XEIE;
         }
 
-        if Traits::USE_INTERRUPT_SOFTWARE && (old_mie & csr::XIE_MSIE) != 0 {
+        if Traits::USE_INTERRUPT_SOFTWARE && (old_mie & Traits::Csr::XIE_XSIE) != 0 {
             // Safety: `USE_INTERRUPT_SOFTWARE == true`
             let handler = Traits::INTERRUPT_SOFTWARE_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
             if Traits::USE_INTERRUPT_EXTERNAL {
-                debug_assert_eq!(xie_pending, csr::XIE_MEIE);
-                Traits::Csr::xie().set(csr::XIE_MEIE);
+                debug_assert_eq!(xie_pending, Traits::Csr::XIE_XEIE);
+                Traits::Csr::xie().set(Traits::Csr::XIE_XEIE);
             } else {
                 debug_assert_eq!(xie_pending, 0);
             }
 
-            while (xip & csr::XIP_MSIP) != 0 {
+            while (xip & Traits::Csr::XIP_XSIP) != 0 {
                 // Safety: The first-level interrupt handler is allowed to call
                 //         a second-level interrupt handler
                 unsafe { handler() };
@@ -1439,25 +1454,25 @@ impl State {
                 xip = Traits::Csr::xip().read();
             }
 
-            xie_pending = csr::XIE_MSIE;
+            xie_pending = Traits::Csr::XIE_XSIE;
         }
 
-        if Traits::USE_INTERRUPT_TIMER && (old_mie & csr::XIE_MTIE) != 0 {
+        if Traits::USE_INTERRUPT_TIMER && (old_mie & Traits::Csr::XIE_XTIE) != 0 {
             // Safety: `USE_INTERRUPT_TIMER == true`
             let handler = Traits::INTERRUPT_TIMER_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
             if Traits::USE_INTERRUPT_SOFTWARE {
-                debug_assert_eq!(xie_pending, csr::XIE_MSIE);
-                Traits::Csr::xie().set(csr::XIE_MSIE);
+                debug_assert_eq!(xie_pending, Traits::Csr::XIE_XSIE);
+                Traits::Csr::xie().set(Traits::Csr::XIE_XSIE);
             } else if Traits::USE_INTERRUPT_EXTERNAL {
-                debug_assert_eq!(xie_pending, csr::XIE_MEIE);
-                Traits::Csr::xie().set(csr::XIE_MEIE);
+                debug_assert_eq!(xie_pending, Traits::Csr::XIE_XEIE);
+                Traits::Csr::xie().set(Traits::Csr::XIE_XEIE);
             } else {
                 debug_assert_eq!(xie_pending, 0);
             }
 
-            while (xip & csr::XIP_MTIP) != 0 {
+            while (xip & Traits::Csr::XIP_XTIP) != 0 {
                 // Safety: The first-level interrupt handler is allowed to call
                 //         a second-level interrupt handler
                 unsafe { handler() };
@@ -1465,11 +1480,11 @@ impl State {
                 xip = Traits::Csr::xip().read();
             }
 
-            xie_pending = csr::XIE_MTIE;
+            xie_pending = Traits::Csr::XIE_XTIE;
         }
 
         // Disable interrupts globally before returning.
-        Traits::Csr::xstatus_clear_mie();
+        Traits::Csr::xstatus_clear_xie();
 
         debug_assert_ne!(xie_pending, 0);
         Traits::Csr::xie().set(xie_pending);

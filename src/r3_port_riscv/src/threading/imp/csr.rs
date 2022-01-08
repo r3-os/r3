@@ -150,7 +150,10 @@ macro_rules! define_set {
 
         $( #[$csrexpr_meta:meta] )*
         macro csrexpr {
-            $( ($CONST:ident) => { $const_value:literal } ),*
+            $(
+                $( #[$const_meta:meta] )*
+                ($CONST:ident) => { $const_value:literal }
+            ),*
             $(,)?
         }
 
@@ -189,13 +192,20 @@ macro_rules! define_set {
 
         $( #[$csrexpr_meta] )*
         pub(crate) macro csrexpr {
-            $( ($CONST) => { $const_value } ),*
+            $(
+                ($CONST) => { $const_value }
+            ),*
         }
 
         /// Provides all CSR accessors needed by this crate's port implementation.
         ///
         /// This trait is an implementation detail of this crate.
         pub trait CsrSetAccess {
+            $(
+                $( #[$const_meta] )*
+                const $CONST: usize;
+            )*
+
             $(
                 $( #[$csr_meta] )*
                 type $Csr: CsrAccessor;
@@ -217,6 +227,10 @@ macro_rules! define_set {
             $($( [(); { $csr_immediate_param }]:, )*)*
         {
             $(
+                const $CONST: usize = Self::$CONST;
+            )*
+
+            $(
                 type $Csr = Csr<{ $offset }>;
 
                 #[inline(always)]
@@ -235,28 +249,13 @@ macro_rules! define_set {
     }
 }
 
-pub const XSTATUS_MIE: usize = 1 << 3;
-pub const XSTATUS_MPIE: usize = 1 << 7;
 pub const XSTATUS_MPP_M: usize = 0b11 << 11;
+pub const XSTATUS_SPP_S: usize = 1 << 8;
 pub const XSTATUS_FS_0: usize = 1 << 13;
 pub const XSTATUS_FS_1: usize = 1 << 14;
 
 pub const XCAUSE_INTERRUPT: usize = usize::MAX - usize::MAX / 2;
 pub const XCAUSE_EXCEPTIONCODE_MASK: usize = usize::MAX / 2;
-
-/// Machine Software Interrupt Enable
-pub const XIE_MSIE: usize = 1 << 3;
-/// Machine Timer Interrupt Enable
-pub const XIE_MTIE: usize = 1 << 7;
-/// Machine External Interrupt Enable
-pub const XIE_MEIE: usize = 1 << 11;
-
-/// Machine Software Interrupt Pending
-pub const XIP_MSIP: usize = 1 << 3;
-/// Machine Timer Interrupt Pending
-pub const XIP_MTIP: usize = 1 << 7;
-/// Machine External Interrupt Pending
-pub const XIP_MEIP: usize = 1 << 11;
 
 define_set! {
     impl<Traits: super::ThreadingOptions> CsrSet<Traits> {
@@ -272,6 +271,26 @@ define_set! {
         (XEPC) => { "{PRIV} * 0x100 + 0x41" },
         (XCAUSE) => { "{PRIV} * 0x100 + 0x42" },
         (XIP) => { "{PRIV} * 0x100 + 0x44" },
+
+        // CSR values
+        // Machine/Supervisor/... Interrupt Enable
+        (XSTATUS_XIE) =>  { "1 << ({PRIV})" },
+        // Machine/Supervisor/... Previous Interrupt Enable
+        (XSTATUS_XPIE) =>  { "1 << ({PRIV} + 4)" },
+
+        /// Machine/Supervisor/... Software Interrupt Enable
+        (XIE_XSIE) =>  { "1 << ({PRIV})" },
+        /// Machine/Supervisor/... Timer Interrupt Enable
+        (XIE_XTIE) =>  { "1 << ({PRIV} + 4)" },
+        /// Machine/Supervisor/... External Interrupt Enable
+        (XIE_XEIE) =>  { "1 << ({PRIV} + 8)" },
+
+        /// Machine/Supervisor/... Software Interrupt Pending
+        (XIP_XSIP) =>  { "1 << ({PRIV})" },
+        /// Machine/Supervisor/... Timer Interrupt Pending
+        (XIP_XTIP) =>  { "1 << ({PRIV} + 4)" },
+        /// Machine/Supervisor/... External Interrupt Pending
+        (XIP_XEIP) =>  { "1 << ({PRIV} + 8)" },
     }
 
     impl<Traits> CsrSetAccess for CsrSet<Traits> {
@@ -292,21 +311,21 @@ define_set! {
         fn xip() -> Csr<{ Self::XIP }>;
 
         #[csr_immediate]
-        /// Set `λstatus.MIE`.
-        fn xstatus_set_mie() {
-            Self::xstatus().set_i::<{ XSTATUS_MIE }>()
+        /// Set `λstatus.λIE`.
+        fn xstatus_set_xie() {
+            Self::xstatus().set_i::<{ Self::XSTATUS_XIE }>()
         }
 
         #[csr_immediate]
-        /// Clear `λstatus.MIE`.
-        fn xstatus_clear_mie() {
-            Self::xstatus().clear_i::<{ XSTATUS_MIE }>()
+        /// Clear `λstatus.λIE`.
+        fn xstatus_clear_xie() {
+            Self::xstatus().clear_i::<{ Self::XSTATUS_XIE }>()
         }
 
         #[csr_immediate]
-        /// Clear `λstatus.MIE`, returning the original value of this CSR.
-        fn xstatus_fetch_clear_mie() -> usize {
-            Self::xstatus().fetch_clear_i::<{ XSTATUS_MIE }>()
+        /// Clear `λstatus.λIE`, returning the original value of this CSR.
+        fn xstatus_fetch_clear_xie() -> usize {
+            Self::xstatus().fetch_clear_i::<{ Self::XSTATUS_XIE }>()
         }
     }
 }

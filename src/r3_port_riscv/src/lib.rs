@@ -16,6 +16,7 @@
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]
 #![doc = include!("../doc/interrupts.rs")] // `![interrupts]`
+#![recursion_limit = "1024"]
 #![no_std]
 use core::ops::Range;
 use r3_core::kernel::{
