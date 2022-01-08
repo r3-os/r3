@@ -747,7 +747,7 @@ impl State {
                 #   sp += 17;
                 #
                 #   pc = xepc;
-                #   mode = xstatus.MPP;
+                #   mode = xstatus.XPP;
                 #
                 #   <end of procedure>
                 #
@@ -770,7 +770,15 @@ impl State {
                 LOAD t5, ({X_SIZE} * 14)(sp)
                 LOAD t6, ({X_SIZE} * 15)(sp)
                 addi sp, sp, ({X_SIZE} * 17)
-                mret
+                .if {PRIV} == 0
+                    uret
+                .elseif {PRIV} == 1
+                    sret
+                .elseif {PRIV} == 3
+                    mret
+                .else
+                    .error \"unsupported `PRIVILEGE_LEVEL`\"
+                .endif
 
             .global {push_second_level_state_and_dispatch}.idle_task
             {push_second_level_state_and_dispatch}.idle_task:
