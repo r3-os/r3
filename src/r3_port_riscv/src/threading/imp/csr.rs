@@ -60,6 +60,7 @@
 //! `#[export_name]` for each possible value (i.e., we can't easily cover the
 //! whole range of `usize`).
 use core::arch::asm;
+use unstringify::unstringify;
 
 #[derive(Clone, Copy)]
 pub struct Csr<const NUM: usize>;
@@ -143,64 +144,94 @@ impl<const NUM: usize> CsrAccessor for Csr<NUM> {
 /// This type is an implementation detail of this crate.
 pub struct CsrSet<Traits>(Traits);
 
-macro define_set(
-    pub trait $CsrSetAccess:ident<$Traits:ident> {
-        $(
-            #[csr_accessor(ty = $Csr:ident)]
-            $( #[$csr_meta:meta] )*
-            fn $csr:ident() -> Csr<{ $offset:expr }>;
-        )*
+macro_rules! define_set {
+    (
+        impl<Traits: super::ThreadingOptions> CsrSet<Traits> {}
 
-        $(
-            #[csr_immediate]
-            $( #[$csr_immediate_meta:meta] )*
-            fn $csr_immediate:ident() $( -> $csr_immediate_ret:ty )? {
-                Self::$csr_immediate_target:ident()
-                    .$csr_immediate_op:ident
-                    ::<$({ $csr_immediate_param:expr }),*>()
-            }
-        )*
-    }
-) {
-    /// Provides all CSR accessors needed by this crate's port implementation.
-    ///
-    /// This trait is an implementation detail of this crate.
-    pub trait $CsrSetAccess {
-        $(
-            $( #[$csr_meta] )*
-            type $Csr: CsrAccessor;
+        $( #[$csrexpr_meta:meta] )*
+        macro csrexpr {
+            $( ($CONST:ident) => { $const_value:literal } ),*
+            $(,)?
+        }
 
-            $( #[$csr_meta] )*
-            fn $csr() -> Self::$Csr;
-        )*
+        impl<Traits> CsrSetAccess for CsrSet<Traits> {
+            $(
+                #[csr_accessor(ty = $Csr:ident)]
+                $( #[$csr_meta:meta] )*
+                fn $csr:ident() -> Csr<{ $offset:expr }>;
+            )*
 
-        $(
-            $( #[$csr_immediate_meta] )*
-            fn $csr_immediate() $( -> $csr_immediate_ret )?;
-        )*
-    }
+            $(
+                #[csr_immediate]
+                $( #[$csr_immediate_meta:meta] )*
+                fn $csr_immediate:ident() $( -> $csr_immediate_ret:ty )? {
+                    Self::$csr_immediate_target:ident()
+                        .$csr_immediate_op:ident
+                        ::<$({ $csr_immediate_param:expr }),*>()
+                }
+            )*
+        }
+    ) => {
+        impl<Traits: super::ThreadingOptions> CsrSet<Traits> {
+            const PRIV: usize = {
+                assert!(Traits::PRIVILEGE_LEVEL < 4, "`PRIVILEGE_LEVEL` must be in the range `0..4`");
+                Traits::PRIVILEGE_LEVEL as usize
+            };
 
-    impl<$Traits> $CsrSetAccess for CsrSet<$Traits>
-    where
-        $Traits: super::ThreadingOptions,
-        $( [(); { $offset }]:, )*
-        $($( [(); { $csr_immediate_param }]:, )*)*
-    {
-        $(
-            type $Csr = Csr<{ $offset }>;
+            $(
+                pub const $CONST: usize = {
+                    #[allow(non_snake_case)]
+                    let PRIV = Self::PRIV; // provide a value for `{PRIV}` in `$const_value`
+                    unstringify!($const_value)
+                };
+            )*
+        }
 
-            #[inline(always)]
-            fn $csr() -> Csr<{ $offset }> { Csr::<{ $offset }> }
-        )*
+        $( #[$csrexpr_meta] )*
+        pub(crate) macro csrexpr {
+            $( ($CONST) => { $const_value } ),*
+        }
 
-        $(
-            #[inline(always)]
-            fn $csr_immediate() $( -> $csr_immediate_ret )? {
-                Self::$csr_immediate_target()
-                    .$csr_immediate_op
-                    ::<$({ $csr_immediate_param }),*>()
-            }
-        )*
+        /// Provides all CSR accessors needed by this crate's port implementation.
+        ///
+        /// This trait is an implementation detail of this crate.
+        pub trait CsrSetAccess {
+            $(
+                $( #[$csr_meta] )*
+                type $Csr: CsrAccessor;
+
+                $( #[$csr_meta] )*
+                fn $csr() -> Self::$Csr;
+            )*
+
+            $(
+                $( #[$csr_immediate_meta] )*
+                fn $csr_immediate() $( -> $csr_immediate_ret )?;
+            )*
+        }
+
+        impl<Traits> CsrSetAccess for CsrSet<Traits>
+        where
+            Traits: super::ThreadingOptions,
+            $( [(); { $offset }]:, )*
+            $($( [(); { $csr_immediate_param }]:, )*)*
+        {
+            $(
+                type $Csr = Csr<{ $offset }>;
+
+                #[inline(always)]
+                fn $csr() -> Csr<{ $offset }> { Csr::<{ $offset }> }
+            )*
+
+            $(
+                #[inline(always)]
+                fn $csr_immediate() $( -> $csr_immediate_ret )? {
+                    Self::$csr_immediate_target()
+                        .$csr_immediate_op
+                        ::<$({ $csr_immediate_param }),*>()
+                }
+            )*
+        }
     }
 }
 
@@ -228,22 +259,37 @@ pub const XIP_MTIP: usize = 1 << 7;
 pub const XIP_MEIP: usize = 1 << 11;
 
 define_set! {
-    pub trait CsrSetAccess<Traits> {
+    impl<Traits: super::ThreadingOptions> CsrSet<Traits> {
+        /* `csrexpr!` is also exposed as `const`s here */
+    }
+
+    /// Create an assembler expression that evaluates to a CSR number or value.
+    /// Assumes the presence of an operand `PRIV = sym Traits::Priv::value`.
+    macro csrexpr {
+        // CSRs
+        (XSTATUS) => { "{PRIV} * 0x100" },
+        (XIE) => { "{PRIV} * 0x100 + 0x04" },
+        (XEPC) => { "{PRIV} * 0x100 + 0x41" },
+        (XCAUSE) => { "{PRIV} * 0x100 + 0x42" },
+        (XIP) => { "{PRIV} * 0x100 + 0x44" },
+    }
+
+    impl<Traits> CsrSetAccess for CsrSet<Traits> {
         #[csr_accessor(ty = Xstatus)]
         /// `λstatus` (Machine/Supervisor/... Status Register)
-        fn xstatus() -> Csr<{ Traits::PRIVILEGE_LEVEL as usize * 0x100 }>;
+        fn xstatus() -> Csr<{ Self::XSTATUS }>;
 
         #[csr_accessor(ty = Xie)]
         /// `λie` (Machine/Supervisor/... Interrupt Enable)
-        fn xie() -> Csr<{ Traits::PRIVILEGE_LEVEL as usize * 0x100 + 0x04 }>;
+        fn xie() -> Csr<{ Self::XIE }>;
 
         #[csr_accessor(ty = Xcause)]
         /// `λcause` (Machine/Supervisor/... Cause Register)
-        fn xcause() -> Csr<{ Traits::PRIVILEGE_LEVEL as usize * 0x100 + 0x42 }>;
+        fn xcause() -> Csr<{ Self::XCAUSE }>;
 
         #[csr_accessor(ty = Xip)]
         /// `λip` (Machine/Supervisor/... Interrupt Pending)
-        fn xip() -> Csr<{ Traits::PRIVILEGE_LEVEL as usize * 0x100 + 0x44 }>;
+        fn xip() -> Csr<{ Self::XIP }>;
 
         #[csr_immediate]
         /// Set `λstatus.MIE`.
@@ -280,11 +326,3 @@ seq_macro::seq!(N in 0..4 {
         fn value() {}
     }
 });
-
-/// Create an assembler expression that evaluates to a CSR number or value.
-/// Assumes the existence of an operand `PRIV = sym Traits::Priv::value`.
-pub(crate) macro csrexpr {
-    (xstatus) => { "( {PRIV} * 0x100 )" },
-    (xepc) => { "( {PRIV} * 0x100 + 0x41 )" },
-    (xcause) => { "( {PRIV} * 0x100 + 0x42 )" },
-}

@@ -1929,6 +1929,7 @@ dependencies = [
  "seq-macro 0.3.0",
  "svgbobdoc",
  "tock-registers",
+ "unstringify",
 ]
 
 [[package]]
@@ -2837,6 +2838,12 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unstringify"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9612d66420ead229348915b911ad9689e79dfc347fe7a876a82551c8eab36b5e"
 
 [[package]]
 name = "usb-device"

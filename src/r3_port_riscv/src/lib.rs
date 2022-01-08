@@ -79,12 +79,6 @@ pub use self::rt::cfg::*;
 pub use self::threading::cfg::*;
 pub use self::timer::cfg::*;
 
-// Due to a weird macro hygiene behavior, local macro invocations in `pp_asm!`
-// have to refer by absolute paths, which is inconvenient for macros that are
-// supposed to used in the middle of an instruction.
-#[cfg(target_os = "none")]
-use self::threading::imp::csrexpr;
-
 /// Defines the entry points of a port instantiation. Implemented by
 /// [`use_port!`].
 pub trait EntryPoint {

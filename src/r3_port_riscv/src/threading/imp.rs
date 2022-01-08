@@ -143,7 +143,6 @@ pub mod asm_inc {
 mod instemu;
 
 mod csr;
-pub(crate) use csr::csrexpr;
 use csr::{CsrAccessor as _, CsrSetAccess as _};
 #[doc(hidden)] // used by macro
 pub use csr::{CsrSet, NumTy};
@@ -267,7 +266,7 @@ impl State {
                 # `xstatus.MPIE` will be `1` all the time except in a software
                 # exception handler
                 li a0, {MPIE}
-                csrs " crate::csrexpr!(xstatus) ", a0
+                csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
 
                 tail {push_second_level_state_and_dispatch}.dispatch
                 ",
@@ -334,7 +333,7 @@ impl State {
                 STORE ra, ({X_SIZE} * 16)(sp)
 
                 # MIE := 0
-                csrrci a0, " crate::csrexpr!(xstatus) ", {MIE}
+                csrrci a0, " crate::threading::imp::csr::csrexpr!(XSTATUS) ", {MIE}
 
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push FLS.F
@@ -708,7 +707,7 @@ impl State {
 
                     j 0f    # → PopFLSFEnd
                 1:      # NoPopFLSF
-                    csrc " crate::csrexpr!(xstatus) ", a1
+                    csrc " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a1
                 0:      # PopFLSFEnd
             "   } else {                                                            "
                     # unused: {F_SIZE} {FLSF_SIZE}
@@ -722,7 +721,7 @@ impl State {
                     li a0, {MPP_M}
                     # unused: {MPIE}
             "   }                                                                   "
-                csrs " crate::csrexpr!(xstatus) ", a0
+                csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
 
                 # Resume the next task by restoring FLS.X
                 #
@@ -743,7 +742,7 @@ impl State {
                 LOAD t0, ({X_SIZE} * 1)(sp)
                 LOAD t1, ({X_SIZE} * 2)(sp)
                 LOAD t2, ({X_SIZE} * 3)(sp)
-                csrw " crate::csrexpr!(xepc) ", a7
+                csrw " crate::threading::imp::csr::csrexpr!(XEPC) ", a7
                 LOAD a0, ({X_SIZE} * 4)(sp)
                 LOAD a1, ({X_SIZE} * 5)(sp)
                 LOAD a2, ({X_SIZE} * 6)(sp)
@@ -770,7 +769,7 @@ impl State {
                 #       wfi();
                 #
                 mv sp, zero
-                csrsi " crate::csrexpr!(xstatus) ", {MIE}
+                csrsi " crate::threading::imp::csr::csrexpr!(XSTATUS) ", {MIE}
             3:
                 wfi
                 j 3b
@@ -801,7 +800,7 @@ impl State {
         unsafe {
             pp_asm!("
                 # MIE := 0
-                csrci " crate::csrexpr!(xstatus) ", {MIE}
+                csrci " crate::threading::imp::csr::csrexpr!(XSTATUS) ", {MIE}
 
                 j {push_second_level_state_and_dispatch}.dispatch
                 ",
@@ -1089,7 +1088,7 @@ impl State {
                                                 la a1, {INTERRUPT_NESTING}
                                                 lw a0, (a1)
                 STORE a2, ({X_SIZE} * 6)(sp)
-                csrr a2, " crate::csrexpr!(xepc) "
+                csrr a2, " crate::threading::imp::csr::csrexpr!(XEPC) "
                 STORE a3, ({X_SIZE} * 7)(sp)
                 STORE a4, ({X_SIZE} * 8)(sp)
                 STORE a5, ({X_SIZE} * 9)(sp)
@@ -1101,7 +1100,7 @@ impl State {
                 STORE t6, ({X_SIZE} * 15)(sp)
                 STORE a2, ({X_SIZE} * 16)(sp)
             "   if cfg!(target_feature = "f") {                                     "
-                    csrr a2, " crate::csrexpr!(xstatus) "
+                    csrr a2, " crate::threading::imp::csr::csrexpr!(XSTATUS) "
             "   }                                                                   "
                                                 addi a0, a0, 1
                                                 sw a0, (a1)
@@ -1129,7 +1128,7 @@ impl State {
                     and a1, a1, a2
                     beqz a1, 0f      # → PushFLSFEnd
 
-                    csrc " crate::csrexpr!(xstatus) ", a1
+                    csrc " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a1
                     csrr a1, fcsr
 
                     addi sp, sp, -{FLSF_SIZE}
@@ -1225,7 +1224,7 @@ impl State {
             "   }                                                                   "
 
                 # Check `xcause.Interrurpt`.
-                csrr a1, " crate::csrexpr!(xcause) "
+                csrr a1, " crate::threading::imp::csr::csrexpr!(XCAUSE) "
                 srli a3, a1, 31
                 beqz a3, 1f
 
