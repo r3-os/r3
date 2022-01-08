@@ -1,24 +1,24 @@
-//! The public interface for the RISC-V timer.
+//! The public interface for the `mtime`-based timer driver.
 use r3_core::kernel::InterruptNum;
 
-/// Attach the implementation of [`PortTimer`] that is based on the RISC-V timer
-/// (`mtime`/`mtimecfg`) to a given kernel trait type. This macro also
+/// Attach the implementation of [`PortTimer`] based on the RISC-V machine-mode
+/// timer (`mtime`/`mtimecfg`) to a given kernel trait type. This macro also
 /// implements [`Timer`] on the system type.
-/// **Requires [`TimerOptions`].**
+/// **Requires [`MtimeOptions`].**
 ///
 /// [`PortTimer`]: r3_kernel::PortTimer
 /// [`Timer`]: crate::Timer
 ///
 /// You should do the following:
 ///
-///  - Implement [`TimerOptions`] on the system type `$Traits`.
+///  - Implement [`MtimeOptions`] on the system type `$Traits`.
 ///  - Call `$Traits::configure_timer()` in your configuration function.
 ///    See the following example.
 ///
 /// ```rust,ignore
-/// r3_port_riscv::use_timer!(unsafe impl PortTimer for System);
+/// r3_port_riscv::use_mtime!(unsafe impl PortTimer for System);
 ///
-/// impl r3_port_riscv::TimerOptions for System {
+/// impl r3_port_riscv::MtimeOptions for System {
 ///     const MTIME_PTR: usize = 0x1001_1000;
 ///     const MTIMECMP_PTR: usize = 0x1001_1000;
 ///     const FREQUENCY: u64 = 1_000_000;
@@ -32,10 +32,10 @@ use r3_core::kernel::InterruptNum;
 ///
 /// # Safety
 ///
-///  - `TimerOptions` must be configured correctly.
+///  - `MtimeOptions` must be configured correctly.
 ///
 #[macro_export]
-macro_rules! use_timer {
+macro_rules! use_mtime {
     (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
             use $crate::r3_core::{
@@ -44,7 +44,7 @@ macro_rules! use_timer {
             };
             use $crate::r3_kernel::{PortTimer, System, UTicks};
             use $crate::r3_portkit::tickless;
-            use $crate::{timer, Timer, TimerOptions};
+            use $crate::{mtime, MtimeOptions, Timer};
 
             impl PortTimer for $Traits {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;
@@ -52,38 +52,38 @@ macro_rules! use_timer {
 
                 unsafe fn tick_count() -> UTicks {
                     // Safety: We are just forwarding the call
-                    unsafe { timer::imp::tick_count::<Self>() }
+                    unsafe { mtime::imp::tick_count::<Self>() }
                 }
 
                 unsafe fn pend_tick() {
                     // Safety: We are just forwarding the call
-                    unsafe { timer::imp::pend_tick::<Self>() }
+                    unsafe { mtime::imp::pend_tick::<Self>() }
                 }
 
                 unsafe fn pend_tick_after(tick_count_delta: UTicks) {
                     // Safety: We are just forwarding the call
-                    unsafe { timer::imp::pend_tick_after::<Self>(tick_count_delta) }
+                    unsafe { mtime::imp::pend_tick_after::<Self>(tick_count_delta) }
                 }
             }
 
             impl Timer for $Traits {
                 unsafe fn init() {
-                    unsafe { timer::imp::init::<Self>() }
+                    unsafe { mtime::imp::init::<Self>() }
                 }
             }
 
             const TICKLESS_CFG: tickless::TicklessCfg =
                 match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$Traits as TimerOptions>::FREQUENCY,
-                    hw_freq_denom: <$Traits as TimerOptions>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$Traits as TimerOptions>::HEADROOM,
+                    hw_freq_num: <$Traits as MtimeOptions>::FREQUENCY,
+                    hw_freq_denom: <$Traits as MtimeOptions>::FREQUENCY_DENOMINATOR,
+                    hw_headroom_ticks: <$Traits as MtimeOptions>::HEADROOM,
                     // `mtime` is a 64-bit free-running counter and it is
                     // expensive to create a 32-bit timer with an arbitrary
                     // period out of it.
                     force_full_hw_period: true,
                     // If clearing `mtime` is not allowed, we must record the
                     // starting value of `mtime` by calling `reset`.
-                    resettable: !<$Traits as TimerOptions>::RESET_MTIME,
+                    resettable: !<$Traits as MtimeOptions>::RESET_MTIME,
                 }) {
                     Ok(x) => x,
                     Err(e) => e.panic(),
@@ -91,8 +91,8 @@ macro_rules! use_timer {
 
             static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
 
-            // Safety: Only `use_timer!` is allowed to `impl` this
-            unsafe impl timer::imp::TimerInstance for $Traits {
+            // Safety: Only `use_mtime!` is allowed to `impl` this
+            unsafe impl mtime::imp::TimerInstance for $Traits {
                 const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
 
                 type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
@@ -107,15 +107,15 @@ macro_rules! use_timer {
                 where
                     C: ~const traits::CfgInterruptLine<System = System<Self>>,
                 {
-                    timer::imp::configure(b);
+                    mtime::imp::configure(b);
                 }
             }
         };
     };
 }
 
-/// The options for [`use_timer!`].
-pub trait TimerOptions {
+/// The options for [`use_mtime!`].
+pub trait MtimeOptions {
     /// The memory address of the `mtime` register.
     const MTIME_PTR: usize;
 

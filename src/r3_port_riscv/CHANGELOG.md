@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - The new option `ThreadingOptions::PRIVILEGE_LEVEL` allows for running the kernel in other privilege levels than M-mode.
 
+### Changed
+
+- Rename `use_timer!` → `use_mtime!`, `TimerOptions` → `MtimeOptions`
+
 ### Fixed
 
 - The default stack alignment (`PortThreading::STACK_ALIGN`) now conforms to the standard ABI requirement (128-bit alignment).

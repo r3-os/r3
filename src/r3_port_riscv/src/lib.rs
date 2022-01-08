@@ -68,17 +68,17 @@ pub mod threading {
     pub mod imp;
 }
 
-/// The standard timer driver.
+/// The `mtime`-based timer driver.
 #[doc(hidden)]
-pub mod timer {
+pub mod mtime {
     pub mod cfg;
     pub mod imp;
 }
 
+pub use self::mtime::cfg::*;
 pub use self::plic::cfg::*;
 pub use self::rt::cfg::*;
 pub use self::threading::cfg::*;
-pub use self::timer::cfg::*;
 
 /// Defines the entry points of a port instantiation. Implemented by
 /// [`use_port!`].
@@ -110,7 +110,7 @@ pub trait EntryPoint {
 }
 
 /// An abstract inferface to a port timer driver. Implemented by
-/// [`use_timer!`].
+/// [`use_mtime!`].
 pub trait Timer {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].

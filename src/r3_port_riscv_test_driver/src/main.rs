@@ -79,7 +79,7 @@ macro_rules! instantiate_test {
         type System = r3_kernel::System<SystemTraits>;
         port::use_port!(unsafe struct SystemTraits);
         port::use_rt!(unsafe SystemTraits);
-        port::use_timer!(unsafe impl PortTimer for SystemTraits);
+        port::use_mtime!(unsafe impl PortTimer for SystemTraits);
 
         impl port::ThreadingOptions for SystemTraits {}
 
@@ -106,7 +106,7 @@ macro_rules! instantiate_test {
             const CONTEXT: usize = 0;
         }
 
-        impl port::TimerOptions for SystemTraits {
+        impl port::MtimeOptions for SystemTraits {
             const MTIME_PTR: usize = 0x0200_bff8;
 
             #[cfg(any(
