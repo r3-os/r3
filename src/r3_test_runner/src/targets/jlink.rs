@@ -26,13 +26,13 @@ impl Target for RedV {
         Arch::RV32IMAC
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &[
-            "boot-rt",
-            "output-rtt",
-            "interrupt-e310x",
-            "board-e310x-red-v",
-            "r3_port_riscv/emulate-lr-sc",
+    fn cargo_features(&self) -> Vec<String> {
+        vec![
+            "boot-rt".to_owned(),
+            "output-rtt".to_owned(),
+            "interrupt-e310x".to_owned(),
+            "board-e310x-red-v".to_owned(),
+            "r3_port_riscv/emulate-lr-sc".to_owned(),
         ]
     }
 

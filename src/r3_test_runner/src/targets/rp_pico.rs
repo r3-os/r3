@@ -35,8 +35,8 @@ impl Target for RaspberryPiPico {
         Arch::CORTEX_M0
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["board-rp_pico"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["board-rp_pico".to_owned()]
     }
 
     fn memory_layout_script(&self) -> String {

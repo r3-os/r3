@@ -25,8 +25,8 @@ impl Target for NucleoF401re {
         Arch::CORTEX_M4F
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["output-rtt"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["output-rtt".to_owned()]
     }
 
     fn memory_layout_script(&self) -> String {

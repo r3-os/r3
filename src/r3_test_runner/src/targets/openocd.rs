@@ -23,8 +23,8 @@ impl Target for GrPeach {
         Arch::CORTEX_A9
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["board-rza1"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["board-rza1".to_owned()]
     }
 
     fn memory_layout_script(&self) -> String {

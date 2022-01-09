@@ -11,8 +11,8 @@ impl Target for QemuMps2An385 {
         Arch::CORTEX_M3
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["output-semihosting"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["output-semihosting".to_owned()]
     }
 
     fn memory_layout_script(&self) -> String {
@@ -52,8 +52,8 @@ impl Target for QemuMps2An505 {
         Arch::CORTEX_M33_FPU
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["output-semihosting"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["output-semihosting".to_owned()]
     }
 
     fn memory_layout_script(&self) -> String {
@@ -95,8 +95,8 @@ impl Target for QemuRealviewPbxA9 {
         Arch::CORTEX_A9
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["board-realview_pbx_a9"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["board-realview_pbx_a9".to_owned()]
     }
 
     fn memory_layout_script(&self) -> String {

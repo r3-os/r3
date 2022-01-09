@@ -18,7 +18,7 @@ pub trait Target: Send + Sync {
 
     /// Get the additional Cargo features to enable when building
     /// `r3_port_*_test_driver`.
-    fn cargo_features(&self) -> &[&str];
+    fn cargo_features(&self) -> Vec<String>;
 
     /// Generate the `memory.x` file to be included by the linker script of
     /// `cortex-m-rt` or `r3_port_arm`, or to be used as the top-level
@@ -62,7 +62,7 @@ impl<T: Target> Target for OverrideTargetArch<T> {
         self.0
     }
 
-    fn cargo_features(&self) -> &[&str] {
+    fn cargo_features(&self) -> Vec<String> {
         self.1.cargo_features()
     }
 

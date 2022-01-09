@@ -25,13 +25,13 @@ impl Target for Maix {
         Arch::RV64GC
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &[
-            "boot-rt",
-            "output-k210-uart",
-            "interrupt-k210",
-            "board-maix",
-            "r3_port_riscv/maintain-pie",
+    fn cargo_features(&self) -> Vec<String> {
+        vec![
+            "boot-rt".to_owned(),
+            "output-k210-uart".to_owned(),
+            "interrupt-k210".to_owned(),
+            "board-maix".to_owned(),
+            "r3_port_riscv/maintain-pie".to_owned(),
         ]
     }
 

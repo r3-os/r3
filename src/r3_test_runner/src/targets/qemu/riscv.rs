@@ -15,12 +15,12 @@ impl Target for QemuSiFiveE {
         }
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &[
-            "boot-rt",
-            "output-e310x-uart",
-            "interrupt-e310x",
-            "board-e310x-qemu",
+    fn cargo_features(&self) -> Vec<String> {
+        vec![
+            "boot-rt".to_owned(),
+            "output-e310x-uart".to_owned(),
+            "interrupt-e310x".to_owned(),
+            "board-e310x-qemu".to_owned(),
         ]
     }
 
@@ -84,12 +84,12 @@ impl Target for QemuSiFiveU {
         }
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &[
-            "boot-rt",
-            "output-u540-uart",
-            "interrupt-u540-qemu",
-            "board-u540-qemu",
+    fn cargo_features(&self) -> Vec<String> {
+        vec![
+            "boot-rt".to_owned(),
+            "output-u540-uart".to_owned(),
+            "interrupt-u540-qemu".to_owned(),
+            "board-u540-qemu".to_owned(),
         ]
     }
 
