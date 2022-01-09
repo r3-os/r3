@@ -28,6 +28,7 @@ impl Target for RedV {
 
     fn cargo_features(&self) -> &[&str] {
         &[
+            "boot-rt",
             "output-rtt",
             "interrupt-e310x",
             "board-e310x-red-v",

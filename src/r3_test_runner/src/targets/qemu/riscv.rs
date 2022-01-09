@@ -16,7 +16,12 @@ impl Target for QemuSiFiveE {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-e310x-uart", "interrupt-e310x", "board-e310x-qemu"]
+        &[
+            "boot-rt",
+            "output-e310x-uart",
+            "interrupt-e310x",
+            "board-e310x-qemu",
+        ]
     }
 
     fn memory_layout_script(&self) -> String {
@@ -80,7 +85,12 @@ impl Target for QemuSiFiveU {
     }
 
     fn cargo_features(&self) -> &[&str] {
-        &["output-u540-uart", "interrupt-u540-qemu", "board-u540-qemu"]
+        &[
+            "boot-rt",
+            "output-u540-uart",
+            "interrupt-u540-qemu",
+            "board-u540-qemu",
+        ]
     }
 
     fn memory_layout_script(&self) -> String {

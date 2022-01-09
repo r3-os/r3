@@ -78,6 +78,7 @@ macro_rules! instantiate_test {
 
         type System = r3_kernel::System<SystemTraits>;
         port::use_port!(unsafe struct SystemTraits);
+        #[cfg(feature = "boot-rt")]
         port::use_rt!(unsafe SystemTraits);
         port::use_mtime!(unsafe impl PortTimer for SystemTraits);
 

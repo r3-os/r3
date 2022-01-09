@@ -27,6 +27,7 @@ impl Target for Maix {
 
     fn cargo_features(&self) -> &[&str] {
         &[
+            "boot-rt",
             "output-k210-uart",
             "interrupt-k210",
             "board-maix",

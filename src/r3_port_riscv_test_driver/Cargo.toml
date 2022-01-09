@@ -13,9 +13,12 @@ run = [
     "r3_port_riscv",
     "r3_portkit",
     "r3",
-    "riscv-rt",
     "riscv",
     "log",
+]
+
+boot-rt = [
+    "riscv-rt",
 ]
 
 output-rtt = [
