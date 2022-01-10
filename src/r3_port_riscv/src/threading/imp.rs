@@ -10,7 +10,9 @@ use r3_core::{
 use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
 use r3_portkit::pptext::pp_asm;
 
-use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
+use crate::{
+    InterruptController, ThreadingOptions, Timer, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE,
+};
 
 /// `XLEN / 8`
 const X_SIZE: usize = core::mem::size_of::<usize>();
@@ -160,7 +162,7 @@ const XSTATUS_PART_MASK: usize = csr::XSTATUS_FS_1;
 ///
 /// Only meant to be implemented by [`use_port!`].
 pub unsafe trait PortInstance:
-    KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController
+    KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController + Timer
 {
     fn port_state() -> &'static State;
 
@@ -230,6 +232,9 @@ impl State {
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <Traits as InterruptController>::init() };
+
+        // Safety: We are the port, so it's okay to call this
+        unsafe { <Traits as Timer>::init() };
 
         // Enable local interrupts
         {

@@ -30,12 +30,13 @@ pub const PRIVILEGE_LEVEL_USER: u8 = 0b00;
 
 /// Define a kernel trait type implementing [`PortThreading`],
 /// [`PortInterrupts`], and [`EntryPoint`].
-/// **Requires [`ThreadingOptions`] and [`InterruptController`].**
+/// **Requires [`ThreadingOptions`], [`Timer`], and [`InterruptController`].**
 ///
 /// [`PortThreading`]: r3_kernel::PortThreading
 /// [`PortInterrupts`]: r3_kernel::PortInterrupts
 /// [`EntryPoint`]: crate::EntryPoint
 /// [`InterruptController`]: crate::InterruptController
+/// [`Timer`]: crate::Timer
 #[macro_export]
 macro_rules! use_port {
     (unsafe $vis:vis struct $Traits:ident) => {

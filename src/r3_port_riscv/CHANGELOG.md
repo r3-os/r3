@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - The default stack alignment (`PortThreading::STACK_ALIGN`) now conforms to the standard ABI requirement (128-bit alignment).
+- The port startup code now calls `<Traits as Timer>::init`.
 
 ## [0.1.3] - 2021-10-29
 
