@@ -13,7 +13,7 @@ use tokio_serial::{SerialPort, SerialPortBuilderExt, SerialStream};
 use super::{
     demux::Demux,
     serial::{choose_serial, ChooseSerialError},
-    slip, Arch, DebugProbe, DynAsyncRead, Target,
+    slip, Arch, DebugProbe, DynAsyncRead, LinkerScripts, Target,
 };
 use crate::utils::retry_on_fail;
 
@@ -35,8 +35,9 @@ impl Target for Maix {
         ]
     }
 
-    fn memory_layout_script(&self) -> String {
-        r#"
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::riscv_rt(
+            r#"
             MEMORY
             {
                 RAM : ORIGIN = 0x80000000, LENGTH = 6M
@@ -50,10 +51,10 @@ impl Target for Maix {
             REGION_ALIAS("REGION_STACK", RAM);
 
             _hart_stack_size = 1K;
-        "#
-        .to_owned()
+            "#
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async { KflashDebugProbe::new().await.map(|x| Box::new(x) as _) })
     }

@@ -644,6 +644,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fn-formats"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21c0474b389b4694dd1390c2406396284ce5c69845b227cfeafd0a50ce44e382"
+
+[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2028,6 +2034,7 @@ dependencies = [
  "clap",
  "crc",
  "env_logger",
+ "fn-formats",
  "futures-core",
  "goblin",
  "itertools 0.10.1",

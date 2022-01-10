@@ -16,7 +16,7 @@ use tokio::{
     time::{sleep, Sleep},
 };
 
-use super::{Arch, DebugProbe, DynAsyncRead, Target};
+use super::{Arch, DebugProbe, DynAsyncRead, LinkerScripts, Target};
 
 pub struct NucleoF401re;
 
@@ -29,8 +29,9 @@ impl Target for NucleoF401re {
         vec!["output-rtt".to_owned()]
     }
 
-    fn memory_layout_script(&self) -> String {
-        "
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::arm_m_rt(
+            "
             MEMORY
             {
               /* NOTE K = KiBi = 1024 bytes */
@@ -42,10 +43,10 @@ impl Target for NucleoF401re {
             /* The stack is of the full descending type. */
             /* NOTE Do NOT modify `_stack_start` unless you know what you are doing */
             _stack_start = ORIGIN(RAM) + LENGTH(RAM);
-        "
-        .to_owned()
+            "
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             spawn_blocking(|| {

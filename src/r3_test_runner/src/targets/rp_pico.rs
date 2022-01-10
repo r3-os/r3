@@ -25,7 +25,7 @@ use tokio::{
 };
 use tokio_serial::{SerialPortBuilderExt, SerialStream};
 
-use super::{demux::Demux, jlink::read_elf, Arch, DebugProbe, Target};
+use super::{demux::Demux, jlink::read_elf, Arch, DebugProbe, LinkerScripts, Target};
 use crate::utils::retry_on_fail_with_delay;
 
 pub struct RaspberryPiPico;
@@ -39,8 +39,9 @@ impl Target for RaspberryPiPico {
         vec!["board-rp_pico".to_owned()]
     }
 
-    fn memory_layout_script(&self) -> String {
-        "
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::arm_m_rt(
+            "
             MEMORY
             {
               /* Load the program to RAM */
@@ -53,10 +54,10 @@ impl Target for RaspberryPiPico {
             /* The stack is of the full descending type. */
             /* NOTE Do NOT modify `_stack_start` unless you know what you are doing */
             _stack_start = ORIGIN(RAM) + LENGTH(RAM);
-        "
-        .to_owned()
+            "
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> std::pin::Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(retry_on_fail_with_delay(|| async {
             // Try connecting to the target. This is important if a test

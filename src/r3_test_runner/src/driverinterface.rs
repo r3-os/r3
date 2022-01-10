@@ -102,22 +102,15 @@ impl TestDriver {
         target_arch_opt: targets::BuildOpt,
     ) -> impl Future<Output = Result<Self, TestDriverNewError>> {
         // Choose the right test driver for the given target architecture
-        let (crate_name, rustflags_linkarg) = match target_arch {
-            targets::Arch::Armv7A => (
-                "r3_port_arm_test_driver",
-                "-C link-arg=-Tlink_ram_harvard.x",
-            ),
-            targets::Arch::ArmM { .. } => ("r3_port_arm_m_test_driver", "-C link-arg=-Tlink.x"),
-            targets::Arch::Riscv { .. } => (
-                "r3_port_riscv_test_driver",
-                "-C link-arg=-Tmemory.x -C link-arg=-Tlink.x",
-            ),
+        let crate_name = match target_arch {
+            targets::Arch::Armv7A => "r3_port_arm_test_driver",
+            targets::Arch::ArmM { .. } => "r3_port_arm_m_test_driver",
+            targets::Arch::Riscv { .. } => "r3_port_riscv_test_driver",
         };
 
         // Locate the test driver's crate
         let crate_path = driver_base_path.join(crate_name);
         log::debug!("driver.crate_name = {:?}", crate_name);
-        log::debug!("driver.rustflags_linkarg = {:?}", rustflags_linkarg);
         log::debug!("driver.crate_path = {:?}", crate_path);
 
         async move {
@@ -125,14 +118,7 @@ impl TestDriver {
                 return Err(TestDriverNewError::BadDriverPath(crate_path));
             }
 
-            Self::new_inner(
-                crate_path,
-                target,
-                crate_name,
-                rustflags_linkarg,
-                target_arch_opt,
-            )
-            .await
+            Self::new_inner(crate_path, target, crate_name, target_arch_opt).await
         }
     }
 
@@ -140,7 +126,6 @@ impl TestDriver {
         crate_path: PathBuf,
         target: &'static dyn targets::Target,
         crate_name: &'static str,
-        rustflags_linkarg: &'static str,
         target_arch_opt: targets::BuildOpt,
     ) -> Result<Self, TestDriverNewError> {
         // Move to the driver directory
@@ -194,20 +179,30 @@ impl TestDriver {
             .join(crate_name);
         log::debug!("exe_path = '{}'", exe_path.display());
 
-        // Put the linker script in a directory
+        // Put generated linker scripts in a directory
+        let linker_scripts = target.linker_scripts();
+        log::debug!("linker_scripts = {:?}", linker_scripts);
         let link_dir =
             tempdir::TempDir::new("r3_test_runner").map_err(TestDriverNewError::TempDirError)?;
-        {
-            let memory_x_path = link_dir.path().join("memory.x");
-            log::debug!("Writing '{}'", memory_x_path.display());
-            std::fs::write(&memory_x_path, target.memory_layout_script())
-                .map_err(|e| TestDriverNewError::WriteError(memory_x_path, e))?;
+
+        for (name, contents) in linker_scripts.generated_files {
+            let generated_file_path = link_dir.path().join(name);
+            log::debug!("Writing '{}'", generated_file_path.display());
+            std::fs::write(&generated_file_path, contents)
+                .map_err(|e| TestDriverNewError::WriteError(generated_file_path, e))?;
         }
+
+        let rustflags_linkarg = fn_formats::DisplayFmt(|f| {
+            for name in linker_scripts.inputs.iter() {
+                write!(f, " -C link-arg=-T{}", name)?;
+            }
+            Ok(())
+        });
 
         // Derive `RUSTFLAGS`.
         let target_features = &target_arch_opt.target_features;
         let rustflags = if target_features.is_empty() {
-            rustflags_linkarg.to_owned()
+            rustflags_linkarg.to_string()
         } else {
             format!(
                 "{} -C target-feature={}",

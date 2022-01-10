@@ -20,13 +20,53 @@ pub trait Target: Send + Sync {
     /// `r3_port_*_test_driver`.
     fn cargo_features(&self) -> Vec<String>;
 
-    /// Generate the `memory.x` file to be included by the linker script of
-    /// `cortex-m-rt` or `r3_port_arm`, or to be used as the top-level
-    /// linker script by `r3_port_riscv_test_driver`.
-    fn memory_layout_script(&self) -> String;
+    /// The linker scripts used to link the test driver.
+    fn linker_scripts(&self) -> LinkerScripts;
 
     /// Connect to the target.
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>>;
+}
+
+#[derive(Debug)]
+pub struct LinkerScripts {
+    /// Linker scripts to specify with `-C link-arg=-T...` options. Note that
+    /// linker scripts may refer to others by `INCLUDE` directives, in which
+    /// case the referenced scripts shouldn't be specified here.
+    pub inputs: Vec<String>,
+    /// Temporary linker scripts to generate.
+    pub generated_files: Vec<(String, String)>,
+}
+
+impl LinkerScripts {
+    /// Create `LinkerScripts` to use the `link_ram_harvard.x` provided by
+    /// `r3_port_arm`. The specified string is written to `memory.x`, which will
+    /// be imported by `link_ram_harvard.x`.
+    fn arm_harvard(memory_definition: String) -> Self {
+        Self {
+            inputs: vec!["link_ram_harvard.x".to_owned()],
+            generated_files: vec![("memory.x".to_owned(), memory_definition)],
+        }
+    }
+
+    /// Create `LinkerScripts` to use the `link.x` provided by `cortex-m-rt`.
+    /// The specified string is written to `memory.x`, which will be imported by
+    /// `link_ram_harvard.x`.
+    fn arm_m_rt(memory_definition: String) -> Self {
+        Self {
+            inputs: vec!["link.x".to_owned()],
+            generated_files: vec![("memory.x".to_owned(), memory_definition)],
+        }
+    }
+
+    /// Create `LinkerScripts` to use the `link.x` provided by `riscv-rt`.
+    /// The specified string is written to `memory.x`, which defines memory
+    /// regions referenced by `link.x`.
+    fn riscv_rt(memory_definition: String) -> Self {
+        Self {
+            inputs: vec!["memory.x".to_owned(), "link.x".to_owned()],
+            generated_files: vec![("memory.x".to_owned(), memory_definition)],
+        }
+    }
 }
 
 pub trait DebugProbe: Send {
@@ -66,8 +106,8 @@ impl<T: Target> Target for OverrideTargetArch<T> {
         self.1.cargo_features()
     }
 
-    fn memory_layout_script(&self) -> String {
-        self.1.memory_layout_script()
+    fn linker_scripts(&self) -> LinkerScripts {
+        self.1.linker_scripts()
     }
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {

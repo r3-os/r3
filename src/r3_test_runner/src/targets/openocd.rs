@@ -12,7 +12,7 @@ use tokio::{
     process::Child,
 };
 
-use super::{Arch, DebugProbe, DynAsyncRead, Target};
+use super::{Arch, DebugProbe, DynAsyncRead, LinkerScripts, Target};
 use crate::subprocess;
 
 /// GR-PEACH
@@ -27,17 +27,18 @@ impl Target for GrPeach {
         vec!["board-rza1".to_owned()]
     }
 
-    fn memory_layout_script(&self) -> String {
-        "
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::arm_harvard(
+            "
             MEMORY
             {
                 RAM_CODE : ORIGIN = 0x20000000, LENGTH = 5120K
                 RAM_DATA : ORIGIN = 0x20500000, LENGTH = 5120K
             }
-        "
-        .to_owned()
+            "
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async { Ok(Box::new(GrPeachOpenOcdDebugProbe::new()) as Box<dyn DebugProbe>) })
     }

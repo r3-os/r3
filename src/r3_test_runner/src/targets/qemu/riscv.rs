@@ -1,6 +1,8 @@
 use anyhow::Result;
 use std::{future::Future, pin::Pin};
 
+use crate::targets::LinkerScripts;
+
 use super::super::{Arch, DebugProbe, Target, Xlen};
 use super::QemuDebugProbe;
 
@@ -24,8 +26,9 @@ impl Target for QemuSiFiveE {
         ]
     }
 
-    fn memory_layout_script(&self) -> String {
-        r#"
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::riscv_rt(
+            r#"
             MEMORY
             {
                 FLASH : ORIGIN = 0x20000000, LENGTH = 16M
@@ -44,9 +47,9 @@ impl Target for QemuSiFiveE {
 
             _hart_stack_size = 1K;
         "#
-        .to_owned()
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         let xlen = self.0;
         Box::pin(async move {
@@ -93,8 +96,9 @@ impl Target for QemuSiFiveU {
         ]
     }
 
-    fn memory_layout_script(&self) -> String {
-        r#"
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::riscv_rt(
+            r#"
             MEMORY
             {
                 RAM : ORIGIN = 0x80000000, LENGTH = 16M
@@ -110,9 +114,9 @@ impl Target for QemuSiFiveU {
             _hart_stack_size = 1K;
             _max_hart_id = 1;
         "#
-        .to_owned()
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         let xlen = self.0;
         Box::pin(async move {
