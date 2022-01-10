@@ -235,7 +235,7 @@ jobs:
       - name: Install dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install libusb-1.0-0-dev libudev-dev
+          sudo apt-get install libusb-1.0-0-dev libudev-dev ninja-build
 
       - name: Cache QEMU's built binaries
         uses: actions/cache@v2
@@ -243,7 +243,7 @@ jobs:
           path: ~/.qemu
           key: ${{ runner.os }}-ci-qemu-arm_riscv
 
-      - name: Install QEMU 5.1.0 from source
+      - name: Install QEMU 6.1.0 from source
         uses: ./.github/actions/install-qemu
         with:
           target-list: arm-softmmu,riscv32-softmmu,riscv64-softmmu
