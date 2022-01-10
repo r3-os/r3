@@ -1,22 +1,21 @@
 //! The UART driver compatible with QEMU `sifive_u` machine
 //! (RISC-V Board compatible with SiFive U SDK).
 use core::fmt::{self, Write};
-use riscv::interrupt;
 
 pub fn stdout_write_str(s: &str) {
-    interrupt::free(|_| {
+    crate::with_cpu_lock(|| {
         let _ = SerialWrapper(0x10010000 as *mut u32).write_str(s);
     });
 }
 
 pub fn stdout_write_fmt(args: fmt::Arguments<'_>) {
-    interrupt::free(|_| {
+    crate::with_cpu_lock(|| {
         let _ = SerialWrapper(0x10010000 as *mut u32).write_fmt(args);
     });
 }
 
 pub fn stderr_write_fmt(args: fmt::Arguments<'_>) {
-    interrupt::free(|_| {
+    crate::with_cpu_lock(|| {
         let _ = SerialWrapper(0x10011000 as *mut u32).write_fmt(args);
     });
 }

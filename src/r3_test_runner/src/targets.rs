@@ -67,6 +67,57 @@ impl LinkerScripts {
             generated_files: vec![("memory.x".to_owned(), memory_definition)],
         }
     }
+
+    /// Create `LinkerScripts` to define some standard sections, which are to
+    /// be included in the final image header and initialized by a section-aware
+    /// loader. Symbol `start` is treated as the entry point.
+    fn standard(base_address: u64) -> Self {
+        let link = r#"
+            ENTRY(start);
+
+            SECTIONS
+            {
+              . = BASE_ADDRESS;
+
+              .text :
+              {
+                *(.text .text.*);
+                . = ALIGN(4);
+                __etext = .;
+              }
+
+              .rodata __etext : ALIGN(4)
+              {
+                *(.rodata .rodata.*);
+                . = ALIGN(4);
+              }
+
+              .data : ALIGN(4)
+              {
+                *(.data .data.*);
+                . = ALIGN(4);
+              }
+
+              __sidata = LOADADDR(.data);
+
+              .bss : ALIGN(4)
+              {
+                __sbss = .;
+                *(.bss .bss.*);
+                . = ALIGN(4);
+                __ebss = .;
+              }
+            }
+        "#
+        .to_owned();
+
+        let link = link.replace("BASE_ADDRESS", &base_address.to_string());
+
+        Self {
+            inputs: vec!["link.x".to_owned()],
+            generated_files: vec![("link.x".to_owned(), link)],
+        }
+    }
 }
 
 pub trait DebugProbe: Send {
@@ -90,6 +141,14 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("qemu_sifive_e_rv64", &qemu::riscv::QemuSiFiveE(Xlen::_64)),
     ("qemu_sifive_u_rv32", &qemu::riscv::QemuSiFiveU(Xlen::_32)),
     ("qemu_sifive_u_rv64", &qemu::riscv::QemuSiFiveU(Xlen::_64)),
+    (
+        "qemu_sifive_u_s_rv32",
+        &qemu::riscv::QemuSiFiveUModeS(Xlen::_32),
+    ),
+    (
+        "qemu_sifive_u_s_rv64",
+        &qemu::riscv::QemuSiFiveUModeS(Xlen::_64),
+    ),
     ("red_v", &jlink::RedV),
     ("maix", &kflash::Maix),
     ("rp_pico", &rp_pico::RaspberryPiPico),

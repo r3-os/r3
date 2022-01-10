@@ -30,6 +30,7 @@ impl Target for Maix {
             "boot-rt".to_owned(),
             "output-k210-uart".to_owned(),
             "interrupt-k210".to_owned(),
+            "timer-clint".to_owned(),
             "board-maix".to_owned(),
             "r3_port_riscv/maintain-pie".to_owned(),
         ]

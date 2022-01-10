@@ -17,9 +17,17 @@ run = [
     "log",
 ]
 
+# --------------------------------------------------------------------
+
+# Minimal startup code that relies on a bootloader to
+# load all sections and assumes S-mode
+boot-minimal-s = []
+# Use `riscv-rt` for the startup code
 boot-rt = [
     "riscv-rt",
 ]
+
+# --------------------------------------------------------------------
 
 output-rtt = [
     "rtt-target",
@@ -39,11 +47,15 @@ output-k210-uart = [
 ]
 output-uart = []
 
+# --------------------------------------------------------------------
+
 interrupt-e310x = [
     "e310x",
 ]
 interrupt-u540-qemu = []
 interrupt-k210 = []
+
+# --------------------------------------------------------------------
 
 board-e310x-red-v = [
     "e310x-hal",
@@ -53,6 +65,13 @@ board-e310x-qemu = [
 ]
 board-u540-qemu = []
 board-maix = []
+
+# --------------------------------------------------------------------
+
+timer-clint = []
+timer-sbi = []
+
+# --------------------------------------------------------------------
 
 [dependencies]
 r3_port_riscv = { path = "../r3_port_riscv", optional = true }

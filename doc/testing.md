@@ -41,6 +41,7 @@ The following table shows how to run the kernel test suite for each target.
 | RV32GC          | [SiFive U][] (QEMU)                       | `cargo r3test -t qemu_sifive_u_rv32`                      |
 | RV64IMAC        | SiFive U (QEMU)                           | `cargo r3test -t qemu_sifive_u_rv64 -a rv64i+m+a+c`       |
 | RV64GC          | SiFive U (QEMU)                           | `cargo r3test -t qemu_sifive_u_rv64`                      |
+| RV64GC          | SiFive U (S-mode, QEMU)                   | `cargo r3test -t qemu_sifive_u_s_rv64`                    |
 | RV32IMAC        | [RED-V][] (SPI flash XIP)                 | `cargo r3test -t red_v`                                   |
 | RV64GC          | [Maix][] boards (UART ISP)                | `cargo r3test -t maix`                                    |
 

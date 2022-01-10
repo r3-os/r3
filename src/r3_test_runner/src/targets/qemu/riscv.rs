@@ -22,6 +22,7 @@ impl Target for QemuSiFiveE {
             "boot-rt".to_owned(),
             "output-e310x-uart".to_owned(),
             "interrupt-e310x".to_owned(),
+            "timer-clint".to_owned(),
             "board-e310x-qemu".to_owned(),
         ]
     }
@@ -92,6 +93,7 @@ impl Target for QemuSiFiveU {
             "boot-rt".to_owned(),
             "output-u540-uart".to_owned(),
             "interrupt-u540-qemu".to_owned(),
+            "timer-clint".to_owned(),
             "board-u540-qemu".to_owned(),
         ]
     }
@@ -117,6 +119,7 @@ impl Target for QemuSiFiveU {
             .to_owned(),
         )
     }
+
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         let xlen = self.0;
         Box::pin(async move {
@@ -130,6 +133,60 @@ impl Target for QemuSiFiveU {
                     "sifive_u",
                     "-bios",
                     "none",
+                    // UART0 → stdout
+                    "-serial",
+                    "file:/dev/stdout",
+                    // UART1 → stderr
+                    "-serial",
+                    "file:/dev/stderr",
+                    // Disable monitor
+                    "-monitor",
+                    "none",
+                ],
+            )) as Box<dyn DebugProbe>)
+        })
+    }
+}
+
+/// The RISC-V board compatible with SiFive U SDK on QEMU, using a bootloader to
+/// run the kernel in S-mode
+pub struct QemuSiFiveUModeS(pub Xlen);
+
+impl Target for QemuSiFiveUModeS {
+    fn target_arch(&self) -> Arch {
+        match self.0 {
+            Xlen::_32 => Arch::RV32GC,
+            Xlen::_64 => Arch::RV64GC,
+        }
+    }
+
+    fn cargo_features(&self) -> Vec<String> {
+        vec![
+            "boot-minimal-s".to_owned(),
+            "output-u540-uart".to_owned(),
+            "interrupt-u540-qemu".to_owned(),
+            "timer-sbi".to_owned(),
+            "board-u540-qemu".to_owned(),
+        ]
+    }
+
+    fn linker_scripts(&self) -> LinkerScripts {
+        // Somewhere near `0x80000000` is occupied by the bootloader (the
+        // default `-bios`), so avoid that
+        LinkerScripts::standard(0x80100000)
+    }
+
+    fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
+        let xlen = self.0;
+        Box::pin(async move {
+            Ok(Box::new(QemuDebugProbe::new(
+                match xlen {
+                    Xlen::_32 => "qemu-system-riscv32",
+                    Xlen::_64 => "qemu-system-riscv64",
+                },
+                &[
+                    "-machine",
+                    "sifive_u",
                     // UART0 → stdout
                     "-serial",
                     "file:/dev/stdout",

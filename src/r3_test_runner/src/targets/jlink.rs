@@ -31,6 +31,7 @@ impl Target for RedV {
             "boot-rt".to_owned(),
             "output-rtt".to_owned(),
             "interrupt-e310x".to_owned(),
+            "timer-clint".to_owned(),
             "board-e310x-red-v".to_owned(),
             "r3_port_riscv/emulate-lr-sc".to_owned(),
         ]
