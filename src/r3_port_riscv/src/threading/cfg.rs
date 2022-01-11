@@ -9,7 +9,7 @@ pub const INTERRUPT_TIMER: InterruptNum = 1;
 /// The interrupt number for external interrupts.
 pub const INTERRUPT_EXTERNAL: InterruptNum = 2;
 
-/// The first interrupt numbers allocated for use by an interrupt controller
+/// The first interrupt number allocated for use by an interrupt controller
 /// driver.
 pub const INTERRUPT_PLATFORM_START: InterruptNum = 3;
 

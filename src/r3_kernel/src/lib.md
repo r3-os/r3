@@ -54,8 +54,8 @@ const COTTAGE: Objects = r3_kernel::build!(System, configure_app => Objects);
 
 [`r3_kernel::build!`]: crate::build
 [`r3_kernel::System`]: crate::System
-[system type]: r3#system-type
-[configuration function]: r3#static-configuration
+[system type]: r3_core#system-type
+[configuration function]: r3_core#static-configuration
 
 ## Trait Mechanics
 
@@ -148,7 +148,7 @@ static COTTAGE: Objects = {
 };
 ```
 
-[configuration function]: r3#static-configuration
+[configuration function]: r3_core#static-configuration
 [`KernelCfg1`]: crate::KernelCfg1
 [`KernelCfg2`]: crate::KernelCfg2
 
@@ -178,7 +178,7 @@ fn main() {
 }
 ```
 
-[interrupt handlers]: r3#interrupt-handling-framework
+[interrupt handlers]: r3_core#interrupt-handling-framework
 
 # Implementation-Defined Behaviors
 
@@ -188,7 +188,7 @@ fn main() {
 
 [`QueueOrder`]: r3_core::kernel::QueueOrder
 [`MutexProtocol`]: r3_core::kernel::MutexProtocol
-[`ResultCode::NoAccess`]: r3_core::Kernel::ResultCode::NoAccess
+[`ResultCode::NoAccess`]: r3_core::kernel::ResultCode::NoAccess
 
 # Cargo Features
 

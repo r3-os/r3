@@ -1,4 +1,4 @@
-The RISC-V port for [the R3 kernel](::r3).
+The RISC-V port for [the R3 kernel](::r3_kernel).
 
 # Startup code
 
@@ -32,11 +32,11 @@ The local interrupts are always enabled from an API point of view. **[`Interrupt
 [`InterruptLine::disable`]: r3_core::kernel::InterruptLine::disable
 [Pend]: r3_core::kernel::InterruptLine::pend
 [`NotSupported`]: r3_core::kernel::EnableInterruptLineError::NotSupported
-[*managed*]: r3#interrupt-handling-framework
+[*managed*]: r3_core#interrupt-handling-framework
 
 <div class="admonition-follows"></div>
 
-> **Rationale:** Because their enable bits are toggled frequently in the top-level interrupt handler, removing the ability to disable these interrupts simplifies the implementation and reduces interupt latency. This should pose no problems for most cases.
+> **Rationale:** Because their enable bits are toggled frequently in the top-level interrupt handler, removing the ability to disable these interrupts simplifies the implementation and reduces interupt latency. This should pose no problems in most cases.
 
 The local interrupts are always [*managed*]. This is because CPU Lock is currently mapped to `mstatus.MIE` (global interrupt-enable).
 
@@ -193,7 +193,7 @@ The idle task (the implicit task that runs when `*`[`running_task_ptr`]`().is_no
 
 When a task is activated, a new context state is created inside the task's stack. By default, only essential registers are preloaded with known values. The **`preload-registers`** Cargo feature enables preloading for all `x` registers, which might help in debugging at the cost of performance and code size.
 
-The trap handler stores a first-level state directly below the current stack pointer. This means **the stack pointer must be aligned to a `max(XLEN, FLEN)`-bit boundary all the time**. This requirement is weaker than the standard ABI's requirement, so it shouldn't pose a problem for most cases.
+The trap handler stores a first-level state directly below the current stack pointer. This means **the stack pointer must be aligned to a `max(XLEN, FLEN)`-bit boundary all the time**. This requirement is weaker than the standard ABI's requirement, so it shouldn't pose a problem in most cases.
 
 ## Processor Modes
 

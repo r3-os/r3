@@ -1,4 +1,4 @@
-Simulator for running [`::r3`] on a hosted environment
+The port for running [`::r3_kernel`][] in a hosted environment
 
 # Usage
 
@@ -55,7 +55,7 @@ This port fully supports [the standard interrupt handling framework].
  - Smaller priority values are prioritized.
  - Negative priority values are considered unmanaged.
 
-[the standard interrupt handling framework]: ::r3#interrupt-handling-framework
+[the standard interrupt handling framework]: r3_core#interrupt-handling-framework
 [`NUM_INTERRUPT_LINES`]: crate::NUM_INTERRUPT_LINES
 
 ## Implementation

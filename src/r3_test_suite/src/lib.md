@@ -1,8 +1,8 @@
-A collection of tests that can be used to verify the correct operation of [the R3 kernel] and a port implementation.
+A collection of tests that can be used to verify the correct operation of [the R3 kernel][] and a port implementation.
 
 <div class="distractor"><a style="background-image: url(https://derpicdn.net/img/2014/4/5/593273/medium.png); padding-bottom: 66.66%" href="http://derpibooru.org/593273" title="She passed!"></a></div>
 
-[the R3 kernel]: r3
+[the R3 kernel]: r3_kernel
 
 # Terminology
 
@@ -65,7 +65,7 @@ pub mod test3 { /* ... */ }
 
 [`kernel_tests`]: crate::kernel_tests
 [`basic`]: crate::kernel_tests::basic
-[a configuration function]: r3#static-configuration
+[a configuration function]: r3_core#static-configuration
 [`Driver`]: crate::kernel_tests::Driver
 
 A test runner should choose one of test cases, link it to a test driver, run it, and retrieve and report the result. This should be repeated for all test cases.

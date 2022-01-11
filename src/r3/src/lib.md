@@ -13,7 +13,7 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 
 - **All kernel objects are defined statically** for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.
 - A kernel and its configurator **don't require an external build tool or a specialized procedural macro**, maintaining transparency and inter-crate composability.
-- The kernel API is **not tied to a specific kernel implementation**. Kernels are provided as separate crates, one of which an application chooses and instantiates using the trait system.
+- The kernel API is **not tied to any specific kernel implementations**. Kernels are provided as separate crates, one of which an application chooses and instantiates using the trait system.
 - Leverages Rust's type safety for access control of kernel objects. Safe code can't access an object that it doesn't own.
 
 See [`r3_core`]'s crate-level documentation for a general description of kernel features and concepts used in R3.

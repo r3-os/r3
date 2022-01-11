@@ -1,4 +1,4 @@
-The Arm-A port for [the R3 kernel](::r3).
+The Arm-A port for [the R3 kernel](::r3_kernel).
 
 # Startup Code
 
