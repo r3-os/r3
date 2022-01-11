@@ -75,9 +75,17 @@ pub mod mtime {
     pub mod imp;
 }
 
+/// The SBI-based timer driver.
+#[doc(hidden)]
+pub mod sbi_timer {
+    pub mod cfg;
+    pub mod imp;
+}
+
 pub use self::mtime::cfg::*;
 pub use self::plic::cfg::*;
 pub use self::rt::cfg::*;
+pub use self::sbi_timer::cfg::*;
 pub use self::threading::cfg::*;
 
 /// Defines the entry points of a port instantiation. Implemented by
@@ -110,7 +118,7 @@ pub trait EntryPoint {
 }
 
 /// An abstract inferface to a port timer driver. Implemented by
-/// [`use_mtime!`].
+/// [`use_mtime!`] and [`use_sbi_timer!`].
 pub trait Timer {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].
