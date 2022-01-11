@@ -97,7 +97,7 @@ pub trait EntryPoint {
     ///
     ///  - The processor should be in the privilege mode specified by
     ///    [`ThreadingOptions::PRIVILEGE_LEVEL`] and have interrupts masked for
-    //     this privilege level.
+    ///    this privilege level.
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;
@@ -110,7 +110,7 @@ pub trait EntryPoint {
     ///
     ///  - The processor should be in the privilege mode specified by
     ///    [`ThreadingOptions::PRIVILEGE_LEVEL`] and have interrupts masked for
-    //     this privilege level
+    ///    this privilege level
     ///  - The register state of the background context should be preserved so
     ///    that the handler can restore it later.
     ///

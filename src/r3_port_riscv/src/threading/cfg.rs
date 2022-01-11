@@ -18,6 +18,25 @@ pub trait ThreadingOptions {
     /// The RISC-V privilege level wherein the kernel and apllication operate.
     /// The default value is [`PRIVILEGE_LEVEL_MACHINE`]. Must be in the range
     /// `0..4`.
+    ///
+    /// There are a few points that should be kept in mind when specifying this
+    /// option:
+    ///
+    ///  - It's [`EntryPoint`][]'s caller that is responsible for ensuring the
+    ///    specified privilege level is entered. Calling the entry points from
+    ///    other privilege levels will cause an undefined behavior.
+    ///
+    ///  - The current version of `riscv-rt` can only start in M-mode.
+    ///    Consequently, [`use_rt!`][] is incompatible with other modes.
+    ///
+    ///  - The current version of [`riscv`][] provides wrapper functions which
+    ///    are hard-coded to use M-mode-only CSRs, such as `mstatus.MIE`.
+    ///    They don't work in lower privilege levels. You must use [CPU Lock][]
+    ///    or the correct CSR (e.g., [`riscv::register::sstatus`]) the
+    ///    specified privilege level directly.
+    ///
+    /// [`EntryPoint`]: crate::EntryPoint
+    /// [CPU Lock]: r3_core#system-states
     const PRIVILEGE_LEVEL: u8 = PRIVILEGE_LEVEL_MACHINE;
 }
 
