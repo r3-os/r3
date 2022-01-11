@@ -15,7 +15,7 @@ use tokio::{
     task::spawn_blocking,
 };
 
-use super::{Arch, DebugProbe, DynAsyncRead, Target};
+use super::{Arch, DebugProbe, DynAsyncRead, LinkerScripts, Target};
 use crate::subprocess;
 
 /// SparkFun RED-V RedBoard or Things Plus
@@ -26,17 +26,20 @@ impl Target for RedV {
         Arch::RV32IMAC
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &[
-            "output-rtt",
-            "interrupt-e310x",
-            "board-e310x-red-v",
-            "r3_port_riscv/emulate-lr-sc",
+    fn cargo_features(&self) -> Vec<String> {
+        vec![
+            "boot-rt".to_owned(),
+            "output-rtt".to_owned(),
+            "interrupt-e310x".to_owned(),
+            "timer-clint".to_owned(),
+            "board-e310x-red-v".to_owned(),
+            "r3_port_riscv/emulate-lr-sc".to_owned(),
         ]
     }
 
-    fn memory_layout_script(&self) -> String {
-        r#"
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::riscv_rt(
+            r#"
             MEMORY
             {
                 FLASH : ORIGIN = 0x20000000, LENGTH = 16M
@@ -54,10 +57,10 @@ impl Target for RedV {
             _stext = 0x20010000;
 
             _hart_stack_size = 1K;
-        "#
-        .to_owned()
+            "#
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(std::future::ready(Ok(Box::new(Fe310JLinkDebugProbe) as _)))
     }

@@ -78,10 +78,53 @@ macro_rules! instantiate_test {
 
         type System = r3_kernel::System<SystemTraits>;
         port::use_port!(unsafe struct SystemTraits);
-        port::use_rt!(unsafe SystemTraits);
-        port::use_timer!(unsafe impl PortTimer for SystemTraits);
 
-        impl port::ThreadingOptions for SystemTraits {}
+        #[cfg(feature = "timer-clint")]
+        port::use_mtime!(unsafe impl PortTimer for SystemTraits);
+        #[cfg(feature = "timer-sbi")]
+        port::use_sbi_timer!(unsafe impl PortTimer for SystemTraits);
+
+        impl port::ThreadingOptions for SystemTraits {
+            #[cfg(feature = "boot-minimal-s")]
+            const PRIVILEGE_LEVEL: u8 = port::PRIVILEGE_LEVEL_SUPERVISOR;
+        }
+
+        #[cfg(feature = "boot-rt")]
+        port::use_rt!(unsafe SystemTraits);
+
+        #[cfg(feature = "boot-minimal-s")]
+        #[no_mangle]
+        #[naked]
+        extern "C" fn start() {
+            unsafe {
+                core::arch::asm!(
+                    "
+                    # Configure the initial stack
+                    la a0, {MAIN_STACK}
+                    li a1, 8192
+                    andi a0, a0, -16
+                    add sp, a0, a1
+
+                    call {start_kernel}
+                    ",
+                    start_kernel = sym start_kernel,
+                    MAIN_STACK = sym MAIN_STACK,
+                    options(noreturn)
+                );
+            }
+
+            static MAIN_STACK: core::mem::MaybeUninit<[u8; 8192]> = core::mem::MaybeUninit::uninit();
+
+            extern "C" fn start_kernel() {
+                unsafe {
+                    core::arch::asm!(
+                        "csrw stvec, {}",
+                        in(reg) <SystemTraits as port::EntryPoint>::TRAP_HANDLER,
+                    );
+                    <SystemTraits as port::EntryPoint>::start();
+                }
+            }
+        }
 
         #[cfg(feature = "interrupt-e310x")]
         use_interrupt_e310x!(unsafe impl InterruptController for SystemTraits);
@@ -106,7 +149,8 @@ macro_rules! instantiate_test {
             const CONTEXT: usize = 0;
         }
 
-        impl port::TimerOptions for SystemTraits {
+        #[cfg(feature = "timer-clint")]
+        impl port::MtimeOptions for SystemTraits {
             const MTIME_PTR: usize = 0x0200_bff8;
 
             #[cfg(any(
@@ -127,6 +171,12 @@ macro_rules! instantiate_test {
 
             // Updating `mtime` is not supported by QEMU.
             const RESET_MTIME: bool = false;
+        }
+
+        #[cfg(feature = "timer-sbi")]
+        impl port::SbiTimerOptions for SystemTraits {
+            #[cfg(feature = "board-u540-qemu")]
+            const FREQUENCY: u64 = u540::MTIME_FREQUENCY;
         }
 
         struct Driver;
@@ -240,6 +290,23 @@ macro_rules! instantiate_test {
 
             test_case::App::new::<_, Driver>(b)
         }
+
+        /// Like `riscv::interrupt::free` but uses the correct CSR for the
+        /// application's privilege level
+        #[inline]
+        fn with_cpu_lock(f: impl FnOnce()) {
+            use r3::{prelude::*, kernel::CpuLockError};
+            struct Guard(Result<(), CpuLockError>);
+            let _guard = Guard(System::acquire_cpu_lock());
+            f();
+            impl Drop for Guard {
+                fn drop(&mut self) {
+                    if self.0.is_ok() {
+                        let _ = unsafe { System::release_cpu_lock() };
+                    }
+                }
+            }
+        }
     };
 
     () => {}
@@ -270,4 +337,15 @@ mod driver_kernel_tests {
 #[cfg(not(feature = "run"))]
 fn main() {
     panic!("This executable should not be invoked directly");
+}
+
+// Wildcard imports take less precedence
+#[allow(unused_imports)]
+use default_impl::*;
+#[allow(dead_code)]
+mod default_impl {
+    #[track_caller]
+    fn with_cpu_lock(_: impl FnOnce()) {
+        unreachable!();
+    }
 }

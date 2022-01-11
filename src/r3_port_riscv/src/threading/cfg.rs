@@ -14,16 +14,48 @@ pub const INTERRUPT_EXTERNAL: InterruptNum = 2;
 pub const INTERRUPT_PLATFORM_START: InterruptNum = 3;
 
 /// The configuration of the port.
-pub trait ThreadingOptions {}
+pub trait ThreadingOptions {
+    /// The RISC-V privilege level wherein the kernel and apllication operate.
+    /// The default value is [`PRIVILEGE_LEVEL_MACHINE`]. Must be in the range
+    /// `0..4`.
+    ///
+    /// There are a few points that should be kept in mind when specifying this
+    /// option:
+    ///
+    ///  - It's [`EntryPoint`][]'s caller that is responsible for ensuring the
+    ///    specified privilege level is entered. Calling the entry points from
+    ///    other privilege levels will cause an undefined behavior.
+    ///
+    ///  - The current version of `riscv-rt` can only start in M-mode.
+    ///    Consequently, [`use_rt!`][] is incompatible with other modes.
+    ///
+    ///  - The current version of [`riscv`][] provides wrapper functions which
+    ///    are hard-coded to use M-mode-only CSRs, such as `mstatus.MIE`.
+    ///    They don't work in lower privilege levels. You must use [CPU Lock][]
+    ///    or the correct CSR (e.g., [`riscv::register::sstatus`]) the
+    ///    specified privilege level directly.
+    ///
+    /// [`EntryPoint`]: crate::EntryPoint
+    /// [CPU Lock]: r3_core#system-states
+    const PRIVILEGE_LEVEL: u8 = PRIVILEGE_LEVEL_MACHINE;
+}
+
+/// The RISC-V privilege level encoding for the machine level.
+pub const PRIVILEGE_LEVEL_MACHINE: u8 = 0b11;
+/// The RISC-V privilege level encoding for the supervisor level.
+pub const PRIVILEGE_LEVEL_SUPERVISOR: u8 = 0b01;
+/// The RISC-V privilege level encoding for the user/application level.
+pub const PRIVILEGE_LEVEL_USER: u8 = 0b00;
 
 /// Define a kernel trait type implementing [`PortThreading`],
 /// [`PortInterrupts`], and [`EntryPoint`].
-/// **Requires [`ThreadingOptions`] and [`InterruptController`].**
+/// **Requires [`ThreadingOptions`], [`Timer`], and [`InterruptController`].**
 ///
 /// [`PortThreading`]: r3_kernel::PortThreading
 /// [`PortInterrupts`]: r3_kernel::PortInterrupts
 /// [`EntryPoint`]: crate::EntryPoint
 /// [`InterruptController`]: crate::InterruptController
+/// [`Timer`]: crate::Timer
 #[macro_export]
 macro_rules! use_port {
     (unsafe $vis:vis struct $Traits:ident) => {
@@ -41,7 +73,10 @@ macro_rules! use_port {
                 KernelCfg2,
             };
             use $crate::core::ops::Range;
-            use $crate::{threading::imp::{State, TaskState, PortInstance}, ThreadingOptions, EntryPoint, InterruptController};
+            use $crate::{
+                threading::imp::{State, TaskState, PortInstance, CsrSet, NumTy},
+                ThreadingOptions, EntryPoint, InterruptController,
+            };
 
             pub(super) static PORT_STATE: State = State::new();
 
@@ -57,6 +92,9 @@ macro_rules! use_port {
                     <$Traits as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_TIMER);
                 const INTERRUPT_EXTERNAL_HANDLER: Option<InterruptHandlerFn> =
                     <$Traits as KernelCfg2>::INTERRUPT_HANDLERS.get($crate::INTERRUPT_EXTERNAL);
+
+                type Csr = CsrSet<$Traits>;
+                type Priv = NumTy<{ <$Traits as ThreadingOptions>::PRIVILEGE_LEVEL as usize }>;
             }
 
             impl EntryPoint for $Traits {

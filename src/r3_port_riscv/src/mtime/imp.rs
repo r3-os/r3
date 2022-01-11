@@ -1,4 +1,4 @@
-//! The implementation of the RISC-V timer driver.
+//! The implementation of the `mtime`-based timer driver.
 use r3_core::kernel::{traits, Cfg, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
@@ -7,14 +7,14 @@ use tock_registers::{
     registers::ReadWrite,
 };
 
-use crate::timer::cfg::TimerOptions;
+use crate::mtime::cfg::MtimeOptions;
 
-/// Implemented on a system type by [`use_timer!`].
+/// Implemented on a system type by [`use_mtime!`].
 ///
 /// # Safety
 ///
-/// Only meant to be implemented by [`use_timer!`].
-pub unsafe trait TimerInstance: KernelTraits + TimerOptions {
+/// Only meant to be implemented by [`use_mtime!`].
+pub unsafe trait TimerInstance: KernelTraits + MtimeOptions {
     // FIXME: Specifying `TicklessCfg::new(...)` here causes a "cycle
     //        detected" error
     const TICKLESS_CFG: TicklessCfg;
@@ -30,19 +30,19 @@ pub unsafe trait TimerInstance: KernelTraits + TimerOptions {
 trait TimerInstanceExt: TimerInstance {
     #[inline(always)]
     fn mtime_reg32() -> &'static [ReadWrite<u32>; 2] {
-        // Safety: Verified by the user of `use_timer!`
+        // Safety: Verified by the user of `use_mtime!`
         unsafe { &*(Self::MTIME_PTR as *const _) }
     }
 
     #[inline(always)]
     fn mtime_reg64() -> &'static ReadWrite<u64> {
-        // Safety: Verified by the user of `use_timer!`
+        // Safety: Verified by the user of `use_mtime!`
         unsafe { &*(Self::MTIME_PTR as *const _) }
     }
 
     #[inline(always)]
     fn mtimecmp_reg32() -> &'static [ReadWrite<u32>; 2] {
-        // Safety: Verified by the user of `use_timer!`
+        // Safety: Verified by the user of `use_mtime!`
         unsafe { &*(Self::MTIMECMP_PTR as *const _) }
     }
 
@@ -97,7 +97,7 @@ pub fn init<Traits: TimerInstance>() {
 ///
 /// # Safety
 ///
-/// Only meant to be referenced by `use_timer!`.
+/// Only meant to be referenced by `use_mtime!`.
 pub unsafe fn tick_count<Traits: TimerInstance>() -> UTicks {
     let tcfg = &Traits::TICKLESS_CFG;
 
@@ -112,7 +112,7 @@ pub unsafe fn tick_count<Traits: TimerInstance>() -> UTicks {
 ///
 /// # Safety
 ///
-/// Only meant to be referenced by `use_timer!`.
+/// Only meant to be referenced by `use_mtime!`.
 pub unsafe fn pend_tick<Traits: TimerInstance>() {
     Traits::mtimecmp_reg32()[0].set(0);
     Traits::mtimecmp_reg32()[1].set(0);
@@ -122,7 +122,7 @@ pub unsafe fn pend_tick<Traits: TimerInstance>() {
 ///
 /// # Safety
 ///
-/// Only meant to be referenced by `use_timer!`.
+/// Only meant to be referenced by `use_mtime!`.
 pub unsafe fn pend_tick_after<Traits: TimerInstance>(tick_count_delta: UTicks) {
     let tcfg = &Traits::TICKLESS_CFG;
     // Safety: CPU Lock protects it from concurrent access

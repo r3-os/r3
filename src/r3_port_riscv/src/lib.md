@@ -197,4 +197,4 @@ The trap handler stores a first-level state directly below the current stack poi
 
 ## Processor Modes
 
-All code executes in Machine mode. The value of `mstatus.MPP` is always `M` (`0b11`).
+All code executes in Machine mode by default. The value of `mstatus.MPP` is always `M` (`0b11`). Other modes can be selected by [`ThreadingOptions::PRIVILEGE_LEVEL`], which changes all CSRs and CSR values accordingly.

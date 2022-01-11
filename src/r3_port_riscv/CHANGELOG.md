@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- The new option `ThreadingOptions::PRIVILEGE_LEVEL` allows for running the kernel in other privilege levels than M-mode.
+- `use_sbi_timer!` can be used to install a timer driver based on [the RISC-V Supervisor Binary Interface](https://github.com/riscv-non-isa/riscv-sbi-doc).
+
+### Changed
+
+- Rename `use_timer!` → `use_mtime!`, `TimerOptions` → `MtimeOptions`
+
 ### Fixed
 
 - The default stack alignment (`PortThreading::STACK_ALIGN`) now conforms to the standard ABI requirement (128-bit alignment).
+- The port startup code now calls `<Traits as Timer>::init`.
 
 ## [0.1.3] - 2021-10-29
 

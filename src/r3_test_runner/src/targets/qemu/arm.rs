@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{future::Future, pin::Pin};
 
-use super::super::{Arch, DebugProbe, Target};
+use super::super::{Arch, DebugProbe, LinkerScripts, Target};
 use super::QemuDebugProbe;
 
 pub struct QemuMps2An385;
@@ -11,12 +11,13 @@ impl Target for QemuMps2An385 {
         Arch::CORTEX_M3
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["output-semihosting"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["output-semihosting".to_owned()]
     }
 
-    fn memory_layout_script(&self) -> String {
-        "
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::arm_m_rt(
+            "
             MEMORY
             {
               /* assuming zbt_boot_ctrl == 0 */
@@ -26,9 +27,9 @@ impl Target for QemuMps2An385 {
 
             _stack_start = ORIGIN(RAM) + LENGTH(RAM);
         "
-        .to_owned()
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(QemuDebugProbe::new(
@@ -52,12 +53,13 @@ impl Target for QemuMps2An505 {
         Arch::CORTEX_M33_FPU
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["output-semihosting"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["output-semihosting".to_owned()]
     }
 
-    fn memory_layout_script(&self) -> String {
-        "
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::arm_m_rt(
+            "
             MEMORY
             {
               /* ZBT SRAM (SSRAM1) Secure alias */
@@ -67,8 +69,9 @@ impl Target for QemuMps2An505 {
             }
 
             _stack_start = ORIGIN(RAM) + LENGTH(RAM);
-        "
-        .to_owned()
+            "
+            .to_owned(),
+        )
     }
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
@@ -95,22 +98,23 @@ impl Target for QemuRealviewPbxA9 {
         Arch::CORTEX_A9
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &["board-realview_pbx_a9"]
+    fn cargo_features(&self) -> Vec<String> {
+        vec!["board-realview_pbx_a9".to_owned()]
     }
 
-    fn memory_layout_script(&self) -> String {
-        // TODO: test `link_ram.x`
-        "
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::arm_harvard(
+            // TODO: test `link_ram.x`
+            "
             MEMORY
             {
               RAM_CODE : ORIGIN = 0x01000000, LENGTH = 4096K
               RAM_DATA : ORIGIN = 0x01400000, LENGTH = 4096K
             }
-        "
-        .to_owned()
+            "
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async {
             Ok(Box::new(QemuDebugProbe::new(

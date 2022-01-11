@@ -13,7 +13,7 @@ use tokio_serial::{SerialPort, SerialPortBuilderExt, SerialStream};
 use super::{
     demux::Demux,
     serial::{choose_serial, ChooseSerialError},
-    slip, Arch, DebugProbe, DynAsyncRead, Target,
+    slip, Arch, DebugProbe, DynAsyncRead, LinkerScripts, Target,
 };
 use crate::utils::retry_on_fail;
 
@@ -25,17 +25,20 @@ impl Target for Maix {
         Arch::RV64GC
     }
 
-    fn cargo_features(&self) -> &[&str] {
-        &[
-            "output-k210-uart",
-            "interrupt-k210",
-            "board-maix",
-            "r3_port_riscv/maintain-pie",
+    fn cargo_features(&self) -> Vec<String> {
+        vec![
+            "boot-rt".to_owned(),
+            "output-k210-uart".to_owned(),
+            "interrupt-k210".to_owned(),
+            "timer-clint".to_owned(),
+            "board-maix".to_owned(),
+            "r3_port_riscv/maintain-pie".to_owned(),
         ]
     }
 
-    fn memory_layout_script(&self) -> String {
-        r#"
+    fn linker_scripts(&self) -> LinkerScripts {
+        LinkerScripts::riscv_rt(
+            r#"
             MEMORY
             {
                 RAM : ORIGIN = 0x80000000, LENGTH = 6M
@@ -49,10 +52,10 @@ impl Target for Maix {
             REGION_ALIAS("REGION_STACK", RAM);
 
             _hart_stack_size = 1K;
-        "#
-        .to_owned()
+            "#
+            .to_owned(),
+        )
     }
-
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {
         Box::pin(async { KflashDebugProbe::new().await.map(|x| Box::new(x) as _) })
     }

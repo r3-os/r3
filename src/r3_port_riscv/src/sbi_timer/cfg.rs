@@ -1,26 +1,26 @@
-//! The public interface for the RISC-V timer.
+//! The public interface for the SBI-based timer driver.
 use r3_core::kernel::InterruptNum;
 
-/// Attach the implementation of [`PortTimer`] that is based on the RISC-V timer
-/// (`mtime`/`mtimecfg`) to a given kernel trait type. This macro also
-/// implements [`Timer`] on the system type.
-/// **Requires [`TimerOptions`].**
+/// Attach the implementation of [`PortTimer`] based on [the RISC-V Supervisor
+/// Binary Interface][1] Timer Extension (EID #0x54494D45 "TIME") and `time[h]`
+/// CSR to a given kernel trait type.
+/// This macro also implements [`Timer`] on the system type.
+/// **Requires [`SbiTimerOptions`].**
 ///
+/// [1]: https://github.com/riscv-non-isa/riscv-sbi-doc
 /// [`PortTimer`]: r3_kernel::PortTimer
 /// [`Timer`]: crate::Timer
 ///
 /// You should do the following:
 ///
-///  - Implement [`TimerOptions`] on the system type `$Traits`.
+///  - Implement [`SbiTimerOptions`] on the system type `$Traits`.
 ///  - Call `$Traits::configure_timer()` in your configuration function.
 ///    See the following example.
 ///
 /// ```rust,ignore
-/// r3_port_riscv::use_timer!(unsafe impl PortTimer for System);
+/// r3_port_riscv::use_sbi_timer!(unsafe impl PortTimer for System);
 ///
-/// impl r3_port_riscv::TimerOptions for System {
-///     const MTIME_PTR: usize = 0x1001_1000;
-///     const MTIMECMP_PTR: usize = 0x1001_1000;
+/// impl r3_port_riscv::SbiTimerOptions for System {
 ///     const FREQUENCY: u64 = 1_000_000;
 /// }
 ///
@@ -32,10 +32,10 @@ use r3_core::kernel::InterruptNum;
 ///
 /// # Safety
 ///
-///  - `TimerOptions` must be configured correctly.
+///  - `SbiTimerOptions` must be configured correctly.
 ///
 #[macro_export]
-macro_rules! use_timer {
+macro_rules! use_sbi_timer {
     (unsafe impl PortTimer for $Traits:ty) => {
         const _: () = {
             use $crate::r3_core::{
@@ -44,7 +44,7 @@ macro_rules! use_timer {
             };
             use $crate::r3_kernel::{PortTimer, System, UTicks};
             use $crate::r3_portkit::tickless;
-            use $crate::{timer, Timer, TimerOptions};
+            use $crate::{sbi_timer, SbiTimerOptions, Timer};
 
             impl PortTimer for $Traits {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;
@@ -52,38 +52,38 @@ macro_rules! use_timer {
 
                 unsafe fn tick_count() -> UTicks {
                     // Safety: We are just forwarding the call
-                    unsafe { timer::imp::tick_count::<Self>() }
+                    unsafe { sbi_timer::imp::tick_count::<Self>() }
                 }
 
                 unsafe fn pend_tick() {
                     // Safety: We are just forwarding the call
-                    unsafe { timer::imp::pend_tick::<Self>() }
+                    unsafe { sbi_timer::imp::pend_tick::<Self>() }
                 }
 
                 unsafe fn pend_tick_after(tick_count_delta: UTicks) {
                     // Safety: We are just forwarding the call
-                    unsafe { timer::imp::pend_tick_after::<Self>(tick_count_delta) }
+                    unsafe { sbi_timer::imp::pend_tick_after::<Self>(tick_count_delta) }
                 }
             }
 
             impl Timer for $Traits {
                 unsafe fn init() {
-                    unsafe { timer::imp::init::<Self>() }
+                    unsafe { sbi_timer::imp::init::<Self>() }
                 }
             }
 
             const TICKLESS_CFG: tickless::TicklessCfg =
                 match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$Traits as TimerOptions>::FREQUENCY,
-                    hw_freq_denom: <$Traits as TimerOptions>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$Traits as TimerOptions>::HEADROOM,
-                    // `mtime` is a 64-bit free-running counter and it is
+                    hw_freq_num: <$Traits as SbiTimerOptions>::FREQUENCY,
+                    hw_freq_denom: <$Traits as SbiTimerOptions>::FREQUENCY_DENOMINATOR,
+                    hw_headroom_ticks: <$Traits as SbiTimerOptions>::HEADROOM,
+                    // `stime` is a 64-bit free-running counter and it is
                     // expensive to create a 32-bit timer with an arbitrary
                     // period out of it.
                     force_full_hw_period: true,
-                    // If clearing `mtime` is not allowed, we must record the
-                    // starting value of `mtime` by calling `reset`.
-                    resettable: !<$Traits as TimerOptions>::RESET_MTIME,
+                    // Clearing `stime` is not possible, so we must record the
+                    // starting value of `stime` by calling `reset`.
+                    resettable: true,
                 }) {
                     Ok(x) => x,
                     Err(e) => e.panic(),
@@ -91,8 +91,8 @@ macro_rules! use_timer {
 
             static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
 
-            // Safety: Only `use_timer!` is allowed to `impl` this
-            unsafe impl timer::imp::TimerInstance for $Traits {
+            // Safety: Only `use_sbi_timer!` is allowed to `impl` this
+            unsafe impl sbi_timer::imp::TimerInstance for $Traits {
                 const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
 
                 type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
@@ -107,36 +107,15 @@ macro_rules! use_timer {
                 where
                     C: ~const traits::CfgInterruptLine<System = System<Self>>,
                 {
-                    timer::imp::configure(b);
+                    sbi_timer::imp::configure(b);
                 }
             }
         };
     };
 }
 
-/// The options for [`use_timer!`].
-pub trait TimerOptions {
-    /// The memory address of the `mtime` register.
-    const MTIME_PTR: usize;
-
-    /// The memory address of the `mtimecmp` register.
-    const MTIMECMP_PTR: usize;
-
-    /// When set to `true`, the driver clears the lower 32 bits of the `mtime`
-    /// register on boot.
-    ///
-    /// Disabling this might increase the runtime overhead of the driver.
-    /// Nevertheless, the need to disable this might arise for numerous reasons
-    /// including:
-    ///
-    ///  - Updating the `mtime` register [is not supported by QEMU] at this time.
-    ///
-    ///  - The `mtime` register might be shared with other harts and clearing it
-    ///    could confuse the code running in the other harts.
-    ///
-    /// [is not supported by QEMU]: https://github.com/qemu/qemu/blob/672b2f2695891b6d818bddc3ce0df964c7627969/hw/riscv/sifive_clint.c#L165-L173
-    const RESET_MTIME: bool = true;
-
+/// The options for [`use_sbi_timer!`].
+pub trait SbiTimerOptions {
     /// The numerator of the effective timer clock rate of the dual timer.
     const FREQUENCY: u64;
 

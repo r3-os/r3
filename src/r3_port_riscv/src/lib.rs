@@ -9,12 +9,14 @@
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
+#![feature(generic_const_exprs)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]
 #![doc = include!("../doc/interrupts.rs")] // `![interrupts]`
+#![recursion_limit = "1024"]
 #![no_std]
 use core::ops::Range;
 use r3_core::kernel::{
@@ -66,17 +68,25 @@ pub mod threading {
     pub mod imp;
 }
 
-/// The standard timer driver.
+/// The `mtime`-based timer driver.
 #[doc(hidden)]
-pub mod timer {
+pub mod mtime {
     pub mod cfg;
     pub mod imp;
 }
 
+/// The SBI-based timer driver.
+#[doc(hidden)]
+pub mod sbi_timer {
+    pub mod cfg;
+    pub mod imp;
+}
+
+pub use self::mtime::cfg::*;
 pub use self::plic::cfg::*;
 pub use self::rt::cfg::*;
+pub use self::sbi_timer::cfg::*;
 pub use self::threading::cfg::*;
-pub use self::timer::cfg::*;
 
 /// Defines the entry points of a port instantiation. Implemented by
 /// [`use_port!`].
@@ -85,7 +95,9 @@ pub trait EntryPoint {
     ///
     /// # Safety
     ///
-    ///  - The processor should be in M-mode and have M-mode interrupts masked.
+    ///  - The processor should be in the privilege mode specified by
+    ///    [`ThreadingOptions::PRIVILEGE_LEVEL`] and have interrupts masked for
+    ///    this privilege level.
     ///  - This method hasn't been entered yet.
     ///
     unsafe fn start() -> !;
@@ -96,7 +108,9 @@ pub trait EntryPoint {
     ///
     /// # Safety
     ///
-    ///  - The processor should be in M-mode and have M-mode interrupts masked.
+    ///  - The processor should be in the privilege mode specified by
+    ///    [`ThreadingOptions::PRIVILEGE_LEVEL`] and have interrupts masked for
+    ///    this privilege level
     ///  - The register state of the background context should be preserved so
     ///    that the handler can restore it later.
     ///
@@ -104,7 +118,7 @@ pub trait EntryPoint {
 }
 
 /// An abstract inferface to a port timer driver. Implemented by
-/// [`use_timer!`].
+/// [`use_mtime!`] and [`use_sbi_timer!`].
 pub trait Timer {
     /// Initialize the driver. This will be called just before entering
     /// [`PortToKernel::boot`].

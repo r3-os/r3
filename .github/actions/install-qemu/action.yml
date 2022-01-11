@@ -4,7 +4,7 @@ inputs:
   version:
     description: QEMU version to install
     required: true
-    default: 5.1.0
+    default: 6.1.0
   target-list:
     description: List of targets to build
     required: true

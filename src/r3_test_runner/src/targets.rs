@@ -18,15 +18,106 @@ pub trait Target: Send + Sync {
 
     /// Get the additional Cargo features to enable when building
     /// `r3_port_*_test_driver`.
-    fn cargo_features(&self) -> &[&str];
+    fn cargo_features(&self) -> Vec<String>;
 
-    /// Generate the `memory.x` file to be included by the linker script of
-    /// `cortex-m-rt` or `r3_port_arm`, or to be used as the top-level
-    /// linker script by `r3_port_riscv_test_driver`.
-    fn memory_layout_script(&self) -> String;
+    /// The linker scripts used to link the test driver.
+    fn linker_scripts(&self) -> LinkerScripts;
 
     /// Connect to the target.
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>>;
+}
+
+#[derive(Debug)]
+pub struct LinkerScripts {
+    /// Linker scripts to specify with `-C link-arg=-T...` options. Note that
+    /// linker scripts may refer to others by `INCLUDE` directives, in which
+    /// case the referenced scripts shouldn't be specified here.
+    pub inputs: Vec<String>,
+    /// Temporary linker scripts to generate.
+    pub generated_files: Vec<(String, String)>,
+}
+
+impl LinkerScripts {
+    /// Create `LinkerScripts` to use the `link_ram_harvard.x` provided by
+    /// `r3_port_arm`. The specified string is written to `memory.x`, which will
+    /// be imported by `link_ram_harvard.x`.
+    fn arm_harvard(memory_definition: String) -> Self {
+        Self {
+            inputs: vec!["link_ram_harvard.x".to_owned()],
+            generated_files: vec![("memory.x".to_owned(), memory_definition)],
+        }
+    }
+
+    /// Create `LinkerScripts` to use the `link.x` provided by `cortex-m-rt`.
+    /// The specified string is written to `memory.x`, which will be imported by
+    /// `link_ram_harvard.x`.
+    fn arm_m_rt(memory_definition: String) -> Self {
+        Self {
+            inputs: vec!["link.x".to_owned()],
+            generated_files: vec![("memory.x".to_owned(), memory_definition)],
+        }
+    }
+
+    /// Create `LinkerScripts` to use the `link.x` provided by `riscv-rt`.
+    /// The specified string is written to `memory.x`, which defines memory
+    /// regions referenced by `link.x`.
+    fn riscv_rt(memory_definition: String) -> Self {
+        Self {
+            inputs: vec!["memory.x".to_owned(), "link.x".to_owned()],
+            generated_files: vec![("memory.x".to_owned(), memory_definition)],
+        }
+    }
+
+    /// Create `LinkerScripts` to define some standard sections, which are to
+    /// be included in the final image header and initialized by a section-aware
+    /// loader. Symbol `start` is treated as the entry point.
+    fn standard(base_address: u64) -> Self {
+        let link = r#"
+            ENTRY(start);
+
+            SECTIONS
+            {
+              . = BASE_ADDRESS;
+
+              .text :
+              {
+                *(.text .text.*);
+                . = ALIGN(4);
+                __etext = .;
+              }
+
+              .rodata __etext : ALIGN(4)
+              {
+                *(.rodata .rodata.*);
+                . = ALIGN(4);
+              }
+
+              .data : ALIGN(4)
+              {
+                *(.data .data.*);
+                . = ALIGN(4);
+              }
+
+              __sidata = LOADADDR(.data);
+
+              .bss : ALIGN(4)
+              {
+                __sbss = .;
+                *(.bss .bss.*);
+                . = ALIGN(4);
+                __ebss = .;
+              }
+            }
+        "#
+        .to_owned();
+
+        let link = link.replace("BASE_ADDRESS", &base_address.to_string());
+
+        Self {
+            inputs: vec!["link.x".to_owned()],
+            generated_files: vec![("link.x".to_owned(), link)],
+        }
+    }
 }
 
 pub trait DebugProbe: Send {
@@ -50,6 +141,14 @@ pub static TARGETS: &[(&str, &dyn Target)] = &[
     ("qemu_sifive_e_rv64", &qemu::riscv::QemuSiFiveE(Xlen::_64)),
     ("qemu_sifive_u_rv32", &qemu::riscv::QemuSiFiveU(Xlen::_32)),
     ("qemu_sifive_u_rv64", &qemu::riscv::QemuSiFiveU(Xlen::_64)),
+    (
+        "qemu_sifive_u_s_rv32",
+        &qemu::riscv::QemuSiFiveUModeS(Xlen::_32),
+    ),
+    (
+        "qemu_sifive_u_s_rv64",
+        &qemu::riscv::QemuSiFiveUModeS(Xlen::_64),
+    ),
     ("red_v", &jlink::RedV),
     ("maix", &kflash::Maix),
     ("rp_pico", &rp_pico::RaspberryPiPico),
@@ -62,12 +161,12 @@ impl<T: Target> Target for OverrideTargetArch<T> {
         self.0
     }
 
-    fn cargo_features(&self) -> &[&str] {
+    fn cargo_features(&self) -> Vec<String> {
         self.1.cargo_features()
     }
 
-    fn memory_layout_script(&self) -> String {
-        self.1.memory_layout_script()
+    fn linker_scripts(&self) -> LinkerScripts {
+        self.1.linker_scripts()
     }
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = Result<Box<dyn DebugProbe>>>>> {

@@ -10,121 +10,9 @@ use r3_core::{
 use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
 use r3_portkit::pptext::pp_asm;
 
-use crate::{InterruptController, ThreadingOptions, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE};
-
-/// `mstatus` (Machine Status Register)
-mod mstatus {
-    use core::arch::asm;
-
-    pub const MIE: usize = 1 << 3;
-    pub const MPIE: usize = 1 << 7;
-    pub const MPP_M: usize = 0b11 << 11;
-    pub const FS_0: usize = 1 << 13;
-    pub const FS_1: usize = 1 << 14;
-
-    #[inline(always)]
-    pub fn clear_i<const VALUE: usize>() {
-        unsafe { asm!("csrci mstatus, {}", const VALUE) };
-    }
-
-    #[inline(always)]
-    pub fn set_i<const VALUE: usize>() {
-        unsafe { asm!("csrsi mstatus, {}", const VALUE) };
-    }
-
-    #[inline(always)]
-    pub fn set(value: usize) {
-        unsafe { asm!("csrs mstatus, {}", in(reg) value) };
-    }
-
-    #[inline(always)]
-    pub fn fetch_clear_i<const VALUE: usize>() -> usize {
-        let read: usize;
-        unsafe { asm!("csrrci {}, mstatus, {}", lateout(reg) read, const VALUE) };
-        read
-    }
-
-    #[inline(always)]
-    pub fn read() -> usize {
-        let read: usize;
-        unsafe { asm!("csrr {}, mstatus", lateout(reg) read) };
-        read
-    }
-}
-/// `mcause` (Machine Cause Register)
-#[allow(non_upper_case_globals)]
-#[allow(dead_code)]
-mod mcause {
-    use core::arch::asm;
-
-    pub const Interrupt: usize = usize::MAX - usize::MAX / 2;
-    pub const ExceptionCode_MASK: usize = usize::MAX / 2;
-
-    #[inline(always)]
-    pub fn read() -> usize {
-        let read: usize;
-        unsafe { asm!("csrr {}, mcause", lateout(reg) read) };
-        read
-    }
-}
-
-/// `mip` (Machine Interrupt Pending)
-mod mip {
-    use core::arch::asm;
-
-    /// Machine Software Interrupt Pending
-    pub const MSIP: usize = 1 << 3;
-    /// Machine Timer Interrupt Pending
-    pub const MTIP: usize = 1 << 7;
-    /// Machine External Interrupt Pending
-    pub const MEIP: usize = 1 << 11;
-
-    #[inline(always)]
-    pub fn read() -> usize {
-        let read: usize;
-        unsafe { asm!("csrr {}, mip", lateout(reg) read) };
-        read
-    }
-
-    #[inline(always)]
-    pub fn clear(value: usize) {
-        unsafe { asm!("csrc mip, {}", in(reg) value) };
-    }
-
-    #[inline(always)]
-    pub fn set(value: usize) {
-        unsafe { asm!("csrs mip, {}", in(reg) value) };
-    }
-}
-
-/// `mip` (Machine Interrupt Enable)
-mod mie {
-    use core::arch::asm;
-
-    /// Machine Software Interrupt Enable
-    pub const MSIE: usize = 1 << 3;
-    /// Machine Timer Interrupt Enable
-    pub const MTIE: usize = 1 << 7;
-    /// Machine External Interrupt Enable
-    pub const MEIE: usize = 1 << 11;
-
-    #[inline(always)]
-    pub fn fetch_clear(value: usize) -> usize {
-        let read: usize;
-        unsafe { asm!("csrrc {}, mie, {}", lateout(reg) read, in(reg) value) };
-        read
-    }
-
-    #[inline(always)]
-    pub fn clear(value: usize) {
-        unsafe { asm!("csrc mie, {}", in(reg) value) };
-    }
-
-    #[inline(always)]
-    pub fn set(value: usize) {
-        unsafe { asm!("csrs mie, {}", in(reg) value) };
-    }
-}
+use crate::{
+    InterruptController, ThreadingOptions, Timer, INTERRUPT_PLATFORM_START, INTERRUPT_SOFTWARE,
+};
 
 /// `XLEN / 8`
 const X_SIZE: usize = core::mem::size_of::<usize>();
@@ -256,12 +144,17 @@ pub mod asm_inc {
 // macro" error not to occur
 mod instemu;
 
-/// The part of `mstatus` which is specific to each thread.
+mod csr;
+use csr::{CsrAccessor as _, CsrSetAccess as _};
+#[doc(hidden)] // used by macro
+pub use csr::{CsrSet, NumTy};
+
+/// The part of `xstatus` which is specific to each thread.
 ///
-/// `mstatus_part` is only used if `cfg!(target_feature = "f")`. `mstatus_part`
+/// `xstatus_part` is only used if `cfg!(target_feature = "f")`. `xstatus_part`
 /// is undefined otherwise.
 #[allow(dead_code)]
-const MSTATUS_PART_MASK: usize = mstatus::FS_1;
+const XSTATUS_PART_MASK: usize = csr::XSTATUS_FS_1;
 
 /// Implemented on a system type by [`use_port!`].
 ///
@@ -269,7 +162,7 @@ const MSTATUS_PART_MASK: usize = mstatus::FS_1;
 ///
 /// Only meant to be implemented by [`use_port!`].
 pub unsafe trait PortInstance:
-    KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController
+    KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController + Timer
 {
     fn port_state() -> &'static State;
 
@@ -280,6 +173,11 @@ pub unsafe trait PortInstance:
     const USE_INTERRUPT_SOFTWARE: bool = Self::INTERRUPT_SOFTWARE_HANDLER.is_some();
     const USE_INTERRUPT_TIMER: bool = Self::INTERRUPT_TIMER_HANDLER.is_some();
     const USE_INTERRUPT_EXTERNAL: bool = Self::INTERRUPT_EXTERNAL_HANDLER.is_some();
+
+    type Csr: csr::CsrSetAccess;
+
+    /// Validated privilege level encoding.
+    type Priv: csr::Num;
 }
 
 static mut DISPATCH_PENDING: bool = false;
@@ -329,23 +227,26 @@ impl State {
         // Enable FPU
         if cfg!(target_feature = "f") {
             // FS = 0b?1 (Initial or Dirty)
-            mstatus::set(mstatus::FS_0);
+            Traits::Csr::xstatus().set(csr::XSTATUS_FS_0);
         }
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <Traits as InterruptController>::init() };
 
+        // Safety: We are the port, so it's okay to call this
+        unsafe { <Traits as Timer>::init() };
+
         // Enable local interrupts
         {
             let mut clear_set = [0usize; 2];
-            clear_set[Traits::USE_INTERRUPT_SOFTWARE as usize] |= mie::MSIE;
-            clear_set[Traits::USE_INTERRUPT_TIMER as usize] |= mie::MTIE;
-            clear_set[Traits::USE_INTERRUPT_EXTERNAL as usize] |= mie::MEIE;
+            clear_set[Traits::USE_INTERRUPT_SOFTWARE as usize] |= Traits::Csr::XIE_XSIE;
+            clear_set[Traits::USE_INTERRUPT_TIMER as usize] |= Traits::Csr::XIE_XTIE;
+            clear_set[Traits::USE_INTERRUPT_EXTERNAL as usize] |= Traits::Csr::XIE_XEIE;
             if clear_set[0] != 0 {
-                mie::clear(clear_set[0]);
+                Traits::Csr::xie().clear(clear_set[0]);
             }
             if clear_set[1] != 0 {
-                mie::set(clear_set[1]);
+                Traits::Csr::xie().set(clear_set[1]);
             }
         }
 
@@ -367,17 +268,17 @@ impl State {
                 # Save the stack pointer for later use
                 STORE sp, ({MAIN_STACK}), a0
 
-                # `mstatus.MPIE` will be `1` all the time except in a software
+                # `xstatus.XPIE` will be `1` all the time except in a software
                 # exception handler
-                li a0, {MPIE}
-                csrs mstatus, a0
+                li a0, " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
+                csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
 
                 tail {push_second_level_state_and_dispatch}.dispatch
                 ",
                 MAIN_STACK = sym MAIN_STACK,
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
-                MPIE = const mstatus::MPIE,
+                PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
                 options(noreturn),
             );
         }
@@ -435,21 +336,22 @@ impl State {
                 STORE t6, ({X_SIZE} * 15)(sp)
                 STORE ra, ({X_SIZE} * 16)(sp)
 
-                # MIE := 0
-                csrrci a0, mstatus, {MIE}
+                # XIE := 0
+                csrrci a0, " crate::threading::imp::csr::csrexpr!(XSTATUS) ",       "
+                    crate::threading::imp::csr::csrexpr!(XSTATUS_XIE)               "
 
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push FLS.F
                     #
-                    #   <a2 = mstatus_part>
-                    #   if mstatus_part.FS[1] != 0:
+                    #   <a2 = xstatus_part>
+                    #   if xstatus_part.FS[1] != 0:
                     #       sp: *mut FlsF;
                     #       sp -= 1;
                     #       sp['ft0'-'ft7'] = [ft0-ft7];
                     #       sp['fa0'-'fa7'] = [fa0-fa7];
                     #       sp['ft8'-'ft11'] = [ft8-ft11];
                     #       sp.fcsr = fcsr;
-                    #   <a0 = mstatus_part>
+                    #   <a0 = xstatus_part>
                     #
                     li a1, {FS_1}
                     and a1, a1, a0
@@ -488,8 +390,8 @@ impl State {
                 ",
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
-                MIE = const mstatus::MIE,
-                FS_1 = const mstatus::FS_1,
+                PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
+                FS_1 = const csr::XSTATUS_FS_1,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
                 FLSF_SIZE = const FLSF_SIZE,
@@ -527,15 +429,15 @@ impl State {
     ///
     /// All entry points:
     ///
-    ///  - `mstatus.MIE` must be equal to `1`.
+    ///  - `xstatus.XIE` must be equal to `1`.
     ///
     /// All entry points but `dispatch`:
     ///
     ///  - If the current task is a task, SP should point to the
     ///    first-level state on the current task's stack. Otherwise, SP must be
     ///    zero.
-    ///  - In a configuration that uses `mstatus_part`, `a0` must include the
-    ///    `mstatus_part` of the current task.
+    ///  - In a configuration that uses `xstatus_part`, `a0` must include the
+    ///    `xstatus_part` of the current task.
     ///
     /// `dispatch`:
     ///
@@ -574,7 +476,7 @@ impl State {
             "   crate::threading::imp::asm_inc::define_load_store!()              "
             "   crate::threading::imp::asm_inc::define_fload_fstore!()              "
 
-                # <a0 = mstatus_part>
+                # <a0 = xstatus_part>
                 # Take a shortcut only if `DISPATCH_PENDING == 0`
                 lb a1, ({DISPATCH_PENDING})
                 bnez a1, 0f
@@ -597,7 +499,7 @@ impl State {
 
             .global {push_second_level_state_and_dispatch}.not_shortcutting
             {push_second_level_state_and_dispatch}.not_shortcutting:
-                # <a0 = mstatus_part>
+                # <a0 = xstatus_part>
 
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
@@ -636,17 +538,17 @@ impl State {
                 # are coincidentally identical, at the same time
                 #
                 #  - Is it possible for FP registers to be in use?
-                #  - Do we use `mstatus_part`?
+                #  - Do we use `xstatus_part`?
                 #
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push SLS.F.
                     #
-                    #   <a0 = mstatus_part>
-                    #   if mstatus_part.FS[1] != 0:
+                    #   <a0 = xstatus_part>
+                    #   if xstatus_part.FS[1] != 0:
                     #       sp: *mut FReg;
                     #       sp -= 12;
                     #       sp[0..12] = [fs0-fs11];
-                    #   <a0 = mstatus_part>
+                    #   <a0 = xstatus_part>
                     #
                     li a2, {FS_1}
                     and a2, a2, a0
@@ -667,7 +569,7 @@ impl State {
                     FSTORE fs11, ({F_SIZE} * 11)(sp)
                 0:      # PushSLSFEnd
 
-                    # Push `mstatus_part`
+                    # Push `xstatus_part`
                     addi sp, sp, -{X_SIZE}
                     STORE a0, (sp)
             "   } else {                                                            "
@@ -708,21 +610,21 @@ impl State {
                 # are coincidentally identical, at the same time
                 #
                 #  - Is it possible for FP registers to be in use?
-                #  - Do we use `mstatus_part`?
+                #  - Do we use `xstatus_part`?
                 #
             "   if cfg!(target_feature = "f") {                                     "
-                    # Pop `mstatus_part`
+                    # Pop `xstatus_part`
                     LOAD a0, (sp)
                     addi sp, sp, {X_SIZE}
 
                     # If FP registers are in use, pop SLS.F.
                     #
-                    #   <a0 = mstatus_part>
-                    #   if mstatus_part.FS[1] != 0:
+                    #   <a0 = xstatus_part>
+                    #   if xstatus_part.FS[1] != 0:
                     #       sp: *mut FReg;
                     #       [fs0-fs11] = sp[0..12];
                     #       sp += 12;
-                    #   <a0 = mstatus_part>
+                    #   <a0 = xstatus_part>
                     #
                     li a2, {FS_1}
                     and a2, a2, a0
@@ -761,14 +663,14 @@ impl State {
 
             .global {push_second_level_state_and_dispatch}.pop_first_level_state
             {push_second_level_state_and_dispatch}.pop_first_level_state:
-                # <a0 = mstatus_part>
+                # <a0 = xstatus_part>
 
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers were in use, pop FLS.F. Loading FP regs
-                    # will implicitly set `mstatus.FS[1]`.
+                    # will implicitly set `xstatus.FS[1]`.
                     #
-                    #   <a0 = mstatus_part>
-                    #   if mstatus_part.FS[1] != 0:
+                    #   <a0 = xstatus_part>
+                    #   if xstatus_part.FS[1] != 0:
                     #       sp: *mut FlsF;
                     #       [ft0-ft7] = sp['ft0'-'ft7'];
                     #       [fa0-fa7] = sp['fa0'-'fa7'];
@@ -776,7 +678,7 @@ impl State {
                     #       fcsr = sp.fcsr;
                     #       sp += 1;
                     #   else:
-                    #       mstatus.FS[1] = 0
+                    #       xstatus.FS[1] = 0
                     #
                     li a1, {FS_1}
                     and a0, a0, a1
@@ -809,33 +711,48 @@ impl State {
 
                     j 0f    # → PopFLSFEnd
                 1:      # NoPopFLSF
-                    csrc mstatus, a1
+                    csrc " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a1
                 0:      # PopFLSFEnd
             "   } else {                                                            "
                     # unused: {F_SIZE} {FLSF_SIZE}
             "   }                                                                   "
 
-                # mstatus.MPP := M
-                # mstatus.MPIE := 1 (if `maintain-mpie` is enabled)
-            "   if cfg!(feature = "maintain-pie") {                                "
-                    li a0, {MPP_M} | {MPIE}
-            "   } else {                                                            "
-                    li a0, {MPP_M}
-                    # unused: {MPIE}
-            "   }                                                                   "
-                csrs mstatus, a0
+                # xstatus.XPP := X (if `PRIVILEGE_LEVEL != U`)
+                # xstatus.XPIE := 1 (if `maintain-mpie` is enabled)
+                .if {PRIV} == 3
+            "       if cfg!(feature = "maintain-pie") {                             "
+                        li a0, {MPP_M} | " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
+            "       } else {                                                        "
+                        li a0, {MPP_M}
+            "       }                                                               "
+                    csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
+                .elseif {PRIV} == 1
+            "       if cfg!(feature = "maintain-pie") {                             "
+                        li a0, {SPP_S} | " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
+            "       } else {                                                        "
+                        li a0, {SPP_S}
+            "       }                                                               "
+                    csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
+                .elseif {PRIV} == 0
+            "       if cfg!(feature = "maintain-pie") {                             "
+                        csrsi " crate::threading::imp::csr::csrexpr!(XSTATUS) ",    "
+                            crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE)      "
+            "       }                                                               "
+                .else
+                    .error \"unsupported `PRIVILEGE_LEVEL`\"
+                .endif
 
                 # Resume the next task by restoring FLS.X
                 #
                 #   <[s0-s11, sp] = resumed context>
                 #
-                #   mepc = sp[16];
+                #   xepc = sp[16];
                 #   [ra, t0-t2, a0-a5] = sp[0..10];
                 #   [a6-a7, t3-t6] = sp[10..16];
                 #   sp += 17;
                 #
-                #   pc = mepc;
-                #   mode = mstatus.MPP;
+                #   pc = xepc;
+                #   mode = xstatus.XPP;
                 #
                 #   <end of procedure>
                 #
@@ -844,7 +761,7 @@ impl State {
                 LOAD t0, ({X_SIZE} * 1)(sp)
                 LOAD t1, ({X_SIZE} * 2)(sp)
                 LOAD t2, ({X_SIZE} * 3)(sp)
-                csrw mepc, a7
+                csrw " crate::threading::imp::csr::csrexpr!(XEPC) ", a7
                 LOAD a0, ({X_SIZE} * 4)(sp)
                 LOAD a1, ({X_SIZE} * 5)(sp)
                 LOAD a2, ({X_SIZE} * 6)(sp)
@@ -858,7 +775,15 @@ impl State {
                 LOAD t5, ({X_SIZE} * 14)(sp)
                 LOAD t6, ({X_SIZE} * 15)(sp)
                 addi sp, sp, ({X_SIZE} * 17)
-                mret
+                .if {PRIV} == 0
+                    uret
+                .elseif {PRIV} == 1
+                    sret
+                .elseif {PRIV} == 3
+                    mret
+                .else
+                    .error \"unsupported `PRIVILEGE_LEVEL`\"
+                .endif
 
             .global {push_second_level_state_and_dispatch}.idle_task
             {push_second_level_state_and_dispatch}.idle_task:
@@ -866,12 +791,13 @@ impl State {
                 # debugging.
                 #
                 #   sp = 0;
-                #   mstatus.MIE = 1;
+                #   xstatus.XIE = 1;
                 #   loop:
                 #       wfi();
                 #
                 mv sp, zero
-                csrsi mstatus, {MIE}
+                csrsi " crate::threading::imp::csr::csrexpr!(XSTATUS) ",            "
+                    crate::threading::imp::csr::csrexpr!(XSTATUS_XIE)               "
             3:
                 wfi
                 j 3b
@@ -882,10 +808,10 @@ impl State {
                 get_running_task = sym get_running_task::<Traits>,
                 MAIN_STACK = sym MAIN_STACK,
                 DISPATCH_PENDING = sym DISPATCH_PENDING,
-                MPP_M = const mstatus::MPP_M,
-                MIE = const mstatus::MIE,
-                FS_1 = const mstatus::FS_1,
-                MPIE = const mstatus::MPIE,
+                MPP_M = const csr::XSTATUS_MPP_M,
+                SPP_S = const csr::XSTATUS_SPP_S,
+                PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
+                FS_1 = const csr::XSTATUS_FS_1,
                 X_SIZE = const X_SIZE,
                 F_SIZE = const F_SIZE,
                 FLSF_SIZE = const FLSF_SIZE,
@@ -899,13 +825,14 @@ impl State {
         _task: &'static TaskCb<Traits>,
     ) -> ! {
         unsafe {
-            asm!("
-                # MIE := 0
-                csrci mstatus, {MIE}
+            pp_asm!("
+                # XIE := 0
+                csrci " crate::threading::imp::csr::csrexpr!(XSTATUS) ",            "
+                    crate::threading::imp::csr::csrexpr!(XSTATUS_XIE)               "
 
                 j {push_second_level_state_and_dispatch}.dispatch
                 ",
-                MIE = const mstatus::MIE,
+                PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
                 options(noreturn, nostack),
@@ -915,17 +842,17 @@ impl State {
 
     #[inline(always)]
     pub unsafe fn enter_cpu_lock<Traits: PortInstance>(&self) {
-        mstatus::clear_i::<{ mstatus::MIE }>();
+        Traits::Csr::xstatus_clear_xie();
     }
 
     #[inline(always)]
     pub unsafe fn try_enter_cpu_lock<Traits: PortInstance>(&self) -> bool {
-        (mstatus::fetch_clear_i::<{ mstatus::MIE }>() & mstatus::MIE) != 0
+        (Traits::Csr::xstatus_fetch_clear_xie() & Traits::Csr::XSTATUS_XIE) != 0
     }
 
     #[inline(always)]
     pub unsafe fn leave_cpu_lock<Traits: PortInstance>(&'static self) {
-        mstatus::set_i::<{ mstatus::MIE }>();
+        Traits::Csr::xstatus_set_xie();
     }
 
     pub unsafe fn initialize_task_state<Traits: PortInstance>(
@@ -1012,11 +939,11 @@ impl State {
             extra_ctx[11] = preload_val(0x27);
         }
 
-        // SLS.F is non-existent when `mstatus.FS[1] == 0`
+        // SLS.F is non-existent when `xstatus.FS[1] == 0`
 
         // SLS.HDR
         if cfg!(target_feature = "f") {
-            // mstatus
+            // xstatus
             //  - FS[1] = 0
             sp = sp.wrapping_sub(1);
             unsafe { *sp = MaybeUninit::new(0) };
@@ -1028,7 +955,7 @@ impl State {
 
     #[inline(always)]
     pub fn is_cpu_lock_active<Traits: PortInstance>(&self) -> bool {
-        (mstatus::read() & mstatus::MIE) == 0
+        (Traits::Csr::xstatus().read() & Traits::Csr::XSTATUS_XIE) == 0
     }
 
     pub fn is_task_context<Traits: PortInstance>(&self) -> bool {
@@ -1082,7 +1009,7 @@ impl State {
         num: InterruptNum,
     ) -> Result<(), PendInterruptLineError> {
         if num == INTERRUPT_SOFTWARE {
-            mip::set(mip::MSIP);
+            Traits::Csr::xip().set(Traits::Csr::XIP_XSIP);
             Ok(())
         } else if num < INTERRUPT_PLATFORM_START {
             Err(PendInterruptLineError::BadParam)
@@ -1098,7 +1025,7 @@ impl State {
         num: InterruptNum,
     ) -> Result<(), ClearInterruptLineError> {
         if num == INTERRUPT_SOFTWARE {
-            mip::clear(mip::MSIP);
+            Traits::Csr::xip().clear(Traits::Csr::XIP_XSIP);
             Ok(())
         } else if num < INTERRUPT_PLATFORM_START {
             Err(ClearInterruptLineError::BadParam)
@@ -1114,7 +1041,7 @@ impl State {
         num: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError> {
         if num < INTERRUPT_PLATFORM_START {
-            Ok((mip::read() & (mip::MSIP << (num * 4))) != 0)
+            Ok((Traits::Csr::xip().read() & (Traits::Csr::XIP_XSIP << (num * 4))) != 0)
         } else {
             // Safety: We are delegating the call in the intended way
             unsafe { <Traits as InterruptController>::is_interrupt_line_pending(num) }
@@ -1125,7 +1052,7 @@ impl State {
     #[naked]
     pub unsafe extern "C" fn exception_handler<Traits: PortInstance>() -> ! {
         const FRAME_SIZE: usize = if cfg!(target_feature = "f") {
-            // [background_sp, mstatus]
+            // [background_sp, xstatus]
             X_SIZE * 2
         } else {
             // [background_sp]
@@ -1151,8 +1078,8 @@ impl State {
                 #   <[a0-a7, t0-t6, s0-s11, sp] = background context state,
                 #    background context ∈ [task, idle task, interrupt]>
                 #   if sp == 0:
-                #       mstatus_part = 0;
-                #       <background context ∈ [idle task], a2 == mstatus_part>
+                #       xstatus_part = 0;
+                #       <background context ∈ [idle task], a2 == xstatus_part>
                 #       INTERRUPT_NESTING += 1;
                 #       goto SwitchToMainStack;
                 #
@@ -1166,7 +1093,7 @@ impl State {
                 #   sp -= 17;
                 #   sp[0..10] = [ra, t0-t2, a0-a5];
                 #   sp[10..16] = [a6-a7, t3-t6];
-                #   sp[16] = mepc
+                #   sp[16] = xepc
                 #
                 #   let background_sp = sp;
                 #   let background_flsx = sp;
@@ -1188,7 +1115,7 @@ impl State {
                                                 la a1, {INTERRUPT_NESTING}
                                                 lw a0, (a1)
                 STORE a2, ({X_SIZE} * 6)(sp)
-                csrr a2, mepc
+                csrr a2, " crate::threading::imp::csr::csrexpr!(XEPC) "
                 STORE a3, ({X_SIZE} * 7)(sp)
                 STORE a4, ({X_SIZE} * 8)(sp)
                 STORE a5, ({X_SIZE} * 9)(sp)
@@ -1200,35 +1127,35 @@ impl State {
                 STORE t6, ({X_SIZE} * 15)(sp)
                 STORE a2, ({X_SIZE} * 16)(sp)
             "   if cfg!(target_feature = "f") {                                     "
-                    csrr a2, mstatus
+                    csrr a2, " crate::threading::imp::csr::csrexpr!(XSTATUS) "
             "   }                                                                   "
                                                 addi a0, a0, 1
                                                 sw a0, (a1)
 
             "   if cfg!(target_feature = "f") {                                     "
                     # If FP registers are in use, push FLS.F to the background
-                    # context's stack. Clear `mstatus.FS[1]` to indicate that
+                    # context's stack. Clear `xstatus.FS[1]` to indicate that
                     # FP registers are not in use in the current invocation of
                     # the trap handler (it'll be set again on first use).
                     #
-                    #   <a2 = mstatus_part>
-                    #   if mstatus_part.FS[1] != 0:
+                    #   <a2 = xstatus_part>
+                    #   if xstatus_part.FS[1] != 0:
                     #       sp: *mut FlsF;
                     #       sp -= 1;
                     #       sp['ft0'-'ft7'] = [ft0-ft7];
                     #       sp['fa0'-'fa7'] = [fa0-fa7];
                     #       sp['ft8'-'ft11'] = [ft8-ft11];
                     #       sp.fcsr = fcsr;
-                    #       mstatus.FS[1] = 0;
+                    #       xstatus.FS[1] = 0;
                     #
                     #   let background_sp = sp;
-                    #   <a2 = mstatus_part>
+                    #   <a2 = xstatus_part>
                     #
                     li a1, {FS_1}
                     and a1, a1, a2
                     beqz a1, 0f      # → PushFLSFEnd
 
-                    csrc mstatus, a1
+                    csrc " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a1
                     csrr a1, fcsr
 
                     addi sp, sp, -{FLSF_SIZE}
@@ -1280,11 +1207,11 @@ impl State {
                 # `MAIN_STACK`.
                 #
                 #   <INTERRUPT_NESTING == 0, background context ∈ [task, idle task],
-                #    a2 == mstatus_part>
+                #    a2 == xstatus_part>
                 #   *(MAIN_STACK - ceil(FRAME_SIZE, 16)) = sp;
                 #   sp = MAIN_STACK - ceil(FRAME_SIZE, 16);
                 #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
-                #    a0 == background_sp, a2 == mstatus_part>
+                #    a0 == background_sp, a2 == xstatus_part>
                 #
                 mv a0, sp
                 LOAD sp, ({MAIN_STACK})
@@ -1306,11 +1233,11 @@ impl State {
                 # aligned to a word boundary.
                 #
                 #   <INTERRUPT_NESTING > 0, background context ∈ [interrupt],
-                #    a2 == mstatus_part>
+                #    a2 == xstatus_part>
                 #   *((sp - FRAME_SIZE) & !15) = sp
                 #   sp = (sp - FRAME_SIZE) & !15
                 #   <sp[0] == background_sp, sp & 15 == 0, sp != 0,
-                #    a0 == background_sp, a2 == mstatus_part>
+                #    a0 == background_sp, a2 == xstatus_part>
                 #
                 mv a0, sp
                 addi sp, sp, -{FRAME_SIZE}
@@ -1319,12 +1246,12 @@ impl State {
 
             1:      # RealignStackEnd
             "   if cfg!(target_feature = "f") {                                     "
-                    # Save `mstatus_part`.
+                    # Save `xstatus_part`.
                     STORE a2, {X_SIZE}(sp)
             "   }                                                                   "
 
-                # Check `mcause.Interrurpt`.
-                csrr a1, mcause
+                # Check `xcause.Interrurpt`.
+                csrr a1, " crate::threading::imp::csr::csrexpr!(XCAUSE) "
                 srli a3, a1, 31
                 beqz a3, 1f
 
@@ -1355,8 +1282,8 @@ impl State {
                 # If the cause is a software trap, call `handle_exception`
             "   if cfg!(target_feature = "f") {                                     "
                     #
-                    #   <a0 == background_sp, a1 == mcause, a2 = mstatus_part>
-                    #   if mstatus_part.FS[1]:
+                    #   <a0 == background_sp, a1 == xcause, a2 = xstatus_part>
+                    #   if xstatus_part.FS[1]:
                     #       a0 += FLSF_SIZE;
                     #
                     slli a2, a2, {X_SIZE} * 8 - 1 - {FS_1_SHIFT}
@@ -1367,7 +1294,7 @@ impl State {
                     # unused: {FS_1_SHIFT}
             "   }                                                                   "
                 #
-                #   <a0 == background_flsx, a1 == mcause>
+                #   <a0 == background_flsx, a1 == xcause>
                 #   handle_exception(a0, a1);
                 #
                 call {handle_exception}
@@ -1383,7 +1310,7 @@ impl State {
                                             lw a1, (a2)
 
             "   if cfg!(target_feature = "f") {                                     "
-                    # Restore `mstatus_part`
+                    # Restore `xstatus_part`
                     LOAD a0, {X_SIZE}(sp)
             "   }                                                                   "
 
@@ -1434,17 +1361,19 @@ impl State {
                 F_SIZE = const F_SIZE,
                 FLSF_SIZE = const FLSF_SIZE,
                 FRAME_SIZE = const FRAME_SIZE,
-                FS_1 = const mstatus::FS_1,
-                FS_1_SHIFT = const mstatus::FS_1.trailing_zeros(),
+                PRIV = sym <<Traits as PortInstance>::Priv as csr::Num>::value,
+                FS_1 = const csr::XSTATUS_FS_1,
+                FS_1_SHIFT = const csr::XSTATUS_FS_1.trailing_zeros(),
                 options(noreturn)
             );
         }
     }
 
     unsafe fn handle_interrupt<Traits: PortInstance>() {
-        let all_local_interrupts = [0, mie::MSIE][Traits::USE_INTERRUPT_SOFTWARE as usize]
-            | [0, mie::MTIE][Traits::USE_INTERRUPT_TIMER as usize]
-            | [0, mie::MEIE][Traits::USE_INTERRUPT_EXTERNAL as usize];
+        let all_local_interrupts = [0, Traits::Csr::XIE_XSIE]
+            [Traits::USE_INTERRUPT_SOFTWARE as usize]
+            | [0, Traits::Csr::XIE_XTIE][Traits::USE_INTERRUPT_TIMER as usize]
+            | [0, Traits::Csr::XIE_XEIE][Traits::USE_INTERRUPT_EXTERNAL as usize];
 
         // `M[EST]IE` is used to simulate execution priority levels.
         //
@@ -1478,7 +1407,7 @@ impl State {
         // The actual implementaion is closer to the following:
         //
         //  let bg_exc_pri = get_exc_pri();  // This value is implicit
-        //  let mut found_bg_exc_pri;        // Represented by `mie_pending`
+        //  let mut found_bg_exc_pri;        // Represented by `xie_pending`
         //  set_exc_pri(3);
         //  enable_interrupts_globally();
         //  for exc_pri in (1 ..= 3).rev() {
@@ -1492,86 +1421,86 @@ impl State {
         //  set_exc_pri(found_bg_exc_pri);
         //
         //
-        let old_mie = mie::fetch_clear(all_local_interrupts);
-        let mut mie_pending = 0;
+        let old_mie = Traits::Csr::xie().fetch_clear(all_local_interrupts);
+        let mut xie_pending = 0;
 
         // Re-enable interrupts globally.
-        mstatus::set_i::<{ mstatus::MIE }>();
+        Traits::Csr::xstatus_set_xie();
 
-        let mut mip = mip::read();
+        let mut xip = Traits::Csr::xip().read();
 
         // Check the pending flags and call the respective handlers in the
         // descending order of priority.
-        if Traits::USE_INTERRUPT_EXTERNAL && (old_mie & mie::MEIE) != 0 {
+        if Traits::USE_INTERRUPT_EXTERNAL && (old_mie & Traits::Csr::XIE_XEIE) != 0 {
             // Safety: `USE_INTERRUPT_EXTERNAL == true`
             let handler = Traits::INTERRUPT_EXTERNAL_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
-            while (mip & mip::MEIP) != 0 {
+            while (xip & Traits::Csr::XIP_XEIP) != 0 {
                 // Safety: The first-level interrupt handler is allowed to call
                 //         a second-level interrupt handler
                 unsafe { handler() };
 
-                mip = mip::read();
+                xip = Traits::Csr::xip().read();
             }
 
-            mie_pending = mie::MEIE;
+            xie_pending = Traits::Csr::XIE_XEIE;
         }
 
-        if Traits::USE_INTERRUPT_SOFTWARE && (old_mie & mie::MSIE) != 0 {
+        if Traits::USE_INTERRUPT_SOFTWARE && (old_mie & Traits::Csr::XIE_XSIE) != 0 {
             // Safety: `USE_INTERRUPT_SOFTWARE == true`
             let handler = Traits::INTERRUPT_SOFTWARE_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
             if Traits::USE_INTERRUPT_EXTERNAL {
-                debug_assert_eq!(mie_pending, mie::MEIE);
-                mie::set(mie::MEIE);
+                debug_assert_eq!(xie_pending, Traits::Csr::XIE_XEIE);
+                Traits::Csr::xie().set(Traits::Csr::XIE_XEIE);
             } else {
-                debug_assert_eq!(mie_pending, 0);
+                debug_assert_eq!(xie_pending, 0);
             }
 
-            while (mip & mip::MSIP) != 0 {
+            while (xip & Traits::Csr::XIP_XSIP) != 0 {
                 // Safety: The first-level interrupt handler is allowed to call
                 //         a second-level interrupt handler
                 unsafe { handler() };
 
-                mip = mip::read();
+                xip = Traits::Csr::xip().read();
             }
 
-            mie_pending = mie::MSIE;
+            xie_pending = Traits::Csr::XIE_XSIE;
         }
 
-        if Traits::USE_INTERRUPT_TIMER && (old_mie & mie::MTIE) != 0 {
+        if Traits::USE_INTERRUPT_TIMER && (old_mie & Traits::Csr::XIE_XTIE) != 0 {
             // Safety: `USE_INTERRUPT_TIMER == true`
             let handler = Traits::INTERRUPT_TIMER_HANDLER
                 .unwrap_or_else(|| unsafe { unreachable_unchecked() });
 
             if Traits::USE_INTERRUPT_SOFTWARE {
-                debug_assert_eq!(mie_pending, mie::MSIE);
-                mie::set(mie::MSIE);
+                debug_assert_eq!(xie_pending, Traits::Csr::XIE_XSIE);
+                Traits::Csr::xie().set(Traits::Csr::XIE_XSIE);
             } else if Traits::USE_INTERRUPT_EXTERNAL {
-                debug_assert_eq!(mie_pending, mie::MEIE);
-                mie::set(mie::MEIE);
+                debug_assert_eq!(xie_pending, Traits::Csr::XIE_XEIE);
+                Traits::Csr::xie().set(Traits::Csr::XIE_XEIE);
             } else {
-                debug_assert_eq!(mie_pending, 0);
+                debug_assert_eq!(xie_pending, 0);
             }
 
-            while (mip & mip::MTIP) != 0 {
+            while (xip & Traits::Csr::XIP_XTIP) != 0 {
                 // Safety: The first-level interrupt handler is allowed to call
                 //         a second-level interrupt handler
                 unsafe { handler() };
 
-                mip = mip::read();
+                xip = Traits::Csr::xip().read();
             }
 
-            mie_pending = mie::MTIE;
+            xie_pending = Traits::Csr::XIE_XTIE;
         }
 
         // Disable interrupts globally before returning.
-        mstatus::clear_i::<{ mstatus::MIE }>();
+        Traits::Csr::xstatus_clear_xie();
 
-        debug_assert_ne!(mie_pending, 0);
-        mie::set(mie_pending);
+        debug_assert_ne!(xie_pending, 0);
+        Traits::Csr::xie().set(xie_pending);
     }
 }
 

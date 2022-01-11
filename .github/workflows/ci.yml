@@ -214,6 +214,10 @@ jobs:
           - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a }
           # SiFive U, RV32GC
           - { ty: riscv, runner_target: qemu_sifive_u_rv32, runner_args: "" }
+          # SiFive U, RV64GC, S-mode
+          - { ty: riscv, runner_target: qemu_sifive_u_s_rv64, runner_args: "" }
+          # SiFive U, RV32GC, S-mode
+          - { ty: riscv, runner_target: qemu_sifive_u_s_rv32, runner_args: "" }
           # SiFive E, RV32IMAC
           - { ty: riscv, runner_target: qemu_sifive_e_rv32, runner_args: "" }
           # SiFive E, RV32IA
@@ -231,7 +235,7 @@ jobs:
       - name: Install dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install libusb-1.0-0-dev libudev-dev
+          sudo apt-get install libusb-1.0-0-dev libudev-dev ninja-build
 
       - name: Cache QEMU's built binaries
         uses: actions/cache@v2
@@ -239,7 +243,7 @@ jobs:
           path: ~/.qemu
           key: ${{ runner.os }}-ci-qemu-arm_riscv
 
-      - name: Install QEMU 5.1.0 from source
+      - name: Install QEMU 6.1.0 from source
         uses: ./.github/actions/install-qemu
         with:
           target-list: arm-softmmu,riscv32-softmmu,riscv64-softmmu
