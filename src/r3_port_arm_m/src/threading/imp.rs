@@ -1,4 +1,9 @@
-use core::{cell::UnsafeCell, mem::MaybeUninit, slice};
+use core::{
+    cell::UnsafeCell,
+    mem::MaybeUninit,
+    slice,
+    sync::atomic::{compiler_fence, Ordering},
+};
 use memoffset::offset_of;
 use r3_core::{
     kernel::{
@@ -391,6 +396,29 @@ impl State {
         if Traits::CPU_LOCK_PRIORITY_MASK > 0 {
             // Set `BASEPRI` to `CPU_LOCK_PRIORITY_MASK`
             unsafe { cortex_m::register::basepri::write(Traits::CPU_LOCK_PRIORITY_MASK) };
+
+            // Synchronize with the previous owner of CPU Lock.
+            //
+            // The semantics of `compiler_fence` we need here for this to work
+            // might be more strict than what `compiler_fence`'s documentation
+            // ("the compiler may be disallowed from moving reads or writes from
+            // before or after the call to the other side of the call to
+            // `compiler_fence`"; but it doesn't say it can't be moved past
+            // `basepri::write`, which has `options(nomem)`[2] and therefore is
+            // not a memory operation) and the C++ memory model ("memory
+            // synchronization ordering of non-atomic and relaxed atomic
+            // accesses"[3] but there's no atomic access here) say. But on the
+            // other hand, there's a code comment[1] from the `cortex-m` package
+            // (maintained by Rust's official embedded devices WG[4]) suggesting
+            // that `compiler_fence` can in fact prevent the reordering as
+            // intended. We're going to take their word for it since we are
+            // using this package anyway.
+            //
+            // [1]: https://github.com/rust-embedded/cortex-m/blob/92552c73d3b56dc86007450633950d16ebe0e495/asm/inline.rs#L36
+            // [2]: https://github.com/rust-embedded/cortex-m/blob/92552c73d3b56dc86007450633950d16ebe0e495/asm/inline.rs#L243
+            // [3]: https://en.cppreference.com/w/cpp/atomic/atomic_signal_fence
+            // [4]: https://github.com/rust-embedded/wg
+            compiler_fence(Ordering::Acquire);
             return;
         }
 
@@ -407,6 +435,9 @@ impl State {
     unsafe fn leave_cpu_lock_inner<Traits: PortInstance>() {
         #[cfg(not(any(armv6m, armv8m_base)))]
         if Traits::CPU_LOCK_PRIORITY_MASK > 0 {
+            // Synchronize with the next owner of CPU Lock.
+            compiler_fence(Ordering::Release);
+
             // Set `BASEPRI` to `0` (no masking)
             unsafe { cortex_m::register::basepri::write(0) };
             return;
