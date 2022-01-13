@@ -171,6 +171,10 @@ impl State {
     pub unsafe fn yield_cpu<Traits: PortInstance>(&'static self) {
         // Safety: See `use_port!`
         cortex_m::peripheral::SCB::set_pendsv();
+
+        // Technically this DSB isn't required for correctness, but ensures
+        // PendSV is taken before the next operation.
+        cortex_m::asm::dsb();
     }
 
     pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
