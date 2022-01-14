@@ -169,12 +169,18 @@ impl State {
     }
 
     pub unsafe fn yield_cpu<Traits: PortInstance>(&'static self) {
+        // Ensure preceding memory operations are visible to the PendSV handler
+        compiler_fence(Ordering::Release);
+
         // Safety: See `use_port!`
         cortex_m::peripheral::SCB::set_pendsv();
 
         // Technically this DSB isn't required for correctness, but ensures
         // PendSV is taken before the next operation.
         cortex_m::asm::dsb();
+
+        // Ensure the PendSV handler's memory operations are visible to us
+        compiler_fence(Ordering::Acquire);
     }
 
     pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
