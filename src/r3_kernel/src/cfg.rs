@@ -41,48 +41,85 @@ macro_rules! build {
 
         type System = $crate::System<$Traits>;
 
-        const fn build_cfg_pre() -> r3_core::kernel::cfg::KernelStaticParams<System> {
+        // Kernel-independent configuration process
+        // ---------------------------------------------------------------------
+
+        const fn build_cfg_phase1() -> r3_core::kernel::cfg::CfgPhase1Data<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut my_cfg = unsafe { CfgBuilder::new() };
-            let mut cfg = r3_core::kernel::cfg::Cfg::new(&mut my_cfg);
+            r3_core::kernel::cfg::cfg_phase1!(
+                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg));
             $configure(&mut cfg);
             CfgBuilder::finalize_in_cfg(&mut cfg);
 
             // Get `KernelStaticParams`, which is necessary for the later phases
             // of the finalization. Throw away `my_cfg` for now.
-            cfg.finish_pre()
+            cfg.finish_phase1()
         }
 
-        // Implement `KernelStatic` on `$Traits` using the information
-        // collected in the first part of the finalization
-        r3_core::kernel::cfg::attach_static!(
-            build_cfg_pre(),
-            impl KernelStatic<System> for $Traits,
+        // Implement `CfgPhase1` on `$Traits` using the information
+        // collected in phase 1
+        r3_core::kernel::cfg::attach_phase1!(
+            build_cfg_phase1(),
+            impl CfgPhase1<System> for $Traits,
         );
 
-        // The later part of the finalization continues using the
-        // `KernelStatic` implementation
-        const fn build_cfg_post() -> (CfgBuilderInner<$Traits>, $IdMap) {
+        const fn build_cfg_phase2() -> r3_core::kernel::cfg::CfgPhase2Data<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut my_cfg = unsafe { CfgBuilder::new() };
-            let mut cfg = r3_core::kernel::cfg::Cfg::new(&mut my_cfg);
+            r3_core::kernel::cfg::cfg_phase2!(
+                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg));
+            $configure(&mut cfg);
+            CfgBuilder::finalize_in_cfg(&mut cfg);
+
+            // Get `KernelStaticParams`, which is necessary for the later phases
+            // of the finalization. Throw away `my_cfg` for now.
+            cfg.finish_phase2()
+        }
+
+        // Implement `CfgPhase2` on `$Traits` using the information
+        // collected in phase 2
+        r3_core::kernel::cfg::attach_phase2!(
+            build_cfg_phase2(),
+            impl CfgPhase2<System> for $Traits,
+        );
+
+        const fn build_cfg_phase3() -> (
+            CfgBuilderInner<$Traits>,
+            $IdMap,
+            r3_core::kernel::cfg::CfgPhase3Data<System>,
+        ) {
+            // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
+            let mut my_cfg = unsafe { CfgBuilder::new() };
+            r3_core::kernel::cfg::cfg_phase3!(
+                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg));
             let id_map = $configure(&mut cfg);
             CfgBuilder::finalize_in_cfg(&mut cfg);
 
-            // Throw away the returned `KernelStaticParams` because we already
-            // have one and used it for the first phase
-            cfg.finish_pre();
-
-            // Complete the finalization. This makes the final changes to
+            // Do the finalization. This makes the final changes to
             // `my_cfg`
-            cfg.finish_interrupt();
-            cfg.finish_post();
+            cfg.finish_phase3_interrupt();
+            let phase3_data = cfg.finish_phase3();
 
-            (my_cfg.into_inner(), id_map)
+            (my_cfg.into_inner(), id_map, phase3_data)
         }
 
-        const CFG_OUTPUT: (CfgBuilderInner<$Traits>, $IdMap) = build_cfg_post();
+        const CFG_OUTPUT: (
+            CfgBuilderInner<$Traits>,
+            $IdMap,
+            r3_core::kernel::cfg::CfgPhase3Data<System>,
+        ) = build_cfg_phase3();
         const CFG: CfgBuilderInner<$Traits> = CFG_OUTPUT.0;
+
+        // Implement `KernelStatic` on `$Traits` using the information
+        // collected in phase 3
+        r3_core::kernel::cfg::attach_phase3!(
+            CFG_OUTPUT.2,
+            impl KernelStatic<System> for $Traits,
+        );
+
+        // Kernel-specific configuration process
+        // ---------------------------------------------------------------------
 
         // Set up task priority levels
         type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;

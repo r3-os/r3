@@ -4,11 +4,15 @@ use crate::{
     utils::{ComptimeVec, Init, PhantomInvariant},
 };
 
+macro overview_ref() {
+    "See [`KernelStatic`][]'s documentation for an overview of the
+    configuration process and the traits involved."
+}
+
 /// Wraps a [`raw_cfg::CfgBase`] to provide higher-level services.
 pub struct Cfg<'c, C: raw_cfg::CfgBase> {
     raw: &'c mut C,
-    finish_phase: u8,
-    finish_interrupt_phase: u8,
+    st: CfgSt,
     pub(super) startup_hooks: ComptimeVec<hook::CfgStartupHook>,
     pub(super) hunk_pool_len: usize,
     pub(super) hunk_pool_align: usize,
@@ -16,19 +20,46 @@ pub struct Cfg<'c, C: raw_cfg::CfgBase> {
     pub(super) interrupt_handlers: ComptimeVec<interrupt::CfgInterruptHandler>,
 }
 
+#[derive(PartialEq, Eq)]
+enum CfgSt {
+    Phase1,
+    Phase2,
+    Phase3 { interrupts: bool },
+}
+
 impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// Construct `Cfg`.
-    pub const fn new(raw: &'c mut C) -> Self {
+    const fn new(raw: &'c mut C, st: CfgSt) -> Self {
         Self {
             raw,
-            finish_phase: 0,
-            finish_interrupt_phase: 0,
+            st,
             startup_hooks: ComptimeVec::new(),
             hunk_pool_len: 0,
             hunk_pool_align: 1,
             interrupt_lines: ComptimeVec::new(),
             interrupt_handlers: ComptimeVec::new(),
         }
+    }
+
+    #[doc(hidden)]
+    pub const fn __internal_new_phase1(raw: &'c mut C, _dummy: &'c mut ()) -> Self {
+        Self::new(raw, CfgSt::Phase1)
+    }
+
+    #[doc(hidden)]
+    pub const fn __internal_new_phase2(raw: &'c mut C, _dummy: &'c mut ()) -> Self
+    where
+        C::System: CfgPhase1,
+    {
+        Self::new(raw, CfgSt::Phase2)
+    }
+
+    #[doc(hidden)]
+    pub const fn __internal_new_phase3(raw: &'c mut C, _dummy: &'c mut ()) -> Self
+    where
+        C::System: CfgPhase2,
+    {
+        Self::new(raw, CfgSt::Phase3 { interrupts: false })
     }
 
     /// Mutably borrow the underlying `C`.
@@ -55,23 +86,23 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         self.raw.num_task_priority_levels(new_value);
     }
 
-    /// Perform the first half of the finalization.
+    /// Finalize `self` for the phase 1 configuration.
     ///
-    /// This method makes the second last set of changes to the referenced `C:
-    /// impl CfgBase`. It also constructs [`KernelStaticParams`], which must be
-    /// passed to [`attach_static!`].
-    pub const fn finish_pre(&mut self) -> KernelStaticParams<C::System> {
+    /// This method constructs [`CfgPhase1Data`], which must be passed to
+    /// [`attach_phase1!`][] to proceed with [the kernel-independent
+    /// configuration process][1].
+    ///
+    /// [1]: KernelStatic
+    pub const fn finish_phase1(&mut self) -> CfgPhase1Data<C::System> {
         assert!(
-            self.finish_phase == 0,
-            "finalization is already in progress (note: application code should \
-            not  initiate the finalization!)"
+            matches!(self.st, CfgSt::Phase1),
+            "this `Cfg` wasn't made for phase 1 configuration"
         );
-        self.finish_phase = 1;
 
         hook::sort_hooks(&mut self.startup_hooks);
         interrupt::sort_handlers(&mut self.interrupt_handlers);
 
-        KernelStaticParams {
+        CfgPhase1Data {
             _phantom: Init::INIT,
             startup_hooks: self.startup_hooks.map(hook::CfgStartupHook::to_attr),
             hunk_pool_len: self.hunk_pool_len,
@@ -80,27 +111,51 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         }
     }
 
+    /// Finalize `self` for the phase 2 configuration.
+    ///
+    /// This method constructs [`CfgPhase2Data`], which must be passed to
+    /// [`attach_phase2!`][] to proceed with [the kernel-independent
+    /// configuration process][1].
+    ///
+    /// [1]: KernelStatic
+    pub const fn finish_phase2(&mut self) -> CfgPhase2Data<C::System> {
+        assert!(
+            matches!(self.st, CfgSt::Phase2),
+            "this `Cfg` wasn't made for phase 2 configuration"
+        );
+
+        hook::sort_hooks(&mut self.startup_hooks);
+        interrupt::sort_handlers(&mut self.interrupt_handlers);
+
+        CfgPhase2Data {
+            _phantom: Init::INIT,
+        }
+    }
+
     /// Perform additional finalization tasks for interrupt line configuration.
     ///
-    /// This method must be called after `finish_pre` and before `finish_post`
+    /// This method must be called before [`Self::finish_phase3`]
     /// if `C` implements [`CfgInterruptLine`].
     ///
     /// [`CfgInterruptLine`]: raw_cfg::CfgInterruptLine
-    pub const fn finish_interrupt(&mut self)
+    pub const fn finish_phase3_interrupt(&mut self)
     where
         C: ~const raw_cfg::CfgInterruptLine,
-        C::System: KernelStatic + raw::KernelInterruptLine,
+        C::System: CfgPhase2 + raw::KernelInterruptLine,
     {
-        assert!(
-            self.finish_phase == 1,
-            "pre-finalization (`Cfg::finish_pre`) isn't done yet on this `Cfg`"
-        );
-        assert!(
-            self.finish_interrupt_phase == 0,
-            "interrupt line finalization (`Cfg::finish_post_interrupt`) was \
-            already done on this `Cfg`"
-        );
-        self.finish_interrupt_phase = 1;
+        match &mut self.st {
+            CfgSt::Phase3 { interrupts } => {
+                assert!(
+                    !*interrupts,
+                    "interrupt line finalization (`Cfg::finish_phase3_interrupt`)
+                    has already been done on this `Cfg`"
+                );
+                *interrupts = true;
+            }
+            _ => {
+                panic!("this `Cfg` wasn't made for phase 3 configuration");
+            }
+        }
 
         interrupt::panic_if_unmanaged_safety_is_violated::<C::System>(
             &self.interrupt_lines,
@@ -135,46 +190,53 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         self.interrupt_handlers = ComptimeVec::new();
     }
 
-    /// Perform the second half of the finalization.
+    /// Finalize `self` for the phase 3 configuration.
     ///
     /// This method makes the last set of changes to the referenced `C: impl
-    /// CfgBase`.
+    /// CfgBase`. It also constructs [`CfgPhase3Data`], which must be passed to
+    /// [`attach_phase3!`][] to complete [the kernel-independent configuration
+    /// process][1].
     ///
-    /// The finalization is divided as such so that `finish_post` can use the
-    /// result of [`attach_static!`], which is derived from the product of
-    /// [`Self::finish_pre`].
-    pub const fn finish_post(self)
+    /// [1]: KernelStatic
+    pub const fn finish_phase3(self) -> CfgPhase3Data<C::System>
     where
         C: ~const raw_cfg::CfgBase,
-        C::System: KernelStatic,
+        C::System: CfgPhase2,
     {
         assert!(
-            self.finish_phase == 1,
-            "pre-finalization (`Cfg::finish_pre`) isn't done yet on this `Cfg`"
+            matches!(self.st, CfgSt::Phase3 { .. }),
+            "this `Cfg` wasn't made for phase 3 configuration"
         );
 
         assert!(
             self.interrupt_lines.is_empty() && self.interrupt_handlers.is_empty(),
-            "missing call to `Cfg::finish_interrupt`"
+            "missing call to `Cfg::finish_phase3_interrupt`"
         );
 
         // Register the combined startup hook
         self.raw.startup_hook_define(startup_hook::<C::System>);
 
         #[inline(always)]
-        fn startup_hook<System: KernelStatic>() {
+        fn startup_hook<System: CfgPhase2>() {
             for startup_hook in System::CFG_STARTUP_HOOKS.iter() {
                 (startup_hook.start)(startup_hook.param);
             }
         }
+
+        CfgPhase3Data {
+            _phantom: Init::INIT,
+        }
     }
 }
 
-/// The inputs to [`attach_static!`].
+/// The inputs to [`attach_phase1!`].
 ///
 /// The members of this trait are implementation details and not meant to be
-/// used externally.
-pub struct KernelStaticParams<System> {
+/// used externally. They are nevertheless exposed for use by macro and for
+/// transparency.
+///
+#[doc = overview_ref!()]
+pub struct CfgPhase1Data<System> {
     _phantom: PhantomInvariant<System>,
     pub startup_hooks: ComptimeVec<hook::StartupHookAttr>,
     pub hunk_pool_len: usize,
@@ -182,73 +244,183 @@ pub struct KernelStaticParams<System> {
     pub interrupt_handlers: ComptimeVec<interrupt::CfgInterruptHandler>,
 }
 
+/// The inputs to [`attach_phase2!`].
+///
+/// The members of this trait are implementation details and not meant to be
+/// used externally. They are nevertheless exposed for use by macro and for
+/// transparency.
+///
+#[doc = overview_ref!()]
+pub struct CfgPhase2Data<System> {
+    _phantom: PhantomInvariant<System>,
+}
+
+/// The inputs to [`attach_phase3!`].
+///
+/// The members of this trait are implementation details and not meant to be
+/// used externally. They are nevertheless exposed for use by macro and for
+/// transparency.
+///
+#[doc = overview_ref!()]
+pub struct CfgPhase3Data<System> {
+    _phantom: PhantomInvariant<System>,
+}
+
 /// Associates static data to a system type.
 ///
 /// The members of this trait are implementation details and not meant to be
-/// implemented externally. Use [`attach_static!`] or [`DelegateKernelStatic`]
+/// used externally. Use [`attach_phase3!`] or [`DelegateKernelStatic`]
 /// to implement this trait.
 ///
 /// # Derivation and Usage
 ///
-/// An implementation of this trait is derived from [`Cfg::finish_pre`][]'s
-/// output and consumed by [`Cfg::finish_post`][] through a type parameter. The
-/// following diagram shows the intended data flow.
+/// This is one of the traits implemented by **the kernel-independent
+/// configuration process**. This process is divided into three phases. The
+/// first phase involves the following steps, mostly happening in a
+/// macro-generated function (let's call this `do_cfg_phase1`):
+///
+///  - `do_cfg_phase1` constructs a `C: const `[`CfgBase`][] and binds it to a
+///    local variable `c`.
+///  - `do_cfg_phase1` invokes [`cfg_phase1!`][], passing `&mut c`, to construct
+///    and bind a [`Cfg`][]`<C>` to a local variable `b`.
+///  - `do_cfg_phase1` invokes an application-provided configuration function to
+///    register objects through `b`.
+///  - `do_cfg_phase1` calls [`Cfg::finish_phase1`][] to obtain a
+///    [`CfgPhase1Data`][].
+///  - `do_cfg_phase1` returns this `CfgPhase1Data`.
+///  - Using this `CfgPhase1Data`, [`attach_phase1!`][] produces `static` items
+///    and an implementation of [`CfgPhase1`][] for `C::System` (directly or
+///    indirectly through [`DelegateKernelStatic`]).
+///
+/// [`CfgBase`]: raw_cfg::CfgBase
+///
+/// The remaining phases repeat these steps using the prospective macros and
+/// functions as well as the constant values derived so far (through the
+/// implemented traits), each time recreating `C` and `Cfg<C>` from scratch.
+/// The final phase produces the finalized `C`, which the kernel-specific
+/// configuration process can use to complete the rest of the configuration
+/// process. (`C`s produced by other phases are incomplete and therefore
+/// should be disregarded.) The final phase also produces an implementation of
+/// `KernelStatic` for `C::System`.
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Rationale:**
+/// > Usually `const fn`s can't use constant values derived by themselves as
+/// > constant values, but splitting into multiple phases makes this possible.
+/// >
+/// > The current implementation doesn't fully utilize all of the three phases.
+/// > The extra phases are kept to leave room for future internal changes.
+///
+/// The following diagram outlines the data flow in this process.
 ///
 /// <center>
 ///
 #[doc = svgbobdoc::transform!(
 /// ```svgbob
-///                   .--------.
-///                   | Cfg<C> |
-///                   '--------'
-///                       |
-///                       v
-///                "Cfg::finish_pre"
-///                       |
-///            .----------+----------.
-///            |                     |
-///            v                     v
-///       .--------.     .-----------------------.
-///       | Cfg<C> |     | KernelStaticParams<C> |
-///       '--------'     '-----------------------'
-///            |                     |
-///            |                     v
-///            |               "attach_static!"
-///            |                     |
-///            |                     v
-///            |           .-------------------.
-///            |           | impl KernelStatic |
-///            |           |   for C::System   |
-///            |           '-------------------'
-///            v                     |
-///  "Cfg::finish_interrupt"<--------+
-///      "(optional)"                |
-///            |                     |
-///            v                     |
-///     "Cfg::finish_post"<----------+
-///            |                     |
-///            v                     v
-///          .---.             Hunk API, etc.
-///          | C |
-///          '---'
-///            |
-///            v
-///      Kernel-specific
-///   configuration process
+///                        Kernel-provided            |     Application-provided
+///                      configuration macro          |    configuration function
+///         ---------------------------------------------------------------------------
+///
+///                   C                    "Cfg<C>"              "&mut Cfg<C>"
+///
+///                   │                       │                       │
+///                  ┌┴┐C::new                │                       │
+///                  │ │     "cfg_phase1!"    │                       │
+///                  │ │ ------------------> ┌┴┐     $configure       │
+///                  │ │                     │ │ ------------------> ┌┴┐
+///                  │ │       finish_phase1 │ │                     └┬┘
+///                  └┬┘          ,--------- └┬┘                      │
+///                   │           |           │                       │
+///                   │           v           │                       │
+///                   │  .-----------------.  │                       │
+///                   │  |  CfgPhase1Data  |  │                       │
+///                   │  '-----------------'  │                       │
+///                   │           |           │                       │
+///                   │           v           │                       │
+///                   │    "attach_phase1!"   │                       │
+///                   │           |           │                       │
+///                   │           v           │                       │
+///                   │ .-------------------. │                       │
+///                   │ |  impl CfgPhase1   | │                       │
+///                   │ |   for C::System   | │                       │
+///                   │ '-------------------' │                       │
+///                   │        |              │                       │
+///                  ┌┴┐C::new |              │                       │
+///                  │ │       v "cfg_phase2!"│                       │
+///                  │ │ ------+-----------> ┌┴┐     $configure       │
+///                  │ │                     │ │ ------------------> ┌┴┐
+///                  │ │       finish_phase2 │ │                     └┬┘
+///                  └┬┘          .--------- └┬┘                      │
+///                   │           |           │                       │
+///                   │           v           │                       │
+///                   │  .-----------------.  │                       │
+///                   │  |  CfgPhase2Data  |  │                       │
+///                   │  '-----------------'  │                       │
+///                   │           |           │                       │
+///                   │           v           │                       │
+///                   │    "attach_phase2!"   │                       │
+///                   │           |           │                       │
+///                   │           v           │                       │
+///                   │ .-------------------. │                       │
+///                   │ |  impl CfgPhase2   | │                       │
+///                   │ |   for C::System   | │                       │
+///                   │ '-------------------' │                       │
+///                   │        |              │                       │
+///                  ┌┴┐C::new |              │                       │
+///                  │ │       v "cfg_phase3!"│                       │
+///                  │ │ ------+-----------> ┌┴┐     $configure       │
+///                  │ │                     │ │ ------------------> ┌┴┐
+///                  │ │    finish_phase3    │ │                     └┬┘
+///                  │ │ <--------+--------- └┬┘                      │
+///          .------ └┬┘          |           │                       │
+///          |        │           v           │                       │
+///          v        │  .-----------------.  │                       │
+///   Kernel-specific │  |  CfgPhase3Data  |  │                       │
+///    configuration  │  '-----------------'  │                       │
+///       process     │           |           │                       │
+///                   │           v           │                       │
+///                   │    "attach_phase3!"   │                       │
+///                   │           |           │                       │
+///                   │           v           │                       │
+///                   │ .-------------------. │                       │
+///                   │ | impl KernelStatic | │                       │
+///                   │ |   for C::System   | │                       │
+///                   │ '-------------------' │                       │
+///                   │                       │                       │
 /// ```
 )]
 ///
 /// </center>
 ///
 #[doc = include_str!("../common.md")]
-pub trait KernelStatic<System = Self> {
+pub trait KernelStatic<System = Self>: CfgPhase2<System> {}
+
+/// The second precursor to [`KernelStatic`][].
+///
+/// The members of this trait are implementation details and not meant to be
+/// used externally. Use [`attach_phase2!`] or [`DelegateKernelStatic`]
+/// to implement this trait.
+///
+#[doc = overview_ref!()]
+pub trait CfgPhase2<System = Self>: CfgPhase1<System> {}
+
+/// The first precursor to [`KernelStatic`][].
+///
+/// The members of this trait are implementation details and not meant to be
+/// used externally. Use [`attach_phase1!`] or [`DelegateKernelStatic`]
+/// to implement this trait.
+///
+#[doc = overview_ref!()]
+pub trait CfgPhase1<System = Self> {
     const CFG_STARTUP_HOOKS: &'static [hook::StartupHookAttr];
     const CFG_INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>];
     fn cfg_hunk_pool_ptr() -> *mut u8;
 }
 
 /// The marker trait to generate a forwarding implementation of
-/// [`KernelStatic`][]`<System>`.
+/// [`KernelStatic`][]`<System>` as well as [`CfgPhase1`][]`<System>` and
+/// [`CfgPhase2`][]`<System>`.
 ///
 /// This is useful for circumventing [the orphan rules][1]. Suppose we have a
 /// kernel crate `r3_kernel` and an application crate `app`, and `r3_kernel`
@@ -303,10 +475,23 @@ pub trait KernelStatic<System = Self> {
 ///
 /// [1]: https://rust-lang.github.io/rfcs/2451-re-rebalancing-coherence.html#concrete-orphan-rules
 pub trait DelegateKernelStatic<System> {
-    type Target: KernelStatic<System>;
+    type Target;
 }
 
-impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T {
+impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T where
+    T::Target: KernelStatic<System>
+{
+}
+
+impl<T: DelegateKernelStatic<System>, System> CfgPhase2<System> for T where
+    T::Target: CfgPhase2<System>
+{
+}
+
+impl<T: DelegateKernelStatic<System>, System> CfgPhase1<System> for T
+where
+    T::Target: CfgPhase1<System>,
+{
     const CFG_STARTUP_HOOKS: &'static [hook::StartupHookAttr] = T::Target::CFG_STARTUP_HOOKS;
     const CFG_INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
         T::Target::CFG_INTERRUPT_HANDLERS;
@@ -317,22 +502,84 @@ impl<T: DelegateKernelStatic<System>, System> KernelStatic<System> for T {
     }
 }
 
+/// Construct [`Cfg`]`<$RawCfg>` for the phase 3 configuration.
+///
+/// `<$RawCfg as `[`CfgBase`][]`>::System` must implement [`CfgPhase2`][].
+///
+/// [`CfgBase`]: raw_cfg::CfgBase
+pub macro cfg_phase3(let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr)) {
+    let mut dummy = ();
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase3(&mut *$raw_cfg, &mut dummy);
+}
+
+/// Construct [`Cfg`]`<$RawCfg>` for the phase 2 configuration.
+///
+/// `<$RawCfg as `[`CfgBase`][]`>::System` must implement [`CfgPhase1`][].
+///
+/// [`CfgBase`]: raw_cfg::CfgBase
+pub macro cfg_phase2(let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr)) {
+    let mut dummy = ();
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase2(&mut *$raw_cfg, &mut dummy);
+}
+
+/// Construct [`Cfg`]`<$RawCfg>` for the phase 1 configuration.
+pub macro cfg_phase1(let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr)) {
+    let mut dummy = ();
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase1(&mut *$raw_cfg, &mut dummy);
+}
+
 /// Implement [`KernelStatic`] on `$Ty` using the given `$params:
-/// `[`KernelStaticParams`]`<$System>` to associate static data with the system
+/// `[`CfgPhase3Data`]`<$System>` to associate static data with the system
 /// type `$System`.
 ///
 /// This macro produces `static` items and a `KernelStatic<$System>`
 /// implementation for `$Ty`. It doesn't support generics, which means this
 /// macro should be invoked in an application crate, where the concrete system
 /// type is known.
-pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $(,)?) {
+///
+#[doc = overview_ref!()]
+pub macro attach_phase3($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $(,)?) {
+    const _: () = {
+        const _: $crate::kernel::cfg::CfgPhase3Data<$System> = $params;
+        impl $crate::kernel::cfg::KernelStatic<$System> for $Ty {}
+    };
+}
+
+/// Implement [`CfgPhase2`] on `$Ty` using the given `$params:
+/// `[`CfgPhase2Data`]`<$System>` to associate static data with the system
+/// type `$System`.
+///
+/// This macro produces `static` items and a `CfgPhase2<$System>`
+/// implementation for `$Ty`. It doesn't support generics, which means this
+/// macro should be invoked in an application crate, where the concrete system
+/// type is known.
+///
+#[doc = overview_ref!()]
+pub macro attach_phase2($params:expr, impl CfgPhase2<$System:ty> for $Ty:ty $(,)?) {
+    const _: () = {
+        const _: $crate::kernel::cfg::CfgPhase2Data<$System> = $params;
+        impl $crate::kernel::cfg::CfgPhase2<$System> for $Ty {}
+    };
+}
+
+/// Implement [`CfgPhase1`] on `$Ty` using the given `$params:
+/// `[`CfgPhase1Data`]`<$System>` to associate static data with the system
+/// type `$System`.
+///
+/// This macro produces `static` items and a `CfgPhase1<$System>`
+/// implementation for `$Ty`. It doesn't support generics, which means this
+/// macro should be invoked in an application crate, where the concrete system
+/// type is known.
+///
+#[doc = overview_ref!()]
+pub macro attach_phase1($params:expr, impl CfgPhase1<$System:ty> for $Ty:ty $(,)?) {
     const _: () = {
         use $crate::{
             kernel::{cfg, hook, interrupt},
             utils::{for_times::U, AlignedStorage, Init, RawCell},
         };
 
-        const STATIC_PARAMS: cfg::KernelStaticParams<$System> = $params;
+        const STATIC_PARAMS: cfg::CfgPhase1Data<$System> = $params;
 
         // Instantiate hunks
         static HUNK_POOL: RawCell<
@@ -372,7 +619,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
             >()
         };
 
-        impl $crate::kernel::cfg::KernelStatic<$System> for $Ty {
+        impl $crate::kernel::cfg::CfgPhase1<$System> for $Ty {
             const CFG_STARTUP_HOOKS: &'static [hook::StartupHookAttr] = &STARTUP_HOOKS;
 
             const CFG_INTERRUPT_HANDLERS: &'static [Option<interrupt::InterruptHandlerFn>] =
@@ -386,7 +633,7 @@ pub macro attach_static($params:expr, impl KernelStatic<$System:ty> for $Ty:ty $
     };
 }
 
-// FIXME: A false `unused_macros`; it's actually used by `attach_static!`
+// FIXME: A false `unused_macros`; it's actually used by `attach_*!`
 #[allow(unused_macros)]
 macro array_item_from_fn($(
     $static_or_const:tt $out:ident: [$ty:ty; _] = (0..$len:expr).map(|$var:ident| $map:expr);
