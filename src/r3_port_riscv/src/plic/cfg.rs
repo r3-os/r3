@@ -5,9 +5,10 @@ use super::plic_regs;
 
 /// Implement [`InterruptController`] and [`Plic`] on the given kernel trait
 /// type using the Platform-Level Interrupt Controller (PLIC) on the target.
-/// **Requires [`PlicOptions`].**
+/// **Requires [`PlicOptions`] and [`InterruptControllerToPort`].**
 ///
 /// [`InterruptController`]: crate::InterruptController
+/// [`InterruptControllerToPort`]: crate::InterruptControllerToPort
 ///
 /// This macro adds `const fn configure_plic(b: &mut CfgBuilder<Self>)` to the
 /// system type. **It should be called by your application's configuration

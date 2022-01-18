@@ -251,3 +251,20 @@ pub trait InterruptController {
         Err(QueryInterruptLineError::BadParam)
     }
 }
+
+/// An API intended to be used by an interrupt controller driver. Implemented by
+/// [`use_port!`][].
+///
+/// # Safety
+///
+/// These methods are only intended to be called by the [`INTERRUPT_EXTERNAL`]
+/// interrupt handler of the interrupt controller driver attached to `Self`.
+pub trait InterruptControllerToPort {
+    /// Enable external interrupts by setting `mie.MEIE` or its counterpart
+    /// for [`ThreadingOptions::PRIVILEGE_LEVEL`].
+    unsafe fn enable_external_interrupts();
+
+    /// Disable external interrupts by clearing `mie.MEIE` or its counterpart
+    /// for [`ThreadingOptions::PRIVILEGE_LEVEL`].
+    unsafe fn disable_external_interrupts();
+}

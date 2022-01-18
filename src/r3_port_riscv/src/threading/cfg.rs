@@ -48,12 +48,13 @@ pub const PRIVILEGE_LEVEL_SUPERVISOR: u8 = 0b01;
 pub const PRIVILEGE_LEVEL_USER: u8 = 0b00;
 
 /// Define a kernel trait type implementing [`PortThreading`],
-/// [`PortInterrupts`], and [`EntryPoint`].
+/// [`PortInterrupts`], [`InterruptControllerToPort`], and [`EntryPoint`].
 /// **Requires [`ThreadingOptions`], [`Timer`], and [`InterruptController`].**
 ///
 /// [`PortThreading`]: r3_kernel::PortThreading
 /// [`PortInterrupts`]: r3_kernel::PortInterrupts
 /// [`EntryPoint`]: crate::EntryPoint
+/// [`InterruptControllerToPort`]: crate::InterruptControllerToPort
 /// [`InterruptController`]: crate::InterruptController
 /// [`Timer`]: crate::Timer
 #[macro_export]
@@ -76,6 +77,7 @@ macro_rules! use_port {
             use $crate::{
                 threading::imp::{State, TaskState, PortInstance, CsrSet, NumTy},
                 ThreadingOptions, EntryPoint, InterruptController,
+                InterruptControllerToPort,
             };
 
             pub(super) static PORT_STATE: State = State::new();
@@ -103,6 +105,16 @@ macro_rules! use_port {
                 }
 
                 const TRAP_HANDLER: unsafe extern "C" fn() -> ! = State::exception_handler::<Self>;
+            }
+
+            impl InterruptControllerToPort for $Traits {
+                unsafe fn enable_external_interrupts() {
+                    unsafe { PORT_STATE.enable_external_interrupts::<Self>() }
+                }
+
+                unsafe fn disable_external_interrupts() {
+                    unsafe { PORT_STATE.disable_external_interrupts::<Self>() }
+                }
             }
 
             // Assume `$Traits: KernelTraits`

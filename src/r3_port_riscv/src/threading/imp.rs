@@ -1048,6 +1048,16 @@ impl State {
         }
     }
 
+    #[inline]
+    pub unsafe fn enable_external_interrupts<Traits: PortInstance>(&self) {
+        Traits::Csr::xie().set(Traits::Csr::XIE_XEIE);
+    }
+
+    #[inline]
+    pub unsafe fn disable_external_interrupts<Traits: PortInstance>(&self) {
+        Traits::Csr::xie().clear(Traits::Csr::XIE_XEIE);
+    }
+
     /// Implements [`crate::EntryPoint::exception_handler`].
     #[naked]
     pub unsafe extern "C" fn exception_handler<Traits: PortInstance>() -> ! {

@@ -6,10 +6,10 @@ use r3_core::kernel::{
 use r3_kernel::{KernelTraits, System};
 use tock_registers::interfaces::{Readable, Writeable};
 
-use crate::{Plic, INTERRUPT_EXTERNAL, INTERRUPT_PLATFORM_START};
+use crate::{InterruptControllerToPort, Plic, INTERRUPT_EXTERNAL, INTERRUPT_PLATFORM_START};
 
 /// The configuration function.
-pub const fn configure<C, Traits: Plic + KernelTraits>(b: &mut Cfg<C>)
+pub const fn configure<C, Traits: Plic + KernelTraits + InterruptControllerToPort>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgInterruptLine<System = System<Traits>>,
 {
@@ -36,11 +36,11 @@ pub fn init<Traits: Plic>() {
 }
 
 #[inline]
-fn interrupt_handler<Traits: Plic + KernelTraits>(_: usize) {
+fn interrupt_handler<Traits: Plic + KernelTraits + InterruptControllerToPort>(_: usize) {
     if let Some((token, num)) = claim_interrupt::<Traits>() {
         if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(num) {
             if Traits::USE_NESTING {
-                unsafe { riscv::register::mie::set_mext() };
+                unsafe { Traits::enable_external_interrupts() };
             }
 
             // Safety: The interrupt controller driver is responsible for
@@ -49,7 +49,7 @@ fn interrupt_handler<Traits: Plic + KernelTraits>(_: usize) {
             unsafe { handler() };
 
             if Traits::USE_NESTING {
-                unsafe { riscv::register::mie::clear_mext() };
+                unsafe { Traits::disable_external_interrupts() };
             }
         }
 
