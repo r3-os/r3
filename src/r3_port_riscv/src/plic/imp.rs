@@ -30,7 +30,7 @@ pub fn init<Traits: Plic>() {
         plic_regs.interrupt_enable[ctx][i].set(0);
     }
 
-    // Change the priority thread of the current context
+    // Change the priority threshold of the current context
     // to accept all interrupts
     plic_regs.ctxs[Traits::CONTEXT].priority_threshold.set(0);
 }
