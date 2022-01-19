@@ -45,8 +45,8 @@ mod binary_search;
 mod sort;
 pub(crate) use sort::*;
 #[macro_use]
-mod vec;
-pub use vec::*;
+mod alloc;
+pub use alloc::*;
 #[macro_use]
 pub mod for_times;
 

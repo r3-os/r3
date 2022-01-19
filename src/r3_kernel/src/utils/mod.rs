@@ -53,8 +53,8 @@ pub(crate) mod pin;
 mod prio_bitmap;
 mod rawcell;
 #[macro_use]
-mod vec;
-pub use self::{aligned_storage::*, int::*, prio_bitmap::*, rawcell::*, vec::*};
+mod alloc;
+pub use self::{aligned_storage::*, alloc::*, int::*, prio_bitmap::*, rawcell::*};
 pub use r3_core::utils::{Init, ZeroInit};
 
 /// A "type function" producing a type.
