@@ -1,11 +1,11 @@
 use quickcheck_macros::quickcheck;
 use std::{fmt, prelude::v1::*};
 
-use super::*;
-use crate::{
+use super::super::{
     tests::ShadowAllocator,
-    utils::{nonnull_slice_end, nonnull_slice_len},
+    utils::{self, nonnull_slice_end, nonnull_slice_len},
 };
+use super::*;
 
 trait TestFlexSource: FlexSource {
     type Options: quickcheck::Arbitrary;
@@ -293,7 +293,7 @@ macro_rules! gen_test {
                                 sa!().allocate(layout, ptr);
 
                                 // Fill it with dummy data
-                                fill_data(crate::utils::nonnull_slice_from_raw_parts(ptr, len));
+                                fill_data(utils::nonnull_slice_from_raw_parts(ptr, len));
                             }
                         }
                         3..=5 => {
@@ -303,7 +303,7 @@ macro_rules! gen_test {
                                 log::trace!("dealloc {:?}", alloc);
 
                                 // Make sure the stored dummy data is not corrupted
-                                verify_data(crate::utils::nonnull_slice_from_raw_parts(alloc.ptr, alloc.layout.size()));
+                                verify_data(utils::nonnull_slice_from_raw_parts(alloc.ptr, alloc.layout.size()));
 
                                 unsafe { tlsf.deallocate(alloc.ptr, alloc.layout.align()) };
                                 sa!().deallocate(alloc.layout, alloc.ptr);
@@ -330,8 +330,8 @@ macro_rules! gen_test {
                                     log::trace!(" {:?} → {:?}", alloc.ptr, ptr);
 
                                     // Check and refill the dummy data
-                                    verify_data(crate::utils::nonnull_slice_from_raw_parts(ptr, len.min(alloc.layout.size())));
-                                    fill_data(crate::utils::nonnull_slice_from_raw_parts(ptr, len));
+                                    verify_data(utils::nonnull_slice_from_raw_parts(ptr, len.min(alloc.layout.size())));
+                                    fill_data(utils::nonnull_slice_from_raw_parts(ptr, len));
 
                                     sa!().deallocate(alloc.layout, alloc.ptr);
                                     alloc.ptr = ptr;

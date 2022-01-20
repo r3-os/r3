@@ -9,12 +9,12 @@ use core::{
     ptr::{addr_of, NonNull},
 };
 
-use crate::{
+use super::{
     int::BinInteger,
     utils::{nonnull_slice_from_raw_parts, nonnull_slice_len, nonnull_slice_start},
 };
 
-#[cfg_attr(doc, svgbobdoc::transform)]
+#[doc = svgbobdoc::transform!(
 /// The TLSF header (top-level) data structure.
 ///
 /// # Data Structure Overview
@@ -63,6 +63,7 @@ use crate::{
 ///
 /// The maximum block size is `(GRANULARITY << FLLEN) - GRANULARITY`.
 ///
+)]
 #[derive(Debug)]
 pub struct Tlsf<'pool, FLBitmap, SLBitmap, const FLLEN: usize, const SLLEN: usize> {
     fl_bitmap: FLBitmap,
@@ -433,7 +434,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,ignore
     /// use rlsf::Tlsf;
     /// use std::{mem::MaybeUninit, ptr::NonNull};
     /// static mut POOL: MaybeUninit<[u8; 1024]> = MaybeUninit::uninit();
@@ -555,7 +556,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,ignore
     /// use rlsf::Tlsf;
     /// use std::{mem::MaybeUninit, ptr::NonNull};
     ///
@@ -699,7 +700,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,ignore
     /// use rlsf::Tlsf;
     /// use std::mem::MaybeUninit;
     /// let mut pool = [MaybeUninit::uninit(); 1024];
@@ -709,7 +710,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///
     /// The insertred memory block must outlive `self`:
     ///
-    /// ```rust,compile_fail
+    /// ```rust,ignore
     /// use rlsf::Tlsf;
     /// use std::mem::MaybeUninit;
     /// let mut tlsf: Tlsf<u8, u8, 8, 8> = Tlsf::INIT;

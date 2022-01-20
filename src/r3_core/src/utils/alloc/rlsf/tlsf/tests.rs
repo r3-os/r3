@@ -1,8 +1,8 @@
 use quickcheck_macros::quickcheck;
 use std::{mem::MaybeUninit, prelude::v1::*};
 
+use super::super::{tests::ShadowAllocator, utils::nonnull_slice_from_raw_parts};
 use super::*;
-use crate::{tests::ShadowAllocator, utils::nonnull_slice_from_raw_parts};
 
 #[repr(align(64))]
 struct Align<T>(T);
@@ -178,6 +178,8 @@ macro_rules! gen_test {
             fn random_inner(pool_start: usize, pool_size: usize, bytecode: Vec<u8>) -> Option<()> {
                 let mut sa = ShadowAllocator::new();
                 let mut tlsf: TheTlsf = Tlsf::INIT;
+
+                let pool_size = pool_size % 0x1000000;
 
                 let mut pool = Align([MaybeUninit::<u8>::uninit(); 65536]);
                 let pool_ptr;
