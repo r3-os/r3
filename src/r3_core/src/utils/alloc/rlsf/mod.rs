@@ -15,6 +15,26 @@ macro_rules! const_panic {
     };
 }
 
+macro_rules! const_try {
+    ($x:expr) => {
+        if let Some(x) = $x {
+            x
+        } else {
+            return None;
+        }
+    };
+}
+
+macro debug_assert_eq($x:expr, $y:expr) {
+    // FIXME: `*assert_eq!` is not usable in `const fn` yet
+    debug_assert!($x == $y);
+}
+
+macro debug_assert_ne($x:expr, $y:expr) {
+    // FIXME: `*assert_ne!` is not usable in `const fn` yet
+    debug_assert!($x != $y);
+}
+
 use crate::utils::Init;
 
 mod flex;
@@ -24,6 +44,7 @@ mod utils;
 pub use self::{
     flex::*,
     tlsf::{Tlsf, GRANULARITY},
+    utils::nonnull_slice_from_raw_parts,
 };
 
 #[cfg(test)]

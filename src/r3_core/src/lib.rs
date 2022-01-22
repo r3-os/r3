@@ -6,12 +6,16 @@
 #![feature(const_ptr_offset)]
 #![feature(const_swap)]
 #![feature(const_slice_first_last)]
+#![feature(const_replace)]
+#![feature(const_intrinsic_copy)]
 #![feature(maybe_uninit_slice)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_option)]
+#![feature(const_option_ext)]
 #![feature(const_trait_impl)]
 #![feature(const_refs_to_cell)]
+#![feature(const_ptr_as_ref)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`

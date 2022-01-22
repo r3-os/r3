@@ -1,7 +1,7 @@
 //! The TLSF allocator core
 use core::{
     alloc::Layout,
-    debug_assert, debug_assert_eq,
+    debug_assert,
     hint::unreachable_unchecked,
     marker::PhantomData,
     mem::{self, MaybeUninit},
@@ -10,8 +10,12 @@ use core::{
 };
 
 use super::{
+    debug_assert_eq, debug_assert_ne,
     int::BinInteger,
-    utils::{nonnull_slice_from_raw_parts, nonnull_slice_len, nonnull_slice_start},
+    utils::{
+        min_usize, nonnull_slice_from_raw_parts, nonnull_slice_len, nonnull_slice_start,
+        option_nonnull_as_ptr,
+    },
 };
 
 #[doc = svgbobdoc::transform!(
@@ -139,7 +143,7 @@ impl BlockHdr {
     /// `self` must have a next block (it must not be the sentinel block in a
     /// pool).
     #[inline]
-    unsafe fn next_phys_block(&self) -> NonNull<BlockHdr> {
+    const unsafe fn next_phys_block(&self) -> NonNull<BlockHdr> {
         debug_assert!(
             (self.size & SIZE_SENTINEL) == 0,
             "`self` must not be a sentinel"
@@ -186,19 +190,21 @@ struct UsedBlockPad {
 
 impl UsedBlockPad {
     #[inline]
-    fn get_for_allocation(ptr: NonNull<u8>) -> *mut Self {
+    const fn get_for_allocation(ptr: NonNull<u8>) -> *mut Self {
         ptr.cast::<Self>().as_ptr().wrapping_sub(1)
     }
 }
 
-impl<FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, const SLLEN: usize> Default
-    for Tlsf<'_, FLBitmap, SLBitmap, FLLEN, SLLEN>
+impl<FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, const SLLEN: usize> const
+    Default for Tlsf<'_, FLBitmap, SLBitmap, FLLEN, SLLEN>
 {
     fn default() -> Self {
         Self::INIT
     }
 }
 
+// FIXME: `~const` bounds can't appear on any `impl`s but `impl const Trait for
+//        Ty` (This is why the `~const` bounds are applied on each method.)
 impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, const SLLEN: usize>
     Tlsf<'pool, FLBitmap, SLBitmap, FLLEN, SLLEN>
 {
@@ -257,7 +263,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
 
     /// Find the free block list to store a free block of the specified size.
     #[inline]
-    fn map_floor(size: usize) -> Option<(usize, usize)> {
+    const fn map_floor(size: usize) -> Option<(usize, usize)> {
         debug_assert!(size >= GRANULARITY);
         debug_assert!(size % GRANULARITY == 0);
         let fl = USIZE_BITS - GRANULARITY_LOG2 - 1 - size.leading_zeros();
@@ -281,7 +287,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// Find the first free block list whose every item is at least as large
     /// as the specified size.
     #[inline]
-    fn map_ceil(size: usize) -> Option<(usize, usize)> {
+    const fn map_ceil(size: usize) -> Option<(usize, usize)> {
         debug_assert!(size >= GRANULARITY);
         debug_assert!(size % GRANULARITY == 0);
         let mut fl = USIZE_BITS - GRANULARITY_LOG2 - 1 - size.leading_zeros();
@@ -326,7 +332,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// if there isn't such a list, or the list's minimum size is not
     /// representable in `usize`.
     #[inline]
-    fn map_ceil_and_unmap(size: usize) -> Option<usize> {
+    const fn map_ceil_and_unmap(size: usize) -> Option<usize> {
         debug_assert!(size >= GRANULARITY);
         debug_assert!(size % GRANULARITY == 0);
 
@@ -360,12 +366,12 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///    contain `block`.
     ///
     #[cfg_attr(target_arch = "wasm32", inline(never))]
-    unsafe fn link_free_block(&mut self, mut block: NonNull<FreeBlockHdr>, size: usize) {
-        let (fl, sl) = Self::map_floor(size).unwrap_or_else(|| {
-            debug_assert!(false, "could not map size {}", size);
-            // Safety: It's unreachable
-            unreachable_unchecked()
-        });
+    const unsafe fn link_free_block(&mut self, mut block: NonNull<FreeBlockHdr>, size: usize)
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
+        let (fl, sl) = Self::map_floor(size).expect("could not map the size");
         let first_free = &mut self.first_free[fl][sl];
         let next_free = mem::replace(first_free, Some(block));
         block.as_mut().next_free = next_free;
@@ -386,7 +392,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///  - The free block must be currently included in a free block list.
     ///
     #[cfg_attr(target_arch = "wasm32", inline(never))]
-    unsafe fn unlink_free_block(&mut self, mut block: NonNull<FreeBlockHdr>, size: usize) {
+    const unsafe fn unlink_free_block(&mut self, mut block: NonNull<FreeBlockHdr>, size: usize)
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         let next_free = block.as_mut().next_free;
         let prev_free = block.as_mut().prev_free;
 
@@ -397,20 +407,17 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         if let Some(mut prev_free) = prev_free {
             prev_free.as_mut().next_free = next_free;
         } else {
-            let (fl, sl) = Self::map_floor(size).unwrap_or_else(|| {
-                debug_assert!(false, "could not map size {}", size);
-                // Safety: It's unreachable
-                unreachable_unchecked()
-            });
+            let (fl, sl) = Self::map_floor(size).expect("could not map the size");
             let first_free = &mut self.first_free[fl][sl];
 
-            debug_assert_eq!(*first_free, Some(block));
+            // FIXME: `Option<NonNull<T>>: !const PartialEq`
+            debug_assert_eq!(option_nonnull_as_ptr(*first_free), block.as_ptr());
             *first_free = next_free;
 
             if next_free.is_none() {
                 // The free list is now empty - update the bitmap
                 self.sl_bitmap[fl].clear_bit(sl as u32);
-                if self.sl_bitmap[fl] == SLBitmap::ZERO {
+                if self.sl_bitmap[fl].is_zero() {
                     self.fl_bitmap.clear_bit(fl as u32);
                 }
             }
@@ -452,28 +459,37 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// # Panics
     ///
     /// This method never panics.
-    pub unsafe fn insert_free_block_ptr(&mut self, block: NonNull<[u8]>) -> Option<NonZeroUsize> {
+    pub const unsafe fn insert_free_block_ptr(
+        &mut self,
+        block: NonNull<[u8]>,
+    ) -> Option<NonZeroUsize>
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         let len = nonnull_slice_len(block);
 
         // Round up the starting address
         let unaligned_start = block.as_ptr() as *mut u8 as usize;
         let start = unaligned_start.wrapping_add(GRANULARITY - 1) & !(GRANULARITY - 1);
 
-        let len = if let Some(x) = len
-            .checked_sub(start.wrapping_sub(unaligned_start))
-            .filter(|&x| x >= GRANULARITY * 2)
-        {
-            // Round down
-            x & !(GRANULARITY - 1)
+        let len = if let Some(x) = len.checked_sub(start.wrapping_sub(unaligned_start)) {
+            if x >= GRANULARITY * 2 {
+                // Round down
+                x & !(GRANULARITY - 1)
+            } else {
+                // The block is too small
+                return None;
+            }
         } else {
             // The block is too small
             return None;
         };
 
         // Safety: The slice being created here
-        let pool_len = self.insert_free_block_ptr_aligned(NonNull::new_unchecked(
+        let pool_len = const_try!(self.insert_free_block_ptr_aligned(NonNull::new_unchecked(
             core::ptr::slice_from_raw_parts_mut(start as *mut u8, len),
-        ))?;
+        )));
 
         // Safety: The sum should not wrap around because it represents the size
         //         of a memory pool on memory
@@ -483,10 +499,14 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     }
 
     /// [`insert_free_block_ptr`] with a well-aligned slice passed by `block`.
-    pub(crate) unsafe fn insert_free_block_ptr_aligned(
+    pub(crate) const unsafe fn insert_free_block_ptr_aligned(
         &mut self,
         block: NonNull<[u8]>,
-    ) -> Option<NonZeroUsize> {
+    ) -> Option<NonZeroUsize>
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         let start = block.as_ptr() as *mut u8 as usize;
         let mut size = nonnull_slice_len(block);
 
@@ -494,7 +514,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
 
         while size >= GRANULARITY * 2 {
             let chunk_size = if let Some(max_pool_size) = Self::MAX_POOL_SIZE {
-                size.min(max_pool_size)
+                min_usize(size, max_pool_size)
             } else {
                 size
             };
@@ -603,7 +623,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// # Panics
     ///
     /// This method never panics.
-    pub unsafe fn append_free_block_ptr(&mut self, block: NonNull<[u8]>) -> usize {
+    pub const unsafe fn append_free_block_ptr(&mut self, block: NonNull<[u8]>) -> usize
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Round down the length
         let start = nonnull_slice_start(block);
         let len = nonnull_slice_len(block) & !(GRANULARITY - 1);
@@ -639,11 +663,10 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
 
         // The adjacent free block (if there's one) from the preceding memory
         // pool will be assimilated into `[start..end]`.
-        let penultimate_block = (*sentinel_block).common.prev_phys_block.unwrap_or_else(|| {
-            debug_assert!(false, "sentinel block has no `prev_phys_block`");
-            // Safety: It's unreachable
-            unreachable_unchecked()
-        });
+        let penultimate_block = (*sentinel_block)
+            .common
+            .prev_phys_block
+            .expect("sentinel block has no `prev_phys_block`");
         let last_nonassimilated_block;
         if (penultimate_block.as_ref().size & SIZE_USED) == 0 {
             let free_block = penultimate_block.cast::<FreeBlockHdr>();
@@ -672,11 +695,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         // Create a memory pool
         let pool_len = self
             .insert_free_block_ptr_aligned(block)
-            .unwrap_or_else(|| {
-                debug_assert!(false, "`pool_size_to_contain_allocation` is an impostor");
-                // Safety: It's unreachable
-                unreachable_unchecked()
-            })
+            .expect("`pool_size_to_contain_allocation` is an impostor")
             .get();
 
         // Link the created pool's first block to the preceding memory pool's
@@ -724,7 +743,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///
     /// This method never panics.
     #[inline]
-    pub fn insert_free_block(&mut self, block: &'pool mut [MaybeUninit<u8>]) -> impl Send + Sync {
+    pub const fn insert_free_block(&mut self, block: &'pool mut [MaybeUninit<u8>])
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Safety: `block` is a mutable reference, which guarantees the absence
         // of aliasing references. Being `'pool` means it will outlive `self`.
         unsafe { self.insert_free_block_ptr(NonNull::new(block as *mut [_] as _).unwrap()) };
@@ -738,7 +761,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// Returns `None` if no amount of additional memory space can make the
     /// allocation containable.
     #[inline]
-    pub(crate) fn pool_size_to_contain_allocation(layout: Layout) -> Option<usize> {
+    pub(crate) const fn pool_size_to_contain_allocation(layout: Layout) -> Option<usize> {
         // The extra bytes consumed by the header and padding. See
         // `Tlsf::allocate` for details.
         let max_overhead =
@@ -747,9 +770,9 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         // Which segregated list we would look if we were allocating this?
         // And what's the minimum size of a free block required for inclusion
         // in this list?
-        let search_size = layout.size().checked_add(max_overhead)?;
-        let search_size = search_size.checked_add(GRANULARITY - 1)? & !(GRANULARITY - 1);
-        let list_min_size = Self::map_ceil_and_unmap(search_size)?;
+        let search_size = const_try!(layout.size().checked_add(max_overhead));
+        let search_size = const_try!(search_size.checked_add(GRANULARITY - 1)) & !(GRANULARITY - 1);
+        let list_min_size = const_try!(Self::map_ceil_and_unmap(search_size));
 
         // Add the sentinel block size
         list_min_size.checked_add(GRANULARITY)
@@ -763,7 +786,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// # Time Complexity
     ///
     /// This method will complete in constant time.
-    pub fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+    pub const fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>>
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         unsafe {
             // The extra bytes consumed by the header and padding.
             //
@@ -777,17 +804,15 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
                 layout.align().saturating_sub(GRANULARITY / 2) + mem::size_of::<UsedBlockHdr>();
 
             // Search for a suitable free block
-            let search_size = layout.size().checked_add(max_overhead)?;
-            let search_size = search_size.checked_add(GRANULARITY - 1)? & !(GRANULARITY - 1);
-            let (fl, sl) = self.search_suitable_free_block_list_for_allocation(search_size)?;
+            let search_size = const_try!(layout.size().checked_add(max_overhead));
+            let search_size =
+                const_try!(search_size.checked_add(GRANULARITY - 1)) & !(GRANULARITY - 1);
+            let (fl, sl) =
+                const_try!(self.search_suitable_free_block_list_for_allocation(search_size));
 
             // Get a free block: `block`
-            let first_free = self.first_free.get_unchecked_mut(fl).get_unchecked_mut(sl);
-            let block = first_free.unwrap_or_else(|| {
-                debug_assert!(false, "bitmap outdated");
-                // Safety: It's unreachable
-                unreachable_unchecked()
-            });
+            let first_free = &mut self.first_free[fl][sl];
+            let block = first_free.expect("bitmap outdated");
             let mut next_phys_block = block.as_ref().common.next_phys_block();
             let size_and_flags = block.as_ref().common.size;
             let size = size_and_flags /* size_and_flags & SIZE_SIZE_MASK */;
@@ -802,9 +827,9 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
                 next_free.as_mut().prev_free = None;
             } else {
                 // The free list is now empty - update the bitmap
-                let sl_bitmap = self.sl_bitmap.get_unchecked_mut(fl);
+                let sl_bitmap = &mut self.sl_bitmap[fl];
                 sl_bitmap.clear_bit(sl as u32);
-                if *sl_bitmap == SLBitmap::ZERO {
+                if sl_bitmap.is_zero() {
                     self.fl_bitmap.clear_bit(fl as u32);
                 }
             }
@@ -872,11 +897,15 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
 
     /// Search for a non-empty free block list for allocation.
     #[inline]
-    fn search_suitable_free_block_list_for_allocation(
+    const fn search_suitable_free_block_list_for_allocation(
         &self,
         min_size: usize,
-    ) -> Option<(usize, usize)> {
-        let (mut fl, mut sl) = Self::map_ceil(min_size)?;
+    ) -> Option<(usize, usize)>
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
+        let (mut fl, mut sl) = const_try!(Self::map_ceil(min_size));
 
         // Search in range `(fl, sl..SLLEN)`
         sl = self.sl_bitmap[fl].bit_scan_forward(sl as u32) as usize;
@@ -916,7 +945,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///    ([`Layout::align`]) as `align`.
     ///
     #[inline]
-    unsafe fn used_block_hdr_for_allocation(
+    const unsafe fn used_block_hdr_for_allocation(
         ptr: NonNull<u8>,
         align: usize,
     ) -> NonNull<UsedBlockHdr> {
@@ -940,7 +969,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///      `Self::{allocate, reallocate}`.
     ///
     #[inline]
-    unsafe fn used_block_hdr_for_allocation_unknown_align(
+    const unsafe fn used_block_hdr_for_allocation_unknown_align(
         ptr: NonNull<u8>,
     ) -> NonNull<UsedBlockHdr> {
         // Case 1: `align >= GRANULARITY`
@@ -993,7 +1022,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///  - The memory block must have been allocated with the same alignment
     ///    ([`Layout::align`]) as `align`.
     ///
-    pub unsafe fn deallocate(&mut self, ptr: NonNull<u8>, align: usize) {
+    pub const unsafe fn deallocate(&mut self, ptr: NonNull<u8>, align: usize)
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Safety: `ptr` is a previously allocated memory block with the same
         //         alignment as `align`. This is upheld by the caller.
         let block = Self::used_block_hdr_for_allocation(ptr, align).cast::<BlockHdr>();
@@ -1013,7 +1046,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///
     ///  - `ptr` must denote a memory block previously allocated via `self`.
     ///
-    pub(crate) unsafe fn deallocate_unknown_align(&mut self, ptr: NonNull<u8>) {
+    pub(crate) const unsafe fn deallocate_unknown_align(&mut self, ptr: NonNull<u8>)
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Safety: `ptr` is a previously allocated memory block. This is upheld
         //         by the caller.
         let block = Self::used_block_hdr_for_allocation_unknown_align(ptr).cast::<BlockHdr>();
@@ -1023,7 +1060,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// Deallocate a previously allocated memory block. Takes a pointer to
     /// `BlockHdr` instead of a payload pointer.
     #[inline]
-    unsafe fn deallocate_block(&mut self, mut block: NonNull<BlockHdr>) {
+    const unsafe fn deallocate_block(&mut self, mut block: NonNull<BlockHdr>)
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         let mut size = block.as_ref().size & !SIZE_USED;
         debug_assert!((block.as_ref().size & SIZE_USED) != 0);
 
@@ -1090,7 +1131,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         self.link_free_block(block, size);
 
         // Link `new_next_phys_block.prev_phys_block` to `block`
-        debug_assert_eq!(new_next_phys_block, block.as_ref().common.next_phys_block());
+        // FIXME: `NonNull<T>: const PartialEq` isn't provided yet
+        debug_assert_eq!(
+            new_next_phys_block.as_ptr(),
+            block.as_ref().common.next_phys_block().as_ptr()
+        );
         new_next_phys_block.as_mut().prev_phys_block = Some(block.cast());
     }
 
@@ -1104,7 +1149,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///    ([`Layout::align`]) as `align`.
     ///
     #[inline]
-    pub(crate) unsafe fn size_of_allocation(ptr: NonNull<u8>, align: usize) -> usize {
+    pub(crate) const unsafe fn size_of_allocation(ptr: NonNull<u8>, align: usize) -> usize {
         // Safety: `ptr` is a previously allocated memory block with the same
         //         alignment as `align`. This is upheld by the caller.
         let block = Self::used_block_hdr_for_allocation(ptr, align);
@@ -1126,7 +1171,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///  - `ptr` must denote a memory block previously allocated via `Self`.
     ///
     #[inline]
-    pub(crate) unsafe fn size_of_allocation_unknown_align(ptr: NonNull<u8>) -> usize {
+    pub(crate) const unsafe fn size_of_allocation_unknown_align(ptr: NonNull<u8>) -> usize {
         // Safety: `ptr` is a previously allocated memory block.
         //         This is upheld by the caller.
         let block = Self::used_block_hdr_for_allocation_unknown_align(ptr);
@@ -1157,11 +1202,15 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     ///  - The memory block must have been allocated with the same alignment
     ///    ([`Layout::align`]) as `new_layout`.
     ///
-    pub unsafe fn reallocate(
+    pub const unsafe fn reallocate(
         &mut self,
         ptr: NonNull<u8>,
         new_layout: Layout,
-    ) -> Option<NonNull<u8>> {
+    ) -> Option<NonNull<u8>>
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Safety: `ptr` is a previously allocated memory block with the same
         //         alignment as `align`. This is upheld by the caller.
         let block = Self::used_block_hdr_for_allocation(ptr, new_layout.align());
@@ -1177,7 +1226,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         }
 
         // Allocate a whole new memory block
-        let new_ptr = self.allocate(new_layout)?;
+        let new_ptr = const_try!(self.allocate(new_layout));
 
         // Move the existing data into the new location
         debug_assert!(new_layout.size() >= old_size);
@@ -1192,12 +1241,16 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// A subroutine of [`Self::reallocate`] that tries to reallocate a memory
     /// block in-place.
     #[inline]
-    unsafe fn reallocate_inplace(
+    const unsafe fn reallocate_inplace(
         &mut self,
         ptr: NonNull<u8>,
         mut block: NonNull<UsedBlockHdr>,
         new_layout: Layout,
-    ) -> Option<NonNull<u8>> {
+    ) -> Option<NonNull<u8>>
+    where
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // The extra bytes consumed by the header and any padding
         let overhead = ptr.as_ptr() as usize - block.as_ptr() as usize;
 
@@ -1206,8 +1259,8 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         // reallocation has failed; a new place with a smaller overhead could be
         // found later (whether there's actually such a situation or not is yet
         // to be proven).
-        let new_size = overhead.checked_add(new_layout.size())?;
-        let new_size = new_size.checked_add(GRANULARITY - 1)? & !(GRANULARITY - 1);
+        let new_size = const_try!(overhead.checked_add(new_layout.size()));
+        let new_size = const_try!(new_size.checked_add(GRANULARITY - 1)) & !(GRANULARITY - 1);
 
         let old_size = block.as_ref().common.size - SIZE_USED;
         debug_assert_eq!(old_size, block.as_ref().common.size & SIZE_SIZE_MASK);
@@ -1340,7 +1393,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         // I.e., grow into the previous free block as well.
         // Get the previous block. If there isn't such a block, the moving
         // approach will not improve the situation anyway, so return `None`.
-        let prev_phys_block = block.as_ref().common.prev_phys_block?;
+        let prev_phys_block = const_try!(block.as_ref().common.prev_phys_block);
         let prev_phys_block_size_and_flags = prev_phys_block.as_ref().size;
 
         // Fail it isn't a free block.
@@ -1366,8 +1419,8 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
 
         // Calculate the new block size
         let new_overhead = new_ptr.as_ptr() as usize - prev_phys_block.as_ptr() as usize;
-        let new_size = new_overhead.checked_add(new_layout.size())?;
-        let new_size = new_size.checked_add(GRANULARITY - 1)? & !(GRANULARITY - 1);
+        let new_size = const_try!(new_overhead.checked_add(new_layout.size()));
+        let new_size = const_try!(new_size.checked_add(GRANULARITY - 1)) & !(GRANULARITY - 1);
         if new_size > moving_clearance {
             // Can't fit
             return None;
@@ -1389,7 +1442,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         core::ptr::copy(
             ptr.as_ptr(),
             new_ptr.as_ptr(),
-            new_layout.size().min(old_size - overhead),
+            min_usize(new_layout.size(), old_size - overhead),
         );
 
         // We'll replace `prev_phys_block` with a new used block.

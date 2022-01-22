@@ -20,6 +20,7 @@ pub unsafe trait FlexSource {
     /// `min_size` must be a multiple of [`GRANULARITY`]. `min_size` must not
     /// be zero.
     #[inline]
+    #[default_method_body_is_const]
     unsafe fn alloc(&mut self, min_size: usize) -> Option<NonNull<[u8]>> {
         let _ = min_size;
         None
@@ -34,6 +35,7 @@ pub unsafe trait FlexSource {
     /// `ptr` must be an existing allocation made by this
     /// allocator. `min_new_len` must be greater than or equal to `ptr.len()`.
     #[inline]
+    #[default_method_body_is_const]
     unsafe fn realloc_inplace_grow(
         &mut self,
         ptr: NonNull<[u8]>,
@@ -61,6 +63,7 @@ pub unsafe trait FlexSource {
     ///
     /// The returned value must be constant for a particular instance of `Self`.
     #[inline]
+    #[default_method_body_is_const]
     fn supports_dealloc(&self) -> bool {
         false
     }
@@ -73,6 +76,7 @@ pub unsafe trait FlexSource {
     ///
     /// The returned value must be constant for a particular instance of `Self`.
     #[inline]
+    #[default_method_body_is_const]
     fn supports_realloc_inplace_grow(&self) -> bool {
         false
     }
@@ -92,6 +96,7 @@ pub unsafe trait FlexSource {
     ///
     /// The returned value must be constant for a particular instance of `Self`.
     #[inline]
+    #[default_method_body_is_const]
     fn is_contiguous_growable(&self) -> bool {
         false
     }
@@ -102,12 +107,17 @@ pub unsafe trait FlexSource {
     ///
     /// The returned value must be constant for a particular instance of `Self`.
     #[inline]
+    #[default_method_body_is_const]
     fn min_align(&self) -> usize {
         1
     }
 }
 
 trait FlexSourceExt: FlexSource {
+    fn use_growable_pool(&self) -> bool;
+}
+
+impl<T: ~const FlexSource> const FlexSourceExt for T {
     #[inline]
     fn use_growable_pool(&self) -> bool {
         // `growable_pool` is used for deallocation and pool growth.
@@ -116,8 +126,6 @@ trait FlexSourceExt: FlexSource {
         self.supports_dealloc() || self.supports_realloc_inplace_grow()
     }
 }
-
-impl<T: FlexSource> FlexSourceExt for T {}
 
 /// Wraps [`core::alloc::GlobalAlloc`] to implement the [`FlexSource`] trait.
 ///
@@ -179,8 +187,8 @@ unsafe impl<T: core::alloc::GlobalAlloc, const ALIGN: usize> FlexSource
 /// A wrapper of [`Tlsf`] that automatically acquires fresh memory pools from
 /// [`FlexSource`].
 #[derive(Debug)]
-pub struct FlexTlsf<Source: FlexSource, FLBitmap, SLBitmap, const FLLEN: usize, const SLLEN: usize>
-{
+#[must_use = "call `destroy` to drop it cleanly"]
+pub struct FlexTlsf<Source, FLBitmap, SLBitmap, const FLLEN: usize, const SLLEN: usize> {
     /// The lastly created memory pool.
     growable_pool: Option<Pool>,
     source: Source,
@@ -222,7 +230,7 @@ const _: () = if core::mem::size_of::<PoolFtr>() != GRANULARITY / 2 {
 impl PoolFtr {
     /// Get a pointer to `PoolFtr` for a given allocation.
     #[inline]
-    fn get_for_alloc(alloc: NonNull<[u8]>, alloc_align: usize) -> *mut Self {
+    const fn get_for_alloc(alloc: NonNull<[u8]>, alloc_align: usize) -> *mut Self {
         let alloc_end = nonnull_slice_end(alloc);
         let mut ptr = alloc_end.wrapping_sub(core::mem::size_of::<Self>());
         // If `alloc_end` is not well-aligned, we need to adjust the location
@@ -236,12 +244,12 @@ impl PoolFtr {
 
 /// Initialization with a [`FlexSource`] provided by [`Default::default`]
 impl<
-        Source: FlexSource + Default,
+        Source: FlexSource + ~const Default,
         FLBitmap: BinInteger,
         SLBitmap: BinInteger,
         const FLLEN: usize,
         const SLLEN: usize,
-    > Default for FlexTlsf<Source, FLBitmap, SLBitmap, FLLEN, SLLEN>
+    > const Default for FlexTlsf<Source, FLBitmap, SLBitmap, FLLEN, SLLEN>
 {
     #[inline]
     fn default() -> Self {
@@ -271,6 +279,8 @@ impl<
     };
 }
 
+// FIXME: `~const` bounds can't appear on any `impl`s but `impl const Trait for
+//        Ty` (This is why the `~const` bounds are applied on each method.)
 impl<
         Source: FlexSource,
         FLBitmap: BinInteger,
@@ -281,7 +291,7 @@ impl<
 {
     /// Construct a new `FlexTlsf` object.
     #[inline]
-    pub fn new(source: Source) -> Self {
+    pub const fn new(source: Source) -> Self {
         Self {
             source,
             tlsf: Tlsf::INIT,
@@ -291,7 +301,7 @@ impl<
 
     /// Borrow the contained `Source`.
     #[inline]
-    pub fn source_ref(&self) -> &Source {
+    pub const fn source_ref(&self) -> &Source {
         &self.source
     }
 
@@ -302,7 +312,7 @@ impl<
     /// The caller must not replace the `Source` with another one or modify
     /// any existing allocations in the `Source`.
     #[inline]
-    pub unsafe fn source_mut_unchecked(&mut self) -> &mut Source {
+    pub const unsafe fn source_mut_unchecked(&mut self) -> &mut Source {
         &mut self.source
     }
 
@@ -316,14 +326,21 @@ impl<
     /// This method will complete in constant time (assuming `Source`'s methods
     /// do so as well).
     #[cfg_attr(target_arch = "wasm32", inline(never))]
-    pub fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+    pub const fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>>
+    where
+        Source: ~const FlexSource,
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         if let Some(x) = self.tlsf.allocate(layout) {
             return Some(x);
         }
 
-        self.increase_pool_to_contain_allocation(layout)?;
+        const_try!(self.increase_pool_to_contain_allocation(layout));
 
-        self.tlsf.allocate(layout).or_else(|| {
+        let result = self.tlsf.allocate(layout);
+
+        if result.is_none() {
             // Not a hard error, but it's still unexpected because
             // `increase_pool_to_contain_allocation` was supposed to make this
             // allocation possible
@@ -332,31 +349,37 @@ impl<
                 "the allocation failed despite the effort by \
                 `increase_pool_to_contain_allocation`"
             );
-            None
-        })
+        }
+
+        result
     }
 
     /// Increase the amount of memory pool to guarantee the success of the
     /// given allocation. Returns `Some(())` on success.
     #[inline]
-    fn increase_pool_to_contain_allocation(&mut self, layout: Layout) -> Option<()> {
+    const fn increase_pool_to_contain_allocation(&mut self, layout: Layout) -> Option<()>
+    where
+        Source: ~const FlexSource,
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         let use_growable_pool = self.source.use_growable_pool();
 
         // How many extra bytes we need to get from the source for the
         // allocation to success?
-        let extra_bytes_well_aligned =
+        let extra_bytes_well_aligned = const_try!(
             Tlsf::<'static, FLBitmap, SLBitmap, FLLEN, SLLEN>::pool_size_to_contain_allocation(
                 layout,
-            )?;
+            )
+        );
 
         // The sentinel block + the block to store the allocation
         debug_assert!(extra_bytes_well_aligned >= GRANULARITY * 2);
 
-        if let Some(growable_pool) = self.growable_pool.filter(|_| use_growable_pool) {
+        if let (Some(growable_pool), true) = (self.growable_pool, use_growable_pool) {
             // Try to extend an existing memory pool first.
-            let new_pool_len_desired = growable_pool
-                .pool_len
-                .checked_add(extra_bytes_well_aligned)?;
+            let new_pool_len_desired =
+                const_try!(growable_pool.pool_len.checked_add(extra_bytes_well_aligned));
 
             // The following assertion should not trip because...
             //  - `extra_bytes_well_aligned` returns a value that is at least
@@ -459,13 +482,13 @@ impl<
             //                       ╰───┬───╯
             //                      GRANULARITY
             //
-            extra_bytes_well_aligned.checked_add(GRANULARITY)?
+            const_try!(extra_bytes_well_aligned.checked_add(GRANULARITY))
         } else {
             extra_bytes_well_aligned
         };
 
         // Safety: `extra_bytes` is non-zero and aligned to `GRANULARITY` bytes
-        let alloc = unsafe { self.source.alloc(extra_bytes)? };
+        let alloc = const_try!(unsafe { self.source.alloc(extra_bytes) });
 
         let is_well_aligned = self.source.min_align() >= super::GRANULARITY;
 
@@ -477,21 +500,26 @@ impl<
             } else {
                 self.tlsf.insert_free_block_ptr(alloc)
             }
-        }
-        .unwrap_or_else(|| unsafe {
-            debug_assert!(false, "`pool_size_to_contain_allocation` is an impostor");
-            // Safety: It's unreachable
-            core::hint::unreachable_unchecked()
-        })
-        .get();
+        };
+        let pool_len = if let Some(pool_len) = pool_len {
+            pool_len.get()
+        } else {
+            unsafe {
+                debug_assert!(false, "`pool_size_to_contain_allocation` is an impostor");
+                // Safety: It's unreachable
+                core::hint::unreachable_unchecked()
+            }
+        };
 
         if self.source.supports_dealloc() {
             // Link the new memory pool's `PoolFtr::prev_alloc_end` to the
             // previous pool (`self.growable_pool`).
             let pool_ftr = PoolFtr::get_for_alloc(alloc, self.source.min_align());
-            let prev_alloc = self
-                .growable_pool
-                .map(|p| nonnull_slice_from_raw_parts(p.alloc_start, p.alloc_len));
+            let prev_alloc = if let Some(p) = self.growable_pool {
+                Some(nonnull_slice_from_raw_parts(p.alloc_start, p.alloc_len))
+            } else {
+                None
+            };
             // Safety: `(*pool_ftr).prev_alloc` is within a pool footer
             //         we control
             unsafe { (*pool_ftr).prev_alloc = prev_alloc };
@@ -522,7 +550,12 @@ impl<
     ///    ([`Layout::align`]) as `align`.
     ///
     #[cfg_attr(target_arch = "wasm32", inline(never))]
-    pub unsafe fn deallocate(&mut self, ptr: NonNull<u8>, align: usize) {
+    pub const unsafe fn deallocate(&mut self, ptr: NonNull<u8>, align: usize)
+    where
+        Source: ~const FlexSource,
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Safety: Upheld by the caller
         self.tlsf.deallocate(ptr, align)
     }
@@ -541,7 +574,12 @@ impl<
     ///
     ///  - `ptr` must denote a memory block previously allocated via `self`.
     ///
-    pub(crate) unsafe fn deallocate_unknown_align(&mut self, ptr: NonNull<u8>) {
+    pub(crate) const unsafe fn deallocate_unknown_align(&mut self, ptr: NonNull<u8>)
+    where
+        Source: ~const FlexSource,
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Safety: Upheld by the caller
         self.tlsf.deallocate_unknown_align(ptr)
     }
@@ -562,11 +600,16 @@ impl<
     ///  - The memory block must have been allocated with the same alignment
     ///    ([`Layout::align`]) as `new_layout`.
     ///
-    pub unsafe fn reallocate(
+    pub const unsafe fn reallocate(
         &mut self,
         ptr: NonNull<u8>,
         new_layout: Layout,
-    ) -> Option<NonNull<u8>> {
+    ) -> Option<NonNull<u8>>
+    where
+        Source: ~const FlexSource,
+        FLBitmap: ~const BinInteger,
+        SLBitmap: ~const BinInteger,
+    {
         // Do this early so that the compiler can de-duplicate the evaluation of
         // `size_of_allocation`, which is done here as well as in
         // `Tlsf::reallocate`.
@@ -584,7 +627,7 @@ impl<
         // the same as the one in `Tlsf::reallocate`, but `self.allocation`
         // here refers to `FlexTlsf::allocate`, which inserts new meory pools
         // as necessary.
-        let new_ptr = self.allocate(new_layout)?;
+        let new_ptr = const_try!(self.allocate(new_layout));
 
         // Move the existing data into the new location
         debug_assert!(new_layout.size() >= old_size);
@@ -605,24 +648,36 @@ impl<
     ///  - `ptr` must denote a memory block previously allocated via `Self`.
     ///
     #[inline]
-    pub(crate) unsafe fn size_of_allocation_unknown_align(ptr: NonNull<u8>) -> usize {
+    pub(crate) const unsafe fn size_of_allocation_unknown_align(ptr: NonNull<u8>) -> usize {
         // Safety: Upheld by the caller
         Tlsf::<'static, FLBitmap, SLBitmap, FLLEN, SLLEN>::size_of_allocation_unknown_align(ptr)
     }
 }
 
-impl<Source: FlexSource, FLBitmap, SLBitmap, const FLLEN: usize, const SLLEN: usize> Drop
-    for FlexTlsf<Source, FLBitmap, SLBitmap, FLLEN, SLLEN>
+// FIXME: There isn't a way to add `~const` to a type definition, so this
+//        `destroy` cannot be `Drop::drop`
+// FIXME: `~const` bounds can't appear on any `impl`s but
+//        `impl const Trait for Ty`
+impl<Source: FlexSource, FLBitmap, SLBitmap, const FLLEN: usize, const SLLEN: usize>
+    FlexTlsf<Source, FLBitmap, SLBitmap, FLLEN, SLLEN>
 {
-    fn drop(&mut self) {
+    /// Deallocate all memory blocks and destroy `self`.
+    pub const fn destroy(mut self)
+    where
+        Source: ~const FlexSource + ~const Drop,
+        FLBitmap: ~const Drop,
+        SLBitmap: ~const Drop,
+    {
         if self.source.supports_dealloc() {
             debug_assert!(self.source.use_growable_pool());
 
             // Deallocate all memory pools
             let align = self.source.min_align();
-            let mut cur_alloc_or_none = self
-                .growable_pool
-                .map(|p| nonnull_slice_from_raw_parts(p.alloc_start, p.alloc_len));
+            let mut cur_alloc_or_none = if let Some(p) = self.growable_pool {
+                Some(nonnull_slice_from_raw_parts(p.alloc_start, p.alloc_len))
+            } else {
+                None
+            };
 
             while let Some(cur_alloc) = cur_alloc_or_none {
                 // Safety: We control the referenced pool footer

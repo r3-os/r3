@@ -3,15 +3,20 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_fn_trait_bound)]
+#![feature(const_intrinsic_copy)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(generic_const_exprs)]
 #![feature(const_refs_to_cell)]
 #![feature(maybe_uninit_slice)]
+#![feature(const_option_ext)]
+#![feature(const_ptr_as_ref)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(specialization)]
 #![feature(assert_matches)]
 #![feature(const_mut_refs)]
+#![feature(const_replace)]
+#![feature(const_option)]
 #![feature(never_type)] // `!`
 #![feature(decl_macro)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`

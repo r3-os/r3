@@ -65,13 +65,15 @@ pub trait BinInteger:
     /// Perform `ceil` treating the value as a fixed point number with `fp`
     /// fractional part digits.
     fn checked_ceil_fix(self, fp: u32) -> Option<Self>;
+
+    fn is_zero(&self) -> bool;
 }
 
 macro_rules! impl_binary_integer {
     ($type:ty) => {
-        impl private::Sealed for $type {}
+        impl const private::Sealed for $type {}
 
-        impl BinInteger for $type {
+        impl const BinInteger for $type {
             const ZERO: Self = 0;
             const BITS: u32 = core::mem::size_of::<$type>() as u32 * 8;
 
@@ -112,12 +114,12 @@ macro_rules! impl_binary_integer {
             #[inline]
             fn extract_u32(&self, range: ops::Range<u32>) -> u32 {
                 let start = range.start;
-                ((self & Self::ones_truncated(range)) >> start) as u32
+                (((*self) & Self::ones_truncated(range)) >> start) as u32
             }
             #[inline]
             fn get_bit(&self, i: u32) -> bool {
                 if i < Self::BITS {
-                    self & ((1 as Self) << i) != 0
+                    (*self) & ((1 as Self) << i) != 0
                 } else {
                     false
                 }
@@ -144,8 +146,17 @@ macro_rules! impl_binary_integer {
                     }
                 } else {
                     let mask = Self::ones(0..fp);
-                    self.checked_add(mask).map(|x| x & !mask)
+                    if let Some(x) = self.checked_add(mask) {
+                        Some(x & !mask)
+                    } else {
+                        None
+                    }
                 }
+            }
+
+            #[inline]
+            fn is_zero(&self) -> bool {
+                *self == 0
             }
         }
     };
