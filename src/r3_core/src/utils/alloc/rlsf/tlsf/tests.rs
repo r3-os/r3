@@ -1,7 +1,7 @@
 use quickcheck_macros::quickcheck;
 use std::{mem::MaybeUninit, prelude::v1::*};
 
-use super::super::{tests::ShadowAllocator, utils::nonnull_slice_from_raw_parts};
+use super::super::tests::ShadowAllocator;
 use super::*;
 
 #[repr(align(64))]
@@ -102,45 +102,6 @@ macro_rules! gen_test {
             }
 
             #[test]
-            fn append_free_block_ptr() {
-                let _ = env_logger::builder().is_test(true).try_init();
-
-                let mut tlsf: TheTlsf = Tlsf::INIT;
-
-                let mut pool = Align([MaybeUninit::uninit(); 512]);
-                let mut cursor = pool.0[0].as_mut_ptr() as *mut u8;
-                let mut remaining_len = 512;
-
-                let pool0_len = unsafe {
-                    tlsf.insert_free_block_ptr(nonnull_slice_from_raw_parts(
-                        NonNull::new(cursor).unwrap(), remaining_len / 2))
-                }.unwrap().get();
-                cursor = cursor.wrapping_add(pool0_len);
-                remaining_len -= pool0_len;
-
-                log::trace!("tlsf = {:?}", tlsf);
-
-                // The memory pool is too small at this point
-                assert!(tlsf.allocate(Layout::from_size_align(384, 1).unwrap()).is_none());
-
-                let _pool1_len = unsafe {
-                    tlsf.append_free_block_ptr(nonnull_slice_from_raw_parts(
-                        NonNull::new(cursor).unwrap(), remaining_len))
-                };
-
-                log::trace!("tlsf = {:?}", tlsf);
-
-                let ptr = tlsf.allocate(Layout::from_size_align(384, 1).unwrap());
-                log::trace!("ptr = {:?}", ptr);
-
-                if TheTlsf::MAX_POOL_SIZE.is_none() {
-                    // `append_free_block_ptr` coalesces consecutive
-                    // memory pools, so this allocation should succeed
-                    ptr.unwrap();
-                }
-            }
-
-            #[test]
             fn insert_free_block_ptr_near_end_fail() {
                 let mut tlsf: TheTlsf = Tlsf::INIT;
                 unsafe {
@@ -182,17 +143,12 @@ macro_rules! gen_test {
                 let pool_size = pool_size % 0x1000000;
 
                 let mut pool = Align([MaybeUninit::<u8>::uninit(); 65536]);
-                let pool_ptr;
-                // The end index of the memory pool inserted to `tlsf`
-                let mut pool_len;
                 // The end index of `pool`
-                let pool_limit;
                 unsafe {
                     // Insert some part of `pool` to `tlsf`
                     let pool_start = pool_start % 64;
                     let pool_size = pool_size % (pool.0.len() - 63);
-                    pool_ptr = pool.0.as_mut_ptr().wrapping_add(pool_start) as *mut u8;
-                    pool_limit = pool.0.len() - pool_start;
+                    let pool_ptr = pool.0.as_mut_ptr().wrapping_add(pool_start) as *mut u8;
 
                     let initial_pool = NonNull::new(std::ptr::slice_from_raw_parts_mut(
                         pool_ptr,
@@ -200,17 +156,14 @@ macro_rules! gen_test {
                     )).unwrap();
                     log::trace!("initial_pool = {:p}: [u8; {}]", pool_ptr, pool_size);
 
-                    pool_len = if let Some(pool_len) = tlsf.insert_free_block_ptr(initial_pool) {
+                    if let Some(pool_len) = tlsf.insert_free_block_ptr(initial_pool) {
                         let pool_len = pool_len.get();
                         log::trace!("initial_pool (actual) = {:p}: {}", pool_ptr, pool_len);
                         sa.insert_free_block(std::ptr::slice_from_raw_parts(
                             pool_ptr,
                             pool_len
                         ));
-                        Some(pool_len)
-                    } else {
-                        None
-                    };
+                    }
                 }
 
                 log::trace!("tlsf = {:?}", tlsf);
@@ -260,7 +213,7 @@ macro_rules! gen_test {
                                 sa.deallocate(alloc.layout, alloc.ptr);
                             }
                         }
-                        6 => {
+                        6..=7 => {
                             let alloc_i = it.next()?;
                             if allocs.len() > 0 {
                                 let len = u32::from_le_bytes([
@@ -288,37 +241,6 @@ macro_rules! gen_test {
 
                                 }
                             }
-                        }
-                        7 => {
-                            let old_pool_len = if let Some(pool_len) = pool_len {
-                                pool_len
-                            } else {
-                                continue;
-                            };
-
-                            // Incorporate some of `pool_len..pool_limit`
-                            let available = pool_limit - old_pool_len;
-                            if available == 0 {
-                                continue;
-                            }
-
-                            let num_appended_bytes =
-                                u16::from_le_bytes([it.next()?, it.next()?]) as usize % (available + 1);
-
-                            let appended = nonnull_slice_from_raw_parts(
-                                NonNull::new(pool_ptr.wrapping_add(old_pool_len)).unwrap(),
-                                num_appended_bytes,
-                            );
-
-                            log::trace!("appending [{}..][..{}] to pool", old_pool_len, num_appended_bytes);
-
-                            let new_actual_appended_bytes = unsafe { tlsf.append_free_block_ptr(appended) };
-                            log::trace!(" actual appended range = [{}..][..{}]", old_pool_len, new_actual_appended_bytes);
-                            sa.insert_free_block(std::ptr::slice_from_raw_parts(
-                                pool_ptr.wrapping_add(old_pool_len),
-                                new_actual_appended_bytes,
-                            ));
-                            pool_len = Some(old_pool_len + new_actual_appended_bytes);
                         }
                         _ => unreachable!(),
                     }
