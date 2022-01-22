@@ -44,7 +44,7 @@ mod utils;
 pub use self::{
     flex::*,
     tlsf::{Tlsf, ALIGN, GRANULARITY},
-    utils::nonnull_slice_from_raw_parts,
+    utils::{nonnull_slice_from_raw_parts, nonnull_slice_len},
 };
 
 #[cfg(test)]

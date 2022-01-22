@@ -1,5 +1,5 @@
 //! An allocator with flexible backing stores
-use core::{alloc::Layout, debug_assert, ptr::NonNull, unimplemented};
+use core::{alloc::Layout, debug_assert, ptr::NonNull};
 
 use super::{
     int::BinInteger,
@@ -52,9 +52,10 @@ pub unsafe trait FlexSource {
     ///
     /// `ptr` must denote an existing allocation made by this allocator.
     #[inline]
+    #[default_method_body_is_const]
     unsafe fn dealloc(&mut self, ptr: NonNull<[u8]>) {
         let _ = ptr;
-        unimplemented!("`supports_dealloc` returned `true`, but `dealloc` is not implemented");
+        panic!("`supports_dealloc` returned `true`, but `dealloc` is not implemented");
     }
 
     /// Check if this allocator implements [`Self::dealloc`].

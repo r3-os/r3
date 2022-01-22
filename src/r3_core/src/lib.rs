@@ -11,6 +11,7 @@
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_ptr_offset_from)]
 #![feature(maybe_uninit_slice)]
+#![feature(const_eval_select)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_option)]
@@ -18,6 +19,9 @@
 #![feature(const_trait_impl)]
 #![feature(const_refs_to_cell)]
 #![feature(const_ptr_as_ref)]
+#![feature(const_ptr_write)]
+#![feature(core_intrinsics)]
+#![feature(const_heap)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
