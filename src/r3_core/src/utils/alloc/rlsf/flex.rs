@@ -4,9 +4,10 @@ use core::{alloc::Layout, debug_assert, ptr::NonNull, unimplemented};
 use super::{
     int::BinInteger,
     utils::{
-        nonnull_slice_end, nonnull_slice_from_raw_parts, nonnull_slice_len, nonnull_slice_start,
+        min_usize, nonnull_slice_end, nonnull_slice_from_raw_parts, nonnull_slice_len,
+        nonnull_slice_start,
     },
-    Init, Tlsf, GRANULARITY,
+    Init, Tlsf, ALIGN, GRANULARITY,
 };
 
 /// The trait for dynamic storage allocators that can back [`FlexTlsf`].
@@ -227,17 +228,19 @@ const _: () = if core::mem::size_of::<PoolFtr>() != GRANULARITY / 2 {
     const_panic!("bad `PoolFtr` size");
 };
 
+const _: () = assert!(core::mem::align_of::<PoolFtr>() <= ALIGN);
+
 impl PoolFtr {
     /// Get a pointer to `PoolFtr` for a given allocation.
     #[inline]
     const fn get_for_alloc(alloc: NonNull<[u8]>, alloc_align: usize) -> *mut Self {
         let alloc_end = nonnull_slice_end(alloc);
-        let mut ptr = alloc_end.wrapping_sub(core::mem::size_of::<Self>());
+        let ptr = alloc_end.wrapping_sub(core::mem::size_of::<Self>());
+
         // If `alloc_end` is not well-aligned, we need to adjust the location
-        // of `PoolFtr`
-        if alloc_align < core::mem::align_of::<Self>() {
-            ptr = (ptr as usize & !(core::mem::align_of::<Self>() - 1)) as _;
-        }
+        // of `PoolFtr`, but that's impossible in CTFE
+        assert!(alloc_align >= ALIGN);
+
         ptr as _
     }
 }
@@ -414,7 +417,7 @@ impl<
             if is_well_aligned {
                 self.tlsf.insert_free_block_ptr_aligned(alloc)
             } else {
-                self.tlsf.insert_free_block_ptr(alloc)
+                panic!("this version of `rlsf` requires `min_align() >= GRANULARITY`");
             }
         };
         let pool_len = if let Some(pool_len) = pool_len {
@@ -546,8 +549,11 @@ impl<
         let new_ptr = const_try!(self.allocate(new_layout));
 
         // Move the existing data into the new location
-        debug_assert!(new_layout.size() >= old_size);
-        core::ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr(), old_size);
+        core::ptr::copy_nonoverlapping(
+            ptr.as_ptr(),
+            new_ptr.as_ptr(),
+            min_usize(old_size, new_layout.size()),
+        );
 
         // Deallocate the old memory block.
         self.deallocate(ptr, new_layout.align());

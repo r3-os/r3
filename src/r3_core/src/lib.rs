@@ -8,6 +8,8 @@
 #![feature(const_slice_first_last)]
 #![feature(const_replace)]
 #![feature(const_intrinsic_copy)]
+#![feature(const_raw_ptr_comparison)]
+#![feature(const_ptr_offset_from)]
 #![feature(maybe_uninit_slice)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]

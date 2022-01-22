@@ -25,14 +25,14 @@ macro_rules! const_try {
     };
 }
 
-macro debug_assert_eq($x:expr, $y:expr) {
+macro debug_assert_eq($x:expr, $y:expr $(, $($tt:tt)*)?) {
     // FIXME: `*assert_eq!` is not usable in `const fn` yet
-    debug_assert!($x == $y);
+    debug_assert!($x == $y $(, $($tt)*)?);
 }
 
-macro debug_assert_ne($x:expr, $y:expr) {
-    // FIXME: `*assert_ne!` is not usable in `const fn` yet
-    debug_assert!($x != $y);
+macro debug_assert_eq_ptr($x:expr, $y:expr $(, $($tt:tt)*)?) {
+    // FIXME: `*assert_eq!` is not usable in `const fn` yet
+    debug_assert!(!$x.guaranteed_ne($y) $(, $($tt)*)?);
 }
 
 use crate::utils::Init;
@@ -43,7 +43,7 @@ mod tlsf;
 mod utils;
 pub use self::{
     flex::*,
-    tlsf::{Tlsf, GRANULARITY},
+    tlsf::{Tlsf, ALIGN, GRANULARITY},
     utils::nonnull_slice_from_raw_parts,
 };
 

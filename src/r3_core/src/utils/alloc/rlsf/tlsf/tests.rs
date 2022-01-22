@@ -7,6 +7,8 @@ use super::*;
 #[repr(align(64))]
 struct Align<T>(T);
 
+const _: () = assert!(std::mem::align_of::<Align<()>>() >= GRANULARITY);
+
 macro_rules! gen_test {
     ($mod:ident, $($tt:tt)*) => {
         mod $mod {
@@ -19,8 +21,8 @@ macro_rules! gen_test {
 
                 let mut tlsf: TheTlsf = Tlsf::INIT;
 
-                let mut pool = [MaybeUninit::uninit(); 65536];
-                tlsf.insert_free_block(&mut pool);
+                let mut pool = Align([MaybeUninit::uninit(); 65536]);
+                unsafe  { tlsf.insert_free_block(&mut pool.0) };
 
                 log::trace!("tlsf = {:?}", tlsf);
 
@@ -37,8 +39,8 @@ macro_rules! gen_test {
 
                 let mut tlsf: TheTlsf = Tlsf::INIT;
 
-                let mut pool = [MaybeUninit::uninit(); 65536];
-                tlsf.insert_free_block(&mut pool);
+                let mut pool = Align([MaybeUninit::uninit(); 65536]);
+                unsafe  { tlsf.insert_free_block(&mut pool.0) };
 
                 log::trace!("tlsf = {:?}", tlsf);
 
@@ -62,7 +64,7 @@ macro_rules! gen_test {
                 let mut tlsf: TheTlsf = Tlsf::INIT;
 
                 let mut pool = Align([MaybeUninit::uninit(); 96]);
-                tlsf.insert_free_block(&mut pool.0);
+                unsafe  { tlsf.insert_free_block(&mut pool.0) };
 
                 log::trace!("tlsf = {:?}", tlsf);
 
@@ -85,7 +87,7 @@ macro_rules! gen_test {
                 let mut tlsf: TheTlsf = Tlsf::INIT;
 
                 let mut pool = Align([MaybeUninit::uninit(); 96]);
-                tlsf.insert_free_block(&mut pool.0);
+                unsafe  { tlsf.insert_free_block(&mut pool.0) };
 
                 log::trace!("tlsf = {:?}", tlsf);
 
@@ -132,11 +134,11 @@ macro_rules! gen_test {
             }
 
             #[quickcheck]
-            fn random(pool_start: usize, pool_size: usize, bytecode: Vec<u8>) {
-                random_inner(pool_start, pool_size, bytecode);
+            fn random(pool_size: usize, bytecode: Vec<u8>) {
+                random_inner(pool_size, bytecode);
             }
 
-            fn random_inner(pool_start: usize, pool_size: usize, bytecode: Vec<u8>) -> Option<()> {
+            fn random_inner(pool_size: usize, bytecode: Vec<u8>) -> Option<()> {
                 let mut sa = ShadowAllocator::new();
                 let mut tlsf: TheTlsf = Tlsf::INIT;
 
@@ -146,9 +148,8 @@ macro_rules! gen_test {
                 // The end index of `pool`
                 unsafe {
                     // Insert some part of `pool` to `tlsf`
-                    let pool_start = pool_start % 64;
-                    let pool_size = pool_size % (pool.0.len() - 63);
-                    let pool_ptr = pool.0.as_mut_ptr().wrapping_add(pool_start) as *mut u8;
+                    let pool_size = (pool_size % (pool.0.len() - 63)) & !(GRANULARITY - 1);
+                    let pool_ptr = pool.0.as_mut_ptr() as *mut u8;
 
                     let initial_pool = NonNull::new(std::ptr::slice_from_raw_parts_mut(
                         pool_ptr,
@@ -186,7 +187,8 @@ macro_rules! gen_test {
                                 0,
                             ]);
                             let len = ((len as u64 * pool_size as u64) >> 24) as usize;
-                            let align = 1 << (it.next()? % 6);
+                            let align = 1 << (it.next()? % (ALIGN.trailing_zeros() as u8 + 1));
+                            assert!(align <= ALIGN, "we must request such an alignment");
                             let layout = Layout::from_size_align(len, align).unwrap();
                             log::trace!("alloc {:?}", layout);
 
@@ -315,8 +317,8 @@ macro_rules! gen_test {
             }
 
             #[quickcheck]
-            fn pool_size_to_contain_allocation(size: usize, align: u32)-> quickcheck::TestResult {
-                let align = (super::GRANULARITY / 2) << (align % 5);
+            fn pool_size_to_contain_allocation(size: usize)-> quickcheck::TestResult {
+                let align = ALIGN;
                 let size = size.wrapping_mul(align);
                 if size > 500_000 {
                     // Let's limit pool size
@@ -349,7 +351,7 @@ macro_rules! gen_test {
                 };
 
                 let mut tlsf: TheTlsf = Tlsf::INIT;
-                tlsf.insert_free_block(pool);
+                unsafe { tlsf.insert_free_block(pool) };
 
                 // The allocation should success because
                 // `pool_size_to_contain_allocation` said so

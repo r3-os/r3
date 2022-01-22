@@ -10,7 +10,7 @@ use core::{
 };
 
 use super::{
-    debug_assert_eq, debug_assert_ne,
+    debug_assert_eq, debug_assert_eq_ptr,
     int::BinInteger,
     utils::{min_usize, nonnull_slice_len, option_nonnull_as_ptr},
 };
@@ -94,6 +94,14 @@ unsafe impl<FLBitmap, SLBitmap, const FLLEN: usize, const SLLEN: usize> Sync
 pub const GRANULARITY: usize = core::mem::size_of::<usize>() * 4;
 
 const GRANULARITY_LOG2: u32 = GRANULARITY.trailing_zeros();
+
+/// The maximum alignment.
+///
+/// Due to restrictions in CTFE, it's impossible to align a given pointer to
+/// an arbitrary alignment. All memory blocks inserted to `Tlsf` are assumed to
+/// be aligned by this value. All allocation requests with higher alignment
+/// requirements will fail and panic.
+pub const ALIGN: usize = core::mem::size_of::<usize>() * 2;
 
 // FIXME: Use `usize::BITS` when it's stable
 pub(crate) const USIZE_BITS: u32 = core::mem::size_of::<usize>() as u32 * 8;
@@ -407,8 +415,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
             let (fl, sl) = Self::map_floor(size).expect("could not map the size");
             let first_free = &mut self.first_free[fl][sl];
 
-            // FIXME: `Option<NonNull<T>>: !const PartialEq`
-            debug_assert_eq!(option_nonnull_as_ptr(*first_free), block.as_ptr());
+            debug_assert_eq_ptr!(option_nonnull_as_ptr(*first_free), block.as_ptr());
             *first_free = next_free;
 
             if next_free.is_none() {
@@ -453,6 +460,8 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// The memory block will be considered owned by `self`. The memory block
     /// must outlive `self`.
     ///
+    /// `block`'s both ends must be aligned by [`GRANULARITY`].
+    ///
     /// # Panics
     ///
     /// This method never panics.
@@ -464,35 +473,21 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         FLBitmap: ~const BinInteger,
         SLBitmap: ~const BinInteger,
     {
-        let len = nonnull_slice_len(block);
+        // Can only check the length in CTFE
+        debug_assert_eq!(
+            nonnull_slice_len(block) % GRANULARITY,
+            0,
+            "`block` must be aligned to `GRANULARITY`"
+        );
 
-        // Round up the starting address
-        let unaligned_start = block.as_ptr() as *mut u8 as usize;
-        let start = unaligned_start.wrapping_add(GRANULARITY - 1) & !(GRANULARITY - 1);
-
-        let len = if let Some(x) = len.checked_sub(start.wrapping_sub(unaligned_start)) {
-            if x >= GRANULARITY * 2 {
-                // Round down
-                x & !(GRANULARITY - 1)
-            } else {
-                // The block is too small
-                return None;
-            }
-        } else {
-            // The block is too small
-            return None;
-        };
-
-        // Safety: The slice being created here
-        let pool_len = const_try!(self.insert_free_block_ptr_aligned(NonNull::new_unchecked(
-            core::ptr::slice_from_raw_parts_mut(start as *mut u8, len),
-        )));
-
-        // Safety: The sum should not wrap around because it represents the size
-        //         of a memory pool on memory
-        Some(NonZeroUsize::new_unchecked(
-            pool_len.get() + start.wrapping_sub(unaligned_start),
-        ))
+        // In this `const fn` version, the caller is always responsible for
+        // alignment because it's impossible to align a given pointer in
+        // CTFE. As such `insert_free_block_ptr` is essentially just an alias
+        // of `insert_free_block_ptr_aligned`.
+        //
+        // (Note: At the point of writing, `pointer::align_offset` is useless
+        // in CTFE as it always returns `usize::MAX`.)
+        self.insert_free_block_ptr_aligned(block)
     }
 
     /// [`insert_free_block_ptr`] with a well-aligned slice passed by `block`.
@@ -504,7 +499,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         FLBitmap: ~const BinInteger,
         SLBitmap: ~const BinInteger,
     {
-        let start = block.as_ptr() as *mut u8 as usize;
+        let start = block.as_ptr() as *mut u8;
         let mut size = nonnull_slice_len(block);
 
         let mut cursor = start;
@@ -543,14 +538,11 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
             // Link the free block to the corresponding free list
             self.link_free_block(block, chunk_size - GRANULARITY);
 
-            // `cursor` can reach `usize::MAX + 1`, but in such a case, this
-            // iteration must be the last one
-            debug_assert!(cursor.checked_add(chunk_size).is_some() || size == chunk_size);
             size -= chunk_size;
-            cursor = cursor.wrapping_add(chunk_size);
+            cursor = cursor.wrapping_offset(chunk_size as isize);
         }
 
-        NonZeroUsize::new(cursor.wrapping_sub(start))
+        NonZeroUsize::new(cursor.offset_from(start) as usize)
     }
 
     /// Create a new memory pool at the location specified by a slice.
@@ -585,18 +577,22 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
     /// drop(tlsf);
     /// ```
     ///
+    /// # Safety
+    ///
+    /// `block`'s both ends must be aligned to [`GRANULARITY`].
+    ///
     /// # Panics
     ///
     /// This method never panics.
     #[inline]
-    pub const fn insert_free_block(&mut self, block: &'pool mut [MaybeUninit<u8>])
+    pub const unsafe fn insert_free_block(&mut self, block: &'pool mut [MaybeUninit<u8>])
     where
         FLBitmap: ~const BinInteger,
         SLBitmap: ~const BinInteger,
     {
         // Safety: `block` is a mutable reference, which guarantees the absence
         // of aliasing references. Being `'pool` means it will outlive `self`.
-        unsafe { self.insert_free_block_ptr(NonNull::new(block as *mut [_] as _).unwrap()) };
+        self.insert_free_block_ptr(NonNull::new_unchecked(block as *mut [_] as _));
     }
 
     /// Calculate the minimum size of a `GRANULARITY`-byte aligned memory pool
@@ -637,6 +633,13 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         FLBitmap: ~const BinInteger,
         SLBitmap: ~const BinInteger,
     {
+        // Panicking is better than a mysterious allocation failure
+        assert!(
+            layout.align() <= ALIGN,
+            "this version of `Tlsf` doesn't support allocation with an \
+            arbitrary alignment requirement"
+        );
+
         unsafe {
             // The extra bytes consumed by the header and padding.
             //
@@ -681,20 +684,26 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
             }
 
             // Decide the starting address of the payload
-            let unaligned_ptr = block.as_ptr() as *mut u8 as usize + mem::size_of::<UsedBlockHdr>();
-            let ptr = NonNull::new_unchecked(
-                (unaligned_ptr.wrapping_add(layout.align() - 1) & !(layout.align() - 1)) as *mut u8,
-            );
+            let unaligned_ptr =
+                (block.as_ptr() as *mut u8).wrapping_add(mem::size_of::<UsedBlockHdr>());
+
+            let ptr = {
+                // `unaligned_ptr` should already be sufficiently aligned
+                assert!(layout.align() <= GRANULARITY / 2);
+                // NonNull::new_unchecked((unaligned_ptr.wrapping_add(layout.align() - 1)
+                //     & !(layout.align() - 1)) as *mut u8)
+                NonNull::new_unchecked(unaligned_ptr)
+            };
 
             if layout.align() < GRANULARITY {
-                debug_assert_eq!(unaligned_ptr, ptr.as_ptr() as usize);
+                debug_assert_eq_ptr!(unaligned_ptr, ptr.as_ptr());
             } else {
-                debug_assert_ne!(unaligned_ptr, ptr.as_ptr() as usize);
+                unreachable!();
             }
 
             // Calculate the actual overhead and the final block size of the
             // used block being created here
-            let overhead = ptr.as_ptr() as usize - block.as_ptr() as usize;
+            let overhead = ptr.as_ptr().offset_from(block.as_ptr() as *const u8) as usize;
             debug_assert!(overhead <= max_overhead);
 
             let new_size = overhead + layout.size();
@@ -829,7 +838,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         // They are both present at the same location, so we can be assured that
         // their contents are initialized and we can read them safely without
         // knowing which case applies first.
-        debug_assert_eq!(
+        debug_assert_eq_ptr!(
             c1_block_hdr_ptr as *const usize,
             c2_prev_phys_block_ptr as *const usize
         );
@@ -838,9 +847,12 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         if let Some(block_ptr) = *c2_prev_phys_block_ptr {
             // Where does the block represented by `block_ptr` end?
             // (Note: `block_ptr.size` might include `SIZE_USED`.)
-            let block_end = block_ptr.as_ptr() as usize + block_ptr.as_ref().size;
+            let block_end = block_ptr
+                .as_ptr()
+                .cast::<u8>()
+                .wrapping_add(block_ptr.as_ref().size);
 
-            if ptr.as_ptr() as usize > block_end {
+            if ptr.as_ptr().offset_from(block_end) > 0 {
                 // The block represented by `block_ptr` does not include `ptr`.
                 // It's Case 2.
                 NonNull::new_unchecked(c2_block_hdr)
@@ -978,7 +990,7 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
 
         // Link `new_next_phys_block.prev_phys_block` to `block`
         // FIXME: `NonNull<T>: const PartialEq` isn't provided yet
-        debug_assert_eq!(
+        debug_assert_eq_ptr!(
             new_next_phys_block.as_ptr(),
             block.as_ref().common.next_phys_block().as_ptr()
         );
@@ -1003,9 +1015,9 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         let size = block.as_ref().common.size - SIZE_USED;
         debug_assert_eq!(size, block.as_ref().common.size & SIZE_SIZE_MASK);
 
-        let block_end = block.as_ptr() as usize + size;
-        let payload_start = ptr.as_ptr() as usize;
-        block_end - payload_start
+        let block_end = block.as_ptr().cast::<u8>().wrapping_add(size);
+        let payload_start = ptr.as_ptr();
+        block_end.offset_from(payload_start) as usize
     }
 
     /// Get the payload size of the allocation with an unknown alignment. The
@@ -1025,9 +1037,9 @@ impl<'pool, FLBitmap: BinInteger, SLBitmap: BinInteger, const FLLEN: usize, cons
         let size = block.as_ref().common.size - SIZE_USED;
         debug_assert_eq!(size, block.as_ref().common.size & SIZE_SIZE_MASK);
 
-        let block_end = block.as_ptr() as usize + size;
-        let payload_start = ptr.as_ptr() as usize;
-        block_end - payload_start
+        let block_end = block.as_ptr().cast::<u8>().wrapping_add(size);
+        let payload_start = ptr.as_ptr();
+        block_end.offset_from(payload_start) as usize
     }
 
     // TODO: `reallocate_no_move` (constant-time reallocation)

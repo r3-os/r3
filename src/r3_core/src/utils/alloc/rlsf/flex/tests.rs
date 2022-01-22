@@ -1,5 +1,5 @@
 use quickcheck_macros::quickcheck;
-use std::{fmt, prelude::v1::*};
+use std::prelude::v1::*;
 
 use super::super::{
     tests::ShadowAllocator,
@@ -107,64 +107,6 @@ unsafe impl<T: FlexSource> FlexSource for TrackingFlexSource<T> {
     }
 }
 
-/// Continuous-growing flex source
-struct CgFlexSource {
-    pool: Vec<u8>,
-    allocated: usize,
-}
-
-impl fmt::Debug for CgFlexSource {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CgFlexSource")
-            .field("allocated", &self.allocated)
-            .finish()
-    }
-}
-
-impl TestFlexSource for CgFlexSource {
-    type Options = u8;
-
-    fn new(offset: u8) -> Self {
-        Self {
-            pool: std::vec![0u8; 1024 * 32],
-            allocated: offset as usize,
-        }
-    }
-}
-
-unsafe impl FlexSource for CgFlexSource {
-    unsafe fn alloc(&mut self, min_size: usize) -> Option<NonNull<[u8]>> {
-        let allocated = self.allocated;
-        let new_allocated = allocated
-            .checked_add(min_size)
-            .filter(|&x| x <= self.pool.len())?;
-
-        self.allocated = new_allocated;
-        Some(NonNull::from(&mut self.pool[allocated..new_allocated]))
-    }
-
-    unsafe fn realloc_inplace_grow(
-        &mut self,
-        ptr: NonNull<[u8]>,
-        min_new_len: usize,
-    ) -> Option<usize> {
-        self.alloc(min_new_len - nonnull_slice_len(ptr))
-            .map(|s| nonnull_slice_len(s) + nonnull_slice_len(ptr))
-    }
-
-    fn is_contiguous_growable(&self) -> bool {
-        true
-    }
-
-    fn supports_realloc_inplace_grow(&self) -> bool {
-        true
-    }
-
-    fn min_align(&self) -> usize {
-        1
-    }
-}
-
 fn fill_data(p: NonNull<[u8]>) {
     use std::mem::MaybeUninit;
     let slice = unsafe { &mut *(p.as_ptr() as *mut [MaybeUninit<u8>]) };
@@ -199,51 +141,8 @@ macro_rules! gen_test {
                 if let Some(ptr) = ptr {
                     unsafe { tlsf.deallocate(ptr, 1) };
                 }
-            }
 
-            #[quickcheck]
-            fn aadaadaraaadr(source_options: <$source as TestFlexSource>::Options) {
-                let _ = env_logger::builder().is_test(true).try_init();
-
-                let mut tlsf = TheTlsf::new(TrackingFlexSource::new(source_options));
-
-                log::trace!("tlsf = {:?}", tlsf);
-
-                let ptr1 = tlsf.allocate(Layout::from_size_align(20, 16).unwrap());
-                log::trace!("ptr1 = {:?}", ptr1);
-                let ptr2 = tlsf.allocate(Layout::from_size_align(21, 1).unwrap());
-                log::trace!("ptr2 = {:?}", ptr2);
-                if let Some(ptr1) = ptr1 {
-                    unsafe { tlsf.deallocate(ptr1, 16) };
-                }
-                let ptr3 = tlsf.allocate(Layout::from_size_align(0, 32).unwrap());
-                log::trace!("ptr3 = {:?}", ptr3);
-                let ptr4 = tlsf.allocate(Layout::from_size_align(10, 8).unwrap());
-                log::trace!("ptr4 = {:?}", ptr4);
-                if let Some(ptr2) = ptr2 {
-                    unsafe { tlsf.deallocate(ptr2, 1) };
-                    log::trace!("deallocate(ptr2)");
-                }
-                let ptr5 = tlsf.allocate(Layout::from_size_align(12, 8).unwrap());
-                log::trace!("ptr5 = {:?}", ptr5);
-                let ptr3 = ptr3.and_then(|ptr3| unsafe {
-                    tlsf.reallocate(ptr3, Layout::from_size_align(0, 32).unwrap())
-                });
-                log::trace!("ptr3 = {:?}", ptr3);
-                let ptr6 = tlsf.allocate(Layout::from_size_align(24, 2).unwrap());
-                log::trace!("ptr6 = {:?}", ptr6);
-                let ptr7 = tlsf.allocate(Layout::from_size_align(11, 16).unwrap());
-                log::trace!("ptr7 = {:?}", ptr7);
-                let ptr8 = tlsf.allocate(Layout::from_size_align(1, 32).unwrap());
-                log::trace!("ptr8 = {:?}", ptr8);
-                if let Some(ptr5) = ptr5 {
-                    unsafe { tlsf.deallocate(ptr5, 8) };
-                    log::trace!("deallocate(ptr5)");
-                }
-                let ptr3 = ptr3.and_then(|ptr3| unsafe {
-                    tlsf.reallocate(ptr3, Layout::from_size_align(4, 32).unwrap())
-                });
-                log::trace!("ptr3 = {:?}", ptr3);
+                tlsf.destroy();
             }
 
             #[quickcheck]
@@ -251,10 +150,19 @@ macro_rules! gen_test {
                 random_inner(source_options, max_alloc_size, bytecode);
             }
 
+            struct CleanOnDrop(Option<TheTlsf>);
+
+            impl Drop for CleanOnDrop {
+                fn drop(&mut self) {
+                    self.0.take().unwrap().destroy();
+                }
+            }
+
             fn random_inner(source_options: <$source as TestFlexSource>::Options, max_alloc_size: usize, bytecode: Vec<u8>) -> Option<()> {
                 let max_alloc_size = max_alloc_size % 0x10000;
 
-                let mut tlsf = TheTlsf::new(TrackingFlexSource::new(source_options));
+                let mut tlsf = CleanOnDrop(None);
+                let tlsf = tlsf.0.get_or_insert_with(|| TheTlsf::new(TrackingFlexSource::new(source_options)));
                 macro_rules! sa {
                     () => {
                         unsafe { tlsf.source_mut_unchecked() }.sa
@@ -281,7 +189,8 @@ macro_rules! gen_test {
                                 0,
                             ]);
                             let len = ((len as u64 * max_alloc_size as u64) >> 24) as usize;
-                            let align = 1 << (it.next()? % 6);
+                            let align = 1 << (it.next()? % (ALIGN.trailing_zeros() as u8 + 1));
+                            assert!(align <= ALIGN);
                             let layout = Layout::from_size_align(len, align).unwrap();
                             log::trace!("alloc {:?}", layout);
 
@@ -382,34 +291,3 @@ gen_test!(tlsf_sys_u64_u8_59_8, SysSource, u64, u64, 59, 8);
 gen_test!(tlsf_sys_u64_u8_60_8, SysSource, u64, u64, 60, 8);
 gen_test!(tlsf_sys_u64_u8_61_8, SysSource, u64, u64, 61, 8);
 gen_test!(tlsf_sys_u64_u8_64_8, SysSource, u64, u64, 64, 8);
-
-gen_test!(tlsf_cg_u8_u8_1_1, CgFlexSource, u8, u8, 1, 1);
-gen_test!(tlsf_cg_u8_u8_1_2, CgFlexSource, u8, u8, 1, 2);
-gen_test!(tlsf_cg_u8_u8_1_4, CgFlexSource, u8, u8, 1, 4);
-gen_test!(tlsf_cg_u8_u8_1_8, CgFlexSource, u8, u8, 1, 8);
-gen_test!(tlsf_cg_u8_u8_3_4, CgFlexSource, u8, u8, 3, 4);
-gen_test!(tlsf_cg_u8_u8_5_4, CgFlexSource, u8, u8, 5, 4);
-gen_test!(tlsf_cg_u8_u8_8_1, CgFlexSource, u8, u8, 8, 1);
-gen_test!(tlsf_cg_u8_u8_8_8, CgFlexSource, u8, u8, 8, 8);
-gen_test!(tlsf_cg_u16_u8_3_4, CgFlexSource, u16, u8, 3, 4);
-gen_test!(tlsf_cg_u16_u8_11_4, CgFlexSource, u16, u8, 11, 4);
-gen_test!(tlsf_cg_u16_u8_16_4, CgFlexSource, u16, u8, 16, 4);
-gen_test!(tlsf_cg_u16_u16_3_16, CgFlexSource, u16, u16, 3, 16);
-gen_test!(tlsf_cg_u16_u16_11_16, CgFlexSource, u16, u16, 11, 16);
-gen_test!(tlsf_cg_u16_u16_16_16, CgFlexSource, u16, u16, 16, 16);
-gen_test!(tlsf_cg_u16_u32_3_16, CgFlexSource, u16, u32, 3, 16);
-gen_test!(tlsf_cg_u16_u32_11_16, CgFlexSource, u16, u32, 11, 16);
-gen_test!(tlsf_cg_u16_u32_16_16, CgFlexSource, u16, u32, 16, 16);
-gen_test!(tlsf_cg_u16_u32_3_32, CgFlexSource, u16, u32, 3, 32);
-gen_test!(tlsf_cg_u16_u32_11_32, CgFlexSource, u16, u32, 11, 32);
-gen_test!(tlsf_cg_u16_u32_16_32, CgFlexSource, u16, u32, 16, 32);
-gen_test!(tlsf_cg_u32_u32_20_32, CgFlexSource, u32, u32, 20, 32);
-gen_test!(tlsf_cg_u32_u32_27_32, CgFlexSource, u32, u32, 27, 32);
-gen_test!(tlsf_cg_u32_u32_28_32, CgFlexSource, u32, u32, 28, 32);
-gen_test!(tlsf_cg_u32_u32_29_32, CgFlexSource, u32, u32, 29, 32);
-gen_test!(tlsf_cg_u32_u32_32_32, CgFlexSource, u32, u32, 32, 32);
-gen_test!(tlsf_cg_u64_u8_58_8, CgFlexSource, u64, u64, 58, 8);
-gen_test!(tlsf_cg_u64_u8_59_8, CgFlexSource, u64, u64, 59, 8);
-gen_test!(tlsf_cg_u64_u8_60_8, CgFlexSource, u64, u64, 60, 8);
-gen_test!(tlsf_cg_u64_u8_61_8, CgFlexSource, u64, u64, 61, 8);
-gen_test!(tlsf_cg_u64_u8_64_8, CgFlexSource, u64, u64, 64, 8);
