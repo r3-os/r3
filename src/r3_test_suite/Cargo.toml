@@ -1,0 +1,11 @@
+[package]
+name = "r3_test_suite"
+version = "0.0.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Test suite for R3 RTOS (placeholder)"
+categories = ["embedded", "no-std"]
+keywords = ["r3"]
+repository = "https://github.com/r3-os/r3"
+
+[dependencies]
