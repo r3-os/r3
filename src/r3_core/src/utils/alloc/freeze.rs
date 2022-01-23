@@ -47,6 +47,11 @@ impl<T: Copy> Frozen<T> {
             .checked_mul(x.len())
             .expect("size overflow");
         let align = core::mem::align_of::<T>();
+
+        if size == 0 {
+            return &[];
+        }
+
         unsafe {
             // Allocate a CTFE heap memory block
             let ptr = core::intrinsics::const_allocate(size, align).cast::<T>();

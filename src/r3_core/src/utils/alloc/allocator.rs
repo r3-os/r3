@@ -394,6 +394,8 @@ unsafe impl const rlsf::FlexSource for ConstFlexSource {
             return None;
         };
 
+        assert!(min_size != 0);
+
         // FIXME: Directly calling `const_allocate` from here causes the
         //        compiler to panic
         // Safety: `const_allocate_{in_const, at_rt}` behave observably
