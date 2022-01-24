@@ -28,7 +28,10 @@ macro_rules! build {
     // r3_kernel::System<$Traits>>) -> $IdMap`
     ($Traits:ty, $configure:expr => $IdMap:ty) => {{
         use $crate::{
-            r3_core,
+            r3_core::{
+                self,
+                utils::ConstAllocator,
+            },
             cfg::{self, CfgBuilder, CfgBuilderInner},
             EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
             KernelCfg2, Port, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
@@ -44,11 +47,13 @@ macro_rules! build {
         // Kernel-independent configuration process
         // ---------------------------------------------------------------------
 
-        const fn build_cfg_phase1() -> r3_core::kernel::cfg::CfgPhase1Data<System> {
+        const fn build_cfg_phase1(
+            allocator: &ConstAllocator,
+        ) -> r3_core::kernel::cfg::CfgPhase1Data<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut my_cfg = unsafe { CfgBuilder::new() };
             r3_core::kernel::cfg::cfg_phase1!(
-                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg));
+                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg, allocator));
             $configure(&mut cfg);
             CfgBuilder::finalize_in_cfg(&mut cfg);
 
@@ -60,15 +65,17 @@ macro_rules! build {
         // Implement `CfgPhase1` on `$Traits` using the information
         // collected in phase 1
         r3_core::kernel::cfg::attach_phase1!(
-            build_cfg_phase1(),
+            ConstAllocator::with(build_cfg_phase1),
             impl CfgPhase1<System> for $Traits,
         );
 
-        const fn build_cfg_phase2() -> r3_core::kernel::cfg::CfgPhase2Data<System> {
+        const fn build_cfg_phase2(
+            allocator: &ConstAllocator,
+        ) -> r3_core::kernel::cfg::CfgPhase2Data<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut my_cfg = unsafe { CfgBuilder::new() };
             r3_core::kernel::cfg::cfg_phase2!(
-                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg));
+                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg, allocator));
             $configure(&mut cfg);
             CfgBuilder::finalize_in_cfg(&mut cfg);
 
@@ -80,11 +87,13 @@ macro_rules! build {
         // Implement `CfgPhase2` on `$Traits` using the information
         // collected in phase 2
         r3_core::kernel::cfg::attach_phase2!(
-            build_cfg_phase2(),
+            ConstAllocator::with(build_cfg_phase2),
             impl CfgPhase2<System> for $Traits,
         );
 
-        const fn build_cfg_phase3() -> (
+        const fn build_cfg_phase3(
+            allocator: &ConstAllocator,
+        ) -> (
             CfgBuilderInner<$Traits>,
             $IdMap,
             r3_core::kernel::cfg::CfgPhase3Data<System>,
@@ -92,7 +101,7 @@ macro_rules! build {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
             let mut my_cfg = unsafe { CfgBuilder::new() };
             r3_core::kernel::cfg::cfg_phase3!(
-                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg));
+                let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg, allocator));
             let id_map = $configure(&mut cfg);
             CfgBuilder::finalize_in_cfg(&mut cfg);
 
@@ -108,7 +117,7 @@ macro_rules! build {
             CfgBuilderInner<$Traits>,
             $IdMap,
             r3_core::kernel::cfg::CfgPhase3Data<System>,
-        ) = build_cfg_phase3();
+        ) = ConstAllocator::with(build_cfg_phase3);
         const CFG: CfgBuilderInner<$Traits> = CFG_OUTPUT.0;
 
         // Implement `KernelStatic` on `$Traits` using the information

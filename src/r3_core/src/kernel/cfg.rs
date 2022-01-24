@@ -1,7 +1,7 @@
 //! Kernel configuration
 use crate::{
     kernel::{hook, interrupt, raw, raw_cfg},
-    utils::{ComptimeVec, Init, PhantomInvariant},
+    utils::{ComptimeVec, ConstAllocator, Init, PhantomInvariant},
 };
 
 macro overview_ref() {
@@ -29,7 +29,7 @@ enum CfgSt {
 
 impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// Construct `Cfg`.
-    const fn new(raw: &'c mut C, st: CfgSt) -> Self {
+    const fn new(raw: &'c mut C, _allocator: &'c ConstAllocator, st: CfgSt) -> Self {
         Self {
             raw,
             st,
@@ -42,24 +42,36 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     }
 
     #[doc(hidden)]
-    pub const fn __internal_new_phase1(raw: &'c mut C, _dummy: &'c mut ()) -> Self {
-        Self::new(raw, CfgSt::Phase1)
+    pub const fn __internal_new_phase1(
+        raw: &'c mut C,
+        allocator: &'c ConstAllocator,
+        _dummy: &'c mut (),
+    ) -> Self {
+        Self::new(raw, allocator, CfgSt::Phase1)
     }
 
     #[doc(hidden)]
-    pub const fn __internal_new_phase2(raw: &'c mut C, _dummy: &'c mut ()) -> Self
+    pub const fn __internal_new_phase2(
+        raw: &'c mut C,
+        allocator: &'c ConstAllocator,
+        _dummy: &'c mut (),
+    ) -> Self
     where
         C::System: CfgPhase1,
     {
-        Self::new(raw, CfgSt::Phase2)
+        Self::new(raw, allocator, CfgSt::Phase2)
     }
 
     #[doc(hidden)]
-    pub const fn __internal_new_phase3(raw: &'c mut C, _dummy: &'c mut ()) -> Self
+    pub const fn __internal_new_phase3(
+        raw: &'c mut C,
+        allocator: &'c ConstAllocator,
+        _dummy: &'c mut (),
+    ) -> Self
     where
         C::System: CfgPhase2,
     {
-        Self::new(raw, CfgSt::Phase3 { interrupts: false })
+        Self::new(raw, allocator, CfgSt::Phase3 { interrupts: false })
     }
 
     /// Mutably borrow the underlying `C`.
@@ -504,28 +516,45 @@ where
 
 /// Construct [`Cfg`]`<$RawCfg>` for the phase 3 configuration.
 ///
+///  - `$raw_cfg: &mut impl `[`CfgBase`][]
+///  - `$allocator: &`[`ConstAllocator`][]
+///
 /// `<$RawCfg as `[`CfgBase`][]`>::System` must implement [`CfgPhase2`][].
 ///
 /// [`CfgBase`]: raw_cfg::CfgBase
-pub macro cfg_phase3(let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr)) {
+pub macro cfg_phase3(
+    let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr, $allocator:expr)
+) {
     let mut dummy = ();
-    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase3(&mut *$raw_cfg, &mut dummy);
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase3(&mut *$raw_cfg, $allocator, &mut dummy);
 }
 
 /// Construct [`Cfg`]`<$RawCfg>` for the phase 2 configuration.
 ///
+///  - `$raw_cfg: &mut impl `[`CfgBase`][]
+///  - `$allocator: &`[`ConstAllocator`][]
+///
 /// `<$RawCfg as `[`CfgBase`][]`>::System` must implement [`CfgPhase1`][].
 ///
 /// [`CfgBase`]: raw_cfg::CfgBase
-pub macro cfg_phase2(let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr)) {
+pub macro cfg_phase2(
+    let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr, $allocator:expr)
+) {
     let mut dummy = ();
-    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase2(&mut *$raw_cfg, &mut dummy);
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase2(&mut *$raw_cfg, $allocator, &mut dummy);
 }
 
 /// Construct [`Cfg`]`<$RawCfg>` for the phase 1 configuration.
-pub macro cfg_phase1(let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr)) {
+///
+///  - `$raw_cfg: &mut impl `[`CfgBase`][]
+///  - `$allocator: &`[`ConstAllocator`][]
+///
+/// [`CfgBase`]: raw_cfg::CfgBase
+pub macro cfg_phase1(
+    let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr, $allocator:expr)
+) {
     let mut dummy = ();
-    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase1(&mut *$raw_cfg, &mut dummy);
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase1(&mut *$raw_cfg, $allocator, &mut dummy);
 }
 
 /// Implement [`KernelStatic`] on `$Ty` using the given `$params:
