@@ -2,6 +2,8 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_floating_point_arithmetic)]
+#![feature(const_maybe_uninit_as_mut_ptr)]
+#![feature(const_ptr_read)]
 #![feature(generic_const_exprs)]
 #![feature(const_ptr_offset)]
 #![feature(const_swap)]

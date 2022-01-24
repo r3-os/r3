@@ -136,10 +136,28 @@ impl ConstAllocator {
     ///     core::mem::forget(al.clone());
     /// }
     /// ```
+    #[inline]
     pub const fn with<F, R>(f: F) -> R
     where
         F: ~const FnOnce(&ConstAllocator) -> R,
     {
+        Self::with_inner(f)
+    }
+
+    /// The variant of [`Self::with`] that lets you pass an additional parameter
+    /// to the closure.
+    ///
+    /// This can be used to work around the lack of compiler support for const
+    /// closures.
+    #[inline]
+    pub const fn with_parametric<P, F, R>(p: P, f: F) -> R
+    where
+        F: ~const FnOnce(P, &ConstAllocator) -> R,
+    {
+        Self::with_inner((p, f))
+    }
+
+    const fn with_inner<F: ~const FnOnceConstAllocator>(f: F) -> F::Output {
         struct RefCountGuard(usize);
         impl const Drop for RefCountGuard {
             fn drop(&mut self) {
@@ -168,7 +186,43 @@ impl ConstAllocator {
             tlsf: tlsf.0.as_mut().unwrap(),
         };
 
-        f(&this)
+        f.call(&this)
+    }
+}
+
+/// The trait for types accepted by [`ConstAllocator::with_inner`].
+trait FnOnceConstAllocator {
+    type Output;
+    fn call(self, allocator: &ConstAllocator) -> Self::Output;
+}
+
+/// This implementation's `call` method simply calls the `FnOnce` receiver.
+impl<T: ~const FnOnce(&ConstAllocator) -> Output, Output> const FnOnceConstAllocator for T {
+    type Output = Output;
+    fn call(self, allocator: &ConstAllocator) -> Self::Output {
+        self(allocator)
+    }
+}
+
+/// This implementation's `call` method calls the `FnOnce` receiver with an
+/// associated parameter value.
+impl<P, T: ~const FnOnce(P, &ConstAllocator) -> Output, Output> const FnOnceConstAllocator
+    for (P, T)
+{
+    type Output = Output;
+    fn call(self, allocator: &ConstAllocator) -> Self::Output {
+        let mut this = core::mem::MaybeUninit::new(self);
+        // Safety: It's initialized
+        let this = unsafe { &mut *this.as_mut_ptr() };
+        // Safety: `md.0` and `md.1` are in `MaybeUninit`, so this will not
+        // cause double free
+        let param = unsafe { core::ptr::read(&this.0) };
+        let func = unsafe { core::ptr::read(&this.1) };
+        func(param, allocator)
+
+        // FIXME: The following implementation doesn't work because of
+        //        <https://github.com/rust-lang/rust/issues/86897>
+        // (self.1)(self.0, allocator)
     }
 }
 
