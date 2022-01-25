@@ -24,6 +24,10 @@ macro_rules! const_try_result {
 /// `ConstAllocator`. This is accomplished by, instead of making a call to
 /// `const_allocate` for each allocation request, slicing out each allocated
 /// region from larger blocks using a dynamic storage allocation algorithm.
+///
+/// # Stability
+///
+/// This type is subject to the kernel-side API stability guarantee.
 pub struct ConstAllocator {
     // We very much want to put these in `core::cell::*`, but they aren't very
     // useful in `const fn`, unfortunately.
@@ -192,6 +196,10 @@ impl const Drop for ConstAllocator {
 /// that may be due to resource exhaustion or to
 /// something wrong when combining the given input arguments with this
 /// allocator.
+///
+/// # Stability
+///
+/// This trait is subject to the kernel-side API stability guarantee.
 #[derive(Clone, Copy)]
 pub struct AllocError;
 
@@ -200,6 +208,10 @@ pub struct AllocError;
 /// # Safety
 ///
 /// See [`core::alloc::Allocator`]'s documentation.
+///
+/// # Stability
+///
+/// This trait is subject to the kernel-side API stability guarantee.
 pub unsafe trait Allocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 

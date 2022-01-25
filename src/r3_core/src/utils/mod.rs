@@ -1,4 +1,7 @@
 //! Utility
+//!
+//! **This module is exempt from the API stability guarantee** unless specified
+//! otherwise. It's exposed mostly because it's needed by macros.
 use core::marker::PhantomData;
 
 /// Conditional type
@@ -45,6 +48,10 @@ mod binary_search;
 mod sort;
 pub(crate) use sort::*;
 #[macro_use]
+mod vec;
+pub use vec::*;
+mod freeze;
+pub use freeze::*;
 mod alloc;
 pub use alloc::*;
 #[macro_use]
