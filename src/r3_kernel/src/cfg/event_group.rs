@@ -16,14 +16,12 @@ unsafe impl<Traits: KernelTraits> const CfgEventGroup for CfgBuilder<Traits> {
         }: EventGroupDescriptor<Self::System>,
         _properties: Properties,
     ) -> event_group::EventGroupId {
-        let inner = &mut self.inner;
-
-        inner.event_groups.push(CfgBuilderEventGroup {
+        self.event_groups.push(CfgBuilderEventGroup {
             initial_bits,
             queue_order: wait::QueueOrder::from(queue_order),
         });
 
-        unsafe { NonZeroUsize::new_unchecked(inner.event_groups.len()) }
+        unsafe { NonZeroUsize::new_unchecked(self.event_groups.len()) }
     }
 }
 

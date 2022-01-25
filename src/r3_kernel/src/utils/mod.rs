@@ -1,7 +1,7 @@
 //! Utility
 //!
 //! **This module is exempt from the API stability guarantee** unless specified
-//! otherwise. It's exposed only because it's needed by macros.
+//! otherwise. It's exposed mostly because it's needed by macros.
 use core::marker::PhantomData;
 
 /// Conditional type
@@ -46,6 +46,7 @@ mod aligned_storage;
 pub mod binary_heap;
 pub(crate) mod convert;
 mod ctz;
+mod freeze;
 mod int;
 pub(crate) mod intrusive_list;
 pub mod mem;
@@ -54,7 +55,8 @@ mod prio_bitmap;
 mod rawcell;
 #[macro_use]
 mod vec;
-pub use self::{aligned_storage::*, int::*, prio_bitmap::*, rawcell::*, vec::*};
+pub use self::{aligned_storage::*, freeze::*, int::*, prio_bitmap::*, rawcell::*, vec::*};
+use r3_core::utils::{AllocError, Allocator, ConstAllocator};
 pub use r3_core::utils::{Init, ZeroInit};
 
 /// A "type function" producing a type.

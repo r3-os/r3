@@ -3,7 +3,7 @@ use r3_core::kernel::{
     raw_cfg::{CfgInterruptLine, InterruptLineDescriptor},
 };
 
-use crate::{cfg::CfgBuilder, interrupt, KernelTraits};
+use crate::{cfg::CfgBuilder, interrupt, utils::Frozen, KernelTraits};
 
 unsafe impl<Traits: KernelTraits> const CfgInterruptLine for CfgBuilder<Traits> {
     fn interrupt_line_define<Properties: ~const r3_core::bag::Bag>(
@@ -17,7 +17,7 @@ unsafe impl<Traits: KernelTraits> const CfgInterruptLine for CfgBuilder<Traits> 
         }: InterruptLineDescriptor<Self::System>,
         _properties: Properties,
     ) {
-        self.inner.interrupt_lines.push(CfgBuilderInterruptLine {
+        self.interrupt_lines.push(CfgBuilderInterruptLine {
             line,
             priority,
             start,
@@ -56,11 +56,13 @@ impl CfgBuilderInterruptLine {
 }
 
 #[doc(hidden)]
-pub const fn interrupt_handler_table_len(interrupt_lines: &[CfgBuilderInterruptLine]) -> usize {
+pub const fn interrupt_handler_table_len(
+    interrupt_lines: &[Frozen<CfgBuilderInterruptLine>],
+) -> usize {
     let mut num = 0;
     let mut i = 0;
     while i < interrupt_lines.len() {
-        let k = interrupt_lines[i].line + 1;
+        let k = interrupt_lines[i].get().line + 1;
         if k > num {
             num = k;
         }
@@ -71,7 +73,7 @@ pub const fn interrupt_handler_table_len(interrupt_lines: &[CfgBuilderInterruptL
 
 #[doc(hidden)]
 pub const fn interrupt_handler_table<const LEN: usize>(
-    interrupt_lines: &[CfgBuilderInterruptLine],
+    interrupt_lines: &[Frozen<CfgBuilderInterruptLine>],
 ) -> [Option<InterruptHandlerFn>; LEN] {
     let mut table = [None; LEN];
 
@@ -81,7 +83,7 @@ pub const fn interrupt_handler_table<const LEN: usize>(
             line,
             start: Some(start),
             ..
-        } = interrupt_lines[i]
+        } = interrupt_lines[i].get()
         {
             assert!(
                 table[line].is_none(),

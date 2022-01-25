@@ -41,9 +41,7 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
             stack = task::StackHunk::from_hunk(hunk.hunk(), stack_size);
         }
 
-        let inner = &mut self.inner;
-
-        inner.tasks.push(CfgBuilderTask {
+        self.tasks.push(CfgBuilderTask {
             start,
             param,
             stack,
@@ -51,7 +49,7 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
             active,
         });
 
-        unsafe { NonZeroUsize::new_unchecked(inner.tasks.len()) }
+        unsafe { NonZeroUsize::new_unchecked(self.tasks.len()) }
     }
 }
 
