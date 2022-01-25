@@ -17,20 +17,18 @@ unsafe impl<Traits: KernelTraits> const CfgSemaphore for CfgBuilder<Traits> {
         }: SemaphoreDescriptor<Self::System>,
         _properties: Properties,
     ) -> semaphore::SemaphoreId {
-        let inner = &mut self.inner;
-
         assert!(
             initial <= maximum,
             "`initial` must be less than or equal to `maximum`"
         );
 
-        inner.semaphores.push(CfgBuilderSemaphore {
+        self.semaphores.push(CfgBuilderSemaphore {
             initial,
             maximum,
             queue_order: wait::QueueOrder::from(queue_order),
         });
 
-        unsafe { NonZeroUsize::new_unchecked(inner.semaphores.len()) }
+        unsafe { NonZeroUsize::new_unchecked(self.semaphores.len()) }
     }
 }
 

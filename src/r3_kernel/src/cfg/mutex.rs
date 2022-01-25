@@ -15,11 +15,9 @@ unsafe impl<Traits: KernelTraits> const CfgMutex for CfgBuilder<Traits> {
         }: MutexDescriptor<Self::System>,
         _properties: Properties,
     ) -> mutex::MutexId {
-        let inner = &mut self.inner;
+        self.mutexes.push(CfgBuilderMutex { protocol });
 
-        inner.mutexes.push(CfgBuilderMutex { protocol });
-
-        unsafe { NonZeroUsize::new_unchecked(inner.mutexes.len()) }
+        unsafe { NonZeroUsize::new_unchecked(self.mutexes.len()) }
     }
 }
 

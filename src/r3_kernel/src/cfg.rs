@@ -1,6 +1,4 @@
 //! Static configuration mechanism for the kernel
-use core::marker::PhantomData;
-
 use r3_core::{kernel::Hunk, utils::ConstAllocator};
 
 use crate::{
@@ -110,7 +108,7 @@ macro_rules! build {
             cfg.finish_phase3_interrupt();
             let phase3_data = cfg.finish_phase3();
 
-            (my_cfg.into_inner(), id_map, phase3_data)
+            (my_cfg.into_middle(), id_map, phase3_data)
         }
 
         const CFG_OUTPUT: (
@@ -310,29 +308,23 @@ macro_rules! array_item_from_fn {
 
 /// A kernel configuration being constructed.
 pub struct CfgBuilder<Traits: KernelTraits> {
-    /// Disallows the mutation of `CfgBuilderInner` by a user-defined
-    /// configuration function by making this not `pub`.
-    inner: CfgBuilderInner<Traits>,
+    hunk_pool_len: usize,
+    hunk_pool_align: usize,
+    tasks: ComptimeVec<CfgBuilderTask<Traits>>,
+    num_task_priority_levels: usize,
+    interrupt_lines: ComptimeVec<CfgBuilderInterruptLine>,
+    startup_hook: Option<fn()>,
+    event_groups: ComptimeVec<CfgBuilderEventGroup>,
+    mutexes: ComptimeVec<CfgBuilderMutex>,
+    semaphores: ComptimeVec<CfgBuilderSemaphore>,
+    timers: ComptimeVec<CfgBuilderTimer>,
 }
 
-// TODO: It's not needed anymore; move the whole contents into `CfgBuilder`
-#[doc(hidden)]
-pub(crate) struct CfgBuilderInner<Traits: KernelTraits> {
-    _phantom: PhantomData<Traits>,
-    pub hunk_pool_len: usize,
-    pub hunk_pool_align: usize,
-    pub tasks: ComptimeVec<CfgBuilderTask<Traits>>,
-    pub num_task_priority_levels: usize,
-    pub interrupt_lines: ComptimeVec<CfgBuilderInterruptLine>,
-    pub startup_hook: Option<fn()>,
-    pub event_groups: ComptimeVec<CfgBuilderEventGroup>,
-    pub mutexes: ComptimeVec<CfgBuilderMutex>,
-    pub semaphores: ComptimeVec<CfgBuilderSemaphore>,
-    pub timers: ComptimeVec<CfgBuilderTimer>,
-}
-
-/// The private portion of [`CfgBuilder`]. This is not a real public interface,
-/// but needs to be `pub` so [`build!`] can access the contents.
+/// The product of a [`CfgBuilder`]. [`build!`] will use it to define static
+/// items and associate them with `Traits`.
+///
+/// This is not a real public interface, but needs to be `pub` so [`build!`] can
+/// access the contents.
 // FIXME: Not anymore
 #[doc(hidden)]
 pub struct MiddleCfg<Traits: KernelTraits> {
@@ -361,37 +353,33 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
     #[doc(hidden)]
     pub const unsafe fn new(allocator: &ConstAllocator) -> Self {
         Self {
-            inner: CfgBuilderInner {
-                _phantom: PhantomData,
-                hunk_pool_len: 0,
-                hunk_pool_align: 1,
-                tasks: ComptimeVec::new_in(allocator.clone()),
-                num_task_priority_levels: 4,
-                interrupt_lines: ComptimeVec::new_in(allocator.clone()),
-                startup_hook: None,
-                event_groups: ComptimeVec::new_in(allocator.clone()),
-                mutexes: ComptimeVec::new_in(allocator.clone()),
-                semaphores: ComptimeVec::new_in(allocator.clone()),
-                timers: ComptimeVec::new_in(allocator.clone()),
-            },
+            hunk_pool_len: 0,
+            hunk_pool_align: 1,
+            tasks: ComptimeVec::new_in(allocator.clone()),
+            num_task_priority_levels: 4,
+            interrupt_lines: ComptimeVec::new_in(allocator.clone()),
+            startup_hook: None,
+            event_groups: ComptimeVec::new_in(allocator.clone()),
+            mutexes: ComptimeVec::new_in(allocator.clone()),
+            semaphores: ComptimeVec::new_in(allocator.clone()),
+            timers: ComptimeVec::new_in(allocator.clone()),
         }
     }
 
     /// Get `MiddleCfg`, consuming `self`.
     #[doc(hidden)]
-    pub const fn into_inner(self) -> MiddleCfg<Traits> {
-        let inner = self.inner;
+    pub const fn into_middle(self) -> MiddleCfg<Traits> {
         MiddleCfg {
-            hunk_pool_len: inner.hunk_pool_len,
-            hunk_pool_align: inner.hunk_pool_align,
-            tasks: Frozen::leak_slice(&inner.tasks),
-            num_task_priority_levels: inner.num_task_priority_levels,
-            interrupt_lines: Frozen::leak_slice(&inner.interrupt_lines),
-            startup_hook: inner.startup_hook,
-            event_groups: Frozen::leak_slice(&inner.event_groups),
-            mutexes: Frozen::leak_slice(&inner.mutexes),
-            semaphores: Frozen::leak_slice(&inner.semaphores),
-            timers: Frozen::leak_slice(&inner.timers),
+            hunk_pool_len: self.hunk_pool_len,
+            hunk_pool_align: self.hunk_pool_align,
+            tasks: Frozen::leak_slice(&self.tasks),
+            num_task_priority_levels: self.num_task_priority_levels,
+            interrupt_lines: Frozen::leak_slice(&self.interrupt_lines),
+            startup_hook: self.startup_hook,
+            event_groups: Frozen::leak_slice(&self.event_groups),
+            mutexes: Frozen::leak_slice(&self.mutexes),
+            semaphores: Frozen::leak_slice(&self.semaphores),
+            timers: Frozen::leak_slice(&self.timers),
         }
     }
 
@@ -400,7 +388,7 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
     pub const fn finalize_in_cfg(cfg: &mut r3_core::kernel::Cfg<Self>) {
         // Create hunks for task stacks.
         let mut i = 0;
-        let mut tasks = &mut cfg.raw().inner.tasks;
+        let mut tasks = &mut cfg.raw().tasks;
         while i < tasks.len() {
             if let Some(size) = tasks[i].stack.auto_size() {
                 // Round up the stack size
@@ -414,7 +402,7 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
 
                 // Borrow again `tasks`, which was unborrowed because of the
                 // call to `HunkDefiner::finish`
-                tasks = &mut cfg.raw().inner.tasks;
+                tasks = &mut cfg.raw().tasks;
 
                 tasks[i].stack = crate::task::StackHunk::from_hunk(hunk, size);
             }
@@ -441,14 +429,14 @@ unsafe impl<Traits: KernelTraits> const r3_core::kernel::raw_cfg::CfgBase for Cf
             unreachable!();
         }
 
-        self.inner.num_task_priority_levels = new_value;
+        self.num_task_priority_levels = new_value;
     }
 
     fn startup_hook_define(&mut self, func: fn()) {
         assert!(
-            self.inner.startup_hook.is_none(),
+            self.startup_hook.is_none(),
             "only one combined startup hook can be registered"
         );
-        self.inner.startup_hook = Some(func);
+        self.startup_hook = Some(func);
     }
 }

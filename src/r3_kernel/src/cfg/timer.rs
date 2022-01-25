@@ -19,8 +19,6 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
         }: TimerDescriptor<Self::System>,
         _properties: Properties,
     ) -> timer::TimerId {
-        let inner = &mut self.inner;
-
         let period = if let Some(period) = period {
             // FIXME: Work-around for `Result::expect` being not `const fn`
             if let Ok(x) = timeout::time32_from_duration(period) {
@@ -45,7 +43,7 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
             timeout::BAD_DURATION32
         };
 
-        inner.timers.push(CfgBuilderTimer {
+        self.timers.push(CfgBuilderTimer {
             start,
             param,
             delay,
@@ -53,7 +51,7 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
             active,
         });
 
-        unsafe { NonZeroUsize::new_unchecked(inner.timers.len()) }
+        unsafe { NonZeroUsize::new_unchecked(self.timers.len()) }
     }
 }
 

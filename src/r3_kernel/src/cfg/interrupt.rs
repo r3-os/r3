@@ -17,7 +17,7 @@ unsafe impl<Traits: KernelTraits> const CfgInterruptLine for CfgBuilder<Traits> 
         }: InterruptLineDescriptor<Self::System>,
         _properties: Properties,
     ) {
-        self.inner.interrupt_lines.push(CfgBuilderInterruptLine {
+        self.interrupt_lines.push(CfgBuilderInterruptLine {
             line,
             priority,
             start,
