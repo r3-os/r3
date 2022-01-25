@@ -21,6 +21,10 @@ While much of the application-level API has retained its general shape, there ar
 
 TODO
 
+### Fixed
+
+- The hard-coded kernel object count limitation has been removed. This was made possible by the use of growable arrays in the compile-time kernel configurator.
+
 ## [0.1.3] - 2021-10-29
 
 This release only includes changes to the documentation.

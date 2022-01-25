@@ -1,10 +1,10 @@
 //! Static configuration mechanism for the kernel
 use core::marker::PhantomData;
 
-use r3_core::kernel::Hunk;
+use r3_core::{kernel::Hunk, utils::ConstAllocator};
 
 use crate::{
-    utils::{ComptimeVec, FIXED_PRIO_BITMAP_MAX_LEN},
+    utils::{ComptimeVec, Frozen, FIXED_PRIO_BITMAP_MAX_LEN},
     KernelTraits, System,
 };
 
@@ -32,7 +32,7 @@ macro_rules! build {
                 self,
                 utils::ConstAllocator,
             },
-            cfg::{self, CfgBuilder, CfgBuilderInner},
+            cfg::{self, CfgBuilder, MiddleCfg},
             EventGroupCb, InterruptAttr, InterruptLineInit, KernelCfg1,
             KernelCfg2, Port, State, TaskAttr, TaskCb, TimeoutRef, TimerAttr,
             TimerCb, SemaphoreCb, MutexCb, PortThreading, readyqueue,
@@ -51,7 +51,7 @@ macro_rules! build {
             allocator: &ConstAllocator,
         ) -> r3_core::kernel::cfg::CfgPhase1Data<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
-            let mut my_cfg = unsafe { CfgBuilder::new() };
+            let mut my_cfg = unsafe { CfgBuilder::new(allocator) };
             r3_core::kernel::cfg::cfg_phase1!(
                 let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg, allocator));
             $configure(&mut cfg);
@@ -73,7 +73,7 @@ macro_rules! build {
             allocator: &ConstAllocator,
         ) -> r3_core::kernel::cfg::CfgPhase2Data<System> {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
-            let mut my_cfg = unsafe { CfgBuilder::new() };
+            let mut my_cfg = unsafe { CfgBuilder::new(allocator) };
             r3_core::kernel::cfg::cfg_phase2!(
                 let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg, allocator));
             $configure(&mut cfg);
@@ -94,12 +94,12 @@ macro_rules! build {
         const fn build_cfg_phase3(
             allocator: &ConstAllocator,
         ) -> (
-            CfgBuilderInner<$Traits>,
+            MiddleCfg<$Traits>,
             $IdMap,
             r3_core::kernel::cfg::CfgPhase3Data<System>,
         ) {
             // Safety: We are `build!`, so it's okay to use `CfgBuilder::new`
-            let mut my_cfg = unsafe { CfgBuilder::new() };
+            let mut my_cfg = unsafe { CfgBuilder::new(allocator) };
             r3_core::kernel::cfg::cfg_phase3!(
                 let mut cfg = Cfg::<CfgBuilder<$Traits>>::new(&mut my_cfg, allocator));
             let id_map = $configure(&mut cfg);
@@ -114,11 +114,11 @@ macro_rules! build {
         }
 
         const CFG_OUTPUT: (
-            CfgBuilderInner<$Traits>,
+            MiddleCfg<$Traits>,
             $IdMap,
             r3_core::kernel::cfg::CfgPhase3Data<System>,
         ) = ConstAllocator::with(build_cfg_phase3);
-        const CFG: CfgBuilderInner<$Traits> = CFG_OUTPUT.0;
+        const CFG: MiddleCfg<$Traits> = CFG_OUTPUT.0;
 
         // Implement `KernelStatic` on `$Traits` using the information
         // collected in phase 3
@@ -158,40 +158,40 @@ macro_rules! build {
         // Instantiiate task structures
         $crate::array_item_from_fn! {
             const TASK_ATTR_POOL: [TaskAttr<$Traits>; _] =
-                (0..CFG.tasks.len()).map(|i| CFG.tasks[i].to_attr());
+                (0..CFG.tasks.len()).map(|i| CFG.tasks[i].get().to_attr());
             static TASK_CB_POOL:
                 [TaskCb<$Traits>; _] =
-                    (0..CFG.tasks.len()).map(|i| CFG.tasks[i].to_state(&TASK_ATTR_POOL[i]));
+                    (0..CFG.tasks.len()).map(|i| CFG.tasks[i].get().to_state(&TASK_ATTR_POOL[i]));
         }
 
         // Instantiiate event group structures
         $crate::array_item_from_fn! {
             static EVENT_GROUP_CB_POOL:
                 [EventGroupCb<$Traits>; _] =
-                    (0..CFG.event_groups.len()).map(|i| CFG.event_groups[i].to_state());
+                    (0..CFG.event_groups.len()).map(|i| CFG.event_groups[i].get().to_state());
         }
 
         // Instantiiate mutex structures
         $crate::array_item_from_fn! {
             static MUTEX_CB_POOL:
                 [MutexCb<$Traits>; _] =
-                    (0..CFG.mutexes.len()).map(|i| CFG.mutexes[i].to_state());
+                    (0..CFG.mutexes.len()).map(|i| CFG.mutexes[i].get().to_state());
         }
 
         // Instantiiate semaphore structures
         $crate::array_item_from_fn! {
             static SEMAPHORE_CB_POOL:
                 [SemaphoreCb<$Traits>; _] =
-                    (0..CFG.semaphores.len()).map(|i| CFG.semaphores[i].to_state());
+                    (0..CFG.semaphores.len()).map(|i| CFG.semaphores[i].get().to_state());
         }
 
         // Instantiiate timer structures
         $crate::array_item_from_fn! {
             const TIMER_ATTR_POOL: [TimerAttr<$Traits>; _] =
-                (0..CFG.timers.len()).map(|i| CFG.timers[i].to_attr());
+                (0..CFG.timers.len()).map(|i| CFG.timers[i].get().to_attr());
             static TIMER_CB_POOL:
                 [TimerCb<$Traits>; _] =
-                    (0..CFG.timers.len()).map(|i| CFG.timers[i].to_state(&TIMER_ATTR_POOL[i], i));
+                    (0..CFG.timers.len()).map(|i| CFG.timers[i].get().to_state(&TIMER_ATTR_POOL[i], i));
         }
 
         // Instantiate hunks
@@ -204,16 +204,16 @@ macro_rules! build {
 
         // Construct a table of interrupt handlers
         const INTERRUPT_HANDLER_TABLE_LEN: usize =
-            cfg::interrupt_handler_table_len(CFG.interrupt_lines.as_slice());
+            cfg::interrupt_handler_table_len(CFG.interrupt_lines);
         const INTERRUPT_HANDLER_TABLE:
             [Option<r3_core::kernel::interrupt::InterruptHandlerFn>; INTERRUPT_HANDLER_TABLE_LEN] =
-            cfg::interrupt_handler_table(CFG.interrupt_lines.as_slice());
+            cfg::interrupt_handler_table(CFG.interrupt_lines);
 
         // Construct a table of interrupt line initiializers
         $crate::array_item_from_fn! {
             const INTERRUPT_LINE_INITS:
                 [InterruptLineInit; _] =
-                    (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines[i].to_init());
+                    (0..CFG.interrupt_lines.len()).map(|i| CFG.interrupt_lines[i].get().to_init());
         }
 
         // Calculate the required storage of the timeout heap
@@ -315,10 +315,9 @@ pub struct CfgBuilder<Traits: KernelTraits> {
     inner: CfgBuilderInner<Traits>,
 }
 
-/// The private portion of [`CfgBuilder`]. This is not a real public interface,
-/// but needs to be `pub` so [`build!`] can access the contents.
+// TODO: It's not needed anymore; move the whole contents into `CfgBuilder`
 #[doc(hidden)]
-pub struct CfgBuilderInner<Traits: KernelTraits> {
+pub(crate) struct CfgBuilderInner<Traits: KernelTraits> {
     _phantom: PhantomData<Traits>,
     pub hunk_pool_len: usize,
     pub hunk_pool_align: usize,
@@ -332,6 +331,23 @@ pub struct CfgBuilderInner<Traits: KernelTraits> {
     pub timers: ComptimeVec<CfgBuilderTimer>,
 }
 
+/// The private portion of [`CfgBuilder`]. This is not a real public interface,
+/// but needs to be `pub` so [`build!`] can access the contents.
+// FIXME: Not anymore
+#[doc(hidden)]
+pub struct MiddleCfg<Traits: KernelTraits> {
+    pub hunk_pool_len: usize,
+    pub hunk_pool_align: usize,
+    pub tasks: &'static [Frozen<CfgBuilderTask<Traits>>],
+    pub num_task_priority_levels: usize,
+    pub interrupt_lines: &'static [Frozen<CfgBuilderInterruptLine>],
+    pub startup_hook: Option<fn()>,
+    pub event_groups: &'static [Frozen<CfgBuilderEventGroup>],
+    pub mutexes: &'static [Frozen<CfgBuilderMutex>],
+    pub semaphores: &'static [Frozen<CfgBuilderSemaphore>],
+    pub timers: &'static [Frozen<CfgBuilderTimer>],
+}
+
 impl<Traits: KernelTraits> CfgBuilder<Traits> {
     /// Construct a `CfgBuilder`.
     ///
@@ -343,28 +359,40 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
     /// a given `CfgBuilder` with another one can be used to circumvent the
     /// compile-time access control of kernel objects.
     #[doc(hidden)]
-    pub const unsafe fn new() -> Self {
+    pub const unsafe fn new(allocator: &ConstAllocator) -> Self {
         Self {
             inner: CfgBuilderInner {
                 _phantom: PhantomData,
                 hunk_pool_len: 0,
                 hunk_pool_align: 1,
-                tasks: ComptimeVec::new(),
+                tasks: ComptimeVec::new_in(allocator.clone()),
                 num_task_priority_levels: 4,
-                interrupt_lines: ComptimeVec::new(),
+                interrupt_lines: ComptimeVec::new_in(allocator.clone()),
                 startup_hook: None,
-                event_groups: ComptimeVec::new(),
-                mutexes: ComptimeVec::new(),
-                semaphores: ComptimeVec::new(),
-                timers: ComptimeVec::new(),
+                event_groups: ComptimeVec::new_in(allocator.clone()),
+                mutexes: ComptimeVec::new_in(allocator.clone()),
+                semaphores: ComptimeVec::new_in(allocator.clone()),
+                timers: ComptimeVec::new_in(allocator.clone()),
             },
         }
     }
 
-    /// Get `CfgBuilderInner`, consuming `self`.
+    /// Get `MiddleCfg`, consuming `self`.
     #[doc(hidden)]
-    pub const fn into_inner(self) -> CfgBuilderInner<Traits> {
-        self.inner
+    pub const fn into_inner(self) -> MiddleCfg<Traits> {
+        let inner = self.inner;
+        MiddleCfg {
+            hunk_pool_len: inner.hunk_pool_len,
+            hunk_pool_align: inner.hunk_pool_align,
+            tasks: Frozen::leak_slice(&inner.tasks),
+            num_task_priority_levels: inner.num_task_priority_levels,
+            interrupt_lines: Frozen::leak_slice(&inner.interrupt_lines),
+            startup_hook: inner.startup_hook,
+            event_groups: Frozen::leak_slice(&inner.event_groups),
+            mutexes: Frozen::leak_slice(&inner.mutexes),
+            semaphores: Frozen::leak_slice(&inner.semaphores),
+            timers: Frozen::leak_slice(&inner.timers),
+        }
     }
 
     /// Apply post-processing before [`r3_core::kernel::Cfg`] is finalized.

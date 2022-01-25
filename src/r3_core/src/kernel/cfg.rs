@@ -1,7 +1,7 @@
 //! Kernel configuration
 use crate::{
     kernel::{hook, interrupt, raw, raw_cfg},
-    utils::{ComptimeVec, ConstAllocator, Init, PhantomInvariant},
+    utils::{ComptimeVec, ConstAllocator, Frozen, Init, PhantomInvariant},
 };
 
 macro overview_ref() {
@@ -29,15 +29,15 @@ enum CfgSt {
 
 impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// Construct `Cfg`.
-    const fn new(raw: &'c mut C, _allocator: &'c ConstAllocator, st: CfgSt) -> Self {
+    const fn new(raw: &'c mut C, allocator: &'c ConstAllocator, st: CfgSt) -> Self {
         Self {
             raw,
             st,
-            startup_hooks: ComptimeVec::new(),
+            startup_hooks: ComptimeVec::new_in(allocator.clone()),
             hunk_pool_len: 0,
             hunk_pool_align: 1,
-            interrupt_lines: ComptimeVec::new(),
-            interrupt_handlers: ComptimeVec::new(),
+            interrupt_lines: ComptimeVec::new_in(allocator.clone()),
+            interrupt_handlers: ComptimeVec::new_in(allocator.clone()),
         }
     }
 
@@ -116,10 +116,12 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
 
         CfgPhase1Data {
             _phantom: Init::INIT,
-            startup_hooks: self.startup_hooks.map(hook::CfgStartupHook::to_attr),
+            startup_hooks: Frozen::leak_slice(
+                &self.startup_hooks.map(hook::CfgStartupHook::to_attr),
+            ),
             hunk_pool_len: self.hunk_pool_len,
             hunk_pool_align: self.hunk_pool_align,
-            interrupt_handlers: self.interrupt_handlers,
+            interrupt_handlers: Frozen::leak_slice(&self.interrupt_handlers),
         }
     }
 
@@ -198,8 +200,8 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
 
         // Clear these fields to indicate that this method has been called
         // as required
-        self.interrupt_lines = ComptimeVec::new();
-        self.interrupt_handlers = ComptimeVec::new();
+        self.interrupt_lines.clear();
+        self.interrupt_handlers.clear();
     }
 
     /// Finalize `self` for the phase 3 configuration.
@@ -250,10 +252,10 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
 #[doc = overview_ref!()]
 pub struct CfgPhase1Data<System> {
     _phantom: PhantomInvariant<System>,
-    pub startup_hooks: ComptimeVec<hook::StartupHookAttr>,
+    pub startup_hooks: &'static [Frozen<hook::StartupHookAttr>],
     pub hunk_pool_len: usize,
     pub hunk_pool_align: usize,
-    pub interrupt_handlers: ComptimeVec<interrupt::CfgInterruptHandler>,
+    pub interrupt_handlers: &'static [Frozen<interrupt::CfgInterruptHandler>],
 }
 
 /// The inputs to [`attach_phase2!`].
@@ -619,13 +621,15 @@ pub macro attach_phase1($params:expr, impl CfgPhase1<$System:ty> for $Ty:ty $(,)
         array_item_from_fn! {
             const STARTUP_HOOKS: [hook::StartupHookAttr; _] =
                 (0..STATIC_PARAMS.startup_hooks.len())
-                    .map(|i| STATIC_PARAMS.startup_hooks[i]);
+                    .map(|i| STATIC_PARAMS.startup_hooks[i].get());
         }
 
         // Consturct a table of combined second-level interrupt handlers
-        const INTERRUPT_HANDLERS: [interrupt::CfgInterruptHandler; {
-            STATIC_PARAMS.interrupt_handlers.len()
-        }] = STATIC_PARAMS.interrupt_handlers.to_array();
+        array_item_from_fn! {
+            const INTERRUPT_HANDLERS: [interrupt::CfgInterruptHandler; _] =
+                (0..STATIC_PARAMS.interrupt_handlers.len())
+                    .map(|i| STATIC_PARAMS.interrupt_handlers[i].get());
+        }
         const NUM_INTERRUPT_HANDLERS: usize = INTERRUPT_HANDLERS.len();
         const NUM_INTERRUPT_LINES: usize =
             interrupt::num_required_interrupt_line_slots(&INTERRUPT_HANDLERS);

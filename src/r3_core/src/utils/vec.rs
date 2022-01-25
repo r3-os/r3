@@ -1,40 +1,90 @@
-use core::{mem::MaybeUninit, ops};
+use core::{alloc::Layout, ops, ptr::NonNull};
 
-/// `Vec` that can be used in a constant context.
+use super::{AllocError, Allocator, ConstAllocator};
+
+/// `Vec` that can only be used in a constant context.
 #[doc(hidden)]
 pub struct ComptimeVec<T: Copy> {
-    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/20>
-    storage: [MaybeUninit<T>; MAX_LEN],
+    ptr: NonNull<T>,
     len: usize,
+    capacity: usize,
+    allocator: ConstAllocator,
 }
 
-const MAX_LEN: usize = 256;
-
-impl<T: Copy> Copy for ComptimeVec<T> {}
-
-impl<T: Copy> Clone for ComptimeVec<T> {
+impl<T: Copy> const Clone for ComptimeVec<T> {
     fn clone(&self) -> Self {
-        self.map(Clone::clone)
+        #[inline]
+        const fn clone_by_copy<T: Copy>(x: &T) -> T {
+            *x
+        }
+        self.map(clone_by_copy)
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        *self = source.clone();
+    }
+}
+
+impl<T: Copy> const Drop for ComptimeVec<T> {
+    fn drop(&mut self) {
+        // Safety: The referent is a valid heap allocation from `self.allocator`,
+        // and `self` logically owns it
+        unsafe {
+            self.allocator
+                .deallocate(self.ptr.cast(), layout_array::<T>(self.capacity));
+        }
     }
 }
 
 impl<T: Copy> ComptimeVec<T> {
-    pub const fn new() -> Self {
+    pub const fn new_in(allocator: ConstAllocator) -> Self {
+        Self::with_capacity_in(0, allocator)
+    }
+
+    pub const fn with_capacity_in(capacity: usize, allocator: ConstAllocator) -> Self {
         Self {
-            storage: [MaybeUninit::uninit(); MAX_LEN],
+            ptr: unwrap_alloc_error(allocator.allocate(layout_array::<T>(capacity))).cast(),
             len: 0,
+            capacity,
+            allocator,
         }
     }
 
     pub const fn push(&mut self, x: T) {
-        self.storage[self.len] = MaybeUninit::new(x);
+        unsafe {
+            self.reserve(1);
+            // Safety: `self.len` is in-bounds
+            self.ptr.as_ptr().wrapping_add(self.len).write(x)
+        }
         self.len += 1;
+    }
+
+    const fn reserve(&mut self, additional: usize) {
+        // There's already an enough room?
+        if self.capacity - self.len >= additional {
+            return;
+        }
+
+        let mut new_cap = self.capacity.checked_add(2).expect("capacity overflow");
+        while new_cap - self.len < additional {
+            new_cap = new_cap.checked_mul(2).expect("capacity overflow");
+        }
+
+        unsafe {
+            self.ptr = unwrap_alloc_error(self.allocator.grow(
+                self.ptr.cast(),
+                layout_array::<T>(self.capacity),
+                layout_array::<T>(new_cap),
+            ))
+            .cast();
+            self.capacity = new_cap;
+        }
     }
 
     /// Return a `ComptimeVec` of the same `len` as `self` with function `f`
     /// applied to each element in order.
     pub const fn map<F: ~const FnMut(&T) -> U + Copy, U: Copy>(&self, mut f: F) -> ComptimeVec<U> {
-        let mut out = ComptimeVec::new();
+        let mut out = ComptimeVec::with_capacity_in(self.len, self.allocator.clone());
         let mut i = 0;
         while i < self.len() {
             out.push(f(&self[i]));
@@ -43,30 +93,21 @@ impl<T: Copy> ComptimeVec<T> {
         out
     }
 
+    /// Remove all elements.
+    pub const fn clear(&mut self) {
+        self.len = 0;
+    }
+
     /// Borrow the storage as a slice.
     #[inline]
     pub const fn as_slice(&self) -> &[T] {
-        // FIXME: Slicing is not `const fn` yet
-        let slice = core::ptr::slice_from_raw_parts(
-            &self.storage as *const _ as *const MaybeUninit<T>,
-            self.len,
-        );
-
-        // Safety: `self.storage[0..self.len]` is initialized
-        unsafe { MaybeUninit::slice_assume_init_ref(&*slice) }
+        unsafe { core::slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
     }
 
     /// Borrow the storage as a slice.
     #[inline]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
-        // FIXME: Slicing is not `const fn` yet
-        let slice = core::ptr::slice_from_raw_parts_mut(
-            &mut self.storage as *mut _ as *mut MaybeUninit<T>,
-            self.len,
-        );
-
-        // Safety: `self.storage[0..self.len]` is initialized
-        unsafe { MaybeUninit::slice_assume_init_mut(&mut *slice) }
+        unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
 
     pub const fn to_array<const LEN: usize>(&self) -> [T; LEN] {
@@ -79,7 +120,7 @@ impl<T: Copy> ComptimeVec<T> {
         // memory layout of `[MaybeUninit<T>; LEN]` is identical to `[T; LEN]`.
         // We initialized all elements in `storage[0..LEN]`, so it's safe to
         // reinterpret that range as `[T; LEN]`.
-        unsafe { *(&self.storage as *const _ as *const [T; LEN]) }
+        unsafe { *(self.ptr.as_ptr() as *const [T; LEN]) }
     }
 }
 
@@ -119,6 +160,24 @@ macro_rules! vec_position {
     }};
 }
 
+// FIXME: The false requirement for `~const Drop` might be an instance of
+//        <https://github.com/rust-lang/rust/issues/86897>
+/// Unwrap `Result<T, AllocError>`.
+const fn unwrap_alloc_error<T: ~const Drop>(x: Result<T, AllocError>) -> T {
+    match x {
+        Ok(x) => x,
+        Err(AllocError) => panic!("compile-time heap allocation failed"),
+    }
+}
+
+/// Calculate the `Layout` for `[T; len]`.
+const fn layout_array<T>(len: usize) -> Layout {
+    let singular = Layout::new::<T>();
+    let Some(size) = singular.size().checked_mul(len) else { panic!("size overflow") };
+    let Ok(layout) = Layout::from_size_align(size, singular.align()) else { unreachable!() };
+    layout
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,32 +185,10 @@ mod tests {
     use quickcheck_macros::quickcheck;
 
     #[test]
-    fn new() {
-        const _VEC: ComptimeVec<u32> = ComptimeVec::new();
-    }
-
-    #[test]
-    fn push() {
-        const fn vec() -> ComptimeVec<u32> {
-            // FIXME: Unable to do this inside a `const` item because of
-            //        <https://github.com/rust-lang/rust/pull/72934>
-            let mut v = ComptimeVec::new();
-            v.push(42);
-            v
-        }
-        const VEC: ComptimeVec<u32> = vec();
-
-        const VEC_LEN: usize = VEC.len();
-        assert_eq!(VEC_LEN, 1);
-
-        const VEC_VAL: u32 = VEC[0];
-        assert_eq!(VEC_VAL, 42);
-    }
-
-    #[test]
     fn as_slice() {
-        const fn array() {
-            let mut x = ComptimeVec::new();
+        #[allow(dead_code)] // FIXME: False lint?
+        const fn array(allocator: &ConstAllocator) {
+            let mut x = ComptimeVec::new_in(allocator.clone());
             x.push(1);
             x.push(2);
             x.push(3);
@@ -159,13 +196,13 @@ mod tests {
             // FIXME: `assert_matches!` is not usable in `const fn` yet
             assert!(matches!(slice, [1, 2, 3]));
         }
-        array();
+        const _: () = ConstAllocator::with(array);
     }
 
     #[test]
     fn map() {
-        const fn array() -> [i32; 3] {
-            let mut x = ComptimeVec::new();
+        const fn array(allocator: &ConstAllocator) -> [i32; 3] {
+            let mut x = ComptimeVec::new_in(allocator.clone());
             x.push(1);
             x.push(2);
             x.push(3);
@@ -176,38 +213,41 @@ mod tests {
             let y = x.map(transform);
             y.to_array()
         }
-        assert_eq!(array(), [2, 3, 4]);
+        const OUT: [i32; 3] = ConstAllocator::with(array);
+        assert_eq!(OUT, [2, 3, 4]);
     }
 
     #[test]
     fn to_array() {
-        const fn array() -> [u32; 3] {
-            let mut v = ComptimeVec::new();
+        const fn array(allocator: &ConstAllocator) -> [u32; 3] {
+            let mut v = ComptimeVec::new_in(allocator.clone());
             v.push(1);
             v.push(2);
             v.push(3);
             v.to_array()
         }
-        assert_eq!(array(), [1, 2, 3]);
+        const OUT: [u32; 3] = ConstAllocator::with(array);
+        assert_eq!(OUT, [1, 2, 3]);
     }
 
     #[test]
     fn get_mut() {
-        const fn val() -> u32 {
-            let mut v = ComptimeVec::new();
+        const fn val(allocator: &ConstAllocator) -> u32 {
+            let mut v = ComptimeVec::new_in(allocator.clone());
             v.push(1);
             v.push(2);
             v.push(3);
             v[1] += 2;
             v[1]
         }
-        assert_eq!(val(), 4);
+        const OUT: u32 = ConstAllocator::with(val);
+        assert_eq!(OUT, 4);
     }
 
     #[test]
     fn const_vec_position() {
-        const fn pos() -> [Option<usize>; 2] {
-            let mut v = ComptimeVec::new();
+        const fn pos(allocator: &ConstAllocator) -> [Option<usize>; 2] {
+            let mut v = ComptimeVec::new_in(allocator.clone());
             v.push(42);
             v.push(43);
             v.push(44);
@@ -216,28 +256,19 @@ mod tests {
                 vec_position!(v, |i| *i == 50),
             ]
         }
-        assert_eq!(pos(), [Some(1), None]);
+        const OUT: [Option<usize>; 2] = ConstAllocator::with(pos);
+        assert_eq!(OUT, [Some(1), None]);
     }
 
     #[quickcheck]
     fn vec_position(values: Vec<u8>, expected_index: usize) -> TestResult {
-        if values.len() > MAX_LEN {
-            return TestResult::discard();
-        }
-
         let needle = if values.is_empty() {
             42
         } else {
             values[expected_index % values.len()]
         };
 
-        // Convert `values` into `ComptimeVec`
-        let mut vec = ComptimeVec::new();
-        for &e in values.iter() {
-            vec.push(e);
-        }
-
-        let got = vec_position!(vec, |i| *i == needle);
+        let got = vec_position!(values, |i| *i == needle);
         let expected = values.iter().position(|i| *i == needle);
 
         assert_eq!(got, expected);

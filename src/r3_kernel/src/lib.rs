@@ -25,6 +25,7 @@
 #![feature(const_heap)]
 #![feature(never_type)] // `!`
 #![feature(decl_macro)]
+#![feature(let_else)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unsupported_naked_functions)]

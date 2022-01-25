@@ -24,6 +24,7 @@
 #![feature(const_ptr_write)]
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
+#![feature(let_else)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(decl_macro)]
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
