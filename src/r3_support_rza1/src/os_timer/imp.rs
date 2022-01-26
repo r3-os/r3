@@ -7,7 +7,7 @@ use rza1::ostm0 as ostm;
 
 use crate::os_timer::cfg::OsTimerOptions;
 
-/// Implemented on a system type by [`use_os_timer!`].
+/// Implemented on a kernel trait type by [`use_os_timer!`].
 ///
 /// # Safety
 ///

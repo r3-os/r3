@@ -9,7 +9,7 @@ use r3_portkit::tickful::{TickfulCfg, TickfulOptions, TickfulState, TickfulState
 
 use crate::{SysTickOptions, INTERRUPT_SYSTICK};
 
-/// Implemented on a system type by [`use_systick_tickful!`].
+/// Implemented on a kernel trait type by [`use_systick_tickful!`].
 ///
 /// # Safety
 ///

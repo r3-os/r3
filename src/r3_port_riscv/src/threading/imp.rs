@@ -156,7 +156,7 @@ pub use csr::{CsrSet, NumTy};
 #[allow(dead_code)]
 const XSTATUS_PART_MASK: usize = csr::XSTATUS_FS_1;
 
-/// Implemented on a system type by [`use_port!`].
+/// Implemented on a kernel trait type by [`use_port!`].
 ///
 /// # Safety
 ///

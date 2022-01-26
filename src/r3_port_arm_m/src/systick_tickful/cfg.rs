@@ -47,15 +47,15 @@ pub trait SysTickOptions {
 ///    See the following example.
 ///
 /// ```rust,ignore
-/// r3_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for System);
+/// r3_port_arm_m::use_systick_tickful!(unsafe impl PortTimer for SystemTraits);
 ///
-/// impl r3_port_arm_m::SysTickOptions for System {
+/// impl r3_port_arm_m::SysTickOptions for SystemTraits {
 ///    // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
 ///     const FREQUENCY: u64 = 2_000_000;
 /// }
 ///
-/// const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
-///     System::configure_systick(b);
+/// const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
+///     SystemTraits::configure_systick(b);
 ///     /* ... */
 /// }
 /// ```

@@ -75,7 +75,7 @@ pub const INTERRUPT_LINE_TIMER: InterruptNum = 1022;
 /// The default interrupt priority for [`INTERRUPT_LINE_TIMER`].
 pub const INTERRUPT_PRIORITY_TIMER: InterruptPriority = 16383;
 
-/// Implemented on a system type by [`use_port!`].
+/// Implemented on a kernel trait type by [`use_port!`].
 ///
 /// # Safety
 ///

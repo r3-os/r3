@@ -6,7 +6,7 @@ use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
 
 use crate::sbi_timer::cfg::SbiTimerOptions;
 
-/// Implemented on a system type by [`use_sbi_timer!`].
+/// Implemented on a kernel trait type by [`use_sbi_timer!`].
 ///
 /// # Safety
 ///

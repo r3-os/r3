@@ -10,22 +10,22 @@ use super::plic_regs;
 /// [`InterruptController`]: crate::InterruptController
 /// [`InterruptControllerToPort`]: crate::InterruptControllerToPort
 ///
-/// This macro adds `const fn configure_plic(b: &mut CfgBuilder<Self>)` to the
-/// system type. **It should be called by your application's configuration
+/// This macro adds a method `const fn configure_plic(b: &mut Cfg<C>)` to the
+/// kernel trait type. **It should be called by your application's configuration
 /// function.** See the following example:
 ///
 /// ```rust,ignore
-/// r3_port_riscv::use_plic!(unsafe impl InterruptController for System);
+/// r3_port_riscv::use_plic!(unsafe impl InterruptController for SystemTraits);
 ///
-/// impl r3_port_riscv::PlicOptions for System {
+/// impl r3_port_riscv::PlicOptions for SystemTraits {
 ///     // SiFive E
 ///     const MAX_PRIORITY: InterruptPriority = 7;
 ///     const MAX_NUM: InterruptNum = 127;
 ///     const PLIC_BASE: usize = 0x0c00_0000;
 /// }
 ///
-/// const fn configure_app(b: &mut CfgBuilder<System>) -> Objects {
-///     System::configure_plic(b);
+/// const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
+///     SystemTraits::configure_plic(b);
 ///     /* ... */
 /// }
 /// ```

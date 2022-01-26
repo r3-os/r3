@@ -9,7 +9,7 @@ use tock_registers::{
 
 use crate::mtime::cfg::MtimeOptions;
 
-/// Implemented on a system type by [`use_mtime!`].
+/// Implemented on a kernel trait type by [`use_mtime!`].
 ///
 /// # Safety
 ///
