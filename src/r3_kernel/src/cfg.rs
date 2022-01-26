@@ -345,10 +345,11 @@ impl<Traits: KernelTraits> CfgBuilder<Traits> {
     ///
     /// # Safety
     ///
-    /// This is only meant to be used by [`build!`]. For a particular system
-    /// type, there can be only one fully-constructed instance of `CfgBuilder`,
-    /// to which all defined kernel objects must belong. For example, swapping
-    /// a given `CfgBuilder` with another one can be used to circumvent the
+    /// This is only meant to be used by [`build!`]. Every instance of
+    /// `CfgBuilder` destined for a particular kernel trait type and exposed to
+    /// user code must be built through the same sequence of configuration
+    /// operations. An instance of `CfgBuilder` violating this principle could
+    /// be used to create object handles with arbitrary values to circumvent the
     /// compile-time access control of kernel objects.
     #[doc(hidden)]
     pub const unsafe fn new(allocator: &ConstAllocator) -> Self {
