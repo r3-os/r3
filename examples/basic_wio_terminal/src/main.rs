@@ -110,7 +110,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     // Register a hook to initialize hardware
     StartupHook::define()
-        .start(|_| {
+        .start(|| {
             init_hardware();
         })
         .finish(b);
@@ -270,7 +270,7 @@ fn init_hardware() {
 // ----------------------------------------------------------------------------
 
 /// The task responsible for outputting messages to the console.
-fn noisy_task_body(_: usize) {
+fn noisy_task_body() {
     let _ = writeln!(Console, "////////////////////////////////");
     let _ = writeln!(
         Console,
@@ -335,7 +335,7 @@ impl Write for Console {
 }
 
 /// The task responsible for blinking the user LED.
-fn blink_task_body(_: usize) {
+fn blink_task_body() {
     let mut st = BLINK_ST.lock();
     let st = st.as_mut().unwrap();
     loop {
@@ -345,7 +345,7 @@ fn blink_task_body(_: usize) {
 }
 
 /// The task responsible for rendering the console.
-fn console_task_body(_: usize) {
+fn console_task_body() {
     let mut lcd = borrow_lcd();
 
     let bg_style = primitives::PrimitiveStyleBuilder::new()
@@ -428,7 +428,7 @@ fn console_task_body(_: usize) {
 }
 
 /// The task responsible for rendering an animated image.
-fn animation_task_body(_: usize) {
+fn animation_task_body() {
     let images = r3_example_common::ANIMATION_FRAMES_565;
     for image in images.iter().cycle() {
         let mut lcd = borrow_lcd();
@@ -447,7 +447,7 @@ fn animation_task_body(_: usize) {
 static BUTTON_STATE: AtomicUsize = AtomicUsize::new(0);
 
 /// The task responsible for reporting button events.
-fn button_reporter_task_body(_: usize) {
+fn button_reporter_task_body() {
     let mut st = 0;
     loop {
         System::park().unwrap();
@@ -592,7 +592,7 @@ fn USB_TRCPT1() {
     poll_usb();
 }
 
-fn usb_poll_timer_handler(_: usize) {
+fn usb_poll_timer_handler() {
     poll_usb();
 }
 
@@ -613,7 +613,7 @@ fn set_usb_polling(b: bool) {
 }
 
 /// The task to print the data received by the USB serial endpoint
-fn usb_in_task_body(_: usize) {
+fn usb_in_task_body() {
     let mut data = arrayvec::ArrayVec::<u8, USB_BUF_CAP>::new();
     loop {
         // Get next data to output

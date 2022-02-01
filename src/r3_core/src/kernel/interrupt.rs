@@ -5,7 +5,10 @@ use super::{
     raw, raw_cfg, Cfg, ClearInterruptLineError, EnableInterruptLineError, PendInterruptLineError,
     QueryInterruptLineError, SetInterruptLinePriorityError,
 };
-use crate::utils::{for_times::Nat, slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant};
+use crate::{
+    closure::{Closure, IntoClosureConst},
+    utils::{for_times::Nat, slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant},
+};
 
 pub use raw::{InterruptNum, InterruptPriority};
 
@@ -291,8 +294,7 @@ impl<System: raw::KernelInterruptLine> InterruptLineDefiner<System> {
 pub struct InterruptHandlerDefiner<System: raw::KernelInterruptLine> {
     _phantom: PhantomInvariant<System>,
     line: Option<InterruptNum>,
-    start: Option<fn(usize)>,
-    param: usize,
+    start: Option<Closure>,
     priority: i32,
     unmanaged: bool,
 }
@@ -303,23 +305,17 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
             _phantom: Init::INIT,
             line: None,
             start: None,
-            param: 0,
             priority: 0,
             unmanaged: false,
         }
     }
 
     /// \[**Required**\] Specify the entry point.
-    pub const fn start(self, start: fn(usize)) -> Self {
+    pub const fn start<C: ~const IntoClosureConst>(self, start: C) -> Self {
         Self {
-            start: Some(start),
+            start: Some(start.into_closure_const()),
             ..self
         }
-    }
-
-    /// Specify the parameter to `start`. Defaults to `0`.
-    pub const fn param(self, param: usize) -> Self {
-        Self { param, ..self }
     }
 
     /// \[**Required**\] Specify the interrupt line to attach the interrupt
@@ -382,7 +378,6 @@ impl<System: raw::KernelInterruptLine> InterruptHandlerDefiner<System> {
         cfg.interrupt_handlers.push(CfgInterruptHandler {
             line: line_num,
             start: self.start.expect("`start` is not specified"),
-            param: self.param,
             priority: self.priority,
             unmanaged: self.unmanaged,
             order,
@@ -422,11 +417,10 @@ impl CfgInterruptLineInfo {
 // ----------------------------------------------------------------------------
 
 #[doc(hidden)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct CfgInterruptHandler {
     line: InterruptNum,
-    start: fn(usize),
-    param: usize,
+    start: Closure,
     priority: i32,
     unmanaged: bool,
     /// The registration order.
@@ -511,7 +505,7 @@ pub type InterruptHandlerFn = unsafe extern "C" fn();
 /// // `MakeCombinedHandlersTrait::PROTO_COMBINED_HANDLERS`
 /// #[inline(always)]
 /// fn proto_combined_handler_0(/* ... */) {
-///     (HANDLERS[0].start)();
+///     HANDLERS[0].call();
 ///     if 1 >= HANDLERS.len() || HANDLERS[0].line != HANDLERS[1].line {
 ///         return;
 ///     }
@@ -541,8 +535,8 @@ pub type InterruptHandlerFn = unsafe extern "C" fn();
 ///
 /// ```rust,ignore
 /// extern "C" fn combined_handler_for_line_3() {
-///     (HANDLERS[2].start)();
-///     (HANDLERS[3].start)();
+///     HANDLERS[2].call();
+///     HANDLERS[3].call();
 /// }
 /// ```
 type ProtoCombinedHandlerFn = fn();
@@ -601,7 +595,7 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
                 fn proto_combined_handler<T: MakeCombinedHandlersTrait, I: Nat>() {
                     let handler = T::HANDLERS[I::N];
 
-                    (handler.start)(handler.param);
+                    handler.start.call();
 
                     let next_i = I::N + 1;
                     if next_i >= T::NUM_HANDLERS || T::HANDLERS[next_i].line != handler.line {

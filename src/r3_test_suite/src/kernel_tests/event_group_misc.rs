@@ -32,7 +32,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>, System = System>>() {
     // `PartialEq`
     let app = D::app();
     assert_ne!(app.eg1, app.eg2);

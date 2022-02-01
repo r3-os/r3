@@ -36,7 +36,7 @@ pub fn init<Traits: Plic>() {
 }
 
 #[inline]
-fn interrupt_handler<Traits: Plic + KernelTraits + InterruptControllerToPort>(_: usize) {
+fn interrupt_handler<Traits: Plic + KernelTraits + InterruptControllerToPort>() {
     if let Some((token, num)) = claim_interrupt::<Traits>() {
         if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(num) {
             if Traits::USE_NESTING {

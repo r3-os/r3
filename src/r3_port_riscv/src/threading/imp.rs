@@ -894,7 +894,7 @@ impl State {
             first_level[3] = preload_val(0x07);
         }
         // a0: Parameter to the entry point
-        first_level[4] = MaybeUninit::new(task.attr.entry_param as usize);
+        first_level[4] = unsafe { core::mem::transmute(task.attr.entry_param) };
         // a1-a7: Uninitialized
         if preload_all {
             first_level[5] = preload_val(0x11);

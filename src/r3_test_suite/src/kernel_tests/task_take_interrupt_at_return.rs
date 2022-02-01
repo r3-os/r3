@@ -155,7 +155,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     if D::app().state.get() == 0 {
         // The first run of `task`
         D::app().state.expect_and_replace(0, 1);
@@ -182,7 +182,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     }
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(2, 3);
     D::app().task.activate().unwrap();
     D::app().seq.expect_and_replace(3, 4);

@@ -20,98 +20,79 @@ impl<System: SupportedSystem> App<System> {
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(0)
+            .start((0, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(11)
+            .start((11, hook::<System, D>))
             .priority(30)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(9)
+            .start((9, hook::<System, D>))
             .priority(10)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(1)
+            .start((1, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(15)
+            .start((15, hook::<System, D>))
             .priority(70)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(13)
+            .start((13, hook::<System, D>))
             .priority(50)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(2)
+            .start((2, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(12)
+            .start((12, hook::<System, D>))
             .priority(40)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(3)
+            .start((3, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(4)
+            .start((4, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(5)
+            .start((5, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(18)
+            .start((18, hook::<System, D>))
             .priority(100)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(6)
+            .start((6, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(17)
+            .start((17, hook::<System, D>))
             .priority(90)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(7)
+            .start((7, hook::<System, D>))
             .priority(5)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(16)
+            .start((16, hook::<System, D>))
             .priority(80)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(10)
+            .start((10, hook::<System, D>))
             .priority(20)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(14)
+            .start((14, hook::<System, D>))
             .priority(60)
             .finish(b);
         StartupHook::define()
-            .start(hook::<System, D>)
-            .param(8)
+            .start((8, hook::<System, D>))
             .priority(5)
             .finish(b);
 

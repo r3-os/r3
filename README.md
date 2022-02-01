@@ -94,7 +94,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     }
 }
 
-fn task_body(_: usize) {
+fn task_body() {
     // ...
 }
 ```

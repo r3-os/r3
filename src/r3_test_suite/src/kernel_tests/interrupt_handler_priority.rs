@@ -39,62 +39,52 @@ impl<System: SupportedSystem> App<System> {
         {
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(3)
+                .start((3, isr::<System, D>))
                 .priority(30)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(1)
+                .start((1, isr::<System, D>))
                 .priority(10)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(7)
+                .start((7, isr::<System, D>))
                 .priority(70)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(5)
+                .start((5, isr::<System, D>))
                 .priority(50)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(4)
+                .start((4, isr::<System, D>))
                 .priority(40)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(10)
+                .start((10, isr::<System, D>))
                 .priority(100)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(9)
+                .start((9, isr::<System, D>))
                 .priority(90)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(8)
+                .start((8, isr::<System, D>))
                 .priority(80)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(2)
+                .start((2, isr::<System, D>))
                 .priority(20)
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(int_line)
-                .start(isr::<System, D>)
-                .param(6)
+                .start((6, isr::<System, D>))
                 .priority(60)
                 .finish(b);
 
@@ -115,7 +105,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     let int = if let Some(int) = D::app().int {

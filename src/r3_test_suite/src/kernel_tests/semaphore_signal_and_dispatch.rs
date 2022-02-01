@@ -48,7 +48,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(2, 3);
 
     assert_eq!(D::app().sem.get().unwrap(), 0);
@@ -65,7 +65,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     D::app().sem.wait_one().unwrap(); // start waiting, switching to `task3`
@@ -77,7 +77,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(6, 7);
 }
 
-fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(1, 2);
 
     D::app().sem.wait_one().unwrap(); // start waiting, switching to `task1`

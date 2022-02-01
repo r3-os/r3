@@ -384,7 +384,7 @@ impl State {
         };
 
         // R0: Parameter to the entry point
-        first_level[0] = MaybeUninit::new(task.attr.entry_param as u32);
+        first_level[0] = unsafe { core::mem::transmute(task.attr.entry_param) };
         // R1-R3, R12: Uninitialized
         if preload_all {
             first_level[1] = MaybeUninit::new(0x01010101);

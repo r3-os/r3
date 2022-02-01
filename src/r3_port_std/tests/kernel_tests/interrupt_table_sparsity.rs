@@ -30,21 +30,21 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
         unsafe {
             StaticInterruptHandler::define()
                 .line(2)
-                .start(|_| {})
+                .start(|| {})
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(3)
-                .start(|_| {})
+                .start(|| {})
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(5)
                 .unmanaged()
-                .start(|_| {})
+                .start(|| {})
                 .finish(b);
             StaticInterruptHandler::define()
                 .line(7)
                 .unmanaged()
-                .start(|_| {})
+                .start(|| {})
                 .finish(b);
         }
 
@@ -54,7 +54,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     }
 }
 
-fn hook_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
+fn hook_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>() {
     let handlers = <Traits as KernelCfg2>::INTERRUPT_HANDLERS;
     log::debug!("INTERRUPT_HANDLERS = {:#?}", handlers);
     assert_eq!(handlers.storage.len(), 8);

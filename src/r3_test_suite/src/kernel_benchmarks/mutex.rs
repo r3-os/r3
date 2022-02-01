@@ -77,9 +77,7 @@ fn task1_body<
     System: SupportedSystem,
     Options: MutexBenchmarkOptions,
     B: Bencher<System, AppInner<System, Options>>,
->(
-    _: usize,
-) {
+>() {
     B::main_task().unpark().unwrap();
     B::app().mtx.lock().unwrap();
     B::mark_end(I_UNLOCK_DISPATCHING);

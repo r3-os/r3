@@ -149,9 +149,8 @@ impl<System: SupportedSystem> App<System> {
             tasks[i] = Some(
                 StaticTask::define()
                     .active(true)
-                    .start(worker_body::<System, D>)
+                    .start((i, worker_body::<System, D>))
                     .priority(2)
-                    .param(i)
                     .finish(b),
             );
             i += 1;
@@ -241,7 +240,7 @@ fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize
     }
 }
 
-fn judge_task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn judge_task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let App { state, .. } = D::app();
 
     let counter = state.counter.load(Ordering::Relaxed);
@@ -264,7 +263,7 @@ fn judge_task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let App {
         state,
         tasks,

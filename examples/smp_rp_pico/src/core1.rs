@@ -189,7 +189,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     Objects { task1 }
 }
 
-fn task1_body(_: usize) {
+fn task1_body() {
     let c1 = Core1(());
     write_bytes(c1, b"core1: task1 is running\n");
 

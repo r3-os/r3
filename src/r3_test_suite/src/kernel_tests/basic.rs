@@ -25,7 +25,7 @@ impl<System: traits::KernelBase> App<System> {
     }
 }
 
-fn task_body<System: traits::KernelBase, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: traits::KernelBase, D: Driver<App<System>>>() {
     log::trace!("Good morning, Angel!");
     D::success();
 }

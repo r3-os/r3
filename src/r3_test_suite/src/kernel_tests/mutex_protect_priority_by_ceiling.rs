@@ -56,7 +56,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task0_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task0_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(2, 3);
     D::app().task1.activate().unwrap();
 
@@ -68,7 +68,7 @@ fn task0_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().mtx.unlock().unwrap();
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(4, 5);
 
     // Enter a busy loop, indefinitely blocking priority 2.
@@ -77,7 +77,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     if !MutexProtocol::Ceiling(0).is_supported::<System>() {
         log::warn!("priority ceiling is not supported, skipping the test");
         D::success();

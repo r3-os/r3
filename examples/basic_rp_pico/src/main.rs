@@ -74,7 +74,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
     StartupHook::define()
-        .start(|_| {
+        .start(|| {
             // Configure peripherals
             let p = unsafe { rp2040::Peripherals::steal() };
             support_rp2040::clock::init_clock(
@@ -131,13 +131,13 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     }
 }
 
-fn task1_body(_: usize) {
+fn task1_body() {
     support_rp2040::sprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();
 }
 
-fn task2_body(_: usize) {
+fn task2_body() {
     let p = unsafe { rp2040::Peripherals::steal() };
 
     // <https://github.com/jannic/rp-microcontroller-rs/blob/master/boards/rp-pico/examples/blink/main.rs>

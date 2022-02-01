@@ -69,9 +69,8 @@ impl<System: SupportedSystem> App<System> {
             tasks[i] = Some(
                 StaticTask::define()
                     .active(true)
-                    .start(worker_body::<System, D>)
+                    .start((i, worker_body::<System, D>))
                     .priority(3)
-                    .param(i)
                     .finish(b),
             );
             i += 1;
@@ -138,7 +137,7 @@ impl Init for SchedState {
     };
 }
 
-fn hook_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn hook_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let state = &*D::app().state;
 
     // Safety: These are unique references to the contents of respective cells
@@ -186,7 +185,7 @@ fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize
     }
 }
 
-fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let App { state, tasks, .. } = D::app();
 
     // Safety: This is a unique reference

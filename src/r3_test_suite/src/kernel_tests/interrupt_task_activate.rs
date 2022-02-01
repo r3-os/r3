@@ -53,7 +53,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body1<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body1<System: SupportedSystem, D: Driver<App<System>>>() {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -65,10 +65,10 @@ fn task_body1<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     int.pend().unwrap();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().task2.activate().unwrap();
 }
 
-fn task_body2<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body2<System: SupportedSystem, D: Driver<App<System>>>() {
     D::success();
 }

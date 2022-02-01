@@ -63,7 +63,7 @@ where
     C::System: traits::KernelInterruptLine,
 {
     StartupHook::define()
-        .start(|_| {
+        .start(|| {
             // Set the correct vector table address
             unsafe {
                 let p = cortex_m::Peripherals::steal();

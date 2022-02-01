@@ -36,7 +36,7 @@ impl<System: SupportedSystem> App<System> {
 }
 
 #[cfg(feature = "priority_boost")]
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     assert!(!System::is_priority_boost_active());
 
     // Activate Priority Boost
@@ -89,7 +89,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
 }
 
 #[cfg(not(feature = "priority_boost"))]
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     // Priority Boost is always inactive when it's statically disabled
     assert!(!System::is_priority_boost_active());
 

@@ -123,7 +123,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn hook<System: SupportedSystem, D: Driver<App<System>>>() {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -137,13 +137,13 @@ fn hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(1, 2);
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(2, 3);
     D::app().task.activate().unwrap();
     D::app().seq.expect_and_replace(3, 4);
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(4, 5);
     D::success();
 }

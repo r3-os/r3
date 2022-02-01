@@ -51,7 +51,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let App { m } = D::app();
 
     let cur_task: LocalTask<System> = LocalTask::current().unwrap();

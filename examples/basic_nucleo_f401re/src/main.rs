@@ -48,7 +48,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     // Initialize RTT (Real-Time Transfer) with a single up channel and set
     // it as the print channel for the printing macros
     StartupHook::define()
-        .start(|_| {
+        .start(|| {
             rtt_target::rtt_init_print!();
         })
         .finish(b);
@@ -71,13 +71,13 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     }
 }
 
-fn task1_body(_: usize) {
+fn task1_body() {
     rtt_target::rprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();
 }
 
-fn task2_body(_: usize) {
+fn task2_body() {
     loop {
         rtt_target::rprintln!("time = {:?}", System::time().unwrap());
         System::sleep(r3::time::Duration::from_secs(1)).unwrap();

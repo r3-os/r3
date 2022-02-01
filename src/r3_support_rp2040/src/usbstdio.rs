@@ -77,7 +77,7 @@ where
     C::System: traits::KernelInterruptLine,
 {
     StartupHook::define()
-        .start(|_| {
+        .start(|| {
             let p = unsafe { rp2040::Peripherals::steal() };
 
             // Reset PLL
@@ -124,7 +124,7 @@ where
 
     StaticInterruptHandler::define()
         .line(int_num)
-        .start(|_| {
+        .start(|| {
             poll::<TOptions>();
         })
         .finish(b);

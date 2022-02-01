@@ -73,7 +73,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(1, 2);
 
     let int = if let Some(int) = D::app().int {
@@ -87,7 +87,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     int.pend().unwrap();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     D::app().sem.wait_one().unwrap(); // start waiting, switching to `task1`
@@ -99,7 +99,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     let sem = D::app().sem;
 
     D::app().seq.expect_and_replace(2, 3);

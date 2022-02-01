@@ -21,7 +21,7 @@
 //! Most traits in this method are `unsafe trait` because they have to be
 //! trustworthy to be able to build sound memory-safe abstractions on top of
 //! them.
-use crate::{bag::Bag, kernel::raw, time::Duration, utils::PhantomInvariant};
+use crate::{bag::Bag, closure::Closure, kernel::raw, time::Duration, utils::PhantomInvariant};
 
 pub unsafe trait CfgBase {
     type System: raw::KernelBase;
@@ -47,8 +47,7 @@ pub unsafe trait CfgTask: CfgBase {
 #[derive(Debug)]
 pub struct TaskDescriptor<System> {
     pub phantom: PhantomInvariant<System>,
-    pub start: fn(usize),
-    pub param: usize,
+    pub start: Closure,
     pub active: bool,
     pub priority: usize,
     pub stack_size: Option<usize>,
@@ -126,8 +125,7 @@ where
 #[derive(Debug)]
 pub struct TimerDescriptor<System> {
     pub phantom: PhantomInvariant<System>,
-    pub start: fn(usize),
-    pub param: usize,
+    pub start: Closure,
     pub active: bool,
     pub delay: Option<Duration>,
     pub period: Option<Duration>,

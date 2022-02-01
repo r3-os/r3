@@ -26,7 +26,7 @@ impl<System: SupportedSystem> App<System> {
             .active(true)
             .finish(b);
         let task2 = StaticTask::define()
-            .start(task2_body::<System, D>)
+            .start((0, task2_body::<System, D>))
             .priority(1)
             .finish(b);
 
@@ -36,7 +36,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     log::trace!("Good morning, Angel!");

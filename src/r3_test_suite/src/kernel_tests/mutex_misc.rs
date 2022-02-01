@@ -110,7 +110,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>() {
     let app = D::app();
 
     app.seq.expect_and_replace(0, 1);
@@ -403,7 +403,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
     app.task2.activate().unwrap();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let app = D::app();
     let [m1, ..] = app.m;
 
@@ -437,7 +437,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let app = D::app();
     let [_, m2, ..] = app.m;
 
@@ -448,7 +448,7 @@ fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     m2.lock().unwrap();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     let app = D::app();
     let [m1, ..] = app.m;
 

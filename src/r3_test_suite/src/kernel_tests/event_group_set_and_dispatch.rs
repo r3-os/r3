@@ -56,7 +56,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(3, 4);
 
     D::app().eg.set(0b1111).unwrap(); // unblocks `task2`, `task3`, and `task4`
@@ -68,7 +68,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     D::app().eg.wait(0b01, EventGroupWaitFlags::CLEAR).unwrap(); // start waiting, switching to `task3`
@@ -77,7 +77,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // unblocks `task3`
 }
 
-fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(1, 2);
 
     D::app().eg.wait(0b10, EventGroupWaitFlags::CLEAR).unwrap(); // start waiting, switching to `task4`
@@ -86,7 +86,7 @@ fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // unblocks `task4`
 }
 
-fn task4_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task4_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(2, 3);
 
     D::app().eg.wait(0b1100, EventGroupWaitFlags::ALL).unwrap(); // start waiting, switching to `task1`

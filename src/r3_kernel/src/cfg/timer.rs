@@ -1,5 +1,6 @@
 use core::{mem::ManuallyDrop, num::NonZeroUsize};
 use r3_core::{
+    closure::Closure,
     kernel::raw_cfg::{CfgTimer, TimerDescriptor},
     utils::Init,
 };
@@ -11,7 +12,6 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
         &mut self,
         TimerDescriptor {
             phantom: _,
-            param,
             period,
             delay,
             active,
@@ -45,7 +45,6 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
 
         self.timers.push(CfgBuilderTimer {
             start,
-            param,
             delay,
             period,
             active,
@@ -57,8 +56,7 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
 
 #[doc(hidden)]
 pub struct CfgBuilderTimer {
-    start: fn(usize),
-    param: usize,
+    start: Closure,
     delay: timeout::Time32,
     period: timeout::Time32,
     active: bool,
@@ -68,7 +66,6 @@ impl Clone for CfgBuilderTimer {
     fn clone(&self) -> Self {
         Self {
             start: self.start,
-            param: self.param,
             delay: self.delay,
             period: self.period,
             active: self.active,
@@ -104,7 +101,6 @@ impl CfgBuilderTimer {
     pub const fn to_attr<Traits: Port>(&self) -> timer::TimerAttr<Traits> {
         timer::TimerAttr {
             entry_point: self.start,
-            entry_param: self.param,
             init_active: self.active,
             _phantom: Init::INIT,
         }

@@ -78,7 +78,7 @@ pub struct GenericMutex<Cell, Mutex> {
 ///     Objects { task2, mutex }
 /// }
 ///
-/// fn task1_body(_: usize) {
+/// fn task1_body() {
 ///     let mut guard = COTTAGE.mutex.lock().unwrap();
 ///
 ///     // Although `task2` has a higher priority, it's unable to
@@ -89,7 +89,7 @@ pub struct GenericMutex<Cell, Mutex> {
 ///     *guard = 1;
 /// }
 ///
-/// fn task2_body(_: usize) {
+/// fn task2_body() {
 ///     let mut guard = COTTAGE.mutex.lock().unwrap();
 ///     assert_eq!(*guard, 1);
 ///     *guard = 2;

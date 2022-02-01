@@ -82,7 +82,7 @@ impl<System: SupportedSystem> AppInner<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>() {
     B::mark_start(); // I_WAIT_DISPATCHING
     B::app().sem.wait_one().unwrap();
     B::mark_end(I_SIGNAL_DISPATCHING);

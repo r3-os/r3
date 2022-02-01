@@ -32,7 +32,7 @@ pub mod kernel_tests {
     /// This trait has two purposes: (1) It serves as an interface to a test driver.
     /// It provides methods to notify the test driver of test success or failure.
     /// (2) It provides runtime access to the `App` structure.
-    pub trait Driver<App> {
+    pub trait Driver<App>: 'static {
         // FIXME: Split each trait bound (except `KernelBase`) to a unique
         //        Cargo feature
         type System: raw::KernelBase
@@ -352,7 +352,7 @@ pub mod kernel_benchmarks {
     /// This trait has two purposes: (1) It serves as an interface to a test driver.
     /// It provides methods to notify the test driver of test success or failure.
     /// (2) It provides runtime access to the `App` structure.
-    pub trait Driver<App> {
+    pub trait Driver<App>: 'static {
         /// Get a reference to `App` of the current test case.
         fn app() -> &'static App;
 
@@ -416,7 +416,7 @@ pub mod kernel_benchmarks {
 
     /// The interface provided by [`use_benchmark_in_kernel_benchmark!`] and
     /// consumed by an inner app.
-    trait Bencher<System: crate::utils::benchmark::SupportedSystem, App> {
+    trait Bencher<System: crate::utils::benchmark::SupportedSystem, App>: 'static {
         /// Get a reference to `App` of the inner app.
         fn app() -> &'static App;
 

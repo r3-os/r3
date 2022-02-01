@@ -165,13 +165,12 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
             unsafe {
                 StartupHook::define()
                     .priority(INIT_HOOK_PRIORITY)
-                    .start(|start| {
+                    .start((start, |start| {
                         let untyped_hunk = kernel::Hunk::<System>::from_offset(start).as_ptr();
                         // Safety: The destination is large enough to contain `T`
                         InitTag::init(&mut *(untyped_hunk as *mut mem::MaybeUninit<T>));
-                    })
+                    }))
                     .unchecked()
-                    .param(start)
                     .finish(cfg);
             }
         }

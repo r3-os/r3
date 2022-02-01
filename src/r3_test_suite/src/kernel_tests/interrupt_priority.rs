@@ -79,7 +79,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     // Pend both interrupts at the same time. Regardless the order of reception,
@@ -100,7 +100,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     }
 }
 
-fn isr1<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr1<System: SupportedSystem, D: Driver<App<System>>>() {
     log::trace!("isr1");
 
     D::app().seq.expect_and_replace(2, 3);
@@ -108,7 +108,7 @@ fn isr1<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr0<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr0<System: SupportedSystem, D: Driver<App<System>>>() {
     log::trace!("isr0");
 
     D::app().seq.expect_and_replace(1, 2);

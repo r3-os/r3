@@ -5,6 +5,7 @@ use super::{
     raw, raw_cfg, Cfg, SetTimerDelayError, SetTimerPeriodError, StartTimerError, StopTimerError,
 };
 use crate::{
+    closure::{Closure, IntoClosureConst},
     time::Duration,
     utils::{Init, PhantomInvariant},
 };
@@ -286,7 +287,7 @@ define_object! {
 ///         .delay(Duration::from_millis(70))
 ///         .period(Duration::from_millis(40))
 ///         .active(true)
-///         .start(|_| dbg!())
+///         .start(|| dbg!())
 ///         .finish(b)
 /// }
 /// ```
@@ -324,7 +325,7 @@ define_object! {
 /// {
 ///     StaticTimer::define()
 ///         .active(true)
-///         .start(|_| dbg!())
+///         .start(|| dbg!())
 ///         .finish(b)
 /// }
 /// ```
@@ -436,8 +437,7 @@ impl<T: TimerHandle> TimerMethods for T {}
 #[must_use = "must call `finish()` to complete registration"]
 pub struct TimerDefiner<System> {
     _phantom: PhantomInvariant<System>,
-    start: Option<fn(usize)>,
-    param: usize,
+    start: Option<Closure>,
     delay: Option<Duration>,
     period: Option<Duration>,
     active: bool,
@@ -448,7 +448,6 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
         Self {
             _phantom: Init::INIT,
             start: None,
-            param: 0,
             delay: None,
             period: None,
             active: false,
@@ -457,16 +456,11 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
 
     /// \[**Required**\] Specify the timer's entry point. It will be called
     /// in an interrupt context.
-    pub const fn start(self, start: fn(usize)) -> Self {
+    pub const fn start<C: ~const IntoClosureConst>(self, start: C) -> Self {
         Self {
-            start: Some(start),
+            start: Some(start.into_closure_const()),
             ..self
         }
-    }
-
-    /// Specify the parameter to `start`. Defaults to `0`.
-    pub const fn param(self, param: usize) -> Self {
-        Self { param, ..self }
     }
 
     /// Specify whether the timer should be started at system startup.
@@ -510,7 +504,6 @@ impl<System: raw::KernelTimer> TimerDefiner<System> {
                 start: self
                     .start
                     .expect("`start` (timer callback function) is not specified"),
-                param: self.param,
                 delay: self.delay,
                 period: self.period,
                 active: self.active,
