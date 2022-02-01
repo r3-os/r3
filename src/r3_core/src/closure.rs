@@ -160,6 +160,19 @@ impl Closure {
     }
 }
 
+unsafe extern "C" fn trampoline_zst<T: FnOnce()>(_: ClosureEnv) {
+    let func: T = unsafe { transmute(()) };
+    func()
+}
+
+unsafe extern "C" fn trampoline_indirect<T: FnOnce()>(env: ClosureEnv) {
+    let p_func: *const T = unsafe { transmute(env) };
+    // FIXME: Since there's no trait indicating the lack of interior mutability,
+    //        we have to copy `T` onto stack
+    let func: T = unsafe { p_func.read() };
+    func()
+}
+
 /// A trait for converting a value into a [`Closure`] at compile time.
 ///
 /// The conversion may involve compile-time heap allocation
@@ -174,6 +187,9 @@ impl Closure {
 ///
 /// // `impl FnOnce()` → `Closure`
 /// const _: Closure = (|| {}).into_closure_const();
+///
+/// // `(&'static P0, impl FnOnce(&'static P0))` → `Closure`
+/// const _: Closure = (&42, |_: &i32| {}).into_closure_const();
 /// ```
 pub trait IntoClosureConst {
     /// Perform conversion to [`Closure`], potentially using a compile-time
@@ -188,17 +204,29 @@ impl<T: FnOnce() + Copy + Send + 'static> const IntoClosureConst for T {
     }
 }
 
-unsafe extern "C" fn trampoline_zst<T: FnOnce()>(_: ClosureEnv) {
-    let func: T = unsafe { transmute(()) };
-    func()
-}
+/// Packs `&P0` directly in [`ClosureEnv`][] if `T` is zero-sized.
+///
+/// Due to compiler restrictions, this optimization is currently impossible
+/// to do in the generic constructor ([`Closure::from_fn_const`]).
+// FIXME: See above
+impl<T: FnOnce(&'static P0) + Copy + Send + 'static, P0: Sync + 'static> const IntoClosureConst
+    for (&'static P0, T)
+{
+    fn into_closure_const(self) -> Closure {
+        unsafe extern "C" fn trampoline_ptr_spec<T: FnOnce(&'static P0), P0: 'static>(
+            env: ClosureEnv,
+        ) {
+            let p0: &'static P0 = unsafe { transmute(env) };
+            let func: T = unsafe { transmute(()) };
+            func(p0)
+        }
 
-unsafe extern "C" fn trampoline_indirect<T: FnOnce()>(env: ClosureEnv) {
-    let p_func: *const T = unsafe { transmute(env) };
-    // FIXME: Since there's no trait indicating the lack of interior mutability,
-    //        we have to copy `T` onto stack
-    let func: T = unsafe { p_func.read() };
-    func()
+        if size_of::<T>() == 0 {
+            unsafe { Closure::from_raw_parts(trampoline_zst_param::<T, P0>, transmute(self.0)) }
+        } else {
+            (move || (self.1)(self.0)).into_closure_const()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -268,5 +296,11 @@ mod tests {
         assert_eq!(STATE.load(Ordering::Relaxed), 1 + 4);
         ADD2.call();
         assert_eq!(STATE.load(Ordering::Relaxed), 1 + 4 + 2);
+    }
+
+    #[test]
+    fn ptr_env_spec() {
+        const C: Closure = (&42, |x: &i32| assert_eq!(*x, 42)).into_closure_const();
+        C.call();
     }
 }
