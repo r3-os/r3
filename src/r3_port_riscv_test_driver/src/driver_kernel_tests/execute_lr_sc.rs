@@ -30,12 +30,12 @@ impl<System: traits::KernelBase> App<System> {
     }
 }
 
-fn startup_hook_body<System: traits::KernelBase, D: Driver<App<System>>>(_: usize) {
+fn startup_hook_body<System: traits::KernelBase, D: Driver<App<System>>>() {
     log::debug!("calling do_test from a startup hook");
     unsafe { do_test::<System>() };
 }
 
-fn task_body<System: traits::KernelBase, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: traits::KernelBase, D: Driver<App<System>>>() {
     log::debug!("calling do_test from a task");
     unsafe {
         System::acquire_cpu_lock().unwrap();

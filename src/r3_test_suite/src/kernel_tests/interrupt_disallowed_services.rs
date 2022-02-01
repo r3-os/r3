@@ -57,7 +57,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -69,7 +69,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     int.pend().unwrap();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     // Disallowed in a non-task context
     if let &[priority, ..] = D::INTERRUPT_PRIORITIES {
         assert_eq!(

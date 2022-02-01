@@ -57,7 +57,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -70,7 +70,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     int.pend().unwrap();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     let eg = D::app().eg;
 
     assert_eq!(

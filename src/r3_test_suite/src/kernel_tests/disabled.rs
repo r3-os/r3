@@ -14,7 +14,7 @@ impl<System: traits::KernelBase> App<System> {
         C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
     {
         StartupHook::define()
-            .start(|_| {
+            .start(|| {
                 log::warn!("some crate features are missing, skipping the test");
                 D::success();
             })

@@ -29,14 +29,14 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     // Activate `task2` twice
     D::app().task2.activate().unwrap();
     D::app().task2.activate().unwrap();
     D::success();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     // Give a park token to itself. This should succeed in both runs because
     // the park token is reset on each run.
     D::app().task2.unpark_exact().unwrap();

@@ -71,7 +71,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     // Initialize the serial port
     StartupHook::define()
-        .start(|_| {
+        .start(|| {
             use support_rza1::serial::ScifExt;
 
             #[allow(non_snake_case)]
@@ -99,13 +99,13 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     Objects { task1, task2 }
 }
 
-fn task1_body(_: usize) {
+fn task1_body() {
     support_rza1::sprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();
 }
 
-fn task2_body(_: usize) {
+fn task2_body() {
     loop {
         support_rza1::sprintln!("time = {:?}", System::time().unwrap());
         System::sleep(r3::time::Duration::from_secs(1)).unwrap();

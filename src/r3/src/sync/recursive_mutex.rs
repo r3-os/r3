@@ -69,7 +69,7 @@ pub struct GenericRecursiveMutex<Cell, Mutex> {
 ///     Objects { mutex }
 /// }
 ///
-/// fn task1_body(_: usize) {
+/// fn task1_body() {
 ///     let guard = COTTAGE.mutex.lock().unwrap();
 ///     assert_eq!(guard.get(), 0);
 ///     guard.set(1);

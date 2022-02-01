@@ -36,7 +36,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
     // Not a task context
     if let Some(cap) = System::TIME_CAPABILITY {
         assert_eq!(System::time(cap), Err(r3::kernel::TimeError::BadContext));
@@ -56,7 +56,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     );
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let now = if let Some(cap) = System::TIME_CAPABILITY {
         let now = System::time(cap).unwrap();
         log::trace!("time = {:?}", now);

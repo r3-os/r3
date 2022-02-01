@@ -238,7 +238,7 @@ macro_rules! instantiate_test {
         const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> test_case::App<System> {
             // Initialize the clock
             #[cfg(any(feature = "board-e310x-red-v", feature = "board-e310x-qemu"))]
-            StartupHook::define().start(|_| {
+            StartupHook::define().start(|| {
                 e310x::clocks();
             }).finish(b);
 
@@ -257,7 +257,7 @@ macro_rules! instantiate_test {
             // the first one as the print channel for the printing macros, and
             // the second one as log output
             #[cfg(feature = "output-rtt")]
-            StartupHook::define().start(|_| {
+            StartupHook::define().start(|| {
                 let channels = rtt_target::rtt_init! {
                     up: {
                         0: {
@@ -284,7 +284,7 @@ macro_rules! instantiate_test {
 
             // Redirect the log output to stderr
             #[cfg(feature = "output-uart")]
-            StartupHook::define().start(|_| {
+            StartupHook::define().start(|| {
                 logger_uart::init();
             }).finish(b);
 

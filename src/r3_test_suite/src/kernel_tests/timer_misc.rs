@@ -49,15 +49,13 @@ impl<System: SupportedSystem> App<System> {
         let timer1 = StaticTimer::define()
             .active(true)
             .delay(Duration::from_millis(200))
-            .start(timer1_body::<System, D>)
-            .param(42)
+            .start((42, timer1_body::<System, D>))
             .finish(b);
 
         let timer2 = StaticTimer::define()
             .active(true)
             .delay(Duration::from_millis(100))
-            .start(timer2_body::<System, D>)
-            .param(52)
+            .start((52, timer2_body::<System, D>))
             .finish(b);
 
         let timer3 = StaticTimer::define()
@@ -90,7 +88,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let App {
         seq,
         timer2,
@@ -237,6 +235,6 @@ fn timer2_body<System: SupportedSystem, D: Driver<App<System>>>(param: usize) {
     task.unpark().unwrap();
 }
 
-fn unreachable_timer_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn unreachable_timer_body<System: SupportedSystem, D: Driver<App<System>>>() {
     unreachable!()
 }

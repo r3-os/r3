@@ -31,7 +31,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn hook<System: SupportedSystem, D: Driver<App<System>>>() {
     assert!(System::has_cpu_lock());
 
     // Disallowed in a non-task context

@@ -43,7 +43,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     // `task1` executes first because it has a higher priority.
     D::app().seq.expect_and_replace(0, 1);
 
@@ -69,7 +69,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     // Exit from `task1`, relinquishing the control to `task2`.
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     match D::app().seq.get() {
         1 => {
             D::app().seq.expect_and_replace(1, 2);

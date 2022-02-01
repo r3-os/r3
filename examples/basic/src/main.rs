@@ -41,14 +41,14 @@ const fn configure_app(b: &mut r3_kernel::Cfg<'_, SystemTraits>) -> Objects {
     }
 }
 
-fn task1_body(_: usize) {
+fn task1_body() {
     log::trace!("COTTAGE = {:#?}", COTTAGE);
     log::trace!("KENREL = {:#?}", System::debug());
 
     COTTAGE.task2.activate().unwrap();
 }
 
-fn task2_body(_: usize) {
+fn task2_body() {
     loop {
         dbg!(System::time().unwrap());
         System::sleep(r3::time::Duration::from_secs(1)).unwrap();

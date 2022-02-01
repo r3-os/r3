@@ -55,7 +55,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
     StartupHook::define()
-        .start(|_| {
+        .start(|| {
             // Configure peripherals
             let p = unsafe { rp2040::Peripherals::steal() };
             support_rp2040::clock::init_clock(
@@ -108,7 +108,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .finish(b);
     StaticInterruptHandler::define()
         .line(int_fifo)
-        .start(|_| {
+        .start(|| {
             let p = unsafe { rp2040::Peripherals::steal() };
             let sio = p.SIO;
             while sio.fifo_st.read().vld().bit_is_set() {
@@ -132,13 +132,13 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     }
 }
 
-fn task1_body(_: usize) {
+fn task1_body() {
     support_rp2040::sprintln!("COTTAGE = {:?}", COTTAGE);
 
     COTTAGE.task2.activate().unwrap();
 }
 
-fn task2_body(_: usize) {
+fn task2_body() {
     loop {
         support_rp2040::sprintln!(" 0   | core0: {:?}", System::time().unwrap());
         System::sleep(r3::time::Duration::from_millis(700)).unwrap();

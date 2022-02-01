@@ -62,7 +62,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     if let Some(int) = D::app().int {
@@ -82,6 +82,6 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(2, 3);
 }

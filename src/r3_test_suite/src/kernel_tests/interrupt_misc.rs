@@ -54,7 +54,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -90,7 +90,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -170,6 +170,6 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     unreachable!();
 }

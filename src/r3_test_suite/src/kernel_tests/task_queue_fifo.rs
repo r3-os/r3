@@ -28,19 +28,16 @@ impl<System: SupportedSystem> App<System> {
             .active(true)
             .finish(b);
         let task2 = StaticTask::define()
-            .start(task2_body::<System, D>)
+            .start((2, task2_body::<System, D>))
             .priority(2)
-            .param(2)
             .finish(b);
         let task3 = StaticTask::define()
-            .start(task2_body::<System, D>)
+            .start((3, task2_body::<System, D>))
             .priority(2)
-            .param(3)
             .finish(b);
         let task4 = StaticTask::define()
-            .start(task2_body::<System, D>)
+            .start((4, task2_body::<System, D>))
             .priority(2)
-            .param(4)
             .finish(b);
 
         let seq = Hunk::<_, SeqTracker>::define().finish(b);
@@ -54,7 +51,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     log::trace!("Good morning, Angel!");

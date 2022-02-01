@@ -24,10 +24,9 @@ impl<System: SupportedSystem> App<System> {
             .finish(b);
 
         let task1 = StaticTask::define()
-            .start(task1_body::<System, D>)
+            .start((42, task1_body::<System, D>))
             .priority(2)
             .active(true)
-            .param(42)
             .finish(b);
         let task2 = StaticTask::define()
             .start(task2_body::<System, D>)
@@ -46,7 +45,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
     assert_eq!(
         LocalTask::<System>::current(),
         Err(r3::kernel::GetCurrentTaskError::BadContext)
@@ -160,11 +159,11 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
     app.task3.activate().unwrap();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     unreachable!();
 }
 
-fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>() {
     // Current task (again)
     assert_eq!(LocalTask::current().unwrap(), D::app().task3);
 

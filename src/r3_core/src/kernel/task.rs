@@ -7,7 +7,10 @@ use super::{
     cfg, raw, raw_cfg, ActivateTaskError, Cfg, GetCurrentTaskError, GetTaskPriorityError,
     InterruptTaskError, SetTaskPriorityError, UnparkError, UnparkExactError,
 };
-use crate::utils::{Init, PhantomInvariant};
+use crate::{
+    closure::{Closure, IntoClosureConst},
+    utils::{Init, PhantomInvariant},
+};
 
 // ----------------------------------------------------------------------------
 
@@ -320,8 +323,7 @@ impl<T: TaskHandle> TaskMethods for T {}
 #[must_use = "must call `finish()` to complete registration"]
 pub struct TaskDefiner<System> {
     _phantom: PhantomInvariant<System>,
-    start: Option<fn(usize)>,
-    param: usize,
+    start: Option<Closure>,
     stack_size: Option<usize>,
     priority: Option<usize>,
     active: bool,
@@ -332,7 +334,6 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
         Self {
             _phantom: Init::INIT,
             start: None,
-            param: 0,
             stack_size: None,
             priority: None,
             active: false,
@@ -340,16 +341,11 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
     }
 
     /// \[**Required**\] Specify the task's entry point.
-    pub const fn start(self, start: fn(usize)) -> Self {
+    pub const fn start<C: ~const IntoClosureConst>(self, start: C) -> Self {
         Self {
-            start: Some(start),
+            start: Some(start.into_closure_const()),
             ..self
         }
-    }
-
-    /// Specify the parameter to `start`. Defaults to `0`.
-    pub const fn param(self, param: usize) -> Self {
-        Self { param, ..self }
     }
 
     /// Specify the task's stack size.
@@ -397,7 +393,6 @@ impl<System: raw::KernelBase> TaskDefiner<System> {
                 start: self
                     .start
                     .expect("`start` (task entry point) is not specified"),
-                param: self.param,
                 active: self.active,
                 priority: self
                     .priority

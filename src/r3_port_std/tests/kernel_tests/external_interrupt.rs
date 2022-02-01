@@ -59,7 +59,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     }
 }
 
-fn task_body1<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
+fn task_body1<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>() {
     let int = if let Some(int) = D::app().int {
         int
     } else {
@@ -83,6 +83,6 @@ fn task_body1<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: 
     D::success();
 }
 
-fn isr<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>(_: usize) {
+fn isr<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>() {
     D::app().done.store(true, Ordering::Relaxed);
 }

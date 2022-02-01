@@ -187,7 +187,7 @@ pub unsafe fn pend_tick_after<Traits: TimerInstance>(tick_count_delta: UTicks) {
 }
 
 #[inline]
-fn handle_tick<Traits: TimerInstance>(_: usize) {
+fn handle_tick<Traits: TimerInstance>() {
     let tcfg = &Traits::TICKLESS_CFG;
 
     // Safety: CPU Lock protects it from concurrent access

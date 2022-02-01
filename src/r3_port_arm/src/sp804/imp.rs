@@ -174,7 +174,7 @@ pub unsafe fn pend_tick_after<Traits: Sp804Instance>(tick_count_delta: UTicks) {
 }
 
 #[inline]
-fn handle_tick<Traits: Sp804Instance>(_: usize) {
+fn handle_tick<Traits: Sp804Instance>() {
     let tcfg = &Traits::TICKLESS_CFG;
 
     // Safety: CPU Lock protects it from concurrent access

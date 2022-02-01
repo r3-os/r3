@@ -29,8 +29,7 @@ impl<System: SupportedSystem> App<System> {
         // FIXME: Work-around for `for` being unsupported in `const fn`
         while i < TASKS.len() {
             StaticTask::define()
-                .start(task_body::<System, D>)
-                .param(i)
+                .start((i, task_body::<System, D>))
                 .priority(0)
                 .active(true)
                 .finish(b);
@@ -83,7 +82,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
     D::app().done.set(1 << i).unwrap();
 }
 
-fn completion_task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn completion_task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     // Wait until all tasks run to completion
     D::app()
         .done

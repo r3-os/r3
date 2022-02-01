@@ -61,7 +61,6 @@ impl<System: SupportedSystem> App<System> {
             .period(Duration::from_millis(400))
             .active(true)
             .start(timer_body::<System, D>)
-            .param(42)
             .finish(b);
 
         let task = StaticTask::define()
@@ -76,7 +75,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let App { seq, timer, .. } = D::app();
 
     seq.expect_and_replace(0, 1);
@@ -105,7 +104,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let App { task, seq, .. } = D::app();
 
     match seq.get() {

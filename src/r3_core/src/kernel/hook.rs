@@ -1,6 +1,9 @@
 //! Hooks
 use super::{raw, raw_cfg, Cfg};
-use crate::utils::{slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant};
+use crate::{
+    closure::{Closure, IntoClosureConst},
+    utils::{slice_sort_unstable_by, ComptimeVec, Init, PhantomInvariant},
+};
 
 // TODO: Other types of hooks
 
@@ -38,8 +41,7 @@ impl<System: raw::KernelBase> StartupHook<System> {
 #[must_use = "must call `finish()` to complete registration"]
 pub struct StartupHookDefiner<System> {
     _phantom: PhantomInvariant<System>,
-    start: Option<fn(usize)>,
-    param: usize,
+    start: Option<Closure>,
     priority: i32,
     unchecked: bool,
 }
@@ -49,23 +51,17 @@ impl<System: raw::KernelBase> StartupHookDefiner<System> {
         Self {
             _phantom: Init::INIT,
             start: None,
-            param: 0,
             priority: 0,
             unchecked: false,
         }
     }
 
     /// \[**Required**\] Specify the entry point.
-    pub const fn start(self, start: fn(usize)) -> Self {
+    pub const fn start<C: ~const IntoClosureConst>(self, start: C) -> Self {
         Self {
-            start: Some(start),
+            start: Some(start.into_closure_const()),
             ..self
         }
-    }
-
-    /// Specify the parameter to `start`. Defaults to `0`.
-    pub const fn param(self, param: usize) -> Self {
-        Self { param, ..self }
     }
 
     /// Specify the priority. Defaults to `0` when unspecified.
@@ -109,7 +105,6 @@ impl<System: raw::KernelBase> StartupHookDefiner<System> {
         let order = startup_hooks.len();
         startup_hooks.push(CfgStartupHook {
             start: self.start.expect("`start` is not specified"),
-            param: self.param,
             priority: self.priority,
             order,
         });
@@ -118,10 +113,9 @@ impl<System: raw::KernelBase> StartupHookDefiner<System> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct CfgStartupHook {
-    start: fn(usize),
-    param: usize,
+    start: Closure,
     priority: i32,
     /// The registration order.
     order: usize,
@@ -150,22 +144,17 @@ pub(crate) const fn sort_hooks(startup_hooks: &mut ComptimeVec<CfgStartupHook>) 
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct StartupHookAttr {
-    pub(super) start: fn(usize),
-    pub(super) param: usize,
+    pub(super) start: Closure,
 }
 
 impl Init for StartupHookAttr {
     const INIT: Self = Self {
-        start: |_| {},
-        param: 0,
+        start: Closure::INIT,
     };
 }
 
 impl CfgStartupHook {
     pub const fn to_attr(&self) -> StartupHookAttr {
-        StartupHookAttr {
-            start: self.start,
-            param: self.param,
-        }
+        StartupHookAttr { start: self.start }
     }
 }

@@ -28,7 +28,7 @@ impl<T: traits::KernelBase + traits::KernelStatic> SupportedSystem for T {}
 ///  - `Bencher`'s methods access a global object without synchronization. The
 ///    application code should ensure no data race occurs.
 ///
-pub unsafe trait BencherOptions<System: SupportedSystem> {
+pub unsafe trait BencherOptions<System: SupportedSystem>: 'static {
     fn performance_time() -> u32;
 
     const PERFORMANCE_TIME_UNIT: &'static str;
@@ -139,7 +139,7 @@ impl<System: SupportedSystem, Options: BencherOptions<System>> Bencher<System> f
     }
 }
 
-fn main_task<System: SupportedSystem, Options: BencherOptions<System>>(_: usize) {
+fn main_task<System: SupportedSystem, Options: BencherOptions<System>>() {
     while {
         Options::mark_start();
         Options::mark_end("(empty)");

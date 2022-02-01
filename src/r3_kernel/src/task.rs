@@ -4,6 +4,7 @@ use core::sync::atomic::Ordering;
 use core::{fmt, marker::PhantomData};
 use num_traits::ToPrimitive;
 use r3_core::{
+    closure::ClosureEnv,
     kernel::{
         raw::KernelBase, ActivateTaskError, ExitTaskError, GetCurrentTaskError,
         GetTaskPriorityError, Hunk, InterruptTaskError, ParkError, ParkTimeoutError,
@@ -329,10 +330,10 @@ pub struct TaskAttr<
     /// This is only meant to be used by a kernel port, as a task entry point,
     /// not by user code. Using this in other ways may cause an undefined
     /// behavior.
-    pub entry_point: unsafe fn(usize),
+    pub entry_point: unsafe extern "C" fn(ClosureEnv),
 
     /// The parameter supplied for `entry_point`.
-    pub entry_param: usize,
+    pub entry_param: ClosureEnv,
 
     // FIXME: Ideally, `stack` should directly point to the stack region. But
     //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>

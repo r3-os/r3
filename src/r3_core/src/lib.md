@@ -90,7 +90,7 @@ where
     Objects { task }
 }
 
-fn task_body(_: usize) {
+fn task_body() {
     assert_eq!(LocalTask::current().unwrap(), COTTAGE.task);
 }
 ```
@@ -131,7 +131,7 @@ mod m {
         MyModule { task }
     }
 
-    fn task_body(_: usize) {}
+    fn task_body() {}
 }
 ```
 

@@ -33,7 +33,7 @@ where
         .finish(cfg);
 }
 
-fn task_body(_: usize) {
+fn task_body() {
     // The simulator initializes `env_logger` automatically
     log::warn!("yay");
 #   // Make sure the program doesn't panic after stalling

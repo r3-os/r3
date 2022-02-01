@@ -70,7 +70,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let app = D::app();
 
     app.seq.expect_and_replace(0, 1);
@@ -122,7 +122,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn isr<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
     let app = D::app();
 
     app.seq.expect_and_replace(1, 2);

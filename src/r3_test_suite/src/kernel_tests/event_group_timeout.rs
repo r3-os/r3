@@ -65,7 +65,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task0_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task0_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(1, 2);
     System::sleep(Duration::from_millis(300)).unwrap();
     // `task0` goes into sleep. `task1` wakes up first.
@@ -79,7 +79,7 @@ fn task0_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
 
     assert_eq!(

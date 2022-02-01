@@ -22,6 +22,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_write)]
+#![feature(const_impl_trait)]
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 #![feature(let_else)]
@@ -68,6 +69,7 @@ pub mod utils;
 #[macro_use]
 pub mod kernel;
 pub mod bag;
+pub mod closure;
 pub mod hunk;
 pub mod time;
 

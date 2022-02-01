@@ -56,7 +56,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(0, 1);
     System::set_time_ms(0);
     D::app().task2.activate().unwrap();
@@ -69,7 +69,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::app().seq.expect_and_replace(4, 5);
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(1, 2);
 
     // Start sleeping at system time 0ms
@@ -83,7 +83,7 @@ fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
     D::success();
 }
 
-fn task3_body<System: SupportedSystem, D: Driver<App<System>>>(_: usize) {
+fn task3_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::app().seq.expect_and_replace(2, 3);
 
     // Start sleeping at system time 0ms

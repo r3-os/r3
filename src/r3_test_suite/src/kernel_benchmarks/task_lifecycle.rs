@@ -68,7 +68,7 @@ impl<System: SupportedSystem> AppInner<System> {
     }
 }
 
-fn task1_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>(_: usize) {
+fn task1_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>() {
     B::mark_end(I_ACTIVATE_DISPATCHING);
     B::mark_start();
     B::app().task2.activate().unwrap();
@@ -76,7 +76,7 @@ fn task1_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>(_: 
     B::mark_start();
 }
 
-fn task2_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>(_: usize) {
+fn task2_body<System: SupportedSystem, B: Bencher<System, AppInner<System>>>() {
     B::mark_end(I_EXIT_BY_RETURN);
     B::mark_start();
     unsafe { System::exit_task().unwrap() };

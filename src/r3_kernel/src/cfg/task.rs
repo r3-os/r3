@@ -1,5 +1,6 @@
 use core::num::NonZeroUsize;
 use r3_core::{
+    closure::Closure,
     kernel::{
         raw_cfg::{CfgTask, TaskDescriptor},
         task::StackHunk,
@@ -15,7 +16,6 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
         TaskDescriptor {
             phantom: _,
             start,
-            param,
             active,
             priority,
             stack_size,
@@ -43,7 +43,6 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
 
         self.tasks.push(CfgBuilderTask {
             start,
-            param,
             stack,
             priority,
             active,
@@ -55,8 +54,7 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
 
 #[doc(hidden)]
 pub struct CfgBuilderTask<Traits: KernelTraits> {
-    start: fn(usize),
-    param: usize,
+    start: Closure,
     pub(super) stack: task::StackHunk<Traits>,
     priority: usize,
     active: bool,
@@ -66,7 +64,6 @@ impl<Traits: KernelTraits> Clone for CfgBuilderTask<Traits> {
     fn clone(&self) -> Self {
         Self {
             start: self.start,
-            param: self.param,
             stack: self.stack,
             priority: self.priority,
             active: self.active,
@@ -99,9 +96,10 @@ impl<Traits: KernelTraits> CfgBuilderTask<Traits> {
     }
 
     pub const fn to_attr(&self) -> task::TaskAttr<Traits> {
+        let (entry_point, entry_param) = self.start.as_raw_parts();
         task::TaskAttr {
-            entry_point: self.start,
-            entry_param: self.param,
+            entry_point,
+            entry_param,
             stack: self.stack,
             priority: if self.priority < Traits::NUM_TASK_PRIORITY_LEVELS {
                 Traits::TASK_PRIORITY_LEVELS[self.priority]

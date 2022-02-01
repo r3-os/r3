@@ -1,6 +1,7 @@
 //! Timers
 use core::{fmt, marker::PhantomData, mem::ManuallyDrop};
 use r3_core::{
+    closure::Closure,
     kernel::{traits, SetTimerDelayError, SetTimerPeriodError, StartTimerError, StopTimerError},
     time::Duration,
     utils::Init,
@@ -148,10 +149,7 @@ pub struct TimerAttr<Traits> {
     /// This is only meant to be used by a kernel port, as a timer callback,
     /// not by user code. Using this in other ways may cause an undefined
     /// behavior.
-    pub(super) entry_point: fn(usize),
-
-    /// The parameter supplied for `entry_point`.
-    pub(super) entry_param: usize,
+    pub(super) entry_point: Closure,
 
     /// The initial state of the timer.
     pub(super) init_active: bool,
@@ -161,8 +159,7 @@ pub struct TimerAttr<Traits> {
 
 impl<Traits> Init for TimerAttr<Traits> {
     const INIT: Self = Self {
-        entry_point: |_| {},
-        entry_param: 0,
+        entry_point: Closure::INIT,
         init_active: false,
         _phantom: PhantomData,
     };
@@ -172,7 +169,6 @@ impl<Traits: KernelTraits> fmt::Debug for TimerAttr<Traits> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TimerAttr")
             .field("entry_point", &self.entry_point)
-            .field("entry_param", &self.entry_param)
             .finish()
     }
 }
@@ -307,12 +303,7 @@ pub(super) fn timer_timeout_handler<Traits: KernelTraits>(
     // function
     drop(lock);
 
-    let TimerAttr {
-        entry_point,
-        entry_param,
-        ..
-    } = timer_cb.attr;
-    entry_point(*entry_param);
+    timer_cb.attr.entry_point.call();
 
     // Re-acquire CPU Lock
     lock_cpu().unwrap_or_else(|_| unsafe { assume_cpu_lock() })

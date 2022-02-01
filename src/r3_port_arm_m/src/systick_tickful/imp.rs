@@ -49,14 +49,14 @@ where
         .line(INTERRUPT_SYSTICK)
         .start(
             #[inline]
-            |_| unsafe { Traits::handle_tick() },
+            || unsafe { Traits::handle_tick() },
         )
         .finish(b);
 
     StartupHook::define()
         .start(
             #[inline]
-            |_| init(Traits::TICK_PERIOD),
+            || init(Traits::TICK_PERIOD),
         )
         .finish(b);
 }

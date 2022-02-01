@@ -233,7 +233,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         #[inline(always)]
         fn startup_hook<System: CfgPhase2>() {
             for startup_hook in System::CFG_STARTUP_HOOKS.iter() {
-                (startup_hook.start)(startup_hook.param);
+                startup_hook.start.call();
             }
         }
 

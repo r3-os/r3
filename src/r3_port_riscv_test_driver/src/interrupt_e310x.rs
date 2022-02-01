@@ -170,14 +170,14 @@ where
     unsafe {
         StaticInterruptHandler::define()
             .line(INTERRUPT_GPIO0)
-            .start(|_| clear_interrupt_line(INTERRUPT_GPIO0).unwrap())
+            .start(|| clear_interrupt_line(INTERRUPT_GPIO0).unwrap())
             .priority(i32::MIN)
             .unmanaged()
             .finish(b);
 
         StaticInterruptHandler::define()
             .line(INTERRUPT_GPIO1)
-            .start(|_| clear_interrupt_line(INTERRUPT_GPIO1).unwrap())
+            .start(|| clear_interrupt_line(INTERRUPT_GPIO1).unwrap())
             .priority(i32::MIN)
             .unmanaged()
             .finish(b);
