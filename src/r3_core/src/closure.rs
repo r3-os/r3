@@ -190,6 +190,9 @@ unsafe extern "C" fn trampoline_indirect<T: FnOnce()>(env: ClosureEnv) {
 ///
 /// // `(&'static P0, impl FnOnce(&'static P0))` → `Closure`
 /// const _: Closure = (&42, |_: &i32| {}).into_closure_const();
+///
+/// // `(usize, impl FnOnce(usize))` → `Closure`
+/// const _: Closure = (42usize, |_: usize| {}).into_closure_const();
 /// ```
 pub trait IntoClosureConst {
     /// Perform conversion to [`Closure`], potentially using a compile-time
@@ -222,7 +225,28 @@ impl<T: FnOnce(&'static P0) + Copy + Send + 'static, P0: Sync + 'static> const I
         }
 
         if size_of::<T>() == 0 {
-            unsafe { Closure::from_raw_parts(trampoline_zst_param::<T, P0>, transmute(self.0)) }
+            unsafe { Closure::from_raw_parts(trampoline_ptr_spec::<T, P0>, transmute(self.0)) }
+        } else {
+            (move || (self.1)(self.0)).into_closure_const()
+        }
+    }
+}
+
+/// Packs `usize` directly in [`ClosureEnv`][] if `T` is zero-sized.
+///
+/// Due to compiler restrictions, this optimization is currently impossible
+/// to do in the generic constructor ([`Closure::from_fn_const`]).
+// FIXME: See above
+impl<T: FnOnce(usize) + Copy + Send + 'static> const IntoClosureConst for (usize, T) {
+    fn into_closure_const(self) -> Closure {
+        unsafe extern "C" fn trampoline_usize_spec<T: FnOnce(usize)>(env: ClosureEnv) {
+            let p0: usize = unsafe { transmute(env) };
+            let func: T = unsafe { transmute(()) };
+            func(p0)
+        }
+
+        if size_of::<T>() == 0 {
+            unsafe { Closure::from_raw_parts(trampoline_usize_spec::<T>, transmute(self.0)) }
         } else {
             (move || (self.1)(self.0)).into_closure_const()
         }
@@ -301,6 +325,12 @@ mod tests {
     #[test]
     fn ptr_env_spec() {
         const C: Closure = (&42, |x: &i32| assert_eq!(*x, 42)).into_closure_const();
+        C.call();
+    }
+
+    #[test]
+    fn usize_env_spec() {
+        const C: Closure = (42usize, |x: usize| assert_eq!(x, 42)).into_closure_const();
         C.call();
     }
 }
