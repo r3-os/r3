@@ -3,7 +3,6 @@
 #![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 use r3::{
     kernel::{prelude::*, traits, StaticTask},
     prelude::*,

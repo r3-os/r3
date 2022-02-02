@@ -2239,7 +2239,7 @@ checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
 [[package]]
 name = "riscv"
 version = "0.5.6"
-source = "git+https://github.com/r3-os/rust-riscv.git?branch=refresh/0.5#e46b7225fcc9cff16afb65081a831068f2367167"
+source = "git+https://github.com/r3-os/rust-riscv.git?branch=refresh/0.5#00d67232f46167fb3a704d76d288c1d5a535618b"
 dependencies = [
  "bare-metal 0.2.5",
  "bit_field",
@@ -2248,8 +2248,7 @@ dependencies = [
 [[package]]
 name = "riscv"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f0b705d428e9d0f78e2bb73093887ee58a83c9688de3faedbb4c0631c4618e"
+source = "git+https://github.com/r3-os/rust-riscv.git?branch=refresh/0.6#2b7d18f2add6e022bd7cdacb9683d0710c0d51f8"
 dependencies = [
  "bare-metal 0.2.5",
  "bit_field",
@@ -2259,11 +2258,11 @@ dependencies = [
 [[package]]
 name = "riscv"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6907ccdd7a31012b70faf2af85cd9e5ba97657cc3987c4f13f8e4d2c2a088aba"
+source = "git+https://github.com/rust-embedded/riscv.git#dc0bc37e760ae6cec247f54c4e69c5d3789cedd8"
 dependencies = [
  "bare-metal 1.0.0",
  "bit_field",
+ "embedded-hal",
  "riscv-target",
 ]
 

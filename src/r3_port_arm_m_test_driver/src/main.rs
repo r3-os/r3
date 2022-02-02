@@ -4,7 +4,6 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 #![cfg_attr(feature = "run", no_std)]
 #![cfg_attr(feature = "run", no_main)]
 

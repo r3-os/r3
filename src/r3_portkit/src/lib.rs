@@ -6,7 +6,6 @@
 #![feature(decl_macro)]
 #![feature(const_fn_fn_ptr_basics)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
-#![deny(unsupported_naked_functions)]
 #![no_std]
 
 #[cfg(doc)]

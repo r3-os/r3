@@ -26,15 +26,27 @@ members = [
 ]
 resolver = "2"
 
-[patch.crates-io.riscv]
+[patch.crates-io.riscv-0p5]
 # We need to enable `riscv/inline-asm` to work around
 # <https://github.com/rust-embedded/riscv/issues/69>. However, some external
 # crates depend on `riscv` 0.5.x, which uses the old form of `asm!` with the
-# LLVM syntax, which was moved to `llvm_asm!` when the new inline assembler
-# syntax has landed. Therefore, we have to patch `riscv` 0.5.x with the version
-# that uses the form of inline assembler supported by the current compiler.
+# LLVM syntax, which isn't supported by the current compiler anymore. Therefore,
+# we have to patch `riscv` 0.5.x with the version that uses the form of inline
+# assembler supported by the current compiler.
 git = "https://github.com/r3-os/rust-riscv.git"
+package = "riscv"
 branch = "refresh/0.5"
+
+[patch.crates-io.riscv-0p6]
+# Ditto.
+git = "https://github.com/r3-os/rust-riscv.git"
+package = "riscv"
+branch = "refresh/0.6"
+
+[patch.crates-io.riscv-0p7]
+# Ditto.
+git = "https://github.com/rust-embedded/riscv.git"
+package = "riscv"
 
 [patch.crates-io.riscv-rt]
 # FIXME: This is a work-around for

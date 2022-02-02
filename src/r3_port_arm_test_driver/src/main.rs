@@ -10,7 +10,6 @@
 #![feature(const_trait_impl)]
 #![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 #![cfg_attr(feature = "run", no_std)]
 #![cfg_attr(feature = "run", no_main)]
 #![recursion_limit = "1000"]
