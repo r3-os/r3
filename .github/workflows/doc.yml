@@ -35,9 +35,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with: { command: doc, args: -p r3_port_riscv --all-features }
 
-      - name: Build Documentation for “r3_support_rp2040”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_support_rp2040 --all-features }
+      # FIXME: `rp2040` causes ICE <https://github.com/rust-lang/rust/issues/93476>
+      # - name: Build Documentation for “r3_support_rp2040”
+      #   uses: actions-rs/cargo@v1
+      #   with: { command: doc, args: -p r3_support_rp2040 --all-features }
 
       - name: Build Documentation for “r3_support_rza1”
         uses: actions-rs/cargo@v1
