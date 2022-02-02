@@ -2239,7 +2239,7 @@ checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
 [[package]]
 name = "riscv"
 version = "0.5.6"
-source = "git+https://github.com/r3-os/rust-riscv.git?branch=refresh/0.5#e46b7225fcc9cff16afb65081a831068f2367167"
+source = "git+https://github.com/r3-os/rust-riscv.git?branch=refresh/0.5#00d67232f46167fb3a704d76d288c1d5a535618b"
 dependencies = [
  "bare-metal 0.2.5",
  "bit_field",
