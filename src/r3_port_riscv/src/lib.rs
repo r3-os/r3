@@ -11,7 +11,6 @@
 #![feature(const_trait_impl)]
 #![feature(generic_const_exprs)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]

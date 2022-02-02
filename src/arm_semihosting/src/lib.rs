@@ -45,7 +45,6 @@
 //! [pdf]: http://infocenter.arm.com/help/topic/com.arm.doc.dui0471e/DUI0471E_developing_for_arm_processors.pdf
 
 #![deny(missing_docs)]
-#![deny(unsupported_naked_functions)]
 #![no_std]
 
 #[macro_use]

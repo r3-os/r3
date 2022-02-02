@@ -5,7 +5,6 @@
 #![feature(asm_sym)]
 #![feature(naked_functions)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 #![no_std]
 #![no_main]
 #![cfg(target_os = "none")]

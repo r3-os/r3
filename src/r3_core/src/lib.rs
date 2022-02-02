@@ -40,7 +40,6 @@
 #![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]

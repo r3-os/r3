@@ -6,7 +6,6 @@
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![doc = include_str!("./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 use atomic_ref::AtomicRef;
 use once_cell::sync::OnceCell;
 use r3_core::{

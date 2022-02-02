@@ -4,7 +4,6 @@
 #![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsupported_naked_functions)]
 #![no_std]
 #![no_main]
 #![cfg(target_os = "none")]
