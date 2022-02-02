@@ -2239,7 +2239,7 @@ checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
 [[package]]
 name = "riscv"
 version = "0.5.6"
-source = "git+https://github.com/yvt/rust-riscv.git?branch=0.5-asm#e46b7225fcc9cff16afb65081a831068f2367167"
+source = "git+https://github.com/r3-os/rust-riscv.git?branch=refresh/0.5#e46b7225fcc9cff16afb65081a831068f2367167"
 dependencies = [
  "bare-metal 0.2.5",
  "bit_field",
@@ -2270,7 +2270,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt"
 version = "0.6.2"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=fea31dd51d255f4419246277497a9183e502cc9b#fea31dd51d255f4419246277497a9183e502cc9b"
+source = "git+https://github.com/r3-os/rust-riscv-rt.git?branch=refresh/0.8#fea31dd51d255f4419246277497a9183e502cc9b"
 dependencies = [
  "riscv-rt 0.8.0",
 ]
@@ -2278,7 +2278,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt"
 version = "0.8.0"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=fea31dd51d255f4419246277497a9183e502cc9b#fea31dd51d255f4419246277497a9183e502cc9b"
+source = "git+https://github.com/r3-os/rust-riscv-rt.git?branch=refresh/0.8#fea31dd51d255f4419246277497a9183e502cc9b"
 dependencies = [
  "r0 1.0.0",
  "riscv 0.6.0",
@@ -2288,7 +2288,7 @@ dependencies = [
 [[package]]
 name = "riscv-rt-macros"
 version = "0.1.6"
-source = "git+https://github.com/yvt/rust-riscv-rt.git?rev=fea31dd51d255f4419246277497a9183e502cc9b#fea31dd51d255f4419246277497a9183e502cc9b"
+source = "git+https://github.com/r3-os/rust-riscv-rt.git?branch=refresh/0.8#fea31dd51d255f4419246277497a9183e502cc9b"
 dependencies = [
  "proc-macro2",
  "quote",

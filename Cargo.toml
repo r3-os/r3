@@ -33,8 +33,8 @@ resolver = "2"
 # LLVM syntax, which was moved to `llvm_asm!` when the new inline assembler
 # syntax has landed. Therefore, we have to patch `riscv` 0.5.x with the version
 # that uses the form of inline assembler supported by the current compiler.
-git = "https://github.com/yvt/rust-riscv.git"
-branch = "0.5-asm"
+git = "https://github.com/r3-os/rust-riscv.git"
+branch = "refresh/0.5"
 
 [patch.crates-io.riscv-rt]
 # FIXME: This is a work-around for
@@ -43,8 +43,8 @@ branch = "0.5-asm"
 # linker because of a floating-point ABI mismatch. This patched version replaces
 # the precompiled object file with naked functions, which will always be
 # complied with the expected floating-point ABI.
-git = "https://github.com/yvt/rust-riscv-rt.git"
-rev = "fea31dd51d255f4419246277497a9183e502cc9b"
+git = "https://github.com/r3-os/rust-riscv-rt.git"
+branch = "refresh/0.8"
 version = "0.6.2"
 
 [profile.release]
