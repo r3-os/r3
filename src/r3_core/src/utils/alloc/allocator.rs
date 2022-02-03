@@ -1,7 +1,7 @@
 //! The allocator
 use core::{alloc::Layout, ptr, ptr::NonNull};
 
-use super::rlsf;
+use super::utils::{nonnull_slice_from_raw_parts, nonnull_slice_len};
 
 macro_rules! const_try_result {
     ($x:expr) => {
@@ -12,18 +12,9 @@ macro_rules! const_try_result {
     };
 }
 
-// FIXME: Once `const_deallocate` is added, we won't have to sub-allocate
-//        `const` heap allocations, and we won't need `rlsf`
-
 /// Compile-time allocator.
 ///
-/// It's implemented on top of [`core::intrinsics::const_allocate`][]. Although
-/// the deallocation counterpart of the intrinsic function `const_deallocate`
-/// doesn't exist yet, `ConstAllocator` is capable of reusing deallocated
-/// regions as long as they are created from the same instance of
-/// `ConstAllocator`. This is accomplished by, instead of making a call to
-/// `const_allocate` for each allocation request, slicing out each allocated
-/// region from larger blocks using a dynamic storage allocation algorithm.
+/// This is implemented on top of [`core::intrinsics::const_allocate`][].
 ///
 /// # Stability
 ///
@@ -37,16 +28,7 @@ pub struct ConstAllocator {
     ///  - Live allocations created through `ConstAllocator as Allocator`.
     ///
     ref_count: *mut usize,
-    tlsf: *mut TheFlexTlsf,
 }
-
-type TheFlexTlsf = rlsf::FlexTlsf<
-    ConstFlexSource,
-    usize,
-    usize,
-    { usize::BITS as usize },
-    { usize::BITS as usize },
->;
 
 impl ConstAllocator {
     /// Call the specified closure, passing a reference to a `Self` constructed
@@ -173,18 +155,7 @@ impl ConstAllocator {
         let mut ref_count = RefCountGuard(1);
         let ref_count = (&mut ref_count.0) as *mut _;
 
-        struct TlsfGuard(Option<TheFlexTlsf>);
-        impl const Drop for TlsfGuard {
-            fn drop(&mut self) {
-                self.0.take().unwrap().destroy();
-            }
-        }
-
-        let mut tlsf = TlsfGuard(Some(TheFlexTlsf::new(ConstFlexSource)));
-        let this = Self {
-            ref_count,
-            tlsf: tlsf.0.as_mut().unwrap(),
-        };
+        let this = Self { ref_count };
 
         f.call(&this)
     }
@@ -231,7 +202,6 @@ impl const Clone for ConstAllocator {
         unsafe { *self.ref_count += 1 };
         Self {
             ref_count: self.ref_count,
-            tlsf: self.tlsf,
         }
     }
 
@@ -276,7 +246,7 @@ pub unsafe trait Allocator {
         unsafe {
             ptr.as_ptr()
                 .cast::<u8>()
-                .write_bytes(0, rlsf::nonnull_slice_len(ptr))
+                .write_bytes(0, nonnull_slice_len(ptr))
         }
         Ok(ptr)
     }
@@ -426,71 +396,17 @@ where
 
 unsafe impl const Allocator for ConstAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        let tlsf = unsafe { &mut *self.tlsf };
-        if let Some(x) = tlsf.allocate(layout) {
+        let ptr = unsafe { core::intrinsics::const_allocate(layout.size(), layout.align()) };
+        if let Some(ptr) = NonNull::new(ptr) {
             unsafe { *self.ref_count += 1 };
-            Ok(rlsf::nonnull_slice_from_raw_parts(x, layout.size()))
+            Ok(nonnull_slice_from_raw_parts(ptr, layout.size()))
         } else {
             Err(AllocError)
         }
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        let tlsf = unsafe { &mut *self.tlsf };
-        unsafe { tlsf.deallocate(ptr, layout.align()) };
+        unsafe { core::intrinsics::const_deallocate(ptr.as_ptr(), layout.size(), layout.align()) };
         unsafe { *self.ref_count -= 1 };
     }
-}
-
-/// An implementation of `FlexSource` based on the CTFE heap.
-struct ConstFlexSource;
-
-/// Theoretically could be one, but a larger value is chosen to lessen the
-/// fragmentation
-const BLOCK_SIZE: usize = 1 << 16;
-
-const _: () = assert!(BLOCK_SIZE >= rlsf::ALIGN);
-
-unsafe impl const rlsf::FlexSource for ConstFlexSource {
-    unsafe fn alloc(&mut self, min_size: usize) -> Option<core::ptr::NonNull<[u8]>> {
-        // FIXME: Work-around for `?` being unsupported in `const fn`
-        let size = if let Some(size) = min_size.checked_add(BLOCK_SIZE - 1) {
-            size & !(BLOCK_SIZE - 1)
-        } else {
-            return None;
-        };
-
-        assert!(min_size != 0);
-
-        // FIXME: Directly calling `const_allocate` from here causes the
-        //        compiler to panic
-        // Safety: `const_allocate_{in_const, at_rt}` behave observably
-        //         equivalent... if their results are ever observed.
-        let ptr = unsafe {
-            core::intrinsics::const_eval_select(
-                (size, BLOCK_SIZE),
-                const_allocate_in_const,
-                const_allocate_at_rt,
-            )
-        };
-
-        // FIXME: `NonNull::new` is not `const fn` yet
-        assert!(!ptr.guaranteed_eq(core::ptr::null_mut()));
-        let ptr = unsafe { NonNull::new_unchecked(ptr) };
-
-        Some(rlsf::nonnull_slice_from_raw_parts(ptr, size))
-    }
-
-    fn min_align(&self) -> usize {
-        BLOCK_SIZE
-    }
-}
-
-const fn const_allocate_in_const(size: usize, align: usize) -> *mut u8 {
-    // Safety: Technically it's not `unsafe`
-    unsafe { core::intrinsics::const_allocate(size, align) }
-}
-
-fn const_allocate_at_rt(_: usize, _: usize) -> *mut u8 {
-    loop {}
 }
