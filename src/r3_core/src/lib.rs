@@ -14,6 +14,7 @@
 #![feature(const_ptr_offset_from)]
 #![feature(maybe_uninit_slice)]
 #![feature(const_mut_refs)]
+#![feature(const_nonnull_new)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_option)]
 #![feature(const_option_ext)]
