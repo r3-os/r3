@@ -15,31 +15,3 @@ pub const fn nonnull_slice_len<T>(ptr: NonNull<[T]>) -> usize {
     //         might be uninitialized.
     unsafe { (*(ptr.as_ptr() as *const [MaybeUninit<T>])).len() }
 }
-
-// Polyfill for <https://github.com/rust-lang/rust/issues/74265>
-#[inline]
-pub const fn nonnull_slice_start<T>(ptr: NonNull<[T]>) -> NonNull<T> {
-    unsafe { NonNull::new_unchecked(ptr.as_ptr() as *mut T) }
-}
-
-#[inline]
-pub const fn nonnull_slice_end<T>(ptr: NonNull<[T]>) -> *mut T {
-    (ptr.as_ptr() as *mut T).wrapping_add(nonnull_slice_len(ptr))
-}
-
-// FIXME: `usize: !const Ord`
-pub const fn min_usize(x: usize, y: usize) -> usize {
-    if x < y {
-        x
-    } else {
-        y
-    }
-}
-
-pub const fn option_nonnull_as_ptr<T>(x: Option<NonNull<T>>) -> *mut T {
-    if let Some(x) = x {
-        x.as_ptr()
-    } else {
-        core::ptr::null_mut()
-    }
-}

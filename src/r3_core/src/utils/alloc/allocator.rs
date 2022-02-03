@@ -1,7 +1,7 @@
 //! The allocator
 use core::{alloc::Layout, ptr, ptr::NonNull};
 
-use super::rlsf;
+use super::utils::{nonnull_slice_from_raw_parts, nonnull_slice_len};
 
 macro_rules! const_try_result {
     ($x:expr) => {
@@ -246,7 +246,7 @@ pub unsafe trait Allocator {
         unsafe {
             ptr.as_ptr()
                 .cast::<u8>()
-                .write_bytes(0, rlsf::nonnull_slice_len(ptr))
+                .write_bytes(0, nonnull_slice_len(ptr))
         }
         Ok(ptr)
     }
@@ -399,7 +399,7 @@ unsafe impl const Allocator for ConstAllocator {
         let ptr = unsafe { core::intrinsics::const_allocate(layout.size(), layout.align()) };
         if let Some(ptr) = NonNull::new(ptr) {
             unsafe { *self.ref_count += 1 };
-            Ok(rlsf::nonnull_slice_from_raw_parts(ptr, layout.size()))
+            Ok(nonnull_slice_from_raw_parts(ptr, layout.size()))
         } else {
             Err(AllocError)
         }
