@@ -1,8 +1,6 @@
 //! The allocator
 use core::{alloc::Layout, ptr, ptr::NonNull};
 
-use super::utils::{nonnull_slice_from_raw_parts, nonnull_slice_len};
-
 macro_rules! const_try_result {
     ($x:expr) => {
         match $x {
@@ -243,11 +241,7 @@ pub unsafe trait Allocator {
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = const_try_result!(self.allocate(layout));
         // SAFETY: `alloc` returns a valid memory block
-        unsafe {
-            ptr.as_ptr()
-                .cast::<u8>()
-                .write_bytes(0, nonnull_slice_len(ptr))
-        }
+        unsafe { ptr.as_ptr().cast::<u8>().write_bytes(0, ptr.len()) }
         Ok(ptr)
     }
 
@@ -399,7 +393,7 @@ unsafe impl const Allocator for ConstAllocator {
         let ptr = unsafe { core::intrinsics::const_allocate(layout.size(), layout.align()) };
         if let Some(ptr) = NonNull::new(ptr) {
             unsafe { *self.ref_count += 1 };
-            Ok(nonnull_slice_from_raw_parts(ptr, layout.size()))
+            Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
         } else {
             Err(AllocError)
         }
