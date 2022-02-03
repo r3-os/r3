@@ -13,7 +13,6 @@
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_ptr_offset_from)]
 #![feature(maybe_uninit_slice)]
-#![feature(const_eval_select)]
 #![feature(const_mut_refs)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_option)]

@@ -462,17 +462,7 @@ unsafe impl const rlsf::FlexSource for ConstFlexSource {
 
         assert!(min_size != 0);
 
-        // FIXME: Directly calling `const_allocate` from here causes the
-        //        compiler to panic
-        // Safety: `const_allocate_{in_const, at_rt}` behave observably
-        //         equivalent... if their results are ever observed.
-        let ptr = unsafe {
-            core::intrinsics::const_eval_select(
-                (size, BLOCK_SIZE),
-                const_allocate_in_const,
-                const_allocate_at_rt,
-            )
-        };
+        let ptr = unsafe { core::intrinsics::const_allocate(size, BLOCK_SIZE) };
 
         // FIXME: `NonNull::new` is not `const fn` yet
         assert!(!ptr.guaranteed_eq(core::ptr::null_mut()));
@@ -484,13 +474,4 @@ unsafe impl const rlsf::FlexSource for ConstFlexSource {
     fn min_align(&self) -> usize {
         BLOCK_SIZE
     }
-}
-
-const fn const_allocate_in_const(size: usize, align: usize) -> *mut u8 {
-    // Safety: Technically it's not `unsafe`
-    unsafe { core::intrinsics::const_allocate(size, align) }
-}
-
-fn const_allocate_at_rt(_: usize, _: usize) -> *mut u8 {
-    loop {}
 }

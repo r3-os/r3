@@ -116,6 +116,14 @@ impl Closure {
     /// C1.call();
     /// C2.call();
     /// ```
+    ///
+    /// Don't call it at runtime:
+    ///
+    /// ```rust,should_panic
+    /// use r3_core::closure::Closure;
+    /// let x = [1, 2, 3];
+    /// Closure::from_fn_const(move || { let _x = x; });
+    /// ```
     pub const fn from_fn_const<T: FnOnce() + Copy + Send + 'static>(func: T) -> Self {
         let size = size_of::<T>();
         let align = align_of::<T>();
@@ -128,6 +136,10 @@ impl Closure {
                 Self::from_raw_parts(trampoline_zst::<T>, ClosureEnv(None))
             } else {
                 let env = core::intrinsics::const_allocate(size, align);
+                assert!(
+                    !env.guaranteed_eq(core::ptr::null_mut()),
+                    "heap allocation failed"
+                );
                 env.cast::<T>().write(func);
                 Self::from_raw_parts(trampoline_indirect::<T>, transmute(env))
             }

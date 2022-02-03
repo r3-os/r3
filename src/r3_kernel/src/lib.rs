@@ -10,7 +10,6 @@
 #![feature(generic_const_exprs)]
 #![feature(const_refs_to_cell)]
 #![feature(maybe_uninit_slice)]
-#![feature(const_eval_select)]
 #![feature(const_option_ext)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_offset)]
