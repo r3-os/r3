@@ -49,7 +49,13 @@ pub mod _changelog_ {}
 pub mod sync;
 mod tests;
 
-pub use r3_core::{bag, hunk, kernel, time, utils};
+pub use r3_core::{bag, hunk, kernel, time};
+
+/// Utilities. This module re-exports items from [`r3_core::utils`] that are
+/// subject to the application-side API stability guarantee.
+pub mod utils {
+    pub use r3_core::utils::{Init, ZeroInit};
+}
 
 /// The prelude module.
 pub mod prelude {
