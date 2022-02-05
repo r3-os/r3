@@ -32,7 +32,7 @@ const REG_ALIGN: usize = if F_SIZE > X_SIZE { F_SIZE } else { X_SIZE };
 /// The size of FLS.F
 const FLSF_SIZE: usize = 20 * F_SIZE + REG_ALIGN;
 
-/// The assembler fragments used by `pp_asm!`. Because of a mysterious macro
+/// The assembly code fragments used by `pp_asm!`. Because of a mysterious macro
 /// hygienics behavior, they have to referred to by absolute paths.
 ///
 /// They are marked as `pub` to be used by `r3_port_riscv_test_driver`.

@@ -117,7 +117,7 @@ pub const DEFAULT_FN_ALIGN: usize = if cfg!(target_arch = "aarch64") {
 /// storage, so the bit must be cleared before use.
 ///
 /// The [`SymStaticExt`] trait's methods automatically take care of such
-/// situations. When referencing it from assembler code, **you must append `_`
+/// situations. When referencing it from assembly code, **you must append `_`
 /// to the symbol name** (see the following example).
 ///
 /// # Examples

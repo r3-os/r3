@@ -32,7 +32,7 @@ resolver = "2"
 # crates depend on `riscv` 0.5.x, which uses the old form of `asm!` with the
 # LLVM syntax, which isn't supported by the current compiler anymore. Therefore,
 # we have to patch `riscv` 0.5.x with the version that uses the form of inline
-# assembler supported by the current compiler.
+# assembly supported by the current compiler.
 git = "https://github.com/r3-os/rust-riscv.git"
 package = "riscv"
 branch = "refresh/0.5"

@@ -233,7 +233,7 @@ pub struct TaskCb<
     /// Get a reference to `PortTaskState` in the task control block.
     ///
     /// This is guaranteed to be placed at the beginning of the struct so that
-    /// assembler code can refer to this easily.
+    /// assembly code can refer to this easily.
     pub port_task_state: PortTaskState,
 
     /// The static properties of the task.

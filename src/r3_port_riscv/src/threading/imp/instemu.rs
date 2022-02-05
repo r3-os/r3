@@ -27,7 +27,7 @@ pub(super) unsafe extern "C" fn handle_exception(_fl_state: *mut usize, _mcause:
     // TODO: catch double fault
     // FIXME: We can't put CFI directives yet because the compiler wraps the
     //     function with `.cfi_startproc` and `.cfi_endproc` conditionally,
-    //     but we can't write assembler code that generate custom CFI
+    //     but we can't write assembly code that generate custom CFI
     //     directives conditionally in the same way as the compiler does.
     //     Possibly related: <https://github.com/rust-lang/rust/issues/75897>
     unsafe {

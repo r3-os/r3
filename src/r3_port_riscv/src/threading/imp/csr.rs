@@ -50,7 +50,7 @@
 //! automatically by a macro. They don't "infect" anything because this type's
 //! genericity "collapses" in the `use_port!` macro expansion.
 //!
-//! (2) The previous solution doesn't work for large inline assembler blocks
+//! (2) The previous solution doesn't work for large inline assembly blocks
 //! containing numerous references to CSRs. This brings us to the second
 //! solution:
 //! *Import constants as `sym` operands*. Interestingly, the `#[export_name]`
@@ -262,7 +262,7 @@ define_set! {
         /* `csrexpr!` is also exposed as `const`s here */
     }
 
-    /// Create an assembler expression that evaluates to a CSR number or value.
+    /// Create an assembly expression that evaluates to a CSR number or value.
     /// Assumes the presence of an operand `PRIV = sym Traits::Priv::value`.
     macro csrexpr {
         // CSRs
