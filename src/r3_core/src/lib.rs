@@ -15,6 +15,8 @@
 #![feature(const_nonnull_new)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_option)]
+#![feature(const_cell_into_inner)]
+#![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(const_nonnull_slice_from_raw_parts)]

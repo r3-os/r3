@@ -61,6 +61,7 @@ mod aligned_storage;
 mod init;
 pub mod mem;
 mod rawcell;
+pub(crate) mod refcell;
 mod zeroinit;
 pub use aligned_storage::*;
 pub use init::*;
