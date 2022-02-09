@@ -212,6 +212,12 @@ pub trait IntoClosureConst {
     fn into_closure_const(self) -> Closure;
 }
 
+impl const IntoClosureConst for Closure {
+    fn into_closure_const(self) -> Closure {
+        self
+    }
+}
+
 /// Perform conversion using [`Closure::from_fn_const`].
 impl<T: FnOnce() + Copy + Send + 'static> const IntoClosureConst for T {
     fn into_closure_const(self) -> Closure {
