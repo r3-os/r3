@@ -279,6 +279,15 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
         slice_from_raw_parts(Self::untyped_hunk(this).as_ptr(), mem::size_of_val(&*this))
     }
 
+    /// Get a reference to the hunk's contents.
+    #[inline]
+    pub fn as_ref<'a>(this: Self) -> &'a T
+    where
+        T: 'a,
+    {
+        unsafe { &*Self::as_ptr(this) }
+    }
+
     /// Get a reference to the raw bytes of the hunk.
     ///
     /// # Safety
@@ -294,6 +303,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
 }
 
 impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> AsRef<T> for Hunk<System, T> {
+    #[inline]
     fn as_ref(&self) -> &T {
         unsafe { &*Self::as_ptr(*self) }
     }
