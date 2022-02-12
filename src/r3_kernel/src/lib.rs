@@ -16,6 +16,7 @@
 #![feature(specialization)]
 #![feature(assert_matches)]
 #![feature(const_mut_refs)]
+#![feature(const_ptr_read)]
 #![feature(const_option)]
 #![feature(const_heap)]
 #![feature(never_type)] // `!`
