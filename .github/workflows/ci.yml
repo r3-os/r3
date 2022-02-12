@@ -19,7 +19,7 @@ jobs:
           profile: minimal
           components: clippy, rustfmt
 
-      - name: Install tagref
+      - name: Install Tagref
         uses: ./.github/actions/install-tagref
 
       - name: Install dependencies (Linux)
