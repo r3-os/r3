@@ -32,8 +32,8 @@ svgbobdoc = { version = "0.3.0-alpha.4" }
 r3_core = { version = "0.1.0", path = "../r3_core" }
 
 [dev-dependencies]
-r3_kernel = { path = "../r3_kernel" }
 r3_port_std = { path = "../r3_port_std" }
+r3_kernel = { path = "../r3_kernel" }
 
 [package.metadata.docs.rs]
 all-features = true
