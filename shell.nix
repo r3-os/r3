@@ -7,6 +7,7 @@ runCommand "dummy" rec {
     libusb1
     openocd
     rustup
+    tagref
     qemu
     gcc
   ];

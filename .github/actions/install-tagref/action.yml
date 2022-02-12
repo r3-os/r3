@@ -1,0 +1,11 @@
+name: r3-install-tagref
+description: Install Tagref
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        wget https://github.com/stepchowfun/tagref/releases/download/v1.5.0/tagref-x86_64-unknown-linux-gnu -O tagref-x86_64-unknown-linux-gnu
+        sha256sum .github/actions/install-tagref/tagref.sha256
+        chmod +x tagref-x86_64-unknown-linux-gnu
+        sudo mv tagref-x86_64-unknown-linux-gnu /usr/local/bin/tagref

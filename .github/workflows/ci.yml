@@ -19,6 +19,9 @@ jobs:
           profile: minimal
           components: clippy, rustfmt
 
+      - name: Install tagref
+        uses: ./.github/actions/install-tagref
+
       - name: Install dependencies (Linux)
         run: |
           sudo apt-get update
@@ -30,6 +33,9 @@ jobs:
           # triple is provided.
           sed -E -i.bak 's/.*basic_.*//' Cargo.toml
           sed -E -i.bak 's/.*smp_rp_pico.*//' Cargo.toml
+
+      - name: Check cross-references with Tagref
+        run: tagref
 
       - name: Clippy
         uses: actions-rs/clippy-check@v1
