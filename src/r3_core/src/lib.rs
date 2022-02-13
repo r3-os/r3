@@ -7,6 +7,7 @@
 #![feature(generic_const_exprs)]
 #![feature(const_ptr_offset)]
 #![feature(const_swap)]
+#![feature(const_deref)]
 #![feature(const_slice_first_last)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_raw_ptr_comparison)]

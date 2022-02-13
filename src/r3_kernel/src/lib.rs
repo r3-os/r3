@@ -18,7 +18,9 @@
 #![feature(const_mut_refs)]
 #![feature(const_ptr_read)]
 #![feature(const_option)]
+#![feature(const_deref)]
 #![feature(const_heap)]
+#![feature(const_swap)]
 #![feature(never_type)] // `!`
 #![feature(decl_macro)]
 #![feature(let_else)]
