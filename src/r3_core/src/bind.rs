@@ -569,34 +569,71 @@ macro_rules! impl_fn_bind {
     ) => {
         impl_fn_bind! { @iter [$(($BinderI, $RuntimeBinderI, $fieldI, $I))* $next_head] [$($next_tail)*] }
 
-        impl<T, Output, $( $BinderI, $RuntimeBinderI, )*> const FnBind<( $( $BinderI, )* )> for T
-        where
-            $( $BinderI: ~const Materialize<Runtime = $RuntimeBinderI>, )*
-            $( $RuntimeBinderI: RuntimeBinder, )*
-            T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*) -> Output + Copy + Send + 'static,
-            Output: 'static,
-        {
-            type Output = Output;
-            type BoundFn = impl FnOnce() -> Output + Copy + Send + 'static;
+        const _: () = {
+            impl<
+                T,
+                Output,
+                $( $BinderI, $RuntimeBinderI, )*
+            > const FnBind<( $( $BinderI, )* )> for T
+            where
+                $( $BinderI: ~const Materialize<Runtime = $RuntimeBinderI>, )*
+                $( $RuntimeBinderI: RuntimeBinder, )*
+                T: for<'call> FnOnce($( <$BinderI::Runtime as RuntimeBinder>::Target<'call>, )*)
+                    -> Output + Copy + Send + 'static,
+                Output: 'static,
+            {
+                type Output = Output;
 
-            fn bind(
-                self,
-                binder: ( $( $BinderI, )* ),
-                ctx: &mut CfgBindCtx<'_>,
-            ) -> Self::BoundFn {
-                Materialize::register_dependency(&binder, ctx);
-                let intermediate: ( $($RuntimeBinderI,)* ) = Materialize::prepare_to_materialize(binder);
-                move || {
-                    // Safety: `intermediate` was created by the corresponding
-                    // type's `prepare_to_materialize` method
-                    let ($( $fieldI, )*) = unsafe {
-                        <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(intermediate)
-                    };
-                    self($( $fieldI, )*)
+                // FIXME: `impl` type alias in trait impls implicitly captures
+                // the surrounding environment's generic parameters? That's
+                // probably why the type alias has to be outside this `impl`
+                // block, which has `$BinderI` and the compiler would demand the
+                // removal of `+ 'static`.
+                type BoundFn = BoundFn<T, Output, $( $RuntimeBinderI, )*>;
+
+                fn bind(
+                    self,
+                    binder: ( $( $BinderI, )* ),
+                    ctx: &mut CfgBindCtx<'_>,
+                ) -> Self::BoundFn {
+                    Materialize::register_dependency(&binder, ctx);
+
+                    let intermediate = Materialize::prepare_to_materialize(binder);
+                    bind_inner(self, intermediate)
                 }
             }
-        }
-    };
+
+            type BoundFn<T, Output, $( $RuntimeBinderI, )*>
+            where
+                $( $RuntimeBinderI: RuntimeBinder, )*
+                T: Copy + Send + 'static,
+             = impl FnOnce() -> Output + Copy + Send + 'static;
+
+            const fn bind_inner<
+                T,
+                Output,
+                $( $RuntimeBinderI, )*
+            >(
+                func: T,
+                runtime_binders: ( $( $RuntimeBinderI, )* ),
+            ) -> BoundFn<T, Output, $( $RuntimeBinderI, )*>
+            where
+                $( $RuntimeBinderI: RuntimeBinder, )*
+                T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*)
+                    -> Output + Copy + Send + 'static,
+            {
+                #[inline]
+                move || {
+                    // Safety: `runtime_binders` was created by the corresponding
+                    // type's `prepare_to_materialize` method
+                    let ($( $fieldI, )*) = unsafe {
+                        <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(runtime_binders)
+                    };
+                    func($( $fieldI, )*)
+                }
+            }
+        }; // const _
+    }; // end of macro arm
 
     // base case
     ( @iter [$($_discard:tt)*] [] ) => {}
