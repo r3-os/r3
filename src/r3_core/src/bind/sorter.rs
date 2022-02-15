@@ -4,23 +4,23 @@
 //!
 //! Some preconditions:
 //!
-//! - [tag:bind_conflicting_take] `bind_users(bind_i)` may have one `(_, Take |
-//!   TakeMut)` or any number of `(_, TakeRef)` but not both.
+//! - `[tag:bind_conflicting_take]` `bind_users(bind_i)` may have one `(_, Take
+//!   | TakeMut)` or any number of `(_, TakeRef)` but not both.
 //!
-//! - [tag:bind_conflicting_borrows] For any `(bind_i, usage)`,
+//! - `[tag:bind_conflicting_borrows]` For any `(bind_i, usage)`,
 //!   `bind_users(bind_i)` may have one `(usage, BorrowMut)` or any number of
 //!   `(usage, Borrow)` but not both.
 //!
 //! The initialization order is determined by topological sorting
-//! [tag:bind_topo]. The vertices are defined as follows:
+//! `[tag:bind_topo]`. The vertices are defined as follows:
 //!
-//! - [tag:bind_topo_vert_bind] Define a vertex `v(Bind(bind_i))` for each
+//! - `[tag:bind_topo_vert_bind]` Define a vertex `v(Bind(bind_i))` for each
 //!   binding. This represents the initialization of the binding.
 //!
-//! - [tag:bind_topo_vert_exe] Define a vertex `v(Executable)` encompassing all
-//!   exectable objects.
+//! - `[tag:bind_topo_vert_exe]` Define a vertex `v(Executable)` encompassing
+//!   all exectable objects.
 //!
-//! - [tag:bind_topo_vert_disown] Define another vertex `vd(bind_i)` for each
+//! - `[tag:bind_topo_vert_disown]` Define another vertex `vd(bind_i)` for each
 //!   binding, if it's borrowed indefinitely (i.e., there's `(_, Take | TakeRef
 //!   | TakeMut)` in `bind_users(bind_i)`).
 //!
@@ -28,24 +28,24 @@
 //!
 //! - For each element `u = (usage, borrow_type)` in `bind_users(bind_i0)`:
 //!
-//!     - [tag:bind_topo_edge_borrow] If `u` is `(usage, Borrow | BorrowMut)`,
+//!     - `[tag:bind_topo_edge_borrow]` If `u` is `(usage, Borrow | BorrowMut)`,
 //!       define an edge `(v(Bind(bind_i0)), usage)`. This means the value must
 //!       be borrowed after it's created.
 //!
-//!     - [tag:bind_topo_edge_take] If `u` is `(usage, Take | TakeRef |
+//!     - `[tag:bind_topo_edge_take]` If `u` is `(usage, Take | TakeRef |
 //!       TakeMut)`, define an edge `(vd(bind_i0), usage)`. This makes
 //!       `vd(bind_i)` mark the starting point of indefinite borrow(s).
 //!
-//!     - [tag:bind_topo_edge_borrow_any_vs_take_mut] If an element `(_, Take |
-//!       TakeMut)` is present in `bind_users(bind_i0)`, and `u` is
+//!     - `[tag:bind_topo_edge_borrow_any_vs_take_mut]` If an element `(_, Take
+//!       | TakeMut)` is present in `bind_users(bind_i0)`, and `u` is
 //!       `(_, Borrow | BorrowMut)`, define an edge `(usage, vd(bind_i0))`.
 //!
-//!     - [tag:bind_topo_edge_borrow_mut_vs_take_ref] If an element
+//!     - `[tag:bind_topo_edge_borrow_mut_vs_take_ref]` If an element
 //!       `(_, TakeRef)` is present in `bind_users(bind_i0)`, and `u` is
 //!       `(_, BorrowMut)`, define an edge `(usage, vd(bind_i0))`.
 //!
-//! - [tag:bind_topo_edge_disown] Define an edge `(v(Bind(bind_i)), vd(bind_i))`
-//!   if `vd(bind_i)` exists in the graph.
+//! - `[tag:bind_topo_edge_disown]` Define an edge `(v(Bind(bind_i)),
+//!   vd(bind_i))` if `vd(bind_i)` exists in the graph.
 //!
 // FIXME: We might be able to improve the interface when `ComptimeVec` is not
 // restricted to "comptime" anymore

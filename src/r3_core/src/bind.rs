@@ -651,6 +651,8 @@ seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~
 ///
 /// This trait is covered by the application-side API stability guarantee with
 /// the exception of its members, which are implementation details.
+///
+/// [1]: Bind
 pub trait FnBindAsClosure<Binder>: FnBind<Binder, Output = ()> {
     fn bind_as_closure(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Closure;
 }
