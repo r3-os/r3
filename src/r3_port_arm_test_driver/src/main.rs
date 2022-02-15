@@ -6,6 +6,7 @@
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_refs_to_cell)]
 #![feature(naked_functions)]
 #![feature(const_trait_impl)]
 #![feature(asm_sym)]
