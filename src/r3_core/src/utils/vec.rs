@@ -62,6 +62,17 @@ impl<T> ComptimeVec<T> {
         }
     }
 
+    pub const fn repeat_in(allocator: ConstAllocator, x: T, n: usize) -> Self
+    where
+        T: Copy,
+    {
+        let mut this = Self::with_capacity_in(n, allocator);
+        while this.len() < n {
+            this.push(x);
+        }
+        this
+    }
+
     pub const fn allocator(&self) -> &ConstAllocator {
         &self.allocator
     }

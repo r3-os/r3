@@ -1758,6 +1758,7 @@ dependencies = [
  "macropol",
  "quickcheck",
  "quickcheck_macros",
+ "seq-macro 0.3.0",
  "stable_deref_trait",
  "svgbobdoc",
  "tokenlock",

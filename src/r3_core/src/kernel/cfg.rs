@@ -1,7 +1,8 @@
 //! Kernel configuration
 use crate::{
+    bind::CfgBindRegistry,
     kernel::{hook, interrupt, raw, raw_cfg},
-    utils::{ComptimeVec, ConstAllocator, Frozen, Init, PhantomInvariant},
+    utils::{refcell::RefCell, ComptimeVec, ConstAllocator, Frozen, Init, PhantomInvariant},
 };
 
 macro overview_ref() {
@@ -13,11 +14,19 @@ macro overview_ref() {
 pub struct Cfg<'c, C: raw_cfg::CfgBase> {
     raw: &'c mut C,
     st: CfgSt,
+    pub(crate) shared: &'c CfgShared,
     pub(super) startup_hooks: ComptimeVec<hook::CfgStartupHook>,
     pub(super) hunk_pool_len: usize,
     pub(super) hunk_pool_align: usize,
     pub(super) interrupt_lines: ComptimeVec<interrupt::CfgInterruptLineInfo>,
     pub(super) interrupt_handlers: ComptimeVec<interrupt::CfgInterruptHandler>,
+}
+
+/// The portion of [`Cfg`] that is immutably borrowed by [`Cfg`] and other
+/// configuration-time temporary objects.
+#[doc(hidden)]
+pub struct CfgShared {
+    pub(crate) bind_registry: RefCell<CfgBindRegistry>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -27,12 +36,26 @@ enum CfgSt {
     Phase3 { interrupts: bool },
 }
 
+impl CfgShared {
+    pub const fn __internal_new(allocator: &ConstAllocator) -> Self {
+        Self {
+            bind_registry: RefCell::new(CfgBindRegistry::new_in(allocator.clone())),
+        }
+    }
+}
+
 impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// Construct `Cfg`.
-    const fn new(raw: &'c mut C, allocator: &'c ConstAllocator, st: CfgSt) -> Self {
+    const fn new(
+        raw: &'c mut C,
+        shared: &'c CfgShared,
+        allocator: &'c ConstAllocator,
+        st: CfgSt,
+    ) -> Self {
         Self {
             raw,
             st,
+            shared,
             startup_hooks: ComptimeVec::new_in(allocator.clone()),
             hunk_pool_len: 0,
             hunk_pool_align: 1,
@@ -44,34 +67,34 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     #[doc(hidden)]
     pub const fn __internal_new_phase1(
         raw: &'c mut C,
+        shared: &'c CfgShared,
         allocator: &'c ConstAllocator,
-        _dummy: &'c mut (),
     ) -> Self {
-        Self::new(raw, allocator, CfgSt::Phase1)
+        Self::new(raw, shared, allocator, CfgSt::Phase1)
     }
 
     #[doc(hidden)]
     pub const fn __internal_new_phase2(
         raw: &'c mut C,
+        shared: &'c CfgShared,
         allocator: &'c ConstAllocator,
-        _dummy: &'c mut (),
     ) -> Self
     where
         C::System: CfgPhase1,
     {
-        Self::new(raw, allocator, CfgSt::Phase2)
+        Self::new(raw, shared, allocator, CfgSt::Phase2)
     }
 
     #[doc(hidden)]
     pub const fn __internal_new_phase3(
         raw: &'c mut C,
+        shared: &'c CfgShared,
         allocator: &'c ConstAllocator,
-        _dummy: &'c mut (),
     ) -> Self
     where
         C::System: CfgPhase2,
     {
-        Self::new(raw, allocator, CfgSt::Phase3 { interrupts: false })
+        Self::new(raw, shared, allocator, CfgSt::Phase3 { interrupts: false })
     }
 
     /// Mutably borrow the underlying `C`.
@@ -105,12 +128,16 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// configuration process][1].
     ///
     /// [1]: KernelStatic
-    pub const fn finish_phase1(&mut self) -> CfgPhase1Data<C::System> {
+    pub const fn finish_phase1(&mut self) -> CfgPhase1Data<C::System>
+    where
+        C: ~const raw_cfg::CfgBase,
+    {
         assert!(
             matches!(self.st, CfgSt::Phase1),
             "this `Cfg` wasn't made for phase 1 configuration"
         );
 
+        self.shared.bind_registry.borrow_mut().finalize(self);
         hook::sort_hooks(&mut self.startup_hooks);
         interrupt::sort_handlers(&mut self.interrupt_handlers);
 
@@ -132,12 +159,16 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// configuration process][1].
     ///
     /// [1]: KernelStatic
-    pub const fn finish_phase2(&mut self) -> CfgPhase2Data<C::System> {
+    pub const fn finish_phase2(&mut self) -> CfgPhase2Data<C::System>
+    where
+        C: ~const raw_cfg::CfgBase,
+    {
         assert!(
             matches!(self.st, CfgSt::Phase2),
             "this `Cfg` wasn't made for phase 2 configuration"
         );
 
+        self.shared.bind_registry.borrow_mut().finalize(self);
         hook::sort_hooks(&mut self.startup_hooks);
         interrupt::sort_handlers(&mut self.interrupt_handlers);
 
@@ -527,8 +558,9 @@ where
 pub macro cfg_phase3(
     let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr, $allocator:expr)
 ) {
-    let mut dummy = ();
-    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase3(&mut *$raw_cfg, $allocator, &mut dummy);
+    let allocator: &_ = $allocator;
+    let shared = CfgShared::__internal_new(allocator);
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase3(&mut *$raw_cfg, &shared, allocator);
 }
 
 /// Construct [`Cfg`]`<$RawCfg>` for the phase 2 configuration.
@@ -542,8 +574,9 @@ pub macro cfg_phase3(
 pub macro cfg_phase2(
     let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr, $allocator:expr)
 ) {
-    let mut dummy = ();
-    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase2(&mut *$raw_cfg, $allocator, &mut dummy);
+    let allocator: &_ = $allocator;
+    let shared = CfgShared::__internal_new(allocator);
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase2(&mut *$raw_cfg, &shared, allocator);
 }
 
 /// Construct [`Cfg`]`<$RawCfg>` for the phase 1 configuration.
@@ -555,8 +588,9 @@ pub macro cfg_phase2(
 pub macro cfg_phase1(
     let mut $cfg:ident = Cfg::<$RawCfg:ty>::new($raw_cfg:expr, $allocator:expr)
 ) {
-    let mut dummy = ();
-    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase1(&mut *$raw_cfg, $allocator, &mut dummy);
+    let allocator: &_ = $allocator;
+    let shared = CfgShared::__internal_new(allocator);
+    let mut $cfg = Cfg::<$RawCfg>::__internal_new_phase1(&mut *$raw_cfg, &shared, allocator);
 }
 
 /// Implement [`KernelStatic`] on `$Ty` using the given `$params:

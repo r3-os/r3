@@ -18,6 +18,9 @@
 #![feature(const_option)]
 #![feature(const_cell_into_inner)]
 #![feature(const_precise_live_drops)]
+#![feature(type_alias_impl_trait)]
+#![feature(type_changing_struct_update)]
+#![feature(generic_associated_types)]
 #![feature(const_trait_impl)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(const_nonnull_slice_from_raw_parts)]
@@ -71,12 +74,15 @@ pub mod utils;
 #[macro_use]
 pub mod kernel;
 pub mod bag;
+pub mod bind;
 pub mod closure;
 pub mod hunk;
 pub mod time;
 
 /// The prelude module.
 pub mod prelude {
+    #[doc(no_inline)]
+    pub use crate::bind::ExecutableDefinerExt;
     #[doc(no_inline)]
     pub use crate::kernel::prelude::*;
     #[doc(no_inline)]
