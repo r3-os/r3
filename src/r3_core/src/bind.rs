@@ -38,6 +38,9 @@ impl<T> BindData<T> {
     }
 
     #[inline]
+    // Forming a mutable borrow from an immutable input is okay because we go
+    // through `UnsafeCell`
+    #[allow(clippy::mut_from_ref)]
     unsafe fn assume_init_mut(&self) -> &mut T {
         unsafe { (*self.0.get()).assume_init_mut() }
     }
