@@ -47,6 +47,7 @@ The R3 original kernel is provided as a separate package [`r3_kernel`][].
 #![feature(asm)]
 #![feature(asm_sym)]
 #![feature(const_fn_trait_bound)]
+#![feature(const_refs_to_cell)]
 #![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
