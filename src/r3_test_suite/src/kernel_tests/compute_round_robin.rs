@@ -4,13 +4,12 @@
 //! The intent of this test to detect bugs in the saving and restoring of
 //! registers during a context switch. To this end, the task is designed to
 //! utilize as many floating-point registers as possible.
-use core::{
-    cell::UnsafeCell,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use r3::{
+    bind::Bind,
     hunk::Hunk,
-    kernel::{prelude::*, traits, Cfg, StartupHook, StaticTask, StaticTimer},
+    kernel::{prelude::*, traits, Cfg, StaticTask, StaticTimer},
+    prelude::*,
     time::Duration,
     utils::Init,
 };
@@ -46,9 +45,12 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
-        StartupHook::define()
-            .start(hook_body::<System, D>)
+        let task_state = Bind::define().init(|| TaskState::INIT).finish(b);
+        let ref_output = Bind::define()
+            .init_with_bind((task_state.borrow_mut(),), generate_ref_output)
             .finish(b);
+
+        let sched_state = Bind::define().init(|| SchedState::INIT).finish(b);
 
         let timer = StaticTimer::define()
             .delay(Duration::from_millis(0))
@@ -57,7 +59,7 @@ impl<System: SupportedSystem> App<System> {
             } else {
                 50
             }))
-            .start(timer_body::<System, D>)
+            .start_with_bind((sched_state.borrow_mut(),), timer_body::<System, D>)
             .active(true)
             .finish(b);
 
@@ -66,10 +68,25 @@ impl<System: SupportedSystem> App<System> {
         // FIXME: Work-around for `for` being unsupported in `const fn`
         let mut i = 0;
         while i < NUM_TASKS {
+            let task_state = if i == 0 {
+                // Reuse the storage
+                task_state.borrow_mut()
+            } else {
+                Bind::define()
+                    .init(|| TaskState::INIT)
+                    .finish(b)
+                    .borrow_mut()
+            };
+
             tasks[i] = Some(
                 StaticTask::define()
                     .active(true)
-                    .start((i, worker_body::<System, D>))
+                    .start_with_bind(
+                        (task_state, ref_output.borrow()),
+                        move |task_state: &mut _, ref_output: &_| {
+                            worker_body::<System, D>(task_state, ref_output, i)
+                        },
+                    )
                     .priority(3)
                     .finish(b),
             );
@@ -90,14 +107,9 @@ impl<System: SupportedSystem> App<System> {
 }
 
 struct State {
-    ref_output: UnsafeCell<compute::KernelOutput>,
-    task_state: [UnsafeCell<TaskState>; NUM_TASKS],
-
     /// The number of times the workload was completed by each task.
     run_count: [AtomicUsize; NUM_TASKS],
     stop: AtomicBool,
-
-    sched_state: UnsafeCell<SchedState>,
 }
 
 struct TaskState {
@@ -110,16 +122,11 @@ struct SchedState {
     time: usize,
 }
 
-unsafe impl Sync for State {}
-
 impl Init for State {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
-        ref_output: Init::INIT,
-        task_state: Init::INIT,
         run_count: Init::INIT,
         stop: Init::INIT,
-        sched_state: Init::INIT,
     };
 }
 
@@ -137,25 +144,19 @@ impl Init for SchedState {
     };
 }
 
-fn hook_body<System: SupportedSystem, D: Driver<App<System>>>() {
-    let state = &*D::app().state;
-
-    // Safety: These are unique references to the contents of respective cells
-    let ref_output = unsafe { &mut *state.ref_output.get() };
-    let task_state = unsafe { &mut *state.task_state[0].get() };
-
-    // Obtain the refernce output
-    task_state.kernel_state.run(ref_output);
+fn generate_ref_output(task_state: &mut TaskState) -> compute::KernelOutput {
+    let mut out = Init::INIT;
+    task_state.kernel_state.run(&mut out);
+    out
 }
 
-fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize) {
+#[inline]
+fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(
+    task_state: &mut TaskState,
+    ref_output: &compute::KernelOutput,
+    worker_id: usize,
+) {
     let App { state, .. } = D::app();
-
-    // Safety: This is a unique reference
-    let task_state = unsafe { &mut *state.task_state[worker_id].get() };
-
-    // Safety: A mutable reference to `ref_output` doesn't exist at this point
-    let ref_output = unsafe { &*state.ref_output.get() };
 
     let run_count = &state.run_count[worker_id];
 
@@ -185,11 +186,8 @@ fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(worker_id: usize
     }
 }
 
-fn timer_body<System: SupportedSystem, D: Driver<App<System>>>() {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(sched_state: &mut SchedState) {
     let App { state, tasks, .. } = D::app();
-
-    // Safety: This is a unique reference
-    let sched_state = unsafe { &mut *state.sched_state.get() };
 
     sched_state.time += 1;
 

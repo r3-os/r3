@@ -88,13 +88,14 @@
 //! > CLREX instruction as part of a context switch is not required in most
 //! > situations.
 use core::{
-    cell::UnsafeCell,
     num::Wrapping,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 use r3::{
+    bind::Bind,
     hunk::Hunk,
     kernel::{prelude::*, traits, Cfg, StaticTask, StaticTimer},
+    prelude::*,
     time::Duration,
     utils::Init,
 };
@@ -130,6 +131,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
+        let sched_state = Bind::define().init(|| SchedState::INIT).finish(b);
         let timer = StaticTimer::define()
             .delay(Duration::from_millis(0))
             .period(Duration::from_millis(if cfg!(target_os = "none") {
@@ -137,7 +139,7 @@ impl<System: SupportedSystem> App<System> {
             } else {
                 50
             }))
-            .start(timer_body::<System, D>)
+            .start_with_bind((sched_state.borrow_mut(),), timer_body::<System, D>)
             .active(true)
             .finish(b);
 
@@ -179,8 +181,6 @@ struct State {
     counter: AtomicUsize,
     local_counters: [AtomicUsize; NUM_TASKS],
     stop: AtomicBool,
-
-    sched_state: UnsafeCell<SchedState>,
 }
 
 struct SchedState {
@@ -188,15 +188,12 @@ struct SchedState {
     time: usize,
 }
 
-unsafe impl Sync for State {}
-
 impl Init for State {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         counter: Init::INIT,
         local_counters: Init::INIT,
         stop: Init::INIT,
-        sched_state: Init::INIT,
     };
 }
 
@@ -263,7 +260,7 @@ fn judge_task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::success();
 }
 
-fn timer_body<System: SupportedSystem, D: Driver<App<System>>>() {
+fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(sched_state: &mut SchedState) {
     let App {
         state,
         tasks,
@@ -271,9 +268,6 @@ fn timer_body<System: SupportedSystem, D: Driver<App<System>>>() {
         timer,
         ..
     } = D::app();
-
-    // Safety: This is a unique reference
-    let sched_state = unsafe { &mut *state.sched_state.get() };
 
     sched_state.time += 1;
 
