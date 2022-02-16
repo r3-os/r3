@@ -579,7 +579,7 @@ macro_rules! impl_fn_bind {
                 $( $BinderI, $RuntimeBinderI, )*
             > const FnBind<( $( $BinderI, )* )> for T
             where
-                $( $BinderI: ~const Materialize<Runtime = $RuntimeBinderI>, )*
+                $( $BinderI: ~const Binder<Runtime = $RuntimeBinderI>, )*
                 $( $RuntimeBinderI: RuntimeBinder, )*
                 T: for<'call> FnOnce($( <$BinderI::Runtime as RuntimeBinder>::Target<'call>, )*)
                     -> Output + Copy + Send + 'static,
@@ -599,9 +599,9 @@ macro_rules! impl_fn_bind {
                     binder: ( $( $BinderI, )* ),
                     ctx: &mut CfgBindCtx<'_>,
                 ) -> Self::BoundFn {
-                    Materialize::register_dependency(&binder, ctx);
+                    Binder::register_dependency(&binder, ctx);
 
-                    let intermediate = Materialize::prepare_to_materialize(binder);
+                    let intermediate = Binder::prepare_to_materialize(binder);
                     bind_inner(self, intermediate)
                 }
             }
@@ -644,7 +644,7 @@ macro_rules! impl_fn_bind {
 
 seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~I, field~I, I) )* } });
 
-// Materialization traits
+// Binder traits
 // ----------------------------------------------------------------------------
 
 /// Represents a *binder*, which represents a specific way to access the
@@ -659,7 +659,7 @@ seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~
 /// a few exceptions, which are documented on a per-item basis.
 ///
 /// [1]: Bind
-pub trait Materialize {
+pub trait Binder {
     /// The runtime representation of `Self`.
     ///
     /// # Stability
@@ -682,7 +682,7 @@ pub trait Materialize {
     fn prepare_to_materialize(self) -> Self::Runtime;
 }
 
-/// Unstable. The runtime representation of [`Materialize`][].
+/// Unstable. The runtime representation of [`Binder`][].
 ///
 /// This trait signifies the following properties regarding an implementing
 /// type:
@@ -700,12 +700,12 @@ pub trait RuntimeBinder: Send + Copy + 'static {
     type Target<'call>;
 
     /// Construct a target object at runtime, using the intermediate product
-    /// constructed by [`Materialize::prepare_to_materialize`].
+    /// constructed by [`Binder::prepare_to_materialize`].
     ///
     /// # Safety
     ///
     /// `intermediate` must have been constructed by
-    /// `<Self as Materialize>::prepare_to_materialize`.
+    /// `<Self as Binder>::prepare_to_materialize`.
     unsafe fn materialize<'call>(self) -> Self::Target<'call>;
 }
 
@@ -725,7 +725,7 @@ impl<System, T> Clone for RuntimeBindTake<System, T> {
 impl<System, T> Copy for RuntimeBindTake<System, T> {}
 
 /// Materializes `BindTake<System, T>` as `T`.
-impl<T, System> const Materialize for BindTake<'_, System, T>
+impl<T, System> const Binder for BindTake<'_, System, T>
 where
     T: 'static,
     System: raw::KernelBase + cfg::KernelStatic,
@@ -785,7 +785,7 @@ impl<System, T> Clone for RuntimeBindTakeMut<System, T> {
 impl<System, T> Copy for RuntimeBindTakeMut<System, T> {}
 
 /// Materializes `BindTakeMut<System, T>` as `&'static mut T`.
-impl<T, System> const Materialize for BindTakeMut<'_, System, T>
+impl<T, System> const Binder for BindTakeMut<'_, System, T>
 where
     T: 'static,
     System: raw::KernelBase + cfg::KernelStatic,
@@ -846,7 +846,7 @@ impl<System, T> Clone for RuntimeBindTakeRef<System, T> {
 impl<System, T> Copy for RuntimeBindTakeRef<System, T> {}
 
 /// Materializes `BindTakeRef<System, T>` as `&'static T`.
-impl<T, System> const Materialize for BindTakeRef<'_, System, T>
+impl<T, System> const Binder for BindTakeRef<'_, System, T>
 where
     T: 'static + Sync,
     System: raw::KernelBase + cfg::KernelStatic,
@@ -898,7 +898,7 @@ impl<System, T> Clone for RuntimeBindBorrow<System, T> {
 impl<System, T> Copy for RuntimeBindBorrow<System, T> {}
 
 /// Materializes `BindBorrow<System, T>` as `&'call T`.
-impl<T, System> const Materialize for BindBorrow<'_, System, T>
+impl<T, System> const Binder for BindBorrow<'_, System, T>
 where
     T: 'static,
     System: raw::KernelBase + cfg::KernelStatic,
@@ -956,7 +956,7 @@ impl<System, T> Clone for RuntimeBindBorrowMut<System, T> {
 impl<System, T> Copy for RuntimeBindBorrowMut<System, T> {}
 
 /// Materializes `BindBorrowMut<System, T>` as `&'call mut T`.
-impl<T, System> const Materialize for BindBorrowMut<'_, System, T>
+impl<T, System> const Binder for BindBorrowMut<'_, System, T>
 where
     T: 'static,
     System: raw::KernelBase + cfg::KernelStatic,
@@ -1000,7 +1000,7 @@ where
 
 /// Materializes `BindRef<System, T>` as `&'static T`. Can only be consumed by
 /// executables and not by bindings.
-impl<T, System> const Materialize for BindRef<System, T>
+impl<T, System> const Binder for BindRef<System, T>
 where
     T: 'static,
     System: raw::KernelBase + cfg::KernelStatic,
@@ -1041,9 +1041,9 @@ where
     }
 }
 
-macro_rules! impl_materialize_on_tuples {
+macro_rules! impl_binder_on_tuples {
     ( @start $($x:tt)* ) => {
-        impl_materialize_on_tuples! { @iter [] [$($x)*] }
+        impl_binder_on_tuples! { @iter [] [$($x)*] }
     };
 
     // inductive case
@@ -1051,11 +1051,11 @@ macro_rules! impl_materialize_on_tuples {
         [$(($BinderI:ident, $RuntimeBinderI:ident, $I:tt))*]
         [$next_head:tt $($next_tail:tt)*]
     ) => {
-        impl_materialize_on_tuples! { @iter [$(($BinderI, $RuntimeBinderI, $I))* $next_head] [$($next_tail)*] }
+        impl_binder_on_tuples! { @iter [$(($BinderI, $RuntimeBinderI, $I))* $next_head] [$($next_tail)*] }
 
-        impl<$( $BinderI, )*> const Materialize for ($( $BinderI, )*)
+        impl<$( $BinderI, )*> const Binder for ($( $BinderI, )*)
         where
-            $( $BinderI: ~const Materialize, )*
+            $( $BinderI: ~const Binder, )*
         {
             type Runtime = ( $( $BinderI::Runtime, )* );
 
@@ -1089,7 +1089,7 @@ macro_rules! impl_materialize_on_tuples {
 }
 
 seq_macro::seq!(I in 0..16 {
-    impl_materialize_on_tuples! { @start #( (Binder~I, RuntimeBinder~I, I) )* }
+    impl_binder_on_tuples! { @start #( (Binder~I, RuntimeBinder~I, I) )* }
 });
 
 // ----------------------------------------------------------------------------
