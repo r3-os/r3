@@ -601,7 +601,7 @@ macro_rules! impl_fn_bind {
                 ) -> Self::BoundFn {
                     Binder::register_dependency(&binder, ctx);
 
-                    let intermediate = Binder::prepare_to_materialize(binder);
+                    let intermediate = Binder::into_runtime_binder(binder);
                     bind_inner(self, intermediate)
                 }
             }
@@ -628,7 +628,7 @@ macro_rules! impl_fn_bind {
                 #[inline]
                 move || {
                     // Safety: `runtime_binders` was created by the corresponding
-                    // type's `prepare_to_materialize` method
+                    // type's `into_runtime_binder` method
                     let ($( $fieldI, )*) = unsafe {
                         <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(runtime_binders)
                     };
@@ -674,12 +674,12 @@ pub trait Binder {
     /// This method is unstable.
     fn register_dependency(&self, ctx: &mut CfgBindCtx<'_>);
 
-    /// Convert `self` to a runtime representation ([`RuntimeBinder`][]).
+    /// Convert `self` to the runtime representation ([`RuntimeBinder`][]).
     ///
     /// # Stability
     ///
     /// This method is unstable.
-    fn prepare_to_materialize(self) -> Self::Runtime;
+    fn into_runtime_binder(self) -> Self::Runtime;
 }
 
 /// Unstable. The runtime representation of [`Binder`][].
@@ -700,12 +700,12 @@ pub trait RuntimeBinder: Send + Copy + 'static {
     type Target<'call>;
 
     /// Construct a target object at runtime, using the intermediate product
-    /// constructed by [`Binder::prepare_to_materialize`].
+    /// constructed by [`Binder::into_runtime_binder`].
     ///
     /// # Safety
     ///
     /// `intermediate` must have been constructed by
-    /// `<Self as Binder>::prepare_to_materialize`.
+    /// `<Self as Binder>::into_runtime_binder`.
     unsafe fn materialize<'call>(self) -> Self::Target<'call>;
 }
 
@@ -751,7 +751,7 @@ where
             .push((ctx.usage, BindBorrowType::Take));
     }
 
-    fn prepare_to_materialize(self) -> Self::Runtime {
+    fn into_runtime_binder(self) -> Self::Runtime {
         RuntimeBindTake(self.0.hunk)
     }
 }
@@ -812,7 +812,7 @@ where
             .push((ctx.usage, BindBorrowType::TakeMut));
     }
 
-    fn prepare_to_materialize(self) -> Self::Runtime {
+    fn into_runtime_binder(self) -> Self::Runtime {
         RuntimeBindTakeMut(self.0.hunk)
     }
 }
@@ -864,7 +864,7 @@ where
             .push((ctx.usage, BindBorrowType::TakeRef));
     }
 
-    fn prepare_to_materialize(self) -> Self::Runtime {
+    fn into_runtime_binder(self) -> Self::Runtime {
         RuntimeBindTakeRef(self.0.hunk)
     }
 }
@@ -922,7 +922,7 @@ where
             .push((ctx.usage, borrow_type));
     }
 
-    fn prepare_to_materialize(self) -> Self::Runtime {
+    fn into_runtime_binder(self) -> Self::Runtime {
         RuntimeBindBorrow(self.0.hunk)
     }
 }
@@ -980,7 +980,7 @@ where
             .push((ctx.usage, borrow_type));
     }
 
-    fn prepare_to_materialize(self) -> Self::Runtime {
+    fn into_runtime_binder(self) -> Self::Runtime {
         RuntimeBindBorrowMut(self.0.hunk)
     }
 }
@@ -1023,7 +1023,7 @@ where
         }
     }
 
-    fn prepare_to_materialize(self) -> Self::Runtime {
+    fn into_runtime_binder(self) -> Self::Runtime {
         self
     }
 }
@@ -1063,8 +1063,9 @@ macro_rules! impl_binder_on_tuples {
                 $( self.$I.register_dependency(ctx); )*
                 let _ = ctx;
             }
-            fn prepare_to_materialize(self) -> Self::Runtime {
-                ( $( self.$I.prepare_to_materialize(), )* )
+
+            fn into_runtime_binder(self) -> Self::Runtime {
+                ( $( self.$I.into_runtime_binder(), )* )
             }
         }
 
