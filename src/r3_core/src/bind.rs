@@ -310,8 +310,6 @@ impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
         C: ~const raw_cfg::CfgBase<System = System>,
         System: raw::KernelBase + cfg::KernelStatic,
         Func: ~const FnBind<Binder>,
-        <Func as FnBind<Binder>>::Output: 'static,
-        <Func as FnBind<Binder>>::BoundFn: 'static,
     {
         let hunk = BindHunk::define().zeroed().finish(cfg);
 
@@ -639,7 +637,7 @@ impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
 /// This trait is covered by the application-side API stability guarantee with
 /// the exception of its members, which are implementation details.
 pub trait FnBind<Binder> {
-    type Output;
+    type Output: 'static;
     type BoundFn: FnOnce() -> Self::Output + Copy + Send + 'static;
 
     fn bind(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Self::BoundFn;
