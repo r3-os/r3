@@ -92,32 +92,32 @@ macro_rules! assert_fn_bind_impls {
 }
 
 assert_fn_bind_impls! {
-    (<fn()>: FnBindAsClosure<()>),
-    (<fn()>: !FnBindAsClosure<(BindRef<System, T>,)>),
+    (<fn()>: FnBind<(), Output = ()>),
+    (<fn()>: !FnBind<(BindRef<System, T>,)>),
 
-    (<fn(&T)>: !FnBindAsClosure<()>),
-    (<fn(&T)>: FnBindAsClosure<(BindRef<System, T>,)>),
-    (<fn(&T)>: FnBindAsClosure<(BindBorrow<'static, System, T>,)>),
-    (<fn(&T)>: !FnBindAsClosure<(BindRef<System, T0>,)>),
+    (<fn(&T)>: !FnBind<()>),
+    (<fn(&T)>: FnBind<(BindRef<System, T>,), Output = ()>),
+    (<fn(&T)>: FnBind<(BindBorrow<'static, System, T>,), Output = ()>),
+    (<fn(&T)>: !FnBind<(BindRef<System, T0>,)>),
 
-    (<fn(&T0, &T1)>: !FnBindAsClosure<()>),
-    (<fn(&T0, &T1)>: !FnBindAsClosure<(BindRef<System, T>,)>),
-    (<fn(&T0, &T1)>: !FnBindAsClosure<(BindRef<System, T0>,)>),
-    (<fn(&T0, &T1)>: !FnBindAsClosure<(BindRef<System, T1>,)>),
-    (<fn(&T0, &T1)>: FnBindAsClosure<(BindRef<System, T0>, BindRef<System, T1>)>),
-    (<fn(&T0, &T1)>: FnBindAsClosure<(
+    (<fn(&T0, &T1)>: !FnBind<()>),
+    (<fn(&T0, &T1)>: !FnBind<(BindRef<System, T>,)>),
+    (<fn(&T0, &T1)>: !FnBind<(BindRef<System, T0>,)>),
+    (<fn(&T0, &T1)>: !FnBind<(BindRef<System, T1>,)>),
+    (<fn(&T0, &T1)>: FnBind<(BindRef<System, T0>, BindRef<System, T1>), Output = ()>),
+    (<fn(&T0, &T1)>: FnBind<(
         BindBorrow<'static, System, T0>,
-        BindBorrow<'static, System, T1>)>),
-    (<fn(&T0, &T1)>: !FnBindAsClosure<(BindRef<System, T1>, BindRef<System, T0>)>),
+        BindBorrow<'static, System, T1>), Output = ()>),
+    (<fn(&T0, &T1)>: !FnBind<(BindRef<System, T1>, BindRef<System, T0>)>),
 
     (<for<'a> fn(&'a T0, &'a T1)>:
-        FnBindAsClosure<(BindRef<System, T0>, BindRef<System, T1>)>),
+        FnBind<(BindRef<System, T0>, BindRef<System, T1>), Output = ()>),
     (<for<'a> fn(&'a T0, &'a T1)>:
-        FnBindAsClosure<(
+        FnBind<(
             BindBorrow<'static, System, T0>,
             BindBorrow<'static, System, T1>)>),
 
     // The function requires a `'static` reference
-    (<fn(&'static T)>: FnBindAsClosure<(BindRef<System, T>,)>),
-    (<fn(&'static T)>: !FnBindAsClosure<(BindBorrow<'static, System, T>,)>),
+    (<fn(&'static T)>: FnBind<(BindRef<System, T>,), Output = ()>),
+    (<fn(&'static T)>: !FnBind<(BindBorrow<'static, System, T>,)>),
 }
