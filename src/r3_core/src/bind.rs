@@ -918,11 +918,11 @@ where
     T: 'static,
     System: raw::KernelBase + cfg::KernelStatic,
 {
-    type Target<'call> = T;
+    type Target<'call> = &'static mut T;
 
     #[inline]
     unsafe fn materialize<'call>(self) -> Self::Target<'call> {
-        unsafe { BindHunk::as_ref(self.0).0.get().read().assume_init() }
+        unsafe { BindHunk::as_ref(self.0).assume_init_mut() }
     }
 }
 
