@@ -522,7 +522,7 @@ unsafe impl<System: raw::KernelTimer> const ExecutableDefiner
 ///
 /// [1]: Bind
 pub trait ExecutableDefinerExt {
-    fn start_with_bind<Binder, Func: ~const FnBindAsClosure<Binder>>(
+    fn start_with_bind<Binder, Func: ~const FnBind<Binder, Output = ()>>(
         self,
         binder: Binder,
         func: Func,
@@ -530,7 +530,7 @@ pub trait ExecutableDefinerExt {
 }
 
 impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
-    fn start_with_bind<Binder, Func: ~const FnBindAsClosure<Binder>>(
+    fn start_with_bind<Binder, Func: ~const FnBind<Binder, Output = ()>>(
         self,
         binder: Binder,
         func: Func,
@@ -539,7 +539,7 @@ impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
             _phantom: &(),
             usage: BindUsage::Executable,
         };
-        self.start(func.bind_as_closure(binder, &mut ctx))
+        self.start(Closure::from_fn_const(func.bind(binder, &mut ctx)))
     }
 }
 
@@ -643,28 +643,6 @@ macro_rules! impl_fn_bind {
 }
 
 seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~I, field~I, I) )* } });
-
-/// A trait for closures that can be bound to materialized [bindings][1] and
-/// be converted to a [`Closure`].
-///
-/// # Stability
-///
-/// This trait is covered by the application-side API stability guarantee with
-/// the exception of its members, which are implementation details.
-///
-/// [1]: Bind
-pub trait FnBindAsClosure<Binder>: FnBind<Binder, Output = ()> {
-    fn bind_as_closure(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Closure;
-}
-
-impl<T, Binder> const FnBindAsClosure<Binder> for T
-where
-    T: ~const FnBind<Binder, Output = ()>,
-{
-    fn bind_as_closure(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Closure {
-        Closure::from_fn_const(self.bind(binder, ctx))
-    }
-}
 
 // Materialization traits
 // ----------------------------------------------------------------------------
