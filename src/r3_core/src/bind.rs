@@ -1,4 +1,28 @@
-//! Bindings
+#![doc = __internal_module_doc!("crate", "")]
+/// The part of the module-level documentation shared between `r3::bind` and
+/// `r3_core::bind`. This is necessary because `r3::bind` itself isn't a
+/// re-export of `r3_core::bind`, but it's desirable for it to have the same
+/// documentation.
+#[rustfmt::skip]
+#[doc(hidden)]
+#[macropol::macropol] // Replace `$metavariables` in literals and doc comments
+pub macro __internal_module_doc($r3_core:expr, $admonitions:expr) {r#"
+Bindings ([`Bind`][]), a static storage with [runtime initialization][1] and
+[configuration-time][2] borrow checking.
+
+[1]: BindDefiner::init
+[2]: $r3_core#static-configuration
+
+$admonitions
+
+TODO: What are bindings
+
+# Binders
+
+TODO: Provide a table of binders
+
+"#}
+
 use core::{cell::UnsafeCell, mem::MaybeUninit};
 
 use crate::{

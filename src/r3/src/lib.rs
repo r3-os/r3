@@ -44,12 +44,14 @@
 #[doc = include_str!("../CHANGELOG.md")]
 pub mod _changelog_ {}
 
+pub mod bind;
+
 #[cfg(feature = "sync")]
 #[doc(cfg(feature = "sync"))]
 pub mod sync;
 mod tests;
 
-pub use r3_core::{bag, bind, hunk, kernel, time};
+pub use r3_core::{bag, hunk, kernel, time};
 
 /// Utilities. This module re-exports items from [`r3_core::utils`] that are
 /// subject to the application-side API stability guarantee.
