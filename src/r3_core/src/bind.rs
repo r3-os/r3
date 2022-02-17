@@ -75,17 +75,36 @@ impl<System, T> const Clone for Bind<'_, System, T> {
     }
 }
 
+/// A [binder](Binder) that gives `&T` to a bound function.
+///
+/// Created by [`Bind::borrow`][].
 pub struct BindBorrow<'pool, System, T>(Bind<'pool, System, T>);
+
+/// A [binder](Binder) that gives `&mut T` to a bound function.
+///
+/// Created by [`Bind::borrow_mut`][].
 pub struct BindBorrowMut<'pool, System, T>(Bind<'pool, System, T>);
+
+/// A [binder](Binder) that gives `T` to a bound function.
+///
+/// Created by [`Bind::take`][].
 pub struct BindTake<'pool, System, T>(Bind<'pool, System, T>);
+
+/// A [binder](Binder) that gives `&'static T` to a bound function.
+///
+/// Created by [`Bind::take_ref`][].
 pub struct BindTakeRef<'pool, System, T>(Bind<'pool, System, T>);
+
+/// A [binder](Binder) that gives `&'static mut T` to a bound function.
+///
+/// Created by [`Bind::take_mut`][].
 pub struct BindTakeMut<'pool, System, T>(Bind<'pool, System, T>);
 
-/// A reference to a [binding][1].
+/// A reference to a [binding][1]. Created by [`Bind::as_ref`][].
 ///
 /// It doesn't provide access to the contents by itself because it could be
 /// used before the binding is initialized. Index [`BindTable`][] by this type to
-/// access the contents.
+/// borrow the contents as `&'static T`.
 ///
 /// [1]: Bind
 pub struct BindRef<System, T>(BindHunk<System, T>);
@@ -107,6 +126,8 @@ impl<System, T> const Clone for BindRef<System, T> {
 // `BindDefiner` doesn't contain `T`, so this `impl` must use a concrete `T`
 // for `define` to be usable
 impl<'pool, System> Bind<'pool, System, ()> {
+    /// Construct a `BindDefiner` to define a binding in [a configuration
+    /// function](crate#static-configuration).
     pub const fn define() -> BindDefiner<
         System,
         private_bind_definer::BinderUnspecified,
@@ -116,8 +137,14 @@ impl<'pool, System> Bind<'pool, System, ()> {
     }
 }
 
+/// # Binders
+///
+/// The following methods are used to construct a [*binder*][1], which is a
+/// reference to a binding with a specific borrowing mode.
+///
+/// [1]: Binder
 impl<'pool, System, T> Bind<'pool, System, T> {
-    /// Create a [`BindBorrow`][] binder, which gives `&T` in a bound function.
+    /// Create a [`BindBorrow`][] binder, which gives `&T` to a bound function.
     pub const fn borrow(&self) -> BindBorrow<'pool, System, T>
     where
         T: Sync,
@@ -125,7 +152,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
         BindBorrow(*self)
     }
 
-    /// Create a [`BindBorrowMut`][] binder, which gives `&mut T` in a bound
+    /// Create a [`BindBorrowMut`][] binder, which gives `&mut T` to a bound
     /// function.
     pub const fn borrow_mut(&self) -> BindBorrowMut<'pool, System, T>
     where
@@ -134,7 +161,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
         BindBorrowMut(*self)
     }
 
-    /// Create a [`BindTake`][] binder, which gives `T` in a bound function.
+    /// Create a [`BindTake`][] binder, which gives `T` to a bound function.
     pub const fn take(&self) -> BindTake<'pool, System, T>
     where
         T: Send,
@@ -142,7 +169,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
         BindTake(*self)
     }
 
-    /// Create a [`BindTakeRef`][] binder, which gives `&'static T` in a bound
+    /// Create a [`BindTakeRef`][] binder, which gives `&'static T` to a bound
     /// function.
     pub const fn take_ref(&self) -> BindTakeRef<'pool, System, T>
     where
@@ -151,7 +178,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
         BindTakeRef(*self)
     }
 
-    /// Create a [`BindTakeMut`][] binder, which gives `&'static mut T` in a
+    /// Create a [`BindTakeMut`][] binder, which gives `&'static mut T` to a
     /// bound function.
     pub const fn take_mut(&self) -> BindTakeMut<'pool, System, T>
     where
@@ -162,6 +189,16 @@ impl<'pool, System, T> Bind<'pool, System, T> {
 
     /// Construct a [`BindRef`][], which can be used to get `&'static T` from a
     /// [`BindTable`][]`<System>`.
+    ///
+    /// `BindRef` doubles as a binder that gives `&'static T` in a bound
+    /// [executable object][1].
+    ///
+    /// The configuration system can't track the usages of `BindRef` (note the
+    /// lack of a lifetime parameter in its definition). As such, merely calling
+    /// this method counts as a use of the binding whether the returned
+    /// `BindRef` is actually used or not.
+    ///
+    /// [1]: ExecutableDefiner
     pub const fn as_ref(&self) -> BindRef<System, T>
     where
         T: Sync,
@@ -174,6 +211,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
 }
 
 /// The definer (static builder) for [`Bind`].
+#[must_use = "must call `finish()` to complete registration"]
 pub struct BindDefiner<System, Binder, Func> {
     _phantom: PhantomInvariant<System>,
     binder: Binder,
@@ -202,6 +240,9 @@ impl<System>
 }
 
 /// # Specifying the initializer function
+///
+/// One of the following methods should be used to specify the initializer for
+/// the binding being defined.
 impl<System>
     BindDefiner<
         System,
@@ -233,7 +274,10 @@ impl<System>
 }
 
 /// # Finalization
+///
+/// The following method defines a binding using the provided parameter.
 impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
+    /// Complete the definition of a binding, returning a reference to it.
     pub const fn finish<'pool, C>(
         self,
         cfg: &mut cfg::Cfg<'pool, C>,
@@ -258,6 +302,7 @@ impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
         let initializer = self.func.bind(self.binder, &mut ctx);
         let initializer = Closure::from_fn_const(move || {
             let output = initializer();
+            // Safety: There's no conflicting borrows
             unsafe { hunk.0.get().write(MaybeUninit::new(output)) };
         });
 
@@ -289,6 +334,7 @@ pub trait UnzipBind<Target> {
 // Runtime binding registry
 // ----------------------------------------------------------------------------
 
+/// Represents a permission to dereference [`BindRef`][].
 pub struct BindTable<System> {
     _phantom: PhantomInvariant<System>,
 }
@@ -299,6 +345,13 @@ where
 {
     // TODO: pub fn get() -> Result<Self> {}
 
+    /// Get a reference to `BindTable` without checking if it's safe to do so
+    /// in the current context.
+    ///
+    /// # Safety
+    ///
+    /// The returned reference may be used to borrow binding contents that are
+    /// uninitialized or being mutably borrowed somewhere else.
     #[inline]
     pub const unsafe fn get_unchecked() -> &'static Self {
         &Self {
@@ -316,6 +369,8 @@ where
 
     #[inline]
     fn index(&self, index: BindRef<System, T>) -> &Self::Output {
+        // Safety: The possession of `BindRef` and `BindTable` indicates it's
+        // safe to do so
         unsafe { BindHunk::as_ref(index.0).assume_init_ref() }
     }
 }
@@ -476,7 +531,7 @@ enum BindBorrowType {
 /// # Safety
 ///
 /// At any point of time, the provided [`Closure`] must never be invoked by two
-/// threads simultaneously.
+/// threads simultaneously. It can be called for multiple times, however.
 pub unsafe trait ExecutableDefiner: Sized + private::Sealed {
     fn start(self, start: Closure) -> Self;
 }
@@ -547,7 +602,13 @@ impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
 
 /// A trait for closures that can receive materialized [bindings][1].
 ///
+/// `FnBind<(B0, B1, ...)>` is implemented for `impl for<'call>
+/// FnOnce(M0<'call>, M1<'call>, ...) + Copy + Send + 'static`, where `Mn<'call>
+/// == Bn::`[`Runtime`][2]`::`[`Target`][3]`<'call>` (`Bn`'s materialized form).
+///
 /// [1]: Bind
+/// [2]: Binder::Runtime
+/// [3]: RuntimeBinder::Target
 ///
 /// # Stability
 ///
@@ -628,7 +689,11 @@ macro_rules! impl_fn_bind {
                 #[inline]
                 move || {
                     // Safety: `runtime_binders` was created by the corresponding
-                    // type's `into_runtime_binder` method
+                    // type's `into_runtime_binder` method.
+                    // `CfgBindRegistry::finalize` checks that the borrowing
+                    // rules regarding the materialization output are observed.
+                    // If the check fails, so does the compilation, and this
+                    // runtime code will never be executed.
                     let ($( $fieldI, )*) = unsafe {
                         <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(runtime_binders)
                     };
@@ -650,8 +715,13 @@ seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~
 /// Represents a *binder*, which represents a specific way to access the
 /// contents of a [binding][1] from a runtime function.
 ///
-/// `self` will be "materialized" and passed to a bound function through a
-/// intermediate product ([`Self::Runtime`]).
+/// There are methods that take binders and bind them to compatible closures
+/// ([`FnBind`][]), namely [`ExecutableDefinerExt::start_with_bind`][] and
+/// [`BindDefiner::init_with_bind`][]. When called, these methods wrap the given
+/// closure with an outer closure, which "materializes" the provided binders at
+/// runtime and passes them to the given closure. THe configuration system
+/// checks at compile time that the borrowing rules are observed by the created
+/// closures, and raises an error if the rules can't be statically enforced.
 ///
 /// # Stability
 ///
@@ -697,6 +767,7 @@ pub trait Binder {
 ///
 /// This trait is unstable.
 pub trait RuntimeBinder: Send + Copy + 'static {
+    /// The materialized form.
     type Target<'call>;
 
     /// Construct a target object at runtime, using the intermediate product
@@ -706,6 +777,9 @@ pub trait RuntimeBinder: Send + Copy + 'static {
     ///
     /// `intermediate` must have been constructed by
     /// `<Self as Binder>::into_runtime_binder`.
+    ///
+    /// The caller must uphold that `Self::Target` is safe to exist. (The
+    /// configuration system is reponsible for enforcing this property.)
     unsafe fn materialize<'call>(self) -> Self::Target<'call>;
 }
 
