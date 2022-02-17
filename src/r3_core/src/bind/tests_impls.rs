@@ -95,11 +95,6 @@ assert_fn_bind_impls! {
     (<fn()>: FnBind<(), Output = ()>),
     (<fn()>: !FnBind<(BindRef<System, T>,)>),
 
-    (<fn(&T)>: !FnBind<()>),
-    (<fn(&T)>: FnBind<(BindRef<System, T>,), Output = ()>),
-    (<fn(&T)>: FnBind<(BindBorrow<'static, System, T>,), Output = ()>),
-    (<fn(&T)>: !FnBind<(BindRef<System, T0>,)>),
-
     (<fn(&T0, &T1)>: !FnBind<()>),
     (<fn(&T0, &T1)>: !FnBind<(BindRef<System, T>,)>),
     (<fn(&T0, &T1)>: !FnBind<(BindRef<System, T0>,)>),
@@ -117,7 +112,58 @@ assert_fn_bind_impls! {
             BindBorrow<'static, System, T0>,
             BindBorrow<'static, System, T1>)>),
 
-    // The function requires a `'static` reference
-    (<fn(&'static T)>: FnBind<(BindRef<System, T>,), Output = ()>),
+    // Taking a generic-lifetime reference
+    (<fn(&T)>: FnBind<(BindBorrow<'static, System, T>,), Output = ()>),
+    // TODO: (<fn(&T)>: FnBind<(BindBorrowMut<'static, System, T>,), Output = ()>),
+    (<fn(&T)>: !FnBind<(BindTake<'static, System, T>,)>),
+    (<fn(&T)>: FnBind<(BindTakeRef<'static, System, T>,), Output = ()>),
+    // TODO: (<fn(&T)>: FnBind<(BindTakeMut<'static, System, T>,), Output = ()>),
+    (<fn(&T)>: FnBind<(BindRef<System, T>,), Output = ()>),
+
+    (<fn(&T)>: !FnBind<()>),
+    (<fn(&T)>: !FnBind<(BindRef<System, T0>,)>),
+
+    // Taking a `'static` reference
     (<fn(&'static T)>: !FnBind<(BindBorrow<'static, System, T>,)>),
+    (<fn(&'static T)>: !FnBind<(BindBorrowMut<'static, System, T>,)>),
+    (<fn(&'static T)>: FnBind<(BindRef<System, T>,), Output = ()>),
+    (<fn(&'static T)>: FnBind<(BindTakeRef<'static, System, T>,), Output = ()>),
+
+    (<fn(&'static T)>: !FnBind<()>),
+    (<fn(&'static T)>: !FnBind<(BindRef<System, T0>,)>),
+    (<fn(&'static T)>: !FnBind<(BindTakeRef<'static, System, T0>,)>),
+
+    // Taking a generic-lifetime mutable reference
+    (<fn(&mut T)>: !FnBind<(BindBorrow<'static, System, T>,)>),
+    (<fn(&mut T)>: FnBind<(BindBorrowMut<'static, System, T>,), Output = ()>),
+    (<fn(&mut T)>: !FnBind<(BindTake<'static, System, T>,)>),
+    (<fn(&mut T)>: !FnBind<(BindTakeRef<'static, System, T>,)>),
+    (<fn(&mut T)>: FnBind<(BindTakeMut<'static, System, T>,), Output = ()>),
+    (<fn(&mut T)>: !FnBind<(BindRef<System, T>,)>),
+
+    (<fn(&mut T)>: !FnBind<()>),
+    (<fn(&mut T)>: !FnBind<(BindBorrowMut<'static, System, T0>,)>),
+    (<fn(&mut T)>: !FnBind<(BindTakeMut<'static, System, T0>,)>),
+
+    // Taking a `'static` mutable reference
+    (<fn(&'static mut T)>: !FnBind<(BindBorrow<'static, System, T>,)>),
+    (<fn(&'static mut T)>: !FnBind<(BindBorrowMut<'static, System, T>,)>),
+    (<fn(&'static mut T)>: !FnBind<(BindTake<'static, System, T>,)>),
+    (<fn(&'static mut T)>: !FnBind<(BindTakeRef<'static, System, T>,)>),
+    (<fn(&'static mut T)>: FnBind<(BindTakeMut<'static, System, T>,), Output = ()>),
+    (<fn(&'static mut T)>: !FnBind<(BindRef<System, T>,)>),
+
+    (<fn(&'static mut T)>: !FnBind<()>),
+    (<fn(&'static mut T)>: !FnBind<(BindTakeMut<'static, System, T0>,)>),
+
+    // Taking by value
+    (<fn(T)>: !FnBind<(BindBorrow<'static, System, T>,)>),
+    (<fn(T)>: !FnBind<(BindBorrowMut<'static, System, T>,)>),
+    (<fn(T)>: FnBind<(BindTake<'static, System, T>,), Output = ()>),
+    (<fn(T)>: !FnBind<(BindTakeRef<'static, System, T>,)>),
+    (<fn(T)>: !FnBind<(BindTakeMut<'static, System, T>,)>),
+    (<fn(T)>: !FnBind<(BindRef<System, T>,)>),
+
+    (<fn(T)>: !FnBind<()>),
+    (<fn(T)>: !FnBind<(BindTakeMut<'static, System, T0>,)>),
 }
