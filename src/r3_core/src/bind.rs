@@ -297,6 +297,16 @@ impl<System>
     }
 }
 
+/// # Optional Parameters
+impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
+    /// Indicate that the evaluation of the initializer may cause a side-effect
+    /// that the dependency solver must not remove implicitly.
+    pub const fn unpure(self) -> Self {
+        // TODO: [tag:unpure_binding] Mark impurity
+        self
+    }
+}
+
 /// # Finalization
 ///
 /// The following method defines a binding using the provided parameter.
