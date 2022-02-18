@@ -254,6 +254,23 @@ impl<System, T: ?Sized> Hunk<System, T> {
             _phantom: PhantomData,
         }
     }
+
+    /// Calculate the offset from the hunk.
+    ///
+    /// # Safety
+    ///
+    ///  - The resulting hunk may point to memory that the caller is not
+    ///    supposed to access.
+    ///
+    pub const unsafe fn wrapping_offset(self, count: isize) -> Self
+    where
+        T: Sized,
+    {
+        Hunk {
+            offset: self.offset.wrapping_offset(count),
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
