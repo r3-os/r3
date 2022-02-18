@@ -12,7 +12,7 @@
 /// ```rust
 /// use r3::{
 ///     kernel::{StaticTask, StaticTimer},
-///     bind::Bind,
+///     bind::{bind, Bind},
 ///     time::Duration,
 ///     prelude::*,
 /// };
@@ -25,7 +25,7 @@
 ///        ~const traits::CfgTimer,
 /// {
 ///     // Create a binding and give the timer an exclusive access
-///     let count = Bind::define().init(|| 0).finish(cfg);
+///     let count = bind((), || 0).finish(cfg);
 ///     StaticTimer::define()
 ///         // `(x,)` is a one-element tuple
 ///         .start_with_bind((count.borrow_mut(),), |count: &mut i32| {
@@ -43,24 +43,24 @@
 ///     // We can still borrow `count` temporarily before the timer
 ///     // starts running. (The initialization of bindings happens in
 ///     // startup hooks, which run before all tasks and timers.)
-///     Bind::define().unpure().init_with_bind(
+///     bind(
 ///         (count.borrow_mut(),),
 ///         |count: &mut i32| {
 ///             *count = 5;
 ///         },
-///     ).finish(cfg);
+///     ).unpure().finish(cfg);
 ///
 ///     // Create a binding
-///     let num = Bind::define().init(|| 42).finish(cfg);
+///     let num = bind((), || 42).finish(cfg);
+///
+///     // Alternatively, without using `bind`:
+///     // let num = Bind::define().init(|| 42).finish(cfg);
 ///
 ///     // Then create a reference to it, a reference to the reference,
 ///     // and so on.
-///     let num = Bind::define()
-///         .init_with_bind((num.take_mut(),), |x| x).finish(cfg);
-///     let num = Bind::define()
-///         .init_with_bind((num.take_mut(),), |x| x).finish(cfg);
-///     let num = Bind::define()
-///         .init_with_bind((num.take_mut(),), |x| x).finish(cfg);
+///     let num = bind((num.take_mut(),), |x| x).finish(cfg);
+///     let num = bind((num.take_mut(),), |x| x).finish(cfg);
+///     let num = bind((num.take_mut(),), |x| x).finish(cfg);
 ///
 ///     StaticTask::define()
 ///         .start_with_bind(
@@ -82,7 +82,7 @@
 /// ```rust,compile_fail,E0080
 /// # use r3::{
 /// #     kernel::{StaticTask, StaticTimer},
-/// #     bind::Bind,
+/// #     bind::bind,
 /// #     time::Duration,
 /// #     prelude::*,
 /// # };
@@ -93,7 +93,7 @@
 ///        ~const traits::CfgTask +
 ///        ~const traits::CfgTimer,
 /// {
-///     let count = Bind::define().init(|| 0).finish(cfg);
+///     let count = bind((), || 0).finish(cfg);
 ///     StaticTimer::define()
 ///         .start_with_bind((count.borrow_mut(),), |count: &mut i32| {})
 ///         .period(Duration::from_millis(50))
@@ -115,3 +115,18 @@ pub use r3_core::bind::{
     BindTakeRef, Binder, ExecutableDefiner, ExecutableDefinerExt, FnBind, UnzipBind,
     INIT_HOOK_PRIORITY,
 };
+
+/// A shorthand for [`Bind`][]`::`[`define`][1]`().`[`init_with_bind`][2]`(...)`.
+///
+/// See [the module-level documentation][3] for an example.
+///
+/// [1]: Bind::define
+/// [2]: BindDefiner::init_with_bind
+/// [3]: self#examples
+#[inline]
+pub const fn bind<System, Binder, Func>(
+    binder: Binder,
+    func: Func,
+) -> BindDefiner<System, Binder, Func> {
+    Bind::define().init_with_bind(binder, func)
+}
