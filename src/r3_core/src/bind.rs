@@ -1,4 +1,5 @@
 #![doc = __internal_module_doc!("crate", "")]
+#![doc = include_str!("./common.md")]
 /// The part of the module-level documentation shared between `r3::bind` and
 /// `r3_core::bind`. This is necessary because `r3::bind` itself isn't a
 /// re-export of `r3_core::bind`, but it's desirable for it to have the same
@@ -10,17 +11,109 @@ pub macro __internal_module_doc($r3_core:expr, $admonitions:expr) {r#"
 Bindings ([`Bind`][]), a static storage with [runtime initialization][1] and
 [configuration-time][2] borrow checking.
 
-[1]: BindDefiner::init
-[2]: $r3_core#static-configuration
-
 $admonitions
 
-TODO: What are bindings
+Bindings are essentially fancy global variables defined in a kernel
+configuration. They are defined by [`Bind::define`][] and initialized by
+provided closures at runtime. They can be consumed or borrowed by the entry
+points of [executable kernel objects][4] or the initializers of another
+bindings.
+
+The configuration system tracks the usage of bindings and employs static checks
+to ensure that the borrowing rules are observed by the users of the bindings. It
+aborts the compilation if the rules may be violated.
+
+Bindings use hunks ([`Hunk`][3]) as a storage for their contents. They are
+initialized in [startup hooks][14].
+
+<div class="admonition-follows"></div>
+
+> **Relation to Other Specifications:** [*Resources*][8] in [RTIC 1][7] serve
+> the similar need with a quite different design.
+> In R3, bindings are defined in modular, encapsulated configuration functions
+> and associated to various kernel objects. The configuration system takes all
+> definitions and figures out the correct initialization order.
+> In RTIC, all resources are defined in one place and initialized by an
+> application-provided `#[init]` function.
 
 # Binders
 
-TODO: Provide a table of binders
+*Binders* ([`Binder`][]) represent specific borrow modes of bindings. A
+configuration function creates them by calling [`Bind`][]'s methods and use them
+in the definition of another object where the binding is intended to be
+consumed, i.e., borrowed or moved out by its associated function. The type a
+binder produces is called its *materialized* form.
 
+The following table lists all provided binders:
+
+|     `Bind::`     |         Type        |     Confers      | On binding | On executable |
+| ---------------- | ------------------- | ---------------- | :--------: | :-----------: |
+| [`borrow`][]     | [`BindBorrow`][]    | `&'call T`       |     ✓      |       ✓       |
+| [`borrow_mut`][] | [`BindBorrowMut`][] | `&'call mut T`   |     ✓      |       ✓       |
+| [`take_ref`][]   | [`BindTakeRef`][]   | `&'static T`     |     ✓      |       ✓       |
+| [`take_mut`][]   | [`BindTakeMut`][]   | `&'static mut T` |     ✓      |               |
+| [`take`][]       | [`BindTake`][]      | `T`              |     ✓      |               |
+| [`as_ref`][]     | [`BindRef`][]       | `&'static T`     |            |       ✓       |
+
+[`borrow`]: Bind::borrow
+[`borrow_mut`]: Bind::borrow_mut
+[`take_ref`]: Bind::take_ref
+[`take_mut`]: Bind::take_mut
+[`take`]: Bind::take
+[`as_ref`]: Bind::as_ref
+
+- The **`Bind::`** column shows the methods to create the binders.
+
+- The **Type** column shows the types representing the binders.
+
+- The **Confers** column shows the respective materialized forms of the binders.
+  The lifetime `'call` represents the call duration of the consuming function.
+
+- The **On binding** column shows which types of binders can be consumed by
+  another binding's initializer via [`BindDefiner::init_with_bind`][].
+
+- The **On executable** column shows which types of binders can be consumed
+  by [executable objects][10], viz., [tasks][11], [interrupt handlers][12], and
+  [timers][13], via [`ExecutableDefinerExt::start_with_bind`][].
+    - An executable object may execute its entry point for multiple times
+      throughout its lifetime. For this reason, an executable object is not
+      allowed to consume `BindTake` (which moves out the value) or `BindTakeMut`
+      (which mutably borrows the value indefinitely).
+
+# Initialization Order
+
+The configuration system determines the initialization order of the defined
+bindings by [topological sorting][5] with a preference toward the definition
+order. The specific algorithm is not a part of the stability guarantee.
+
+# Planned Features
+
+The following features are planned and may be implemented in the future:
+
+- Reusing the storage of a binding whose lifetime has ended by having its
+  contents moved out by [`BindTake`][] or completing its last borrow.
+
+- Pruning unused bindings, unless they are marked as [`unpure`][6].
+  <!-- [ref:unpure_binding] -->
+
+- Phantom edges to enforce ordering between bindings.
+
+- Pinning.
+
+[1]: BindDefiner::init
+[2]: $r3_core#static-configuration
+[3]: crate::kernel::Hunk
+[4]: ExecutableDefiner
+[5]: https://en.wikipedia.org/wiki/Topological_sorting
+[6]: BindDefiner::unpure
+[7]: https://rtic.rs/1/book/en/
+[8]: https://rtic.rs/1/book/en/by-example/resources.html
+[9]: https://www.toppers.jp/index.html
+[10]: ExecutableDefiner
+[11]: crate::kernel::StaticTask
+[12]: crate::kernel::StaticInterruptHandler
+[13]: crate::kernel::StaticTimer
+[14]: crate::kernel::StartupHook
 "#}
 
 use core::{cell::UnsafeCell, mem::MaybeUninit};
@@ -99,38 +192,51 @@ impl<System, T> const Clone for Bind<'_, System, T> {
     }
 }
 
-/// A [binder](Binder) that gives `&T` to a bound function.
+/// A [binder][1] that gives `&T` to a bound function.
 ///
 /// Created by [`Bind::borrow`][].
+///
+/// [1]: index.html#binders
 pub struct BindBorrow<'pool, System, T>(Bind<'pool, System, T>);
 
-/// A [binder](Binder) that gives `&mut T` to a bound function.
+/// A [binder][1] that gives `&mut T` to a bound function.
 ///
 /// Created by [`Bind::borrow_mut`][].
+///
+/// [1]: index.html#binders
 pub struct BindBorrowMut<'pool, System, T>(Bind<'pool, System, T>);
 
-/// A [binder](Binder) that gives `T` to a bound function.
+/// A [binder][1] that gives `T` to a bound function.
 ///
 /// Created by [`Bind::take`][].
+///
+/// [1]: index.html#binders
 pub struct BindTake<'pool, System, T>(Bind<'pool, System, T>);
 
-/// A [binder](Binder) that gives `&'static T` to a bound function.
+/// A [binder][1] that gives `&'static T` to a bound function.
 ///
 /// Created by [`Bind::take_ref`][].
+///
+/// [1]: index.html#binders
 pub struct BindTakeRef<'pool, System, T>(Bind<'pool, System, T>);
 
-/// A [binder](Binder) that gives `&'static mut T` to a bound function.
+/// A [binder][1] that gives `&'static mut T` to a bound function.
 ///
 /// Created by [`Bind::take_mut`][].
+///
+/// [1]: index.html#binders
 pub struct BindTakeMut<'pool, System, T>(Bind<'pool, System, T>);
 
-/// A reference to a [binding][1]. Created by [`Bind::as_ref`][].
+/// A reference to a [binding][1]. Doubles as a [binder][1].
+///
+/// Created by [`Bind::as_ref`][].
 ///
 /// It doesn't provide access to the contents by itself because it could be
 /// used before the binding is initialized. Index [`BindTable`][] by this type to
 /// borrow the contents as `&'static T`.
 ///
 /// [1]: Bind
+/// [2]: index.html#binders
 pub struct BindRef<System, T>(BindHunk<System, T>);
 
 impl<System, T> Copy for BindRef<System, T> {}
@@ -214,7 +320,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
     /// Construct a [`BindRef`][], which can be used to get `&'static T` from a
     /// [`BindTable`][]`<System>`.
     ///
-    /// `BindRef` doubles as a binder that gives `&'static T` in a bound
+    /// `BindRef` doubles as a [binder][2] that gives `&'static T` in a bound
     /// [executable object][1].
     ///
     /// The configuration system can't track the usages of `BindRef` (note the
@@ -223,6 +329,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
     /// `BindRef` is actually used or not.
     ///
     /// [1]: ExecutableDefiner
+    /// [2]: index.html#binders
     pub const fn as_ref(&self) -> BindRef<System, T>
     where
         T: Sync,
@@ -235,6 +342,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
 }
 
 /// The definer (static builder) for [`Bind`].
+#[doc = include_str!("./common.md")]
 #[must_use = "must call `finish()` to complete registration"]
 pub struct BindDefiner<System, Binder, Func> {
     _phantom: PhantomInvariant<System>,
@@ -301,6 +409,12 @@ impl<System>
 impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
     /// Indicate that the evaluation of the initializer may cause a side-effect
     /// that the dependency solver must not remove implicitly.
+    ///
+    /// <div class="admonition-follows"></div>
+    ///
+    /// > **Unimplemented:** Pruning unused bindings is not implemented yet.
+    /// > Therefore, this method is no-op. <!-- [ref:unpure_binding] -->
+    ///
     pub const fn unpure(self) -> Self {
         // TODO: [tag:unpure_binding] Mark impurity
         self
@@ -532,8 +646,6 @@ enum BindUsage {
 /// represented by `BindBorrowType::TakeMut` because the task can be started
 /// any time and repeatedly during the application's lifetime
 /// [tag:borrow_is_indefinite_for_executable].
-///
-/// TODO: For executables this could be reduced to `'static`
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum BindBorrowType {
     /// Gives `&T` that is valid for the consumption duration.
@@ -543,9 +655,11 @@ enum BindBorrowType {
     /// Invalid for executables [ref:borrow_is_indefinite_for_executable].
     BorrowMut,
     /// Gives `T`. This is similar to [`Self::TakeMut`][] except that the
-    /// storage may be freed up after the use.
-    ///
-    /// TODO: Implement the storage reuse
+    /// storage may be freed up after the use. This is also similar to
+    /// [`Self::BorrowMut`][] except that the binding is reverted to an
+    /// uninitialized state, and the storage is available for reuse starting
+    /// from the consuming function (whereas `BorrowMut` must wait until the
+    /// completion of the consuming function).
     Take,
     /// Gives `&'static T`. This is an indefinite borrow.
     TakeRef,
@@ -565,6 +679,8 @@ enum BindBorrowType {
 /// At any point of time, the provided [`Closure`] must never be invoked by two
 /// threads simultaneously. It can be called for multiple times, however.
 pub unsafe trait ExecutableDefiner: Sized + private::Sealed {
+    /// Use the specified function as the entry point of the executable object
+    /// being defined.
     fn start(self, start: Closure) -> Self;
 }
 
@@ -609,6 +725,8 @@ unsafe impl<System: raw::KernelTimer> const ExecutableDefiner
 ///
 /// [1]: Bind
 pub trait ExecutableDefinerExt {
+    /// Use the specified function with dependency as the entry point of the
+    /// executable object being defined.
     fn start_with_bind<Binder, Func: ~const FnBind<Binder, Output = ()>>(
         self,
         binder: Binder,
@@ -632,7 +750,8 @@ impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
 
 // ----------------------------------------------------------------------------
 
-/// A trait for closures that can receive materialized [bindings][1].
+/// A trait for closures that can receive [bindings][1] materialized through
+/// specific [binders][4] (`Binder`).
 ///
 /// `FnBind<(B0, B1, ...)>` is implemented for `impl for<'call>
 /// FnOnce(M0<'call>, M1<'call>, ...) + Copy + Send + 'static`, where `Mn<'call>
@@ -641,6 +760,7 @@ impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
 /// [1]: Bind
 /// [2]: Binder::Runtime
 /// [3]: RuntimeBinder::Target
+/// [4]: Binder
 ///
 /// # Stability
 ///
@@ -747,13 +867,7 @@ seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~
 /// Represents a *binder*, which represents a specific way to access the
 /// contents of a [binding][1] from a runtime function.
 ///
-/// There are methods that take binders and bind them to compatible closures
-/// ([`FnBind`][]), namely [`ExecutableDefinerExt::start_with_bind`][] and
-/// [`BindDefiner::init_with_bind`][]. When called, these methods wrap the given
-/// closure with an outer closure, which "materializes" the provided binders at
-/// runtime and passes them to the given closure. THe configuration system
-/// checks at compile time that the borrowing rules are observed by the created
-/// closures, and raises an error if the rules can't be statically enforced.
+/// See [the module-level documentation][2] for more.
 ///
 /// # Stability
 ///
@@ -761,6 +875,7 @@ seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~
 /// a few exceptions, which are documented on a per-item basis.
 ///
 /// [1]: Bind
+/// [2]: index.html#binders
 pub trait Binder {
     /// The runtime representation of `Self`.
     ///
