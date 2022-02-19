@@ -16,6 +16,7 @@
 #![feature(const_nonnull_new)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_option)]
+#![feature(const_ptr_offset_from)]
 #![feature(const_cell_into_inner)]
 #![feature(const_precise_live_drops)]
 #![feature(type_alias_impl_trait)]
@@ -82,7 +83,7 @@ pub mod time;
 /// The prelude module.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::bind::ExecutableDefinerExt;
+    pub use crate::bind::{ExecutableDefinerExt, UnzipBind};
     #[doc(no_inline)]
     pub use crate::kernel::prelude::*;
     #[doc(no_inline)]

@@ -92,6 +92,7 @@ The following features are planned and may be implemented in the future:
 
 - Reusing the storage of a binding whose lifetime has ended by having its
   contents moved out by [`BindTake`][] or completing its last borrow.
+  <!-- [tag:bind_storage_reuse] -->
 
 - Pruning unused bindings, unless they are marked as [`unpure`][6].
   <!-- [ref:unpure_binding] -->
@@ -169,6 +170,8 @@ unsafe impl<T> ZeroInit for BindData<T> {}
 // Main configuration interface
 // ----------------------------------------------------------------------------
 
+// FIXME: `T: ?Sized` is incompatible with `MaybeUninit<T>`
+//        <https://github.com/rust-lang/rust/issues/80158>
 /// A defined binding.
 ///
 /// The configuration-time metadata is stored in a pool with lifetime `'pool`.
@@ -456,10 +459,9 @@ impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
             let mut bind_registry = bind_registry.borrow_mut();
             assert!(bind_i == bind_registry.binds.len());
             let allocator = bind_registry.binds.allocator().clone();
-            bind_registry.binds.push(CfgBindInfo {
-                initializer,
-                users: ComptimeVec::new_in(allocator),
-            });
+            bind_registry
+                .binds
+                .push(CfgBindInfo::new(Some(initializer), allocator));
         }
 
         Bind {
@@ -470,11 +472,231 @@ impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
     }
 }
 
-// TODO: Implement `UnzipBind` on `Bind<'_, System, (T0, T1)>`, etc.
-/// A trait for breaking [`Bind`] into smaller parts.
-pub trait UnzipBind<Target> {
-    /// Break [`Bind`] into smaller parts.
-    fn unzip(self) -> Target;
+/// An internal utility to divide a [`Bind`][] into smaller parts.
+///
+/// <!-- [tag:bind_divide_by_take_mut] --> This is currently implemented by
+/// introducing artificial dependency edges to the produced parts, which is
+/// prone to false dependencies due to conservatism. This may be relaxed in the
+/// future.
+/// `BindTakeMut` forces the value to stay indefinitely, but fortunately in the
+/// current implementation this doesn't have an impact on the memory usage
+/// because storage reuse isn't implemented yet. <!-- [ref:bind_storage_reuse]
+/// -->
+///
+/// ```text
+///                               TakeRef
+///                                  ,---> emitter0 (T0)
+///             TakeMut              |
+///    original ------> collector ---+---> emitter1 (T1)
+///  (T0, T1, ...)                   |
+///                                  '---> ...
+///
+/// ```
+struct DivideBind<'pool, System, T> {
+    original_bind: Bind<'pool, System, T>,
+    collector_bind_i: usize,
+}
+
+impl<'pool, System, T> DivideBind<'pool, System, T> {
+    const fn new(original_bind: Bind<'pool, System, T>) -> Self {
+        let collector_bind_i;
+
+        {
+            let mut bind_registry = original_bind.bind_registry.borrow_mut();
+
+            // Create the "collector" binding
+            collector_bind_i = bind_registry.binds.len();
+            let allocator = bind_registry.binds.allocator().clone();
+            bind_registry.binds.push(CfgBindInfo::new(None, allocator));
+
+            // original → collector
+            // Using `TakeMut` here is a conservative choice.
+            // [ref:bind_divide_by_take_mut]
+            bind_registry.binds[original_bind.bind_i]
+                .users
+                .push((BindUsage::Bind(collector_bind_i), BindBorrowType::TakeMut));
+        }
+
+        Self {
+            original_bind,
+            collector_bind_i,
+        }
+    }
+
+    /// Get the original binding's `BindHunk`.
+    const fn original_hunk(&self) -> BindHunk<System, T> {
+        self.original_bind.hunk
+    }
+
+    /// Create a new binding from the provided `BindHunk`, treating it as a
+    /// portion of the original binding.
+    ///
+    /// # Safety
+    ///
+    /// - `hunk` must represent a subset of [`Self::original_hunk`].
+    /// - For a given original binding, there must be no overlaps between the
+    ///   `hunk`s passed to this method.
+    ///
+    const unsafe fn slice<U>(&self, hunk: BindHunk<System, U>) -> Bind<'pool, System, U> {
+        let emitter_bind_i;
+
+        {
+            let mut bind_registry = self.original_bind.bind_registry.borrow_mut();
+
+            // Create the "collector" binding
+            emitter_bind_i = bind_registry.binds.len();
+            let allocator = bind_registry.binds.allocator().clone();
+            bind_registry.binds.push(CfgBindInfo::new(None, allocator));
+
+            // collector → emitter
+            bind_registry.binds[self.collector_bind_i]
+                .users
+                .push((BindUsage::Bind(emitter_bind_i), BindBorrowType::TakeRef));
+        }
+
+        Bind {
+            hunk,
+            bind_registry: self.original_bind.bind_registry,
+            bind_i: emitter_bind_i,
+        }
+    }
+}
+
+/// An extension trait for destructing [`Bind`][]`<_, (T0, T1, ...)>` into
+/// individual bindings `(Bind<_, T0>, Bind<_, T1>, ...)`.
+///
+/// <div class="admonition-follows"></div>
+///
+/// > **Temporary Restrictions:** Currently the destruction makes the original
+/// > value completely inaccessible owing to it being implemented by
+/// > [`BindTakeMut`][]. Essentially, this divides the timeline into two parts:
+/// > the first part where only the pre-destruction binding (`Bind<_, (T0, T1,
+/// > ...)>`) can be borrowed and the second part where only the
+/// > post-destruction bindings (`Bind<_, T0>, Bind<_, T1>, ...`) can be
+/// > borrowed. <!-- [ref:bind_divide_by_take_mut] -->
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(const_fn_fn_ptr_basics)]
+/// #![feature(const_fn_trait_bound)]
+/// #![feature(const_trait_impl)]
+/// #![feature(const_mut_refs)]
+/// use r3_core::{bind::Bind, kernel::{Cfg, traits}, prelude::*};
+///
+/// const fn configure_app<C>(cfg: &mut Cfg<C>)
+/// where
+///     C: ~const traits::CfgBase,
+///     C::System: traits::KernelBase + traits::KernelStatic,
+/// {
+///     let values = Bind::define().init(|| (12, 34)).finish(cfg);
+///     let (value0, value1) = values.unzip();
+///     Bind::define()
+///         .init_with_bind((value0.take_mut(),), |x: &mut i32| assert_eq!(*x, 12))
+///         .unpure()
+///         .finish(cfg);
+///     Bind::define()
+///         .init_with_bind((value1.take_mut(),), |x: &mut i32| assert_eq!(*x, 34))
+///         .unpure()
+///         .finish(cfg);
+/// }
+/// ```
+///
+/// # Stability
+///
+/// This trait is covered by the application-side API stability guarantee.
+/// External implementation of this trait is not allowed.
+#[doc = include_str!("./common.md")]
+pub trait UnzipBind {
+    type Target;
+    /// Destruct [`Bind`][] into individual bindings.
+    fn unzip(self) -> Self::Target;
+}
+
+/// A helper trait to provide the field offsets of tuple types.
+trait TupleFieldOffsets {
+    const FIELD_OFFSETS: &'static [usize];
+}
+
+macro_rules! impl_unzip_bind_for_tuples {
+    ( @start $($x:tt)* ) => {
+        impl_unzip_bind_for_tuples! { @iter [] [$($x)*] }
+    };
+
+    // inductive case
+    ( @iter
+        [$(($FieldI:ident, $I:tt))*]
+        [$next_head:tt $($next_tail:tt)*]
+    ) => {
+        impl_unzip_bind_for_tuples! { @iter [$(($FieldI, $I))* $next_head] [$($next_tail)*] }
+
+        impl<$( $FieldI, )*> TupleFieldOffsets for ($( $FieldI, )*) {
+            const FIELD_OFFSETS: &'static [usize] = &[
+                $( memoffset::offset_of_tuple!(Self, $I) ),*
+            ];
+        }
+        impl<
+            System,
+            $( $FieldI, )*
+        > TupleFieldOffsets for Bind<'_, System, ($( $FieldI, )*)> {
+            const FIELD_OFFSETS: &'static [usize] = <($( $FieldI, )*)>::FIELD_OFFSETS;
+        }
+
+        impl<
+            'pool,
+            System,
+            $( $FieldI, )*
+        > const UnzipBind for Bind<'pool, System, ( $( $FieldI, )* )>
+        {
+            type Target = ( $( Bind<'pool, System, $FieldI>, )* );
+
+            fn unzip(self) -> Self::Target {
+                #[allow(unused_unsafe)] // for `Bind<'_, _, ()>`
+                unsafe {
+                    let divide = DivideBind::new(self);
+                    let hunk = divide.original_hunk();
+                    let _ = hunk;
+
+                    ($(
+                        divide.slice::<$FieldI>(
+                            hunk.transmute::<u8>()
+                                .wrapping_offset(Self::FIELD_OFFSETS[$I] as isize)
+                                .transmute()
+                        ),
+                    )*)
+                }
+            }
+        }
+    }; // end of macro arm
+
+    // base case
+    ( @iter [$($_discard:tt)*] [] ) => {}
+}
+
+seq_macro::seq!(I in 0..16 { impl_unzip_bind_for_tuples! { @start #( (Field~I, I) )* } });
+
+impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System, [T; LEN]> {
+    type Target = [Bind<'pool, System, T>; LEN];
+
+    fn unzip(self) -> Self::Target {
+        unsafe {
+            let divide = DivideBind::new(self);
+            let hunk = divide.original_hunk();
+
+            // FIXME: `core::array::from_fn` is not usable in `const fn`
+            let mut out =
+                ComptimeVec::new_in(self.bind_registry.borrow().binds.allocator().clone());
+
+            // FIXME: `for` loops are unusable in `const fn`
+            let mut i = 0;
+            while i < LEN {
+                out.push(divide.slice(hunk.transmute::<BindData<T>>().wrapping_offset(i as isize)));
+                i += 1;
+            }
+
+            out.to_array()
+        }
+    }
 }
 
 // Runtime binding registry
@@ -539,7 +761,7 @@ impl const Drop for CfgBindRegistry {
 struct CfgBindInfo {
     /// The initializer for the binder. It'll be registered as a startup hook
     /// on finalization.
-    initializer: Closure,
+    initializer: Option<Closure>,
     /// The uses of this binding.
     users: ComptimeVec<(BindUsage, BindBorrowType)>,
 }
@@ -613,12 +835,23 @@ impl CfgBindRegistry {
         while i < callback.bind_init_order.len() {
             let bind_i = callback.bind_init_order[i];
 
-            StartupHook::define()
-                .start(self.binds[bind_i].initializer)
-                .priority(INIT_HOOK_PRIORITY)
-                .finish(cfg);
+            if let Some(initializer) = self.binds[bind_i].initializer {
+                StartupHook::define()
+                    .start(initializer)
+                    .priority(INIT_HOOK_PRIORITY)
+                    .finish(cfg);
+            }
 
             i += 1;
+        }
+    }
+}
+
+impl CfgBindInfo {
+    const fn new(initializer: Option<Closure>, allocator: ConstAllocator) -> Self {
+        CfgBindInfo {
+            initializer,
+            users: ComptimeVec::new_in(allocator),
         }
     }
 }

@@ -1756,6 +1756,7 @@ dependencies = [
  "env_logger",
  "log",
  "macropol",
+ "memoffset",
  "quickcheck",
  "quickcheck_macros",
  "seq-macro 0.3.0",

@@ -22,6 +22,7 @@ _full = []
 [dependencies]
 stable_deref_trait = { version = "1.2.0", default-features = false }
 chrono_0p4 = { version = "0.4.13", package = "chrono", optional = true, default-features = false }
+memoffset = { version = "0.6.5", features = ["unstable_const"] }
 seq-macro = { version = "0.3.0" }
 svgbobdoc = { version = "0.3.0-alpha.4" }
 tokenlock = { version = "0.3.4", default-features = false }
