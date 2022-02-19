@@ -17,13 +17,16 @@ use wio_terminal as wio;
 use core::{
     cell::RefCell,
     fmt::Write,
+    mem::MaybeUninit,
     panic::PanicInfo,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use cortex_m::{interrupt::Mutex as PrimaskMutex, singleton};
+use cortex_m::interrupt::Mutex as PrimaskMutex;
 use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
-use r3::kernel::{
-    prelude::*, InterruptLine, InterruptNum, StartupHook, StaticMutex, StaticTask, StaticTimer,
+use r3::{
+    bind::{bind, bind_uninit},
+    kernel::{prelude::*, InterruptLine, InterruptNum, StaticMutex, StaticTask, StaticTimer},
+    prelude::*,
 };
 use spin::Mutex as SpinMutex;
 use usb_device::{
@@ -108,11 +111,9 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    // Register a hook to initialize hardware
-    StartupHook::define()
-        .start(|| {
-            init_hardware();
-        })
+    // Initialize hardware
+    let blink_st = bind((bind_uninit(b).take_mut(),), init_hardware)
+        .unpure()
         .finish(b);
 
     // Register a timer driver initializer
@@ -130,7 +131,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .active(true)
         .finish(b);
     let _blink_task = StaticTask::define()
-        .start(blink_task_body)
+        .start_with_bind((blink_st.borrow_mut(),), blink_task_body)
         .priority(1)
         .active(true)
         .finish(b);
@@ -190,13 +191,14 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 }
 
 static LCD: SpinMutex<Option<wio::LCD>> = SpinMutex::new(None);
-static BLINK_ST: SpinMutex<Option<BlinkSt>> = SpinMutex::new(None);
 
 struct BlinkSt {
     user_led: gpio::Pin<gpio::v2::pin::PA15, gpio::v2::Output<gpio::v2::PushPull>>,
 }
 
-fn init_hardware() {
+fn init_hardware(
+    usb_bus_allocator_cell: &'static mut MaybeUninit<UsbBusAllocator<UsbBus>>,
+) -> BlinkSt {
     let mut peripherals = Peripherals::take().unwrap();
     let mut core_peripherals = unsafe { CorePeripherals::steal() };
 
@@ -216,8 +218,7 @@ fn init_hardware() {
     let mut sets: Sets = Pins::new(peripherals.PORT).split();
     let mut user_led = sets.user_led.into_open_drain_output(&mut sets.port);
     user_led.set_low().unwrap();
-
-    *BLINK_ST.lock() = Some(BlinkSt { user_led });
+    let blink_st = BlinkSt { user_led };
 
     // Configure the LCD
     let (display, _backlight) = sets
@@ -244,19 +245,13 @@ fn init_hardware() {
     button_ctrlr.enable(&mut core_peripherals.NVIC);
     unsafe { BUTTON_CTRLR = Some(button_ctrlr) };
 
-    // Configure the USB serial device
     let sets_usb = sets.usb;
     let peripherals_usb = peripherals.USB;
     let peripherals_mclk = &mut peripherals.MCLK;
-    let usb_bus_allocator = singleton!(
-        : UsbBusAllocator<UsbBus> =
-        sets_usb.usb_allocator(
-            peripherals_usb,
-            &mut clocks,
-            peripherals_mclk,
-        )
-    )
-    .unwrap();
+    let usb_bus_allocator = sets_usb.usb_allocator(peripherals_usb, &mut clocks, peripherals_mclk);
+    let usb_bus_allocator = usb_bus_allocator_cell.write(usb_bus_allocator);
+
+    // Configure the USB serial device
     let serial = SerialPort::new(usb_bus_allocator);
     let usb_device = UsbDeviceBuilder::new(usb_bus_allocator, UsbVidPid(0x16c0, 0x27dd))
         .product("R3 Example")
@@ -264,6 +259,8 @@ fn init_hardware() {
         .max_packet_size_0(64)
         .build();
     *USB_STDIO_GLOBAL.lock() = Some(UsbStdioGlobal { serial, usb_device });
+
+    blink_st
 }
 
 // Message producer
@@ -335,9 +332,7 @@ impl Write for Console {
 }
 
 /// The task responsible for blinking the user LED.
-fn blink_task_body() {
-    let mut st = BLINK_ST.lock();
-    let st = st.as_mut().unwrap();
+fn blink_task_body(st: &mut BlinkSt) {
     loop {
         st.user_led.toggle();
         System::sleep(r3::time::Duration::from_millis(210)).unwrap();
