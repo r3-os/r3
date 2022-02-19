@@ -110,6 +110,8 @@
 /// }
 /// ```
 )]
+use r3_core::kernel::{cfg, raw, raw_cfg};
+
 pub use r3_core::bind::{
     Bind, BindBorrow, BindBorrowMut, BindDefiner, BindRef, BindTable, BindTake, BindTakeMut,
     BindTakeRef, Binder, ExecutableDefiner, ExecutableDefinerExt, FnBind, UnzipBind,
@@ -129,4 +131,69 @@ pub const fn bind<System, Binder, Func>(
     func: Func,
 ) -> BindDefiner<System, Binder, Func> {
     Bind::define().init_with_bind(binder, func)
+}
+
+/// A shorthand for
+/// [`Bind`][]`::`[`define`][1]`().`[`init`][2]`(`[`MaybeUninit::uninit`][4]`).`[`finish`][5]`(cfg)`.
+///
+/// This can be used to create a storage with the `'static` lifetime duration
+/// that is initialized lazily.
+///
+/// See [the module-level documentation][3] for an example.
+///
+/// # Example
+///
+/// The following example uses `bind_uninit` as an alternative to
+/// [`cortex_m::singleton!`][6] with no runtime checking.
+///
+#[doc = crate::tests::doc_test!(
+/// ```rust
+/// use r3::{
+///     kernel::{StaticTask, StaticTimer},
+///     bind::{bind, bind_uninit},
+///     time::Duration,
+///     prelude::*,
+/// };
+/// use core::mem::MaybeUninit as Mu;
+///
+/// # type Objects = ();
+/// const fn configure_app<C>(cfg: &mut Cfg<C>)
+/// where
+///     C: ~const traits::CfgBase<System = System>,
+/// {
+///     bind(
+///         (bind_uninit(cfg).take_mut(), bind_uninit(cfg).take_mut()),
+///         |cell0: &'static mut Mu<_>, cell1: &'static mut Mu<_>| {
+///             // Put a value in `cell0` and get a `'static` reference to it
+///             let ref0: &'static mut i32 = cell0.write(42);
+///
+///             // And so on
+///             let ref1: &'static mut &'static mut i32 = cell1.write(ref0);
+///
+///             assert_eq!(ref1, &mut &mut 42);
+///             # exit(0);
+///         }
+///     ).unpure().finish(cfg);
+/// }
+/// ```
+)]
+///
+/// [1]: Bind::define
+/// [2]: BindDefiner::init
+/// [3]: self#examples
+/// [4]: core::mem::MaybeUninit::uninit
+/// [5]: BindDefiner::finish
+/// [6]: https://docs.rs/cortex-m/0.7.4/cortex_m/macro.singleton.html
+#[inline]
+pub const fn bind_uninit<'pool, T, C>(
+    cfg: &mut cfg::Cfg<'pool, C>,
+) -> Bind<'pool, C::System, core::mem::MaybeUninit<T>>
+where
+    T: 'static,
+    C: ~const raw_cfg::CfgBase,
+    C::System: raw::KernelBase + cfg::KernelStatic,
+{
+    Bind::define()
+        .init(core::mem::MaybeUninit::uninit)
+        .finish(cfg)
 }
