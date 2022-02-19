@@ -9,7 +9,9 @@
 #![no_main]
 #![cfg(target_os = "none")]
 use r3::{
-    kernel::{prelude::*, StartupHook, StaticTask},
+    bind::bind,
+    kernel::{prelude::*, StaticTask},
+    prelude::*,
     sync::StaticMutex,
 };
 use r3_port_arm_m as port;
@@ -73,10 +75,10 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    StartupHook::define()
-        .start(|| {
+    let (rp2040_resets, rp2040_usbctrl_regs, rp2040_sio, rp2040_pads_bank0, rp2040_io_bank0) =
+        bind((), || {
             // Configure peripherals
-            let p = unsafe { rp2040::Peripherals::steal() };
+            let p = rp2040::Peripherals::take().unwrap();
             support_rp2040::clock::init_clock(
                 &p.CLOCKS,
                 &p.XOSC,
@@ -106,11 +108,19 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
                 support_rp2040::stdout::set_stdout(uart0.into_nb_writer());
             }
+
+            (p.RESETS, p.USBCTRL_REGS, p.SIO, p.PADS_BANK0, p.IO_BANK0)
         })
-        .finish(b);
+        .unpure()
+        .finish(b)
+        .unzip();
 
     if USE_USB_UART {
-        support_rp2040::usbstdio::configure::<_, SystemTraits>(b);
+        support_rp2040::usbstdio::configure::<_, SystemTraits>(
+            b,
+            rp2040_resets,
+            rp2040_usbctrl_regs,
+        );
     }
 
     SystemTraits::configure_systick(b);
@@ -120,7 +130,17 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .priority(2)
         .active(true)
         .finish(b);
-    let task2 = StaticTask::define().start(task2_body).priority(3).finish(b);
+    let task2 = StaticTask::define()
+        .start_with_bind(
+            (
+                rp2040_sio.borrow_mut(),
+                rp2040_pads_bank0.borrow_mut(),
+                rp2040_io_bank0.borrow_mut(),
+            ),
+            task2_body,
+        )
+        .priority(3)
+        .finish(b);
 
     let mutex1 = StaticMutex::define().finish(b);
 
@@ -137,30 +157,44 @@ fn task1_body() {
     COTTAGE.task2.activate().unwrap();
 }
 
-fn task2_body() {
-    let p = unsafe { rp2040::Peripherals::steal() };
-
+fn task2_body(
+    rp2040_sio: &mut rp2040::SIO,
+    rp2040_pads_bank0: &mut rp2040::PADS_BANK0,
+    rp2040_io_bank0: &mut rp2040::IO_BANK0,
+) {
     // <https://github.com/jannic/rp-microcontroller-rs/blob/master/boards/rp-pico/examples/blink/main.rs>
     // TODO: Documentate what this code does
     let pin = 25;
 
-    p.SIO.gpio_oe_clr.write(|w| unsafe { w.bits(1 << pin) });
-    p.SIO.gpio_out_clr.write(|w| unsafe { w.bits(1 << pin) });
+    rp2040_sio
+        .gpio_oe_clr
+        .write(|w| unsafe { w.bits(1 << pin) });
+    rp2040_sio
+        .gpio_out_clr
+        .write(|w| unsafe { w.bits(1 << pin) });
 
-    p.PADS_BANK0
+    rp2040_pads_bank0
         .gpio25
         .write(|w| w.ie().bit(true).od().bit(false));
 
-    p.IO_BANK0.gpio25_ctrl.write(|w| w.funcsel().sio_25());
+    rp2040_io_bank0.gpio25_ctrl.write(|w| w.funcsel().sio_25());
 
-    p.SIO.gpio_oe_set.write(|w| unsafe { w.bits(1 << pin) });
-    p.SIO.gpio_out_set.write(|w| unsafe { w.bits(1 << pin) });
+    rp2040_sio
+        .gpio_oe_set
+        .write(|w| unsafe { w.bits(1 << pin) });
+    rp2040_sio
+        .gpio_out_set
+        .write(|w| unsafe { w.bits(1 << pin) });
 
     loop {
         // Blink the LED
-        p.SIO.gpio_out_set.write(|w| unsafe { w.bits(1 << pin) });
+        rp2040_sio
+            .gpio_out_set
+            .write(|w| unsafe { w.bits(1 << pin) });
         System::sleep(r3::time::Duration::from_millis(100)).unwrap();
-        p.SIO.gpio_out_clr.write(|w| unsafe { w.bits(1 << pin) });
+        rp2040_sio
+            .gpio_out_clr
+            .write(|w| unsafe { w.bits(1 << pin) });
 
         support_rp2040::sprintln!("time = {:?}", System::time().unwrap());
         System::sleep(r3::time::Duration::from_millis(900)).unwrap();

@@ -1,5 +1,6 @@
 use r3::{
-    kernel::{InterruptLine, InterruptNum, StartupHook, StaticInterruptHandler, StaticTask},
+    bind::bind,
+    kernel::{InterruptLine, InterruptNum, StaticInterruptHandler, StaticTask},
     prelude::*,
     sync::StaticMutex,
 };
@@ -54,36 +55,39 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    StartupHook::define()
-        .start(|| {
-            // Configure peripherals
-            let p = unsafe { rp2040::Peripherals::steal() };
-            support_rp2040::clock::init_clock(
-                &p.CLOCKS,
-                &p.XOSC,
-                &p.PLL_SYS,
-                &p.PLL_USB,
-                &p.RESETS,
-                &p.WATCHDOG,
-            );
+    let (rp2040_resets, rp2040_usbctrl_regs) = bind((), || {
+        // Configure peripherals
+        let p = unsafe { rp2040::Peripherals::steal() };
+        support_rp2040::clock::init_clock(
+            &p.CLOCKS,
+            &p.XOSC,
+            &p.PLL_SYS,
+            &p.PLL_USB,
+            &p.RESETS,
+            &p.WATCHDOG,
+        );
 
-            // Reset and enable IO bank 0
-            p.RESETS
-                .reset
-                .modify(|_, w| w.pads_bank0().set_bit().io_bank0().set_bit());
-            p.RESETS
-                .reset
-                .modify(|_, w| w.pads_bank0().clear_bit().io_bank0().clear_bit());
-            while p.RESETS.reset_done.read().pads_bank0().bit_is_clear() {}
-            while p.RESETS.reset_done.read().io_bank0().bit_is_clear() {}
+        // Reset and enable IO bank 0
+        p.RESETS
+            .reset
+            .modify(|_, w| w.pads_bank0().set_bit().io_bank0().set_bit());
+        p.RESETS
+            .reset
+            .modify(|_, w| w.pads_bank0().clear_bit().io_bank0().clear_bit());
+        while p.RESETS.reset_done.read().pads_bank0().bit_is_clear() {}
+        while p.RESETS.reset_done.read().io_bank0().bit_is_clear() {}
 
-            // Boot the core1 kernel
-            // Safety: We are core0 and calling this function only once
-            unsafe { crate::core1::core1_launch(&p.SIO, &p.PSM) };
-        })
-        .finish(b);
+        // Boot the core1 kernel
+        // Safety: We are core0 and calling this function only once
+        unsafe { crate::core1::core1_launch(&p.SIO, &p.PSM) };
 
-    support_rp2040::usbstdio::configure::<_, SystemTraits>(b);
+        (p.RESETS, p.USBCTRL_REGS)
+    })
+    .unpure()
+    .finish(b)
+    .unzip();
+
+    support_rp2040::usbstdio::configure::<_, SystemTraits>(b, rp2040_resets, rp2040_usbctrl_regs);
 
     SystemTraits::configure_systick(b);
 
