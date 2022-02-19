@@ -19,6 +19,7 @@
 #![feature(const_ptr_offset_from)]
 #![feature(const_cell_into_inner)]
 #![feature(const_precise_live_drops)]
+#![feature(maybe_uninit_uninit_array)]
 #![feature(type_alias_impl_trait)]
 #![feature(type_changing_struct_update)]
 #![feature(generic_associated_types)]

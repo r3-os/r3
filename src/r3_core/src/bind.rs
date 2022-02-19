@@ -1616,4 +1616,54 @@ seq_macro::seq!(I in 0..16 {
     impl_binder_on_tuples! { @start #( (Binder~I, RuntimeBinder~I, I) )* }
 });
 
+impl<const LEN: usize, Binder> const self::Binder for [Binder; LEN]
+where
+    Binder: ~const self::Binder,
+{
+    type Runtime = [Binder::Runtime; LEN];
+
+    fn register_dependency(&self, ctx: &mut CfgBindCtx<'_>) {
+        // FIXME: `for` loops are unusable in `const fn`
+        let mut i = 0;
+        while i < LEN {
+            self[i].register_dependency(ctx);
+            i += 1;
+        }
+    }
+
+    fn into_runtime_binder(self) -> Self::Runtime {
+        unsafe {
+            // FIXME: `[T; N]::map` is unusable in `const fn`
+            let mut out: [MaybeUninit<Binder::Runtime>; LEN] = MaybeUninit::uninit_array();
+            let this = MaybeUninit::new(self);
+            // FIXME: `for` loops are unusable in `const fn`
+            let mut i = 0;
+            while i < LEN {
+                out[i] = MaybeUninit::new(
+                    this.as_ptr()
+                        .cast::<Binder>()
+                        .wrapping_add(i)
+                        .read()
+                        .into_runtime_binder(),
+                );
+                i += 1;
+            }
+            crate::utils::mem::transmute(out)
+        }
+    }
+}
+
+impl<const LEN: usize, RuntimeBinder> self::RuntimeBinder for [RuntimeBinder; LEN]
+where
+    RuntimeBinder: self::RuntimeBinder,
+{
+    type Target<'call> = [RuntimeBinder::Target<'call>; LEN];
+
+    #[inline]
+    unsafe fn materialize<'call>(self) -> Self::Target<'call> {
+        // Safety: Upheld by the caller
+        self.map(|x| unsafe { RuntimeBinder::materialize(x) })
+    }
+}
+
 // ----------------------------------------------------------------------------

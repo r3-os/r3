@@ -112,6 +112,8 @@ assert_fn_bind_impls! {
             BindBorrow<'static, System, T0>,
             BindBorrow<'static, System, T1>)>),
 
+    (<fn([&T; 42])>: FnBind<([BindRef<System, T>; 42],), Output = ()>),
+
     // Taking a generic-lifetime reference
     (<fn(&T)>: FnBind<(BindBorrow<'static, System, T>,), Output = ()>),
     // TODO: (<fn(&T)>: FnBind<(BindBorrowMut<'static, System, T>,), Output = ()>),
