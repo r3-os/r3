@@ -315,7 +315,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
     /// bound function.
     pub const fn take_mut(&self) -> BindTakeMut<'pool, System, T>
     where
-        T: Sync,
+        T: Send,
     {
         BindTakeMut(*self)
     }
