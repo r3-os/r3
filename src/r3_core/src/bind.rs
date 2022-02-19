@@ -117,7 +117,7 @@ The following features are planned and may be implemented in the future:
 [14]: crate::kernel::StartupHook
 "#}
 
-use core::{cell::UnsafeCell, mem::MaybeUninit};
+use core::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit};
 
 use crate::{
     closure::Closure,
@@ -350,7 +350,7 @@ impl<'pool, System, T> Bind<'pool, System, T> {
 pub struct BindDefiner<System, Binder, Func> {
     _phantom: PhantomInvariant<System>,
     binder: Binder,
-    func: Func,
+    func: Option<Func>,
 }
 
 mod private_bind_definer {
@@ -369,7 +369,7 @@ impl<System>
         Self {
             _phantom: Init::INIT,
             binder: private_bind_definer::BinderUnspecified,
-            func: private_bind_definer::FuncUnspecified,
+            func: Some(private_bind_definer::FuncUnspecified),
         }
     }
 }
@@ -388,7 +388,7 @@ impl<System>
     /// Use the function to initialize the binding contents.
     pub const fn init<Func>(self, func: Func) -> BindDefiner<System, (), Func> {
         BindDefiner {
-            func,
+            func: Some(func),
             binder: (),
             ..self
         }
@@ -401,10 +401,45 @@ impl<System>
         func: Func,
     ) -> BindDefiner<System, Binder, Func> {
         BindDefiner {
-            func,
+            func: Some(func),
             binder,
             ..self
         }
+    }
+
+    /// Zero-initialize the binding contents.
+    pub const fn zeroed<T: ZeroInit>(self) -> BindDefiner<System, (), FnBindNever<T>> {
+        // Safety: `T: ZeroInit` means it's safe to zero-initialize
+        unsafe { self.zeroed_unchecked() }
+    }
+
+    /// Zero-initialize the binding contents even if it might be unsafe.
+    ///
+    /// # Safety
+    ///
+    /// If zero initialization is not a valid bit pattern for `T`, accessing the
+    /// contents may result in an undefined behavior.
+    pub const unsafe fn zeroed_unchecked<T>(self) -> BindDefiner<System, (), FnBindNever<T>> {
+        BindDefiner {
+            // Hunk pool is zero-initialized by default
+            // [ref:hunk_pool_is_zeroed]
+            func: None,
+            binder: (),
+            ..self
+        }
+    }
+
+    /// Skip the initialization of the binding contents even if it might be
+    /// unsafe.
+    ///
+    /// # Safety
+    ///
+    /// If the uninitialized state is not valid for `T`, accessing the
+    /// contents may result in an undefined behavior.
+    pub const unsafe fn uninit_unchecked<T>(self) -> BindDefiner<System, (), FnBindNever<T>> {
+        // FIXME: True uninitialized hunks would be more desirable
+        // Safety: Upheld by the caller
+        unsafe { self.zeroed_unchecked() }
     }
 }
 
@@ -444,19 +479,25 @@ impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
         let bind_i = bind_registry.borrow().binds.len();
 
         // Construct the initializer for the binding being created
-        let mut ctx = CfgBindCtx {
-            _phantom: &(),
-            usage: BindUsage::Bind(bind_i),
+        let initializer = if let Some(func) = self.func {
+            let mut ctx = CfgBindCtx {
+                _phantom: &(),
+                usage: BindUsage::Bind(bind_i),
+            };
+            let initializer = func.bind(self.binder, &mut ctx);
+            Some(Closure::from_fn_const(
+                #[inline]
+                move || {
+                    let output = initializer();
+                    // Safety: There's no conflicting borrows
+                    unsafe { hunk.0.get().write(MaybeUninit::new(output)) };
+                },
+            ))
+        } else {
+            // `(None, ())` should be harmless to `forget`
+            core::mem::forget((self.func, self.binder));
+            None
         };
-        let initializer = self.func.bind(self.binder, &mut ctx);
-        let initializer = Closure::from_fn_const(
-            #[inline]
-            move || {
-                let output = initializer();
-                // Safety: There's no conflicting borrows
-                unsafe { hunk.0.get().write(MaybeUninit::new(output)) };
-            },
-        );
 
         {
             let mut bind_registry = bind_registry.borrow_mut();
@@ -464,7 +505,7 @@ impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
             let allocator = bind_registry.binds.allocator().clone();
             bind_registry
                 .binds
-                .push(CfgBindInfo::new(Some(initializer), allocator));
+                .push(CfgBindInfo::new(initializer, allocator));
         }
 
         Bind {
@@ -1096,6 +1137,30 @@ macro_rules! impl_fn_bind {
 }
 
 seq_macro::seq!(I in 0..16 { impl_fn_bind! { @start #( (Binder~I, RuntimeBinder~I, field~I, I) )* } });
+
+/// An uninhabited [`FnBind`] implementation.
+///
+/// # Stability
+///
+/// This trait is covered by the application-side API stability guarantee.
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct FnBindNever<T> {
+    _phantom: PhantomData<T>,
+    uninhabited: core::convert::Infallible,
+}
+
+impl<T: 'static, Binder> const FnBind<Binder> for FnBindNever<T>
+where
+    Binder: ~const self::Binder,
+{
+    type Output = T;
+    type BoundFn = fn() -> T; // FIXME: Make this uninhabited
+
+    fn bind(self, _: Binder, _: &mut CfgBindCtx<'_>) -> Self::BoundFn {
+        match self.uninhabited {}
+    }
+}
 
 // Binder traits
 // ----------------------------------------------------------------------------

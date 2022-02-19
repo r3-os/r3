@@ -92,6 +92,7 @@ impl<T> HunkIniter<T> for ZeroInitTag {
     const NEEDS_INIT: bool = false;
     fn init(_: &mut mem::MaybeUninit<T>) {
         // Do nothing - a hunk pool is zero-initialized by default
+        // [ref:hunk_pool_is_zeroed]
     }
 }
 

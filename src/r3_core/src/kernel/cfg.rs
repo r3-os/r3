@@ -646,7 +646,8 @@ pub macro attach_phase1($params:expr, impl CfgPhase1<$System:ty> for $Ty:ty $(,)
 
         const STATIC_PARAMS: cfg::CfgPhase1Data<$System> = $params;
 
-        // Instantiate hunks
+        // Instantiate the hunk pool with zero-initialization [tag:hunk_pool_is_zeroed]
+        // FIXME: This isn't zero-initialization!
         static HUNK_POOL: RawCell<
             AlignedStorage<{ STATIC_PARAMS.hunk_pool_len }, { STATIC_PARAMS.hunk_pool_align }>,
         > = Init::INIT;

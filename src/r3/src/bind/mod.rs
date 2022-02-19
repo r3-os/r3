@@ -114,7 +114,7 @@ use r3_core::kernel::{cfg, raw, raw_cfg};
 
 pub use r3_core::bind::{
     Bind, BindBorrow, BindBorrowMut, BindDefiner, BindRef, BindTable, BindTake, BindTakeMut,
-    BindTakeRef, Binder, ExecutableDefiner, ExecutableDefinerExt, FnBind, UnzipBind,
+    BindTakeRef, Binder, ExecutableDefiner, ExecutableDefinerExt, FnBind, FnBindNever, UnzipBind,
     INIT_HOOK_PRIORITY,
 };
 
@@ -193,7 +193,6 @@ where
     C: ~const raw_cfg::CfgBase,
     C::System: raw::KernelBase + cfg::KernelStatic,
 {
-    Bind::define()
-        .init(core::mem::MaybeUninit::uninit)
-        .finish(cfg)
+    // Safety: `MaybeUninit` is safe to leave uninitialized
+    unsafe { Bind::define().uninit_unchecked().finish(cfg) }
 }
