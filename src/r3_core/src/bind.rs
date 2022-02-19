@@ -344,6 +344,28 @@ impl<'pool, System, T> Bind<'pool, System, T> {
     }
 }
 
+/// # Miscellaneous Methods
+impl<'pool, System, T> Bind<'pool, System, T> {
+    /// Get the raw [`Hunk`][] providing the backing store for this binding.
+    ///
+    /// The referent type of the returned `Hunk` is an opaque type that has the
+    /// same representation as `T` (because of `#[repr(transparent)]`). You
+    /// can use [`Hunk::transmute`][] to reinterpret it as you see fit.
+    ///
+    /// Calling this method alone does not extend the binding's lifetime nor
+    /// prevent conflicting borrows from occurring. A dummy binding can be used
+    /// to express the manner in which the raw hunk is used outside the
+    /// configuration system's knowledge. For example, if the raw hunk is going
+    /// to be mutably borrowed, the caller of this method should create a dummy
+    /// [unpure][1] binding that consumes the binding by [`take_mut`][2].
+    ///
+    /// [1]: BindDefiner::unpure
+    /// [2]: Bind::take_mut
+    pub const fn hunk(&self) -> BindHunk<System, T> {
+        self.hunk
+    }
+}
+
 /// The definer (static builder) for [`Bind`].
 #[doc = include_str!("./common.md")]
 #[must_use = "must call `finish()` to complete registration"]
