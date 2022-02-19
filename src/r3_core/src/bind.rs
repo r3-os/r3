@@ -449,11 +449,14 @@ impl<System, Binder, Func> BindDefiner<System, Binder, Func> {
             usage: BindUsage::Bind(bind_i),
         };
         let initializer = self.func.bind(self.binder, &mut ctx);
-        let initializer = Closure::from_fn_const(move || {
-            let output = initializer();
-            // Safety: There's no conflicting borrows
-            unsafe { hunk.0.get().write(MaybeUninit::new(output)) };
-        });
+        let initializer = Closure::from_fn_const(
+            #[inline]
+            move || {
+                let output = initializer();
+                // Safety: There's no conflicting borrows
+                unsafe { hunk.0.get().write(MaybeUninit::new(output)) };
+            },
+        );
 
         {
             let mut bind_registry = bind_registry.borrow_mut();
@@ -1531,6 +1534,7 @@ macro_rules! impl_binder_on_tuples {
 
             #[allow(unused_unsafe)]
             #[allow(unused_variables)]
+            #[inline]
             unsafe fn materialize<'call>(self) -> Self::Target<'call> {
                 unsafe {
                     ( $( $RuntimeBinderI::materialize(self.$I), )* )

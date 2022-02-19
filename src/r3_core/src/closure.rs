@@ -172,11 +172,13 @@ impl Closure {
     }
 }
 
+#[inline]
 unsafe extern "C" fn trampoline_zst<T: FnOnce()>(_: ClosureEnv) {
     let func: T = unsafe { transmute(()) };
     func()
 }
 
+#[inline]
 unsafe extern "C" fn trampoline_indirect<T: FnOnce()>(env: ClosureEnv) {
     let p_func: *const T = unsafe { transmute(env) };
     // FIXME: Since there's no trait indicating the lack of interior mutability,
@@ -234,6 +236,7 @@ impl<T: FnOnce(&'static P0) + Copy + Send + 'static, P0: Sync + 'static> const I
     for (&'static P0, T)
 {
     fn into_closure_const(self) -> Closure {
+        #[inline]
         unsafe extern "C" fn trampoline_ptr_spec<T: FnOnce(&'static P0), P0: 'static>(
             env: ClosureEnv,
         ) {
@@ -257,6 +260,7 @@ impl<T: FnOnce(&'static P0) + Copy + Send + 'static, P0: Sync + 'static> const I
 // FIXME: See above
 impl<T: FnOnce(usize) + Copy + Send + 'static> const IntoClosureConst for (usize, T) {
     fn into_closure_const(self) -> Closure {
+        #[inline]
         unsafe extern "C" fn trampoline_usize_spec<T: FnOnce(usize)>(env: ClosureEnv) {
             let p0: usize = unsafe { transmute(env) };
             let func: T = unsafe { transmute(()) };
