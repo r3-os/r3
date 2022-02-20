@@ -139,8 +139,6 @@ pub const fn bind<System, Binder, Func>(
 /// This can be used to create a storage with the `'static` lifetime duration
 /// that is initialized lazily.
 ///
-/// See [the module-level documentation][3] for an example.
-///
 /// # Example
 ///
 /// The following example uses `bind_uninit` as an alternative to
@@ -180,7 +178,6 @@ pub const fn bind<System, Binder, Func>(
 ///
 /// [1]: Bind::define
 /// [2]: BindDefiner::init
-/// [3]: self#examples
 /// [4]: core::mem::MaybeUninit::uninit
 /// [5]: BindDefiner::finish
 /// [6]: https://docs.rs/cortex-m/0.7.4/cortex_m/macro.singleton.html
