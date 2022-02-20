@@ -196,3 +196,39 @@ where
     // Safety: `MaybeUninit` is safe to leave uninitialized
     unsafe { Bind::define().uninit_unchecked().finish(cfg) }
 }
+
+/// A shorthand for
+/// [`Bind`][]`::`[`define`][1]`().`[`init`][2]`(`[`default`][3]`)`.
+///
+/// [1]: Bind::define
+/// [2]: BindDefiner::init_with_bind
+/// [3]: core::default::default
+///
+/// # Example
+///
+#[doc = crate::tests::doc_test!(
+/// ```rust
+/// use r3::{bind::{bind, bind_default}, prelude::*,};
+///
+/// # type Objects = ();
+/// const fn configure_app<C>(cfg: &mut Cfg<C>)
+/// where
+///     C: ~const traits::CfgBase<System = System>,
+/// {
+///     let b = bind_default(cfg);
+///     bind((b.borrow(),), |b: &Option<i32>| {
+///         assert!(b.is_none());
+/// #       exit(0);
+///     }).unpure().finish(cfg);
+/// }
+/// ```
+)]
+#[inline]
+pub const fn bind_default<'pool, T, C>(cfg: &mut cfg::Cfg<'pool, C>) -> Bind<'pool, C::System, T>
+where
+    T: Default + 'static,
+    C: ~const raw_cfg::CfgBase,
+    C::System: raw::KernelBase + cfg::KernelStatic,
+{
+    Bind::define().init(Default::default).finish(cfg)
+}
