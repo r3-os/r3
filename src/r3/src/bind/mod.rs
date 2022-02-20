@@ -1,4 +1,3 @@
-#![doc = include_str!("../common.md")]
 #![doc = r3_core::bind::__internal_module_doc!("r3_core", r#"
 <div class="admonition-follows"></div>
 
@@ -110,6 +109,7 @@
 /// }
 /// ```
 )]
+#![doc = include_str!("../common.md")]
 use r3_core::kernel::{cfg, raw, raw_cfg};
 
 pub use r3_core::bind::{
