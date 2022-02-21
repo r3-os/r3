@@ -134,10 +134,15 @@ where
     }
 }
 
+#[macropol::macropol] // Replace `$metavariables` in literals and doc comments
 macro_rules! impl_source_setter {
-    (impl $DefinerName:ident<$($Param:tt)*) => {
+    (
+        $( #[$($meta:tt)*] )*
+        impl $DefinerName:ident<$($Param:tt)*
+    ) => {
         impl_source_setter! {
             @iter
+            attributes: {{ $( #[$($meta)*] )* }},
             definer_name: {{ $DefinerName }},
             generics: {{ }},
             definer_ty: {{ $DefinerName< }},
@@ -152,6 +157,7 @@ macro_rules! impl_source_setter {
     // These rules consume `param_template` one token tree by one and produce
     // `generics` and `definer_ty`.
     (@iter
+        attributes: {$attributes:tt},
         definer_name: {$definer_name:tt},
         generics: {$generics:tt},
         definer_ty: {{ $( $definer_ty:tt )* }},
@@ -159,11 +165,12 @@ macro_rules! impl_source_setter {
         concrete_source_var: {$concrete_source_var:tt},
     ) => {
         $(
-            compile_error!(concat!("Extra token in input: `", stringify!($rest), "`"));
+            compile_error!(concat!("Extra token in input: `$&rest`"));
         )*
 
         impl_source_setter! {
             @end
+            attributes: {$attributes},
             definer_name: {$definer_name},
             generics: {$generics},
             definer_ty: {{ $( $definer_ty )* > }},
@@ -172,6 +179,7 @@ macro_rules! impl_source_setter {
     };
 
     (@iter
+        attributes: {$attributes:tt},
         definer_name: {$definer_name:tt},
         generics: {{ $( $generics:tt )* }},
         definer_ty: {{ $( $definer_ty:tt )* }},
@@ -180,6 +188,7 @@ macro_rules! impl_source_setter {
     ) => {
         impl_source_setter! {
             @iter
+            attributes: {$attributes},
             definer_name: {$definer_name},
             generics: {{ $( $generics )* T }},
             definer_ty: {{ $( $definer_ty )* $( $concrete_source_var )* }},
@@ -189,6 +198,7 @@ macro_rules! impl_source_setter {
     };
 
     (@iter
+        attributes: {$attributes:tt},
         definer_name: {$definer_name:tt},
         generics: {{ $( $generics:tt )* }},
         definer_ty: {{ $( $definer_ty:tt )* }},
@@ -197,6 +207,7 @@ macro_rules! impl_source_setter {
     ) => {
         impl_source_setter! {
             @iter
+            attributes: {$attributes},
             definer_name: {$definer_name},
             generics: {{ $( $generics )* $any }},
             definer_ty: {{ $( $definer_ty )* $any }},
@@ -208,6 +219,13 @@ macro_rules! impl_source_setter {
     // Output
     // -------------------------------------------------------------------
     (@end
+        attributes: {{
+            // When this attribute is present, `init[_bind]` will automatically
+            // wrap the output with the specified wrapper type.
+            $( #[autowrap($wrap_with:expr, $Wrapper:ident)] )?
+            // The opposite of `#[autowrap]`. `$no_autowrap` == `()`
+            $( #[no_autowrap$no_autowrap:tt] )?
+        }},
         definer_name: {{ $definer_name:ident }},
         // Generic parameters. `#Source` is replaced with `T` here.
         generics: {{ $( $generics:tt )* }},
@@ -221,7 +239,7 @@ macro_rules! impl_source_setter {
         mod __pr {
             pub use crate::{
                 sync::source::{Source, NewBindSource, TakeBindSource, HunkSource},
-                bind::Bind,
+                bind::{Bind, fn_bind_map, FnBindMap},
                 hunk::Hunk,
             };
             pub use core::{cell::UnsafeCell, mem::MaybeUninit};
@@ -230,6 +248,25 @@ macro_rules! impl_source_setter {
         macro_rules! Definer {
             ( $( $concrete_source_var )*:ty ) => { $( $definer_ty )* };
         }
+
+        // `#[autowrap]`
+        $(
+            // FIXME: False `type_alias_bounds`; the `'static` bound is required
+            #[allow(type_alias_bounds)]
+            type MappedFunc<Func, T: 'static> = __pr::FnBindMap<
+                Func,
+                impl FnOnce(T) -> $Wrapper<T> + Send + Copy + 'static
+            >;
+            type AutoWrapped<T> = $Wrapper<T>;
+            macro MappedFunc($Func:ty, $T:ty) { MappedFunc<$Func, $T> }
+        )?
+
+        // `#[no_autowrap]`
+        $(
+            type AutoWrapped<T> = T;
+            /// $&no_autowrap
+            macro MappedFunc($Func:ty, $T:ty) { $Func }
+        )?
 
         /// # Initial Value
         ///
@@ -241,7 +278,10 @@ macro_rules! impl_source_setter {
         // [tag:default_source_is_default] `DefaultSource<T>` is the default, so
         // the following `impl` block allows up to only one modification to
         // `Self::source`.
-        impl<$( $generics )*> Definer!(DefaultSource<T>) {
+        impl<$( $generics )*> Definer!(DefaultSource<AutoWrapped<T>>)
+        where
+            T: 'static
+        {
             /// Use the specified function to provide the initial value.
             ///
             /// The semantics of the method's parameter is similar to that of
@@ -249,16 +289,17 @@ macro_rules! impl_source_setter {
             ///
             /// [1]: crate::bind::BindDefiner::init
             pub const fn init<Func>(self, func: Func)
-                -> Definer!(__pr::NewBindSource<(), Func>)
+                -> Definer!(__pr::NewBindSource<(), MappedFunc!(Func, T)>)
             where
                 // Demand the unchangedness of `Source::Target` so that the
                 // initial creation of `Self` doesn't have an unconstrained `T`
-                __pr::NewBindSource<(), Func>: __pr::Source<System, Target = T>,
+                __pr::NewBindSource<(), MappedFunc!(Func, T)>:
+                    __pr::Source<System, Target = AutoWrapped<T>>,
             {
                 $definer_name {
                     source: __pr::NewBindSource {
                         binder: (),
-                        func,
+                        func $( : __pr::fn_bind_map(func, $wrap_with) )?,
                     },
                     ..self
                 }
@@ -275,16 +316,17 @@ macro_rules! impl_source_setter {
                 self,
                 binder: Binder,
                 func: Func,
-            ) -> Definer!(__pr::NewBindSource<Binder, Func>)
+            ) -> Definer!(__pr::NewBindSource<Binder, MappedFunc!(Func, T)>)
             where
                 // Demand the unchangedness of `Source::Target` so that the
                 // initial creation of `Self` doesn't have an unconstrained `T`
-                __pr::NewBindSource<Binder, Func>: __pr::Source<System, Target = T>,
+                __pr::NewBindSource<Binder, MappedFunc!(Func, T)>:
+                    __pr::Source<System, Target = AutoWrapped<T>>,
             {
                 $definer_name {
                     source: __pr::NewBindSource {
                         binder,
-                        func,
+                        func $( : __pr::fn_bind_map(func, $wrap_with) )?,
                     },
                     ..self
                 }
@@ -292,11 +334,22 @@ macro_rules! impl_source_setter {
 
             /// [Take] the specified binding to use as this object's contents.
             ///
+            $(
+            /// <div class="admonition-follows"></div>
+            ///
+            /// > **Warning:** Unlike [`mutex::Definer::take_bind`][1], this
+            /// > method expects that `T` is already wrapped by `$&Wrapper` in
+            /// > the specified binding.
+            ///
+            /// [1]: crate::sync::mutex::Definer::take_bind
+            /// [2]: crate::bind::Bind::transmute
+            )?
+            ///
             /// [Take]: crate::bind::Bind::take_mut
             pub const fn take_bind<'pool>(
                 self,
-                bind: __pr::Bind<'pool, System, T>,
-            ) -> Definer!(__pr::TakeBindSource<'pool, System, T>) {
+                bind: __pr::Bind<'pool, System, AutoWrapped<T>>,
+            ) -> Definer!(__pr::TakeBindSource<'pool, System, AutoWrapped<T>>) {
                 $definer_name {
                     source: __pr::TakeBindSource(bind),
                     ..self
@@ -304,6 +357,22 @@ macro_rules! impl_source_setter {
             }
 
             /// Use the specified existing hunk as this object's storage.
+            ///
+            $(
+            /// <div class="admonition-follows"></div>
+            ///
+            /// > **Warning:**
+            /// > Unlike [`mutex::Definer::wrap_hunk_unchecked`][1], this
+            /// > method expects that `T` is already wrapped by `$&Wrapper` in
+            /// > the specified binding. *A care must be taken not to
+            /// > accidentally [transmute][2] `T` into `$&Wrapper<T>`* when
+            /// > passing a hunk that has the same representation as `T` but
+            /// > requires transmutation due to having a different set of
+            /// > wrappers, such as `MaybeUninit` and `UnsafeCell`.
+            ///
+            /// [1]: crate::sync::mutex::Definer::take_bind
+            /// [2]: crate::hunk::Hunk::transmute
+            )?
             ///
             /// # Safety
             ///
@@ -313,8 +382,8 @@ macro_rules! impl_source_setter {
             /// the time the boot phase completes.
             pub const unsafe fn wrap_hunk_unchecked<'pool>(
                 self,
-                hunk: __pr::Hunk<System, __pr::UnsafeCell<__pr::MaybeUninit<T>>>,
-            ) -> Definer!(__pr::HunkSource<System, T>)
+                hunk: __pr::Hunk<System, __pr::UnsafeCell<__pr::MaybeUninit<AutoWrapped<T>>>>,
+            ) -> Definer!(__pr::HunkSource<System, AutoWrapped<T>>)
             {
                 $definer_name {
                     source: __pr::HunkSource(hunk),

@@ -18,7 +18,7 @@ While much of the application-level API has retained its general shape, there ar
  - `r3::kernel::ResultCode::BadId` was renamed to `NoAccess` and covers general protection failures detected by a now-optional protection mechanism. This means that application and library code can't rely on `NoAccess` being returned reliably anymore (it can't anyway once owned handles are implemented), and that a kernel implementation may use this error code to indicate that a given kernel object ID might be valid, but the caller lacks the necessary privileges to access that object.
  - The `chrono` Cargo feature was renamed to `chrono_0p4`.
  - `r3::sync` is now gated by `cfg(feature = "sync")`.
- - `r3::sync::Mutex` is now backed by bindings (`Bind`). The default value is now `<T as Default>::default()` instead of `<T as Init>::INIT`. Additional options are available, which means you no longer have to implement `Init` just to put a custom type in `Mutex`, and that each `Mutex` can have a distinct initial value.
+ - `r3::sync::{Mutex, RecursiveMutex}` is now backed by bindings (`Bind`). The default value is now `<T as Default>::default()` instead of `<T as Init>::INIT`. Additional options are available, which means you no longer have to implement `Init` just to put a custom type in `Mutex`, and that each `Mutex` can have a distinct initial value.
 
 TODO
 

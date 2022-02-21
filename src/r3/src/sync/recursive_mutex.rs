@@ -1,18 +1,20 @@
-use core::{cell::Cell, fmt, marker::PhantomData, ops::Deref};
+use core::{cell::Cell, fmt, marker::PhantomData, mem::MaybeUninit, ops::Deref};
 
 use crate::{
-    hunk::{DefaultInitTag, Hunk, HunkDefiner, HunkIniter},
+    hunk::Hunk,
     kernel::{
         mutex, prelude::*, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
         TryLockMutexError,
     },
+    sync::source::{DefaultSource, Source},
     utils::Init,
 };
 
 /// The definer (static builder) for [`StaticRecursiveMutex`][].
-pub struct Definer<System, T, InitTag> {
+#[doc = include_str!("../common.md")]
+pub struct Definer<System, Source> {
     mutex: mutex::MutexDefiner<System>,
-    hunk: HunkDefiner<System, MutexInner<T>, InitTag>,
+    source: Source,
 }
 
 /// A recursive mutex, which can be locked by a task for multiple times
@@ -64,45 +66,47 @@ pub struct GenericRecursiveMutex<Cell, Mutex> {
 ///         .active(true)
 ///         .finish(cfg);
 ///
-///     let mutex = StaticRecursiveMutex::define().finish(cfg);
+///     let mutex = StaticRecursiveMutex::define()
+///         .init(|| Cell::new(1))
+///         .finish(cfg);
 ///
 ///     Objects { mutex }
 /// }
 ///
 /// fn task1_body() {
 ///     let guard = COTTAGE.mutex.lock().unwrap();
-///     assert_eq!(guard.get(), 0);
-///     guard.set(1);
+///     assert_eq!(guard.get(), 1);
+///     guard.set(2);
 ///
 ///     {
 ///         // Recursive lock is allowed
 ///         let guard2 = COTTAGE.mutex.lock().unwrap();
-///         assert_eq!(guard2.get(), 1);
-///         guard2.set(2);
+///         assert_eq!(guard2.get(), 2);
+///         guard2.set(3);
 ///     }
 ///
-///     assert_eq!(guard.get(), 2);
+///     assert_eq!(guard.get(), 3);
 /// #   exit(0);
 /// }
 /// ```
 )]
 pub type StaticRecursiveMutex<System, T> =
-    GenericRecursiveMutex<Hunk<System, MutexInner<T>>, mutex::StaticMutex<System>>;
+    GenericRecursiveMutex<Hunk<System, MaybeUninit<MutexInner<T>>>, mutex::StaticMutex<System>>;
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior
 // TODO: Owned version
 
 unsafe impl<Cell, Mutex, T: Send> Send for GenericRecursiveMutex<Cell, Mutex> where
-    Cell: Deref<Target = MutexInner<T>>
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>
 {
 }
 unsafe impl<Cell, Mutex, T: Send> Sync for GenericRecursiveMutex<Cell, Mutex> where
-    Cell: Deref<Target = MutexInner<T>>
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>
 {
 }
 
-#[doc(hidden)]
+/// The inner data structure of [`GenericRecursiveMutex`][].
 pub struct MutexInner<T> {
     /// A bit field containing *the nesting count* (`bits[1..BITS]`) and
     /// *an abandonment flag* (`bits[0]`, [`LEVEL_ABANDONED`]).
@@ -123,11 +127,34 @@ pub struct MutexInner<T> {
     data: T,
 }
 
+impl<T> MutexInner<T> {
+    /// Construct `MutexInner`.
+    #[inline]
+    pub const fn new(data: T) -> Self {
+        Self {
+            level: Cell::new(0),
+            data,
+        }
+    }
+}
+
 impl<T: Init> Init for MutexInner<T> {
-    const INIT: Self = Self {
-        level: Cell::new(0),
-        data: Init::INIT,
-    };
+    const INIT: Self = Self::new(T::INIT);
+}
+
+impl<T: ~const Default> const Default for MutexInner<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::new(T::default())
+    }
+}
+
+/// Forwarded to [`Self::new`][].
+impl<T> const From<T> for MutexInner<T> {
+    #[inline]
+    fn from(x: T) -> Self {
+        Self::new(x)
+    }
 }
 
 /// The bit in [`MutexInner::level`] indicating that the nesting count is
@@ -148,7 +175,7 @@ const LEVEL_COUNT_SHIFT: u32 = 1;
 #[must_use = "if unused the GenericRecursiveMutex will immediately unlock"]
 pub struct GenericMutexGuard<'a, Cell, Mutex, T>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
     mutex: &'a GenericRecursiveMutex<Cell, Mutex>,
@@ -157,7 +184,7 @@ where
 
 unsafe impl<Cell, Mutex, T: Sync> Sync for GenericMutexGuard<'_, Cell, Mutex, T>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
 }
@@ -251,15 +278,15 @@ where
 {
     /// Construct a `Definer` to define a mutex in [a configuration
     /// function](crate#static-configuration).
-    pub const fn define() -> Definer<System, T, DefaultInitTag> {
+    pub const fn define() -> Definer<System, DefaultSource<MutexInner<T>>> {
         Definer {
             mutex: mutex::MutexRef::define(),
-            hunk: Hunk::define(),
+            source: DefaultSource::INIT, // [ref:default_source_is_default]
         }
     }
 }
 
-impl<System, T: 'static, InitTag> Definer<System, T, InitTag>
+impl<System, Source> Definer<System, Source>
 where
     System: traits::KernelMutex + traits::KernelStatic,
 {
@@ -272,18 +299,30 @@ where
     }
 }
 
-impl<System, T: 'static, InitTag: HunkIniter<MutexInner<T>>> Definer<System, T, InitTag>
+// Define methods to set `Definer::source`
+impl_source_setter!(
+    #[autowrap(MutexInner::new, MutexInner)]
+    impl Definer<System, #Source>
+);
+
+impl<System, Source> Definer<System, Source>
 where
     System: traits::KernelMutex + traits::KernelStatic,
 {
     /// Complete the definition of a mutex, returning a reference to the mutex.
     // FIXME: `~const CfgBase` is not implied - compiler bug?
-    pub const fn finish<C: ~const traits::CfgMutex<System = System> + ~const traits::CfgBase>(
+    pub const fn finish<C: ~const traits::CfgMutex<System = System> + ~const traits::CfgBase, T>(
         self,
         cfg: &mut Cfg<C>,
-    ) -> StaticRecursiveMutex<System, T> {
+    ) -> StaticRecursiveMutex<System, T>
+    where
+        Source: ~const self::Source<System, Target = MutexInner<T>>,
+    {
         GenericRecursiveMutex {
-            cell: self.hunk.finish(cfg),
+            // Safety: It's safe to unwrap `UnsafeCell` because there's already
+            // a `Cell` in `MutexInner` where it's needed. `T` is never mutably
+            // borrowed there.
+            cell: unsafe { self.source.into_unsafe_cell_hunk(cfg).transmute() },
             mutex: self.mutex.finish(cfg),
         }
     }
@@ -291,7 +330,7 @@ where
 
 impl<Cell, Mutex, T> GenericRecursiveMutex<Cell, Mutex>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
     /// Acquire the mutex, blocking the current thread until it is able to do
@@ -301,11 +340,18 @@ where
     ///
     /// This method will panic if the nesting count would overflow.
     pub fn lock(&self) -> LockResult<GenericMutexGuard<'_, Cell, Mutex, T>> {
-        let level = &self.cell.level;
+        let level;
 
         match self.mutex.lock() {
-            Ok(()) => {}
+            Ok(()) => {
+                // Safety: We are in a task, which means `self.cell` is
+                // initialized [ref:source_cell]
+                level = unsafe { &self.cell.assume_init_ref().level };
+            }
             Err(LockMutexError::WouldDeadlock) => {
+                // Safety: We are the owning task, which means `self.cell` is
+                // initialized [ref:source_cell]
+                level = unsafe { &self.cell.assume_init_ref().level };
                 level.update(|x| {
                     x.checked_add(1 << LEVEL_COUNT_SHIFT)
                         .expect("nesting count overflow")
@@ -316,6 +362,11 @@ where
             Err(LockMutexError::Interrupted) => return Err(LockError::Interrupted),
             Err(LockMutexError::BadParam) => return Err(LockError::BadParam),
             Err(LockMutexError::Abandoned) => {
+                // Safety: It being abandoned means there was a task that owned
+                // the lock, which means we are past the boot phase, which means
+                // `self.cell` is initialized [ref:source_cell]
+                level = unsafe { &self.cell.assume_init_ref().level };
+
                 // Make the nesting count consistent
                 level.set(LEVEL_ABANDONED);
                 self.mutex.mark_consistent().unwrap();
@@ -341,11 +392,18 @@ where
     ///
     /// This method will panic if the nesting count would overflow.
     pub fn try_lock(&self) -> TryLockResult<GenericMutexGuard<'_, Cell, Mutex, T>> {
-        let level = &self.cell.level;
+        let level;
 
         match self.mutex.try_lock() {
-            Ok(()) => {}
+            Ok(()) => {
+                // Safety: We are in a task, which means `self.cell` is
+                // initialized [ref:source_cell]
+                level = unsafe { &self.cell.assume_init_ref().level };
+            }
             Err(TryLockMutexError::WouldDeadlock) => {
+                // Safety: We are the owning task, which means `self.cell` is
+                // initialized [ref:source_cell]
+                level = unsafe { &self.cell.assume_init_ref().level };
                 level.update(|x| {
                     x.checked_add(1 << LEVEL_COUNT_SHIFT)
                         .expect("nesting count overflow")
@@ -356,6 +414,11 @@ where
             Err(TryLockMutexError::Timeout) => return Err(TryLockError::WouldBlock),
             Err(TryLockMutexError::BadParam) => return Err(TryLockError::BadParam),
             Err(TryLockMutexError::Abandoned) => {
+                // Safety: It being abandoned means there was a task that owned
+                // the lock, which means we are past the boot phase, which means
+                // `self.cell` is initialized [ref:source_cell]
+                level = unsafe { &self.cell.assume_init_ref().level };
+
                 // Make the nesting count consistent
                 level.set(LEVEL_ABANDONED);
                 self.mutex.mark_consistent().unwrap();
@@ -377,10 +440,13 @@ where
 
     /// Mark the state protected by the mutex as consistent.
     pub fn mark_consistent(&self) -> Result<(), MarkConsistentError> {
-        let level = &self.cell.level;
-
         match self.mutex.mark_consistent() {
             Ok(()) => {
+                // Safety: It having been inconsistent means there was a task
+                // that owned a lock, which means we are past the boot phase,
+                // which means `self.cell` is initialized [ref:source_cell]
+                let level = unsafe { &self.cell.assume_init_ref().level };
+
                 // Make the nesting count consistent and mark the content as
                 // consistent at the same time
                 level.set(0);
@@ -389,6 +455,11 @@ where
             Err(MarkConsistentMutexError::NoAccess) => unreachable!(),
             Err(MarkConsistentMutexError::BadContext) => Err(MarkConsistentError::BadContext),
             Err(MarkConsistentMutexError::BadObjectState) => {
+                // Safety: CPU Lock is inactive, which means we are past the
+                // boot phase, which means `self.cell` is initialized
+                // [ref:source_cell]
+                let level = unsafe { &self.cell.assume_init_ref().level };
+
                 // The nesting count is consistent.
                 if (level.get() & LEVEL_ABANDONED) != 0 {
                     // Mark the content as consistent
@@ -405,13 +476,14 @@ where
     /// Get a raw pointer to the contained data.
     #[inline]
     pub fn get_ptr(&self) -> *mut T {
-        core::ptr::addr_of!(self.cell.data) as _
+        // Safety: Not really unsafe because we aren't borrowing anything
+        unsafe { core::ptr::addr_of!((*self.cell.as_ptr()).data) as *mut T }
     }
 }
 
 impl<Cell, Mutex, T: fmt::Debug> fmt::Debug for GenericRecursiveMutex<Cell, Mutex>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -474,7 +546,7 @@ where
 
 impl<Cell, Mutex, T: fmt::Debug> fmt::Debug for GenericMutexGuard<'_, Cell, Mutex, T>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -484,7 +556,7 @@ where
 
 impl<Cell, Mutex, T: fmt::Display> fmt::Display for GenericMutexGuard<'_, Cell, Mutex, T>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -496,12 +568,14 @@ where
 /// CPU Lock is active.
 impl<Cell, Mutex, T> Drop for GenericMutexGuard<'_, Cell, Mutex, T>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
     #[inline]
     fn drop(&mut self) {
-        let level = &self.mutex.cell.level;
+        // Safety: We own the lock, which means we are past the boot phase,
+        // which means `self.mutex.cell` is initialized [ref:source_cell]
+        let level = unsafe { &self.mutex.cell.assume_init_ref().level };
         if level.get() == 0 || level.get() == LEVEL_ABANDONED {
             self.mutex.mutex.unlock().unwrap();
         } else {
@@ -512,13 +586,15 @@ where
 
 impl<Cell, Mutex, T> Deref for GenericMutexGuard<'_, Cell, Mutex, T>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.mutex.cell.data
+        // Safety: We own the lock, which means we are past the boot phase,
+        // which means `self.mutex.cell` is initialized [ref:source_cell]
+        unsafe { &self.mutex.cell.assume_init_ref().data }
     }
 }
 
@@ -526,7 +602,7 @@ where
 unsafe impl<Cell, Mutex, T> stable_deref_trait::StableDeref
     for GenericMutexGuard<'_, Cell, Mutex, T>
 where
-    Cell: Deref<Target = MutexInner<T>>,
+    Cell: Deref<Target = MaybeUninit<MutexInner<T>>>,
     Mutex: mutex::MutexHandle,
 {
 }

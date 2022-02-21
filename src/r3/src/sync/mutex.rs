@@ -17,6 +17,7 @@ use crate::{
 };
 
 /// The definer (static builder) for [`StaticMutex`][].
+#[doc = include_str!("../common.md")]
 pub struct Definer<System, Source> {
     mutex: mutex::MutexDefiner<System>,
     source: Source,
@@ -258,7 +259,10 @@ where
 }
 
 // Define methods to set `Definer::source`
-impl_source_setter!(impl Definer<System, #Source>);
+impl_source_setter!(
+    #[no_autowrap()]
+    impl Definer<System, #Source>
+);
 
 /// # Finalization
 ///
