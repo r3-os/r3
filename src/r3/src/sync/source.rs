@@ -36,6 +36,8 @@ pub trait Source<System> {
         C: ~const traits::CfgBase<System = System>;
 }
 
+/// A [`Source`][] that provides a hunk initialized by
+/// [`Default::default`][].
 pub struct DefaultSource<T>(PhantomData<T>);
 
 impl<T> Init for DefaultSource<T> {
@@ -60,6 +62,8 @@ where
     }
 }
 
+/// A [`Source`][] that provides a hunk initialized by a user-provided
+/// initializer.
 pub struct NewBindSource<Binder, Func> {
     pub binder: Binder,
     pub func: Func,
@@ -85,6 +89,7 @@ where
     }
 }
 
+/// A [`Source`][] that consumes a user-provided binding.
 pub struct TakeBindSource<'pool, System, T>(pub(crate) Bind<'pool, System, T>);
 
 impl<System, T> const Source<System> for TakeBindSource<'_, System, T>
@@ -115,6 +120,8 @@ where
     }
 }
 
+/// A [`Source`][] that provides a user-provided hunk, assuming the provider
+/// upholds the safety rules.
 pub struct HunkSource<System, T>(pub(crate) Hunk<System, UnsafeCell<MaybeUninit<T>>>);
 
 impl<System, T> const Source<System> for HunkSource<System, T>
