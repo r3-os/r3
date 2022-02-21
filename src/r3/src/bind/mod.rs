@@ -113,9 +113,9 @@
 use r3_core::kernel::{cfg, raw, raw_cfg};
 
 pub use r3_core::bind::{
-    Bind, BindBorrow, BindBorrowMut, BindDefiner, BindRef, BindTable, BindTake, BindTakeMut,
-    BindTakeRef, Binder, ExecutableDefiner, ExecutableDefinerExt, FnBind, FnBindNever, UnzipBind,
-    INIT_HOOK_PRIORITY,
+    fn_bind_map, Bind, BindBorrow, BindBorrowMut, BindDefiner, BindRef, BindTable, BindTake,
+    BindTakeMut, BindTakeRef, Binder, ExecutableDefiner, ExecutableDefinerExt, FnBind, FnBindMap,
+    FnBindNever, UnzipBind, INIT_HOOK_PRIORITY,
 };
 
 /// A shorthand for [`Bind`][]`::`[`define`][1]`().`[`init_with_bind`][2]`(...)`.

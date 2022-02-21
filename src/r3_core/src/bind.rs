@@ -1184,6 +1184,88 @@ where
     }
 }
 
+/// Apply a function to an `impl `[`FnBind`][]`<_>`'s output.
+///
+/// # Example
+///
+/// ```rust
+/// #![feature(const_fn_trait_bound)]
+/// #![feature(const_trait_impl)]
+/// #![feature(const_mut_refs)]
+/// use core::cell::UnsafeCell;
+/// use r3_core::{kernel::{cfg, traits}, bind::{Bind, FnBind, fn_bind_map}};
+///
+/// /// Like `r3::bind::bind` but wraps the output in `UnsafeCell`
+/// const fn unsafe_cell_bind<'pool, C, Binder, Func, T>(
+///     cfg: &mut cfg::Cfg<'pool, C>,
+///     binder: Binder,
+///     func: Func,
+/// ) -> Bind<'pool, C::System, UnsafeCell<T>>
+/// where
+///     C: ~const traits::CfgBase,
+///     C::System: traits::KernelBase + traits::KernelStatic,
+///     Func: ~const FnBind<Binder, Output = T>,
+///     T: 'static,
+/// {
+///     Bind::define()
+///         // Apply `UnsafeCell::new` on `func`'s output
+///         .init_with_bind(binder, fn_bind_map(func, UnsafeCell::new))
+///         .finish(cfg)
+/// }
+/// ```
+pub const fn fn_bind_map<FnBind, Mapper>(
+    inner: FnBind,
+    mapper: Mapper,
+) -> FnBindMap<FnBind, Mapper> {
+    FnBindMap { inner, mapper }
+}
+
+/// Applies a function to a [`FnBind`][]'s output.
+///
+/// Created by [`fn_bind_map`][].
+pub struct FnBindMap<Inner, Mapper> {
+    inner: Inner,
+    mapper: Mapper,
+}
+
+impl<Binder, Inner, InnerBoundFn, Output, Mapper, NewOutput> const FnBind<Binder>
+    for FnBindMap<Inner, Mapper>
+where
+    Inner: ~const FnBind<Binder, Output = Output, BoundFn = InnerBoundFn>,
+    InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
+    Output: 'static,
+    Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
+    NewOutput: 'static,
+{
+    type Output = NewOutput;
+
+    // FIXME: `impl` type alias in trait impls implicitly captures the
+    // surrounding environment's generic parameters? That's probably why this
+    // `impl` type alias has to stay outside this `impl` block.
+    type BoundFn = MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>;
+
+    fn bind(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Self::BoundFn {
+        map_bind_inner(self.inner.bind(binder, ctx), self.mapper)
+    }
+}
+
+type MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
+where
+    InnerBoundFn: Copy + Send + 'static,
+    Mapper: Copy + Send + 'static,
+= impl FnOnce() -> NewOutput + Copy + Send + 'static;
+
+const fn map_bind_inner<InnerBoundFn, Output, Mapper, NewOutput>(
+    inner_bound_fn: InnerBoundFn,
+    mapper: Mapper,
+) -> MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
+where
+    InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
+    Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
+{
+    move || (mapper)(inner_bound_fn())
+}
+
 // Binder traits
 // ----------------------------------------------------------------------------
 
