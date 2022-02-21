@@ -1,4 +1,7 @@
 #![feature(arbitrary_enum_discriminant)]
+#![feature(type_changing_struct_update)]
+#![feature(const_precise_live_drops)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]

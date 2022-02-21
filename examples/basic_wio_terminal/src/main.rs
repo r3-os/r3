@@ -698,23 +698,21 @@ mod queue {
         waiting_writer: Option<CryoRef<LocalTask<System>, AtomicLock>>,
     }
 
-    impl<System: SupportedSystem, T: Init> Init for QueueSt<System, T> {
-        const INIT: Self = Self {
-            buf: [T::INIT; CAP],
-            read_i: 0,
-            len: 0,
-            waiting_reader: None,
-            waiting_writer: None,
-        };
-    }
-
-    impl<System: SupportedSystem, T: Init + Copy + 'static> Queue<System, T> {
+    impl<System: SupportedSystem, T: Init + Copy + Send + 'static> Queue<System, T> {
         pub const fn new<C>(cfg: &mut Cfg<C>) -> Self
         where
             C: ~const traits::CfgBase<System = System> + ~const traits::CfgMutex,
         {
             Self {
-                st: StaticMutex::define().finish(cfg),
+                st: StaticMutex::define()
+                    .init(|| QueueSt {
+                        buf: [T::INIT; CAP],
+                        read_i: 0,
+                        len: 0,
+                        waiting_reader: None,
+                        waiting_writer: None,
+                    })
+                    .finish(cfg),
                 reader_lock: StaticMutex::define().finish(cfg),
                 writer_lock: StaticMutex::define().finish(cfg),
             }

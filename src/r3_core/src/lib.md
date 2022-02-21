@@ -264,6 +264,8 @@ The properties of threads such as how and when they are created and whether they
 
 The initial thread that starts up the kernel is called the **main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel dispatches the first task.
 
+<!-- TODO: It's useful to introduce a term "the boot phase". -->
+
 [**startup hooks**]: crate::kernel::StartupHook
 
 A **[first-level interrupt handler]** starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided **second-level interrupt handlers** ([`StaticInterruptHandler`]) as well as the callback functions of **timers** ([`Timer`]) through a timer driver and the kernel timing core.

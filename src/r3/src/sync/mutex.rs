@@ -2,21 +2,24 @@ use core::{
     cell::UnsafeCell,
     fmt,
     marker::PhantomData,
+    mem::MaybeUninit,
     ops::{Deref, DerefMut},
 };
 
 use crate::{
-    hunk::{DefaultInitTag, Hunk, HunkDefiner, HunkIniter},
+    hunk::Hunk,
     kernel::{
         mutex, prelude::*, traits, Cfg, LockMutexError, MarkConsistentMutexError, MutexProtocol,
         TryLockMutexError,
     },
+    sync::source::{DefaultSource, Source},
+    utils::Init,
 };
 
 /// The definer (static builder) for [`StaticMutex`][].
-pub struct Definer<System, T, InitTag> {
+pub struct Definer<System, Source> {
     mutex: mutex::MutexDefiner<System>,
-    hunk: HunkDefiner<System, UnsafeCell<T>, InitTag>,
+    source: Source,
 }
 
 /// A mutual exclusion primitive useful for protecting shared data from
@@ -73,7 +76,7 @@ pub struct GenericMutex<Cell, Mutex> {
 ///         .priority(1)
 ///         .finish(cfg);
 ///
-///     let mutex = StaticMutex::define().finish(cfg);
+///     let mutex = StaticMutex::define().init(|| 1).finish(cfg);
 ///
 ///     Objects { task2, mutex }
 /// }
@@ -85,31 +88,31 @@ pub struct GenericMutex<Cell, Mutex> {
 ///     // access `*guard` until `task1` releases the lock
 ///     COTTAGE.task2.activate().unwrap();
 ///
-///     assert_eq!(*guard, 0);
-///     *guard = 1;
+///     assert_eq!(*guard, 1);
+///     *guard = 2;
 /// }
 ///
 /// fn task2_body() {
 ///     let mut guard = COTTAGE.mutex.lock().unwrap();
-///     assert_eq!(*guard, 1);
-///     *guard = 2;
+///     assert_eq!(*guard, 2);
+///     *guard = 3;
 /// #   exit(0);
 /// }
 /// ```
 )]
 pub type StaticMutex<System, T> =
-    GenericMutex<Hunk<System, UnsafeCell<T>>, mutex::StaticMutex<System>>;
+    GenericMutex<Hunk<System, UnsafeCell<MaybeUninit<T>>>, mutex::StaticMutex<System>>;
 
 // TODO: Test the panicking behavior on invalid unlock order
 // TODO: Test the abandonment behavior
 // TODO: Owned version
 
 unsafe impl<Cell, Mutex, T: Send> Send for GenericMutex<Cell, Mutex> where
-    Cell: Deref<Target = UnsafeCell<T>>
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>
 {
 }
 unsafe impl<Cell, Mutex, T: Send> Sync for GenericMutex<Cell, Mutex> where
-    Cell: Deref<Target = UnsafeCell<T>>
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>
 {
 }
 
@@ -129,11 +132,11 @@ pub struct GenericMutexGuard<'a, Cell, Mutex: mutex::MutexHandle> {
 
 /// The specialization of [`GenericMutexGuard`] for [`StaticMutex`].
 pub type StaticMutexGuard<'a, System, T> =
-    GenericMutexGuard<'a, Hunk<System, UnsafeCell<T>>, mutex::MutexRef<'a, System>>;
+    GenericMutexGuard<'a, Hunk<System, UnsafeCell<MaybeUninit<T>>>, mutex::MutexRef<'a, System>>;
 
 unsafe impl<Cell, Mutex, T: Sync> Sync for GenericMutexGuard<'_, Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
 }
@@ -233,17 +236,17 @@ where
 {
     /// Construct a `Definer` to define a mutex in [a configuration
     /// function](crate#static-configuration).
-    pub const fn define() -> Definer<System, T, DefaultInitTag> {
+    pub const fn define() -> Definer<System, DefaultSource<T>> {
         Definer {
             mutex: mutex::StaticMutex::define(),
-            hunk: Hunk::define(),
+            source: DefaultSource::INIT, // [ref:default_source_is_default]
         }
     }
 }
 
-impl<System, T: 'static, InitTag> Definer<System, T, InitTag>
+impl<System, Source> Definer<System, Source>
 where
-    System: traits::KernelMutex + traits::KernelStatic,
+    System: traits::KernelMutex,
 {
     /// Specify the mutex's protocol. Defaults to `None` when unspecified.
     pub const fn protocol(self, protocol: MutexProtocol) -> Self {
@@ -254,7 +257,13 @@ where
     }
 }
 
-impl<System, T: 'static, InitTag: HunkIniter<UnsafeCell<T>>> Definer<System, T, InitTag>
+// Define methods to set `Definer::source`
+impl_source_setter!(impl Definer<System, #Source>);
+
+/// # Finalization
+///
+/// The following method completes the definition of a mutex.
+impl<System, Source> Definer<System, Source>
 where
     System: traits::KernelMutex + traits::KernelStatic,
 {
@@ -263,9 +272,12 @@ where
     pub const fn finish<C: ~const traits::CfgMutex<System = System> + ~const traits::CfgBase>(
         self,
         cfg: &mut Cfg<C>,
-    ) -> StaticMutex<System, T> {
+    ) -> StaticMutex<System, Source::Target>
+    where
+        Source: ~const self::Source<System>,
+    {
         GenericMutex {
-            cell: self.hunk.finish(cfg),
+            cell: self.source.into_unsafe_cell_hunk(cfg),
             mutex: self.mutex.finish(cfg),
         }
     }
@@ -273,7 +285,7 @@ where
 
 impl<Cell, Mutex, T> GenericMutex<Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
     /// Acquire the mutex, blocking the current thread until it is able to do
@@ -327,13 +339,13 @@ where
     /// Get a raw pointer to the contained data.
     #[inline]
     pub fn get_ptr(&self) -> *mut T {
-        self.cell.get()
+        self.cell.get().cast()
     }
 }
 
 impl<Cell, Mutex, T: fmt::Debug> fmt::Debug for GenericMutex<Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -396,7 +408,7 @@ where
 
 impl<Cell, Mutex, T: fmt::Debug> fmt::Debug for GenericMutexGuard<'_, Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -406,7 +418,7 @@ where
 
 impl<Cell, Mutex, T: fmt::Display> fmt::Display for GenericMutexGuard<'_, Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -428,37 +440,47 @@ where
 
 impl<Cell, Mutex, T> Deref for GenericMutexGuard<'_, Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    // TODO: Currently `Cell` is always a `Hunk` given by `Source`, but in the
+    //       future, we might have other ways to provide `Cell`. For now we just
+    //       reference [ref:source_cell] when we're using its precondidtions
+    //       concerns memory safety. To support other variations of `Cell`, we
+    //       might need a better mechanism to express these preconditions than
+    //       to reference [ref:source_cell] whenever they are relevant.
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
-        // Safety: `GenericMutexGuard` represents a permit acquired from the semaphore,
-        //         which grants the bearer an exclusive access to the underlying
-        //         data
-        unsafe { &*self.mutex.cell.get() }
+        // Safety: `GenericMutexGuard` represents a permit acquired from the
+        // semaphore, which grants the bearer an exclusive access to the
+        // underlying data. Since this `Hunk` was given by `Source`
+        // ([ref:source_cell]), we are authorized to enforce the runtime borrow
+        // rules on its contents.
+        //
+        // [ref:source_cell] says that the contents may be unavailable outside
+        // the context of an executable object. We are in the clear because
+        // `kernel::Mutex` can only be locked in a task context.
+        unsafe { (*self.mutex.cell.get()).assume_init_ref() }
     }
 }
 
 impl<Cell, Mutex, T> DerefMut for GenericMutexGuard<'_, Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        // Safety: `GenericMutexGuard` represents a permit acquired from the semaphore,
-        //         which grants the bearer an exclusive access to the underlying
-        //         data
-        unsafe { &mut *self.mutex.cell.get() }
+        // Safety: See the `deref` above.
+        unsafe { (*self.mutex.cell.get()).assume_init_mut() }
     }
 }
 
 // Safety: `MutexGuard::deref` provides a stable address
 unsafe impl<Cell, Mutex, T> stable_deref_trait::StableDeref for GenericMutexGuard<'_, Cell, Mutex>
 where
-    Cell: Deref<Target = UnsafeCell<T>>,
+    Cell: Deref<Target = UnsafeCell<MaybeUninit<T>>>,
     Mutex: mutex::MutexHandle,
 {
 }
