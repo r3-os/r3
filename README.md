@@ -27,6 +27,8 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 
 - The kernel timing mechanism drives **software timers** and a **system-global clock** with microsecond precision. The system clock can be rewound or fast-forwarded for drift compensation. The timing algorithm has a logarithmic time complexity and is therefore scalable. The implementation is robust against a large interrupt processing delay.
 
+- **Bindings** are a statically-defined storage with runtime initialization and configuration-time borrow checking. They can be bound to tasks and other objects to provide safe mutable access.
+
 - The utility library includes safe container types such as **`Mutex`** and **`RecursiveMutex`**, which are built upon low-level synchronization primitives.
 
 [the priority ceiling protocol]: https://en.wikipedia.org/wiki/Priority_ceiling_protocol
@@ -74,7 +76,7 @@ impl port::SysTickOptions for SystemTraits {
 
 // ----------------------------------------------------------------
 
-use r3::kernel::StaticTask;
+use r3::{bind::bind, kernel::StaticTask, prelude::*};
 
 struct Objects {
     task: StaticTask<System>,
@@ -86,16 +88,20 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     System::configure_systick(b);
 
+    // Runtime-initialized static storage
+    let count = bind((), || 1u32).finish(b);
+
     Objects {
+        // Create a task, giving the ownership of `count`
         task: StaticTask::define()
-            .start(task_body)
+            .start_with_bind((count.borrow_mut(),), task_body)
             .priority(2)
             .active(true)
             .finish(b),
     }
 }
 
-fn task_body() {
+fn task_body(count: &mut u32) {
     // ...
 }
 ```
