@@ -262,7 +262,7 @@ An **(execution) thread** is a sequence of instructions executed by a processor.
 
 The properties of threads such as how and when they are created and whether they can block or not are specific to each thread type.
 
-The initial thread that starts up the kernel is called the **main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel dispatches the first task.
+The initial thread that starts up the kernel is called the **main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. <!-- [tag:startup_hook_cpu_lock_active] --> Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel dispatches the first task.
 
 <!-- TODO: It's useful to introduce a term "the boot phase". -->
 

@@ -1,5 +1,14 @@
-#![doc = __internal_module_doc!("crate", "")]
+#![doc = __internal_module_doc!("crate", "", "")]
 #![doc = include_str!("./common.md")]
+
+/// The table of contents for [`__internal_module_doc`][].
+#[rustfmt::skip]
+#[doc(hidden)]
+pub macro __internal_module_doc_toc() {r#"
+- [Binders](#binders)
+- [Initialization Order](#initialization-order)
+- [Planned Features](#planned-features) "#} // No EOL at the end
+
 /// The part of the module-level documentation shared between `r3::bind` and
 /// `r3_core::bind`. This is necessary because `r3::bind` itself isn't a
 /// re-export of `r3_core::bind`, but it's desirable for it to have the same
@@ -7,7 +16,8 @@
 #[rustfmt::skip]
 #[doc(hidden)]
 #[macropol::macropol] // Replace `$metavariables` in literals and doc comments
-pub macro __internal_module_doc($r3_core:expr, $admonitions:expr) {r#"
+pub macro __internal_module_doc($r3_core:expr, $admonitions:expr, $toc:expr) {
+    r#"
 Bindings ([`Bind`][]), a static storage with [runtime initialization][1] and
 [configuration-time][2] borrow checking.
 
@@ -17,14 +27,17 @@ Bindings are essentially fancy global variables defined in a kernel
 configuration. They are defined by [`Bind::define`][] and initialized by
 provided closures at runtime. They can be consumed or borrowed by the entry
 points of [executable kernel objects][4] or the initializers of another
-bindings.
+bindings, with a dependency graph explicitly defined by the passing of
+[*binders*][15].
 
 The configuration system tracks the usage of bindings and employs static checks
-to ensure that the borrowing rules are observed by the users of the bindings. It
+to ensure that the borrowing rules are followed by the users of the bindings. It
 aborts the compilation if the rules may be violated.
 
-Bindings use hunks ([`Hunk`][3]) as a storage for their contents. They are
-initialized in [startup hooks][14].
+Bindings use hunks ([`Hunk`][3]) as a storage for their contents. Bindings are
+initialized in [startup hooks][14], where [CPU Lock][17] is active, <!--
+[ref:startup_hook_cpu_lock_active] --> and therefore most kernel services
+are unavailable.
 
 <div class="admonition-follows"></div>
 
@@ -36,13 +49,40 @@ initialized in [startup hooks][14].
 > In RTIC, all resources are defined in one place and initialized by an
 > application-provided `#[init]` function.
 
+$toc
+
 # Binders
 
-*Binders* ([`Binder`][]) represent specific borrow modes of bindings. A
-configuration function creates them by calling [`Bind`][]'s methods and use them
-in the definition of another object where the binding is intended to be
-consumed, i.e., borrowed or moved out by its associated function. The type a
-binder produces is called its *materialized* form.
+A *binder* ([`Binder`][]) represents a specific borrow mode of a binding. A
+configuration function creates a binding by calling one of [`Bind`][]'s methods
+and uses it in the definition of another object where the binding is intended to
+be consumed, i.e., borrowed or moved out by its entry point or initializer. The
+type a binder produces is called its *materialized* form.
+
+```rust,ignore
+use r3::{bind::bind, kernel::StaticTimer, prelude::*};
+
+let count = bind((), || 0).finish(cfg);
+//               ^^  ^^
+//            .--'    '--------,
+//       no binders  no materialized values
+
+StaticTimer::define()
+    // n.b. `(x,)` is a one-element tuple
+    .start_with_bind((count.borrow_mut(),), |count: &mut i32| {
+        //            ^^^^^^^^^^^^^^^^^^            ^^^^^^^^
+        //                    |                         |
+        //         BindBorrowMut<'_, _, i32>      &'call mut i32
+        //                  gives...          for some lifetime 'call
+    })
+    .finish(b);
+```
+
+The only way for safe code to make a binding available to runtime code in a
+meaningful way is to include a binder in a dependency list (e.g., the `binder`
+parameter of [`ExecutableDefinerExt::start_with_bind`][]) as shown above or to
+call [`Bind::as_ref`][] to create a [`BindRef`][], which is directly consumable
+in runtime code. Most binders can't escape from a configuration function.
 
 The following table lists all provided binders:
 
@@ -68,6 +108,11 @@ The following table lists all provided binders:
 
 - The **Confers** column shows the respective materialized forms of the binders.
   The lifetime `'call` represents the call duration of the consuming function.
+   - For `&'call T` and `&'call mut T`, the caller has the freedom of choosing
+     an arbitrary lifetime, so the consuming function must be generic over any
+     lifetimes. In function and closure parameters, reference types without
+     explicit lifetimes are automatically made generic in this way owing to [the
+     lifetime elision rules][16].
 
 - The **On binding** column shows which types of binders can be consumed by
   another binding's initializer via [`BindDefiner::init_with_bind`][].
@@ -115,7 +160,11 @@ The following features are planned and may be implemented in the future:
 [12]: crate::kernel::StaticInterruptHandler
 [13]: crate::kernel::StaticTimer
 [14]: crate::kernel::StartupHook
-"#}
+[15]: #binders
+[16]: https://doc.rust-lang.org/1.58.1/reference/lifetime-elision.html#lifetime-elision-in-functions
+[17]: $r3_core#system-states
+"#
+}
 
 use core::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit};
 
@@ -972,6 +1021,11 @@ enum BindBorrowType {
 /// A trait for definer objects (static builders) for kernel objects that can
 /// spawn a thread that executes after the execution of all startup hooks is
 /// complete.
+///
+/// See [`ExecutableDefinerExt`][] for an extension trait providing a method
+/// to specify a closure that consumes [binders][1].
+///
+/// [1]: index.html#binders
 ///
 /// # Safety
 ///
