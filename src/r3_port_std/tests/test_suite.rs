@@ -5,6 +5,7 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
 #![feature(slice_ptr_len)]
+#![feature(const_refs_to_cell)]
 
 use r3_port_std::PortInstance;
 use std::sync::atomic::{AtomicBool, Ordering};

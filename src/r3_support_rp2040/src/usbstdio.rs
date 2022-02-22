@@ -5,7 +5,10 @@
 use crate::usb::UsbBus;
 use core::cell::RefCell;
 use cortex_m::{interrupt, singleton};
-use r3::kernel::{traits, Cfg, InterruptLine, InterruptNum, StartupHook, StaticInterruptHandler};
+use r3::{
+    bind::{bind, Bind},
+    kernel::{traits, Cfg, InterruptLine, InterruptNum, StaticInterruptHandler},
+};
 use usb_device::{
     bus::UsbBusAllocator,
     device::{UsbDevice, UsbDeviceBuilder, UsbVidPid},
@@ -71,25 +74,27 @@ pub trait Options: 'static + Send + Sync {
 
 /// Add a USB serial device to the system and register it as the destination of
 /// the standard output ([`crate::stdout`]).
-pub const fn configure<C, TOptions: Options>(b: &mut Cfg<C>)
-where
+pub const fn configure<'pool, C, TOptions: Options>(
+    b: &mut Cfg<'pool, C>,
+    rp2040_resets: Bind<'pool, C::System, rp2040::RESETS>,
+    rp2040_usbctrl_regs: Bind<'pool, C::System, rp2040::USBCTRL_REGS>,
+) where
     C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
-    C::System: traits::KernelInterruptLine,
+    C::System: traits::KernelInterruptLine + traits::KernelStatic,
 {
-    StartupHook::define()
-        .start(|| {
-            let p = unsafe { rp2040::Peripherals::steal() };
-
+    bind(
+        (rp2040_resets.borrow_mut(), rp2040_usbctrl_regs.take()),
+        |rp2040_resets: &mut rp2040::RESETS, rp2040_usbctrl_regs: rp2040::USBCTRL_REGS| {
             // Reset PLL
-            p.RESETS.reset.modify(|_, w| w.usbctrl().set_bit());
-            p.RESETS.reset.modify(|_, w| w.usbctrl().clear_bit());
-            while p.RESETS.reset_done.read().usbctrl().bit_is_clear() {}
+            rp2040_resets.reset.modify(|_, w| w.usbctrl().set_bit());
+            rp2040_resets.reset.modify(|_, w| w.usbctrl().clear_bit());
+            while rp2040_resets.reset_done.read().usbctrl().bit_is_clear() {}
 
             // Construct `UsbBusAllocator`. Since startup hooks are called only
             // once, this `singleton!` will succeed
             let usb_bus_allocator = singleton!(
                 : UsbBusAllocator<UsbBus> =
-                    UsbBusAllocator::new(UsbBus::new(p.USBCTRL_REGS))
+                    UsbBusAllocator::new(UsbBus::new(rp2040_usbctrl_regs))
             )
             .unwrap();
 
@@ -110,8 +115,10 @@ where
 
             // Register the standard output
             crate::stdout::set_stdout(NbWriter::<TOptions>(core::marker::PhantomData));
-        })
-        .finish(b);
+        },
+    )
+    .unpure()
+    .finish(b);
 
     let int_num =
         rp2040::Interrupt::USBCTRL_IRQ as InterruptNum + r3_port_arm_m::INTERRUPT_EXTERNAL0;

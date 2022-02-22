@@ -17,10 +17,10 @@ impl<'a, T> Hole<'a, T> {
     ///
     /// Unsafe because pos must be within the data slice.
     #[inline]
-    pub(super) unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
+    pub(super) const unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
         debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
-        let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
+        let elt = unsafe { ptr::read(data.get_unchecked2(pos)) };
         Hole {
             data,
             elt: ManuallyDrop::new(elt),
@@ -29,19 +29,19 @@ impl<'a, T> Hole<'a, T> {
     }
 
     #[inline]
-    pub(super) fn pos(&self) -> usize {
+    pub(super) const fn pos(&self) -> usize {
         self.pos
     }
 
     /// Returns a reference to the element removed.
     #[inline]
-    pub(super) fn element(&self) -> &T {
+    pub(super) const fn element(&self) -> &T {
         &self.elt
     }
 
     /// Returns a mutable reference to the element removed.
     #[inline]
-    pub(super) fn element_mut(&mut self) -> &mut T {
+    pub(super) const fn element_mut(&mut self) -> &mut T {
         &mut self.elt
     }
 
@@ -49,45 +49,75 @@ impl<'a, T> Hole<'a, T> {
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
-    pub(super) unsafe fn get(&self, index: usize) -> &T {
+    pub(super) const unsafe fn get(&self, index: usize) -> &T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
-        unsafe { self.data.get_unchecked(index) }
+        unsafe { self.data.get_unchecked2(index) }
     }
 
     /// Returns a mutable reference to the element at `index`.
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
-    pub(super) unsafe fn get_mut(&mut self, index: usize) -> &mut T {
+    pub(super) const unsafe fn get_mut(&mut self, index: usize) -> &mut T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
-        unsafe { self.data.get_unchecked_mut(index) }
+        unsafe { self.data.get_unchecked_mut2(index) }
     }
 
     /// Move hole to new location
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
-    pub(super) unsafe fn move_to(&mut self, index: usize) {
+    pub(super) const unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
         unsafe {
-            let index_ptr: *const _ = self.data.get_unchecked(index);
-            let hole_ptr = self.data.get_unchecked_mut(self.pos);
+            let index_ptr: *const _ = self.data.get_unchecked2(index);
+            let hole_ptr = self.data.get_unchecked_mut2(self.pos);
             ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
         }
         self.pos = index;
     }
 }
 
-impl<T> Drop for Hole<'_, T> {
+impl<T> const Drop for Hole<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // fill the hole again
         unsafe {
             let pos = self.pos;
-            ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
+            ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut2(pos), 1);
         }
+    }
+}
+
+// FIXME: Work-around for `[T]::get_unchecked<usize>` not being `const fn` yet
+trait GetUnchecked {
+    type Element;
+    unsafe fn get_unchecked2(&self, i: usize) -> &Self::Element;
+}
+
+impl<Element> const GetUnchecked for [Element] {
+    type Element = Element;
+
+    #[inline]
+    unsafe fn get_unchecked2(&self, i: usize) -> &Self::Element {
+        unsafe { &*self.as_ptr().add(i) }
+    }
+}
+
+// FIXME: Work-around for `[T]::get_unchecked_mut<usize>` not being `const fn` yet
+trait GetUncheckedMut {
+    type Element;
+    unsafe fn get_unchecked_mut2(&mut self, i: usize) -> &mut Self::Element;
+}
+
+impl<Element> const GetUncheckedMut for [Element] {
+    type Element = Element;
+
+    #[inline]
+    unsafe fn get_unchecked_mut2(&mut self, i: usize) -> &mut Self::Element {
+        unsafe { &mut *self.as_mut_ptr().add(i) }
     }
 }

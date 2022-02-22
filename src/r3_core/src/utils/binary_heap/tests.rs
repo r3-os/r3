@@ -1,6 +1,8 @@
-use super::*;
 use arrayvec::ArrayVec;
 use quickcheck_macros::quickcheck;
+
+use super::*;
+use crate::utils::{ComptimeVec, ConstAllocator};
 
 /// A modifying operation on `BinaryHeap`.
 #[derive(Debug)]
@@ -169,3 +171,40 @@ fn position_tracking(bytecode: Vec<u8>) {
         }
     }
 }
+
+/// Test `BinaryHeap` on `ComptimeVec`
+#[allow(dead_code)] // FIXME: Spurious?
+const fn test_comptime_vec(a: &ConstAllocator) {
+    struct Ctx;
+
+    impl const BinaryHeapCtx<i32> for Ctx {
+        fn lt(&mut self, x: &i32, y: &i32) -> bool {
+            *x < *y
+        }
+    }
+
+    let mut v = ComptimeVec::new_in(a.clone());
+    v.heap_push(22, Ctx);
+    v.heap_push(10, Ctx);
+    v.heap_push(17, Ctx);
+    v.heap_push(16, Ctx);
+    v.heap_push(80, Ctx);
+    v.heap_push(66, Ctx);
+    v.heap_push(39, Ctx);
+    v.heap_push(40, Ctx);
+    v.heap_push(96, Ctx);
+
+    // FIXME: `Option<T>::eq` is not `const fn` yet
+    assert!(matches!(v.heap_pop(Ctx), Some(10)));
+    assert!(matches!(v.heap_pop(Ctx), Some(16)));
+    assert!(matches!(v.heap_pop(Ctx), Some(17)));
+    assert!(matches!(v.heap_pop(Ctx), Some(22)));
+    assert!(matches!(v.heap_pop(Ctx), Some(39)));
+    assert!(matches!(v.heap_pop(Ctx), Some(40)));
+    assert!(matches!(v.heap_pop(Ctx), Some(66)));
+    assert!(matches!(v.heap_pop(Ctx), Some(80)));
+    assert!(matches!(v.heap_pop(Ctx), Some(96)));
+    assert!(matches!(v.heap_pop(Ctx), None));
+}
+
+const _: () = ConstAllocator::with(test_comptime_vec);

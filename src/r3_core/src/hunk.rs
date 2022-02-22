@@ -92,6 +92,7 @@ impl<T> HunkIniter<T> for ZeroInitTag {
     const NEEDS_INIT: bool = false;
     fn init(_: &mut mem::MaybeUninit<T>) {
         // Do nothing - a hunk pool is zero-initialized by default
+        // [ref:hunk_pool_is_zeroed]
     }
 }
 
@@ -254,6 +255,23 @@ impl<System, T: ?Sized> Hunk<System, T> {
             _phantom: PhantomData,
         }
     }
+
+    /// Calculate the offset from the hunk.
+    ///
+    /// # Safety
+    ///
+    ///  - The resulting hunk may point to memory that the caller is not
+    ///    supposed to access.
+    ///
+    pub const unsafe fn wrapping_offset(self, count: isize) -> Self
+    where
+        T: Sized,
+    {
+        Hunk {
+            offset: self.offset.wrapping_offset(count),
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
@@ -279,6 +297,15 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
         slice_from_raw_parts(Self::untyped_hunk(this).as_ptr(), mem::size_of_val(&*this))
     }
 
+    /// Get a reference to the hunk's contents.
+    #[inline]
+    pub fn as_ref<'a>(this: Self) -> &'a T
+    where
+        T: 'a,
+    {
+        unsafe { &*Self::as_ptr(this) }
+    }
+
     /// Get a reference to the raw bytes of the hunk.
     ///
     /// # Safety
@@ -294,6 +321,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
 }
 
 impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> AsRef<T> for Hunk<System, T> {
+    #[inline]
     fn as_ref(&self) -> &T {
         unsafe { &*Self::as_ptr(*self) }
     }

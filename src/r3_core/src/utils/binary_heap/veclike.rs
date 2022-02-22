@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use core::ops;
 
+// FIXME: [tag:veclike_const_supertrait] Can't specify `~const Deref` yet
 pub trait VecLike: ops::Deref<Target = [<Self as VecLike>::Element]> + ops::DerefMut {
     type Element;
     fn is_empty(&self) -> bool;
@@ -22,6 +23,22 @@ impl<T, const N: usize> VecLike for ArrayVec<T, N> {
     }
     fn push(&mut self, x: Self::Element) {
         self.push(x)
+    }
+}
+
+impl<T> const VecLike for crate::utils::ComptimeVec<T> {
+    type Element = T;
+    fn is_empty(&self) -> bool {
+        (**self).is_empty()
+    }
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+    fn pop(&mut self) -> Option<Self::Element> {
+        (*self).pop()
+    }
+    fn push(&mut self, x: Self::Element) {
+        (*self).push(x)
     }
 }
 

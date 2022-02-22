@@ -1,5 +1,10 @@
 #![feature(arbitrary_enum_discriminant)]
+#![feature(type_changing_struct_update)]
+#![feature(const_precise_live_drops)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(type_alias_impl_trait)]
 #![feature(const_fn_trait_bound)]
+#![feature(const_impl_trait)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(cell_update)]
@@ -43,6 +48,8 @@
 #[cfg(doc)]
 #[doc = include_str!("../CHANGELOG.md")]
 pub mod _changelog_ {}
+
+pub mod bind;
 
 #[cfg(feature = "sync")]
 #[doc(cfg(feature = "sync"))]

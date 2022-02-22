@@ -3,21 +3,29 @@ use core::{alloc::Layout, ops, ptr::NonNull};
 use super::{AllocError, Allocator, ConstAllocator};
 
 /// `Vec` that can only be used in a constant context.
+///
+/// # Elements are forgotten on drop
+///
+/// Due to the current compiler restrictions [ref:fixme_comptime_drop_elem], the
+/// destructor is not called for the elements when a `ComptimeVec` is dropped.
 #[doc(hidden)]
-pub struct ComptimeVec<T: Copy> {
+pub struct ComptimeVec<T> {
     ptr: NonNull<T>,
     len: usize,
     capacity: usize,
     allocator: ConstAllocator,
 }
 
-impl<T: Copy> const Clone for ComptimeVec<T> {
+impl<T: ~const Clone> const Clone for ComptimeVec<T> {
     fn clone(&self) -> Self {
+        // FIXME: Work-around for a mysterious error saying "the trait bound
+        // `for<'r> fn(&'r T) -> T {<T as Clone>::clone}: ~const FnMut<(&T,)>`
+        // is not satisfied" when it's simply written as `self.map(T::clone)`
         #[inline]
-        const fn clone_by_copy<T: Copy>(x: &T) -> T {
-            *x
+        const fn clone_shim<T: ~const Clone>(x: &T) -> T {
+            x.clone()
         }
-        self.map(clone_by_copy)
+        self.map(clone_shim)
     }
 
     fn clone_from(&mut self, source: &Self) {
@@ -25,8 +33,12 @@ impl<T: Copy> const Clone for ComptimeVec<T> {
     }
 }
 
-impl<T: Copy> const Drop for ComptimeVec<T> {
+impl<T> const Drop for ComptimeVec<T> {
     fn drop(&mut self) {
+        // FIXME: [tag:fixme_comptime_drop_elem] We can't use `<T as ~const
+        // Drop>:: drop` here because `ComptimeVec<T>` can't have `T: ~const Drop`
+        // self.clear();
+
         // Safety: The referent is a valid heap allocation from `self.allocator`,
         // and `self` logically owns it
         unsafe {
@@ -36,7 +48,7 @@ impl<T: Copy> const Drop for ComptimeVec<T> {
     }
 }
 
-impl<T: Copy> ComptimeVec<T> {
+impl<T> ComptimeVec<T> {
     pub const fn new_in(allocator: ConstAllocator) -> Self {
         Self::with_capacity_in(0, allocator)
     }
@@ -50,6 +62,21 @@ impl<T: Copy> ComptimeVec<T> {
         }
     }
 
+    pub const fn repeat_in(allocator: ConstAllocator, x: T, n: usize) -> Self
+    where
+        T: Copy,
+    {
+        let mut this = Self::with_capacity_in(n, allocator);
+        while this.len() < n {
+            this.push(x);
+        }
+        this
+    }
+
+    pub const fn allocator(&self) -> &ConstAllocator {
+        &self.allocator
+    }
+
     pub const fn push(&mut self, x: T) {
         unsafe {
             self.reserve(1);
@@ -57,6 +84,19 @@ impl<T: Copy> ComptimeVec<T> {
             self.ptr.as_ptr().wrapping_add(self.len).write(x)
         }
         self.len += 1;
+    }
+
+    pub const fn pop(&mut self) -> Option<T> {
+        unsafe {
+            if let Some(i) = self.len.checked_sub(1) {
+                self.len = i;
+                // Safety: The `i`-th element was present, but since `len <= i`
+                // now, we can remove it
+                Some(self.ptr.as_ptr().wrapping_add(i).read())
+            } else {
+                None
+            }
+        }
     }
 
     const fn reserve(&mut self, additional: usize) {
@@ -83,7 +123,7 @@ impl<T: Copy> ComptimeVec<T> {
 
     /// Return a `ComptimeVec` of the same `len` as `self` with function `f`
     /// applied to each element in order.
-    pub const fn map<F: ~const FnMut(&T) -> U + Copy, U: Copy>(&self, mut f: F) -> ComptimeVec<U> {
+    pub const fn map<F: ~const FnMut(&T) -> U + ~const Drop, U>(&self, mut f: F) -> ComptimeVec<U> {
         let mut out = ComptimeVec::with_capacity_in(self.len, self.allocator.clone());
         let mut i = 0;
         while i < self.len() {
@@ -94,8 +134,15 @@ impl<T: Copy> ComptimeVec<T> {
     }
 
     /// Remove all elements.
-    pub const fn clear(&mut self) {
-        self.len = 0;
+    pub const fn clear(&mut self)
+    where
+        T: ~const Drop,
+    {
+        if core::mem::needs_drop::<T>() {
+            while self.pop().is_some() {}
+        } else {
+            self.len = 0;
+        }
     }
 
     /// Borrow the storage as a slice.
@@ -110,7 +157,10 @@ impl<T: Copy> ComptimeVec<T> {
         unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
 
-    pub const fn to_array<const LEN: usize>(&self) -> [T; LEN] {
+    pub const fn to_array<const LEN: usize>(&self) -> [T; LEN]
+    where
+        T: Copy,
+    {
         // FIXME: Work-around for `assert_eq!` being unsupported in `const fn`
         assert!(self.len() == LEN);
 
@@ -124,7 +174,7 @@ impl<T: Copy> ComptimeVec<T> {
     }
 }
 
-impl<T: Copy> const ops::Deref for ComptimeVec<T> {
+impl<T> const ops::Deref for ComptimeVec<T> {
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -132,7 +182,7 @@ impl<T: Copy> const ops::Deref for ComptimeVec<T> {
     }
 }
 
-impl<T: Copy> const ops::DerefMut for ComptimeVec<T> {
+impl<T> const ops::DerefMut for ComptimeVec<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut_slice()
     }
@@ -192,6 +242,10 @@ mod tests {
             x.push(1);
             x.push(2);
             x.push(3);
+            x.push(4);
+            // FIXME: `assert_matches!` is not usable in `const fn` yet
+            //        `Option<T>::eq` is not `const fn` yet
+            assert!(matches!(x.pop(), Some(4)));
             let slice = x.as_slice();
             // FIXME: `assert_matches!` is not usable in `const fn` yet
             assert!(matches!(slice, [1, 2, 3]));
@@ -258,6 +312,25 @@ mod tests {
         }
         const OUT: [Option<usize>; 2] = ConstAllocator::with(pos);
         assert_eq!(OUT, [Some(1), None]);
+    }
+
+    #[test]
+    fn drop_on_clear() {
+        #[allow(dead_code)] // FIXME: False lint?
+        const fn array(allocator: &ConstAllocator) {
+            let mut x = ComptimeVec::new_in(allocator.clone());
+
+            // If the destructor is not called for these `ConstAllocator`s,
+            // `ConstAllocator::with(array)` will panic
+            x.push(allocator.clone());
+            x.push(allocator.clone());
+            x.push(allocator.clone());
+
+            // FIXME: `ComptimeVec::drop` can't do this currently because of
+            //        [ref:fixme_comptime_drop_elem]
+            x.clear();
+        }
+        const _: () = ConstAllocator::with(array);
     }
 
     #[quickcheck]

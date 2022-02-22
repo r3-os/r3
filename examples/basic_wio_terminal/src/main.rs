@@ -1,6 +1,7 @@
 #![feature(asm_sym)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_refs_to_cell)]
 #![feature(const_mut_refs)]
 #![feature(let_else)]
 #![feature(const_trait_impl)]
@@ -16,13 +17,16 @@ use wio_terminal as wio;
 use core::{
     cell::RefCell,
     fmt::Write,
+    mem::MaybeUninit,
     panic::PanicInfo,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use cortex_m::{interrupt::Mutex as PrimaskMutex, singleton};
+use cortex_m::interrupt::Mutex as PrimaskMutex;
 use eg::{image::Image, mono_font, pixelcolor::Rgb565, prelude::*, primitives, text};
-use r3::kernel::{
-    prelude::*, InterruptLine, InterruptNum, StartupHook, StaticMutex, StaticTask, StaticTimer,
+use r3::{
+    bind::{bind, bind_uninit},
+    kernel::{prelude::*, InterruptLine, InterruptNum, StaticSemaphore, StaticTask, StaticTimer},
+    prelude::*,
 };
 use spin::Mutex as SpinMutex;
 use usb_device::{
@@ -31,7 +35,7 @@ use usb_device::{
 };
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 use wio::{
-    hal::{clock::GenericClockController, delay::Delay, gpio, usb::UsbBus},
+    hal::{clock::GenericClockController, gpio, usb::UsbBus},
     pac::{CorePeripherals, Peripherals},
     prelude::*,
     Pins, Sets,
@@ -94,7 +98,7 @@ const _: () = {
 
 struct Objects {
     console_pipe: queue::Queue<System, u8>,
-    lcd_mutex: StaticMutex<System>,
+    lcd_mutex: StaticSemaphore<System>,
     button_reporter_task: StaticTask<System>,
     usb_in_task: StaticTask<System>,
     usb_poll_timer: StaticTimer<System>,
@@ -107,11 +111,15 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     b.num_task_priority_levels(4);
 
-    // Register a hook to initialize hardware
-    StartupHook::define()
-        .start(|| {
-            init_hardware();
-        })
+    // Initialize hardware
+    let (hw_init_data, blink_st) = bind((bind_uninit(b).take_mut(),), init_hardware)
+        .unpure()
+        .finish(b)
+        .unzip();
+    StaticTask::define()
+        .start_with_bind((hw_init_data.borrow_mut(),), init_hardware_late_task_body)
+        .priority(2)
+        .active(true)
         .finish(b);
 
     // Register a timer driver initializer
@@ -129,7 +137,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .active(true)
         .finish(b);
     let _blink_task = StaticTask::define()
-        .start(blink_task_body)
+        .start_with_bind((blink_st.borrow_mut(),), blink_task_body)
         .priority(1)
         .active(true)
         .finish(b);
@@ -176,7 +184,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
         .active(true)
         .finish(b);
     let console_pipe = queue::Queue::new(b);
-    let lcd_mutex = StaticMutex::define().finish(b);
+    let lcd_mutex = StaticSemaphore::define().maximum(1).initial(0).finish(b);
 
     Objects {
         console_pipe,
@@ -189,13 +197,14 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 }
 
 static LCD: SpinMutex<Option<wio::LCD>> = SpinMutex::new(None);
-static BLINK_ST: SpinMutex<Option<BlinkSt>> = SpinMutex::new(None);
 
 struct BlinkSt {
     user_led: gpio::Pin<gpio::v2::pin::PA15, gpio::v2::Output<gpio::v2::PushPull>>,
 }
 
-fn init_hardware() {
+fn init_hardware(
+    usb_bus_allocator_cell: &'static mut MaybeUninit<UsbBusAllocator<UsbBus>>,
+) -> (HardwareLateInitInput, BlinkSt) {
     let mut peripherals = Peripherals::take().unwrap();
     let mut core_peripherals = unsafe { CorePeripherals::steal() };
 
@@ -208,30 +217,11 @@ fn init_hardware() {
         &mut peripherals.NVMCTRL,
     );
 
-    // Configure SysTick's clock input
-    let mut delay = Delay::new(core_peripherals.SYST, &mut clocks);
-
     // Configure the user LED pin
     let mut sets: Sets = Pins::new(peripherals.PORT).split();
     let mut user_led = sets.user_led.into_open_drain_output(&mut sets.port);
     user_led.set_low().unwrap();
-
-    *BLINK_ST.lock() = Some(BlinkSt { user_led });
-
-    // Configure the LCD
-    let (display, _backlight) = sets
-        .display
-        .init(
-            &mut clocks,
-            peripherals.SERCOM7,
-            &mut peripherals.MCLK,
-            &mut sets.port,
-            58.mhz(),
-            &mut delay,
-        )
-        .unwrap();
-
-    *LCD.lock() = Some(display);
+    let blink_st = BlinkSt { user_led };
 
     // Register button event handlers
     let button_ctrlr = sets.buttons.init(
@@ -243,19 +233,13 @@ fn init_hardware() {
     button_ctrlr.enable(&mut core_peripherals.NVIC);
     unsafe { BUTTON_CTRLR = Some(button_ctrlr) };
 
-    // Configure the USB serial device
     let sets_usb = sets.usb;
     let peripherals_usb = peripherals.USB;
     let peripherals_mclk = &mut peripherals.MCLK;
-    let usb_bus_allocator = singleton!(
-        : UsbBusAllocator<UsbBus> =
-        sets_usb.usb_allocator(
-            peripherals_usb,
-            &mut clocks,
-            peripherals_mclk,
-        )
-    )
-    .unwrap();
+    let usb_bus_allocator = sets_usb.usb_allocator(peripherals_usb, &mut clocks, peripherals_mclk);
+    let usb_bus_allocator = usb_bus_allocator_cell.write(usb_bus_allocator);
+
+    // Configure the USB serial device
     let serial = SerialPort::new(usb_bus_allocator);
     let usb_device = UsbDeviceBuilder::new(usb_bus_allocator, UsbVidPid(0x16c0, 0x27dd))
         .product("R3 Example")
@@ -263,6 +247,51 @@ fn init_hardware() {
         .max_packet_size_0(64)
         .build();
     *USB_STDIO_GLOBAL.lock() = Some(UsbStdioGlobal { serial, usb_device });
+
+    (
+        (
+            clocks,
+            peripherals.MCLK,
+            Some(sets.display),
+            sets.port,
+            Some(peripherals.SERCOM7),
+        ),
+        blink_st,
+    )
+}
+
+type HardwareLateInitInput = (
+    GenericClockController,
+    atsamd_hal::pac::MCLK,
+    Option<wio_terminal::Display>,
+    atsamd_hal::gpio::Port,
+    Option<atsamd_hal::pac::SERCOM7>,
+);
+
+fn init_hardware_late_task_body(
+    (clocks, mclk, display, port, sercom7): &mut HardwareLateInitInput,
+) {
+    let display = display.take().unwrap();
+    let sercom7 = sercom7.take().unwrap();
+
+    // Configure the LCD. This needs to happen in a task to use
+    // `DelayByKernel`. (Using `core_peripherals.SYST` in `init_hardware`
+    // would interfere with the kernel timer.)
+    let (display, _backlight) = display
+        .init(clocks, sercom7, mclk, port, 58.mhz(), &mut DelayByKernel)
+        .unwrap();
+    *LCD.lock() = Some(display);
+    COTTAGE.lcd_mutex.signal_one().unwrap();
+}
+
+/// Implements `DelayMs` using `System::sleep`.
+struct DelayByKernel;
+
+impl atsamd_hal::hal::blocking::delay::DelayMs<u16> for DelayByKernel {
+    #[inline]
+    fn delay_ms(&mut self, ms: u16) {
+        System::sleep(r3::time::Duration::from_millis(ms as i32)).unwrap();
+    }
 }
 
 // Message producer
@@ -300,7 +329,7 @@ fn borrow_lcd() -> impl core::ops::DerefMut<Target = wio::LCD> {
     impl Drop for Guard {
         fn drop(&mut self) {
             self.0 = None;
-            COTTAGE.lcd_mutex.unlock().unwrap();
+            COTTAGE.lcd_mutex.signal_one().unwrap();
         }
     }
 
@@ -320,7 +349,7 @@ fn borrow_lcd() -> impl core::ops::DerefMut<Target = wio::LCD> {
         }
     }
 
-    COTTAGE.lcd_mutex.lock().unwrap();
+    COTTAGE.lcd_mutex.wait_one().unwrap();
     Guard(Some(LCD.lock()))
 }
 
@@ -334,9 +363,7 @@ impl Write for Console {
 }
 
 /// The task responsible for blinking the user LED.
-fn blink_task_body() {
-    let mut st = BLINK_ST.lock();
-    let st = st.as_mut().unwrap();
+fn blink_task_body(st: &mut BlinkSt) {
     loop {
         st.user_led.toggle();
         System::sleep(r3::time::Duration::from_millis(210)).unwrap();
@@ -671,23 +698,21 @@ mod queue {
         waiting_writer: Option<CryoRef<LocalTask<System>, AtomicLock>>,
     }
 
-    impl<System: SupportedSystem, T: Init> Init for QueueSt<System, T> {
-        const INIT: Self = Self {
-            buf: [T::INIT; CAP],
-            read_i: 0,
-            len: 0,
-            waiting_reader: None,
-            waiting_writer: None,
-        };
-    }
-
-    impl<System: SupportedSystem, T: Init + Copy + 'static> Queue<System, T> {
+    impl<System: SupportedSystem, T: Init + Copy + Send + 'static> Queue<System, T> {
         pub const fn new<C>(cfg: &mut Cfg<C>) -> Self
         where
             C: ~const traits::CfgBase<System = System> + ~const traits::CfgMutex,
         {
             Self {
-                st: StaticMutex::define().finish(cfg),
+                st: StaticMutex::define()
+                    .init(|| QueueSt {
+                        buf: [T::INIT; CAP],
+                        read_i: 0,
+                        len: 0,
+                        waiting_reader: None,
+                        waiting_writer: None,
+                    })
+                    .finish(cfg),
                 reader_lock: StaticMutex::define().finish(cfg),
                 writer_lock: StaticMutex::define().finish(cfg),
             }

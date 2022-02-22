@@ -5,6 +5,7 @@ The port for running [`::r3_kernel`][] in a hosted environment
 ```rust
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
+#![feature(const_refs_to_cell)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_trait_impl)]
 

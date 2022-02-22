@@ -14,12 +14,13 @@ pub trait BinaryHeapCtx<Element> {
     fn lt(&mut self, x: &Element, y: &Element) -> bool;
 
     /// Called when the element `e` is moved to the new position `new_index`.
+    #[default_method_body_is_const]
     fn on_move(&mut self, e: &mut Element, new_index: usize) {
         let _ = (e, new_index);
     }
 }
 
-impl<T: Ord> BinaryHeapCtx<T> for () {
+impl<T: ~const Ord + ~const PartialOrd> const BinaryHeapCtx<T> for () {
     fn lt(&mut self, x: &T, y: &T) -> bool {
         *x < *y
     }
@@ -28,29 +29,39 @@ impl<T: Ord> BinaryHeapCtx<T> for () {
 /// Min-heap.
 pub trait BinaryHeap: VecLike {
     /// Remove the least item from the heap and return it.
-    fn heap_pop(&mut self, ctx: impl BinaryHeapCtx<Self::Element>) -> Option<Self::Element>;
+    fn heap_pop<Ctx>(&mut self, ctx: Ctx) -> Option<Self::Element>
+    where
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop;
 
     /// Remove the item at the specified position and return it.
-    fn heap_remove(
-        &mut self,
-        i: usize,
-        ctx: impl BinaryHeapCtx<Self::Element>,
-    ) -> Option<Self::Element>;
+    fn heap_remove<Ctx>(&mut self, i: usize, ctx: Ctx) -> Option<Self::Element>
+    where
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop;
 
     /// Push an item onto the heap and return its position.
-    fn heap_push(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>) -> usize;
+    fn heap_push<Ctx>(&mut self, item: Self::Element, ctx: Ctx) -> usize
+    where
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop;
 }
 
-impl<T: VecLike> BinaryHeap for T {
-    fn heap_pop(&mut self, ctx: impl BinaryHeapCtx<Self::Element>) -> Option<Self::Element> {
+impl<T> const BinaryHeap for T
+where
+    // FIXME: `~const Deref` isn't implied because of
+    // [ref:veclike_const_supertrait]
+    T: ~const VecLike + ~const core::ops::Deref + ~const core::ops::DerefMut,
+    T::Element: ~const Drop,
+{
+    fn heap_pop<Ctx>(&mut self, ctx: Ctx) -> Option<Self::Element>
+    where
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop,
+    {
         self.heap_remove(0, ctx)
     }
 
-    fn heap_remove(
-        &mut self,
-        i: usize,
-        mut ctx: impl BinaryHeapCtx<Self::Element>,
-    ) -> Option<Self::Element> {
+    fn heap_remove<Ctx>(&mut self, i: usize, mut ctx: Ctx) -> Option<Self::Element>
+    where
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop,
+    {
         if i >= self.len() {
             return None;
         }
@@ -81,7 +92,10 @@ impl<T: VecLike> BinaryHeap for T {
         }
     }
 
-    fn heap_push(&mut self, item: Self::Element, ctx: impl BinaryHeapCtx<Self::Element>) -> usize {
+    fn heap_push<Ctx>(&mut self, item: Self::Element, ctx: Ctx) -> usize
+    where
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop,
+    {
         let i = self.len();
         self.push(item);
 
@@ -106,12 +120,16 @@ impl<T: VecLike> BinaryHeap for T {
 /// # Safety
 ///
 /// `pos` must point to an element within `this`.
-unsafe fn sift_up<Element>(
+const unsafe fn sift_up<Element, Ctx>(
     this: &mut [Element],
     start: usize,
     pos: usize,
-    mut ctx: impl BinaryHeapCtx<Element>,
-) -> usize {
+    mut ctx: Ctx,
+) -> usize
+where
+    Ctx: ~const BinaryHeapCtx<Element> + ~const Drop,
+    Element: ~const Drop,
+{
     unsafe {
         // Take out the value at `pos` and create a hole.
         let mut hole = helpers::Hole::new(this, pos);
@@ -143,11 +161,11 @@ unsafe fn sift_up<Element>(
 /// # Safety
 ///
 /// `pos` must point to an element within `this`.
-unsafe fn sift_down<Element>(
-    this: &mut [Element],
-    pos: usize,
-    mut ctx: impl BinaryHeapCtx<Element>,
-) {
+const unsafe fn sift_down<Element, Ctx>(this: &mut [Element], pos: usize, mut ctx: Ctx)
+where
+    Ctx: ~const BinaryHeapCtx<Element> + ~const Drop,
+    Element: ~const Drop,
+{
     let end = this.len();
     unsafe {
         let mut hole = helpers::Hole::new(this, pos);

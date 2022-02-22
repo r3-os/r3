@@ -2,7 +2,11 @@ use core::{
     panic::PanicInfo,
     sync::atomic::{AtomicBool, Ordering},
 };
-use r3::kernel::{traits, Cfg, StartupHook};
+use r3::{
+    bind::bind,
+    kernel::{traits, Cfg},
+    prelude::*,
+};
 use r3_support_rp2040::usbstdio;
 
 /// The separators for our multiplexing protocol
@@ -60,63 +64,66 @@ impl log::Log for Logger {
 pub const fn configure<C>(b: &mut Cfg<C>)
 where
     C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
-    C::System: traits::KernelInterruptLine,
+    C::System: traits::KernelInterruptLine + traits::KernelStatic,
 {
-    StartupHook::define()
-        .start(|| {
-            // Set the correct vector table address
-            unsafe {
-                let p = cortex_m::Peripherals::steal();
-                p.SCB.vtor.write(0x20000000);
-            }
+    let (rp2040_resets, rp2040_usbctrl_regs) = bind((), || {
+        // Set the correct vector table address
+        unsafe {
+            let p = cortex_m::Peripherals::steal();
+            p.SCB.vtor.write(0x20000000);
+        }
 
-            // Configure peripherals
-            let p = unsafe { rp2040::Peripherals::steal() };
-            r3_support_rp2040::clock::init_clock(
-                &p.CLOCKS,
-                &p.XOSC,
-                &p.PLL_SYS,
-                &p.PLL_USB,
-                &p.RESETS,
-                &p.WATCHDOG,
-            );
+        // Configure peripherals
+        let p = unsafe { rp2040::Peripherals::steal() };
+        r3_support_rp2040::clock::init_clock(
+            &p.CLOCKS,
+            &p.XOSC,
+            &p.PLL_SYS,
+            &p.PLL_USB,
+            &p.RESETS,
+            &p.WATCHDOG,
+        );
 
-            // clk_ref → clk_sys = 48MHz
-            p.CLOCKS.clk_sys_ctrl.modify(|_, w| w.src().clk_ref());
+        // clk_ref → clk_sys = 48MHz
+        p.CLOCKS.clk_sys_ctrl.modify(|_, w| w.src().clk_ref());
 
-            // Supply clk_ref / 2 = 24MHz to SysTick, watchdog, and timer
-            // because we want to measure times at high precision in
-            // benchmarks. Setting `cycles = 1` would be ideal but doesn't work
-            // for some reason.
-            p.WATCHDOG
-                .tick
-                .write(|b| unsafe { b.cycles().bits(2).enable().set_bit() });
+        // Supply clk_ref / 2 = 24MHz to SysTick, watchdog, and timer
+        // because we want to measure times at high precision in
+        // benchmarks. Setting `cycles = 1` would be ideal but doesn't work
+        // for some reason.
+        p.WATCHDOG
+            .tick
+            .write(|b| unsafe { b.cycles().bits(2).enable().set_bit() });
 
-            // Reset the timer used by `performance_time`
-            p.RESETS.reset.modify(|_, w| w.timer().set_bit());
-            p.RESETS.reset.modify(|_, w| w.timer().clear_bit());
-            while p.RESETS.reset_done.read().timer().bit_is_clear() {}
+        // Reset the timer used by `performance_time`
+        p.RESETS.reset.modify(|_, w| w.timer().set_bit());
+        p.RESETS.reset.modify(|_, w| w.timer().clear_bit());
+        while p.RESETS.reset_done.read().timer().bit_is_clear() {}
 
-            // Reset and enable IO bank 0
-            p.RESETS
-                .reset
-                .modify(|_, w| w.pads_bank0().set_bit().io_bank0().set_bit());
-            p.RESETS
-                .reset
-                .modify(|_, w| w.pads_bank0().clear_bit().io_bank0().clear_bit());
-            while p.RESETS.reset_done.read().pads_bank0().bit_is_clear() {}
-            while p.RESETS.reset_done.read().io_bank0().bit_is_clear() {}
+        // Reset and enable IO bank 0
+        p.RESETS
+            .reset
+            .modify(|_, w| w.pads_bank0().set_bit().io_bank0().set_bit());
+        p.RESETS
+            .reset
+            .modify(|_, w| w.pads_bank0().clear_bit().io_bank0().clear_bit());
+        while p.RESETS.reset_done.read().pads_bank0().bit_is_clear() {}
+        while p.RESETS.reset_done.read().io_bank0().bit_is_clear() {}
 
-            // Note: CM0 don't support CAS atomics. This is why we need to use
-            //       `set_logger_racy` here.
-            // Safety: There are no other threads calling `set_logger_racy` at the
-            //         same time.
-            unsafe { log::set_logger_racy(&Logger).unwrap() };
-            log::set_max_level(log::LevelFilter::Trace);
-        })
-        .finish(b);
+        // Note: CM0 don't support CAS atomics. This is why we need to use
+        //       `set_logger_racy` here.
+        // Safety: There are no other threads calling `set_logger_racy` at the
+        //         same time.
+        unsafe { log::set_logger_racy(&Logger).unwrap() };
+        log::set_max_level(log::LevelFilter::Trace);
 
-    usbstdio::configure::<_, Options>(b);
+        (p.RESETS, p.USBCTRL_REGS)
+    })
+    .unpure()
+    .finish(b)
+    .unzip();
+
+    usbstdio::configure::<_, Options>(b, rp2040_resets, rp2040_usbctrl_regs);
 }
 
 static SHOULD_PAUSE_OUTPUT: AtomicBool = AtomicBool::new(true);

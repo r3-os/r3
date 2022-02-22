@@ -3,11 +3,14 @@
 /// Keeps doc tests clean. Not for public consumption.
 #[doc(hidden)]
 pub(crate) macro doc_test(
-    #[doc = r" ```rust"]
+    // `$head` must be a string literal starting with " ```rust"
+    #[doc = $head:expr]
     $( #[doc = $doc:expr] )*
 ) {concat!(
-" ```rust", ignore_if_port_std_does_not_support_target!(), "\n ",
+ignore_if_port_std_does_not_support_target!($head), "\n ",
 "#   #![feature(const_fn_trait_bound)]
+ #   #![feature(const_refs_to_cell)]
+ #   #![feature(const_impl_trait)]
  #   #![feature(const_mut_refs)]
  #   #![feature(const_fn_fn_ptr_basics)]
  #   #![feature(const_trait_impl)]
@@ -30,11 +33,11 @@ $( $doc, "\n", )*
 
 // `r3_port_std`'s target support is limited
 #[cfg(any(unix, windows))]
-macro ignore_if_port_std_does_not_support_target() {
-    ""
+macro ignore_if_port_std_does_not_support_target($head:expr) {
+    $head
 }
 
 #[cfg(not(any(unix, windows)))]
-macro ignore_if_port_std_does_not_support_target() {
-    ",ignore"
+macro ignore_if_port_std_does_not_support_target($head:expr) {
+    " ```rust,ignore"
 }
