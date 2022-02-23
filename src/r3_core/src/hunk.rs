@@ -299,6 +299,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
 
     /// Get a reference to the hunk's contents.
     #[inline]
+    #[allow(clippy::should_implement_trait)]
     pub fn as_ref<'a>(this: Self) -> &'a T
     where
         T: 'a,
