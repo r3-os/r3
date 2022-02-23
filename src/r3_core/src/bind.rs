@@ -909,10 +909,12 @@ impl CfgBindRegistry {
                 // [tag:bind_finalization_immediate_panic] The errors are
                 // reported by panicking immediately for now
                 match e {
-                    sorter::SorterError::BindCycle { bind_is: _ } => {
+                    sorter::SorterError::BindCycle { bind_is } => {
+                        let _ = bind_is; // TODO: Display the bindings' names
                         panic!("the binding initialization order contains a cycle");
                     }
-                    sorter::SorterError::ConflictingIndefiniteBorrow { bind_i: _ } => {
+                    sorter::SorterError::ConflictingIndefiniteBorrow { bind_i } => {
+                        let _ = bind_i; // TODO: Display the binding's name
                         panic!("conflicting indefinite borrows");
                     }
                 }
