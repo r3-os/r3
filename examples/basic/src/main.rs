@@ -5,8 +5,7 @@
 #![feature(const_mut_refs)]
 #![deny(unsafe_op_in_unsafe_fn)]
 use r3::{
-    kernel::{prelude::*, traits, StaticTask},
-    prelude::*,
+    kernel::{prelude::*, StaticTask},
     sync::StaticMutex,
 };
 
@@ -15,9 +14,9 @@ r3_port_std::use_port!(unsafe struct SystemTraits);
 
 #[derive(Debug)]
 struct Objects {
-    task1: StaticTask<System>,
+    _task1: StaticTask<System>,
     task2: StaticTask<System>,
-    mutex1: StaticMutex<System, u32>,
+    _mutex1: StaticMutex<System, u32>,
 }
 
 const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
@@ -35,9 +34,9 @@ const fn configure_app(b: &mut r3_kernel::Cfg<'_, SystemTraits>) -> Objects {
     let mutex1 = StaticMutex::define().finish(b);
 
     Objects {
-        task1,
+        _task1: task1,
         task2,
-        mutex1,
+        _mutex1: mutex1,
     }
 }
 

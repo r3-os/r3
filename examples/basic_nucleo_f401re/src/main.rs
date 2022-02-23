@@ -35,9 +35,9 @@ impl port::SysTickOptions for SystemTraits {
 
 #[derive(Debug)]
 struct Objects {
-    task1: StaticTask<System>,
+    _task1: StaticTask<System>,
     task2: StaticTask<System>,
-    mutex1: StaticMutex<System, u32>,
+    _mutex1: StaticMutex<System, u32>,
 }
 
 const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
@@ -65,9 +65,9 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     let mutex1 = StaticMutex::define().finish(b);
 
     Objects {
-        task1,
+        _task1: task1,
         task2,
-        mutex1,
+        _mutex1: mutex1,
     }
 }
 
