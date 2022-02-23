@@ -131,6 +131,7 @@ impl Init for State {
 }
 
 impl Init for TaskState {
+    #[allow(clippy::declare_interior_mutable_const)] // it's intentional
     const INIT: Self = Self {
         kernel_state: Init::INIT,
         output: Init::INIT,
