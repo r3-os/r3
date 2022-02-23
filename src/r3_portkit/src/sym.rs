@@ -34,9 +34,11 @@ pub trait SymStaticExt: Sized + private::Sealed {
     type Output;
 
     /// Get a raw pointer of the content.
+    #[allow(clippy::wrong_self_convention)]
     fn as_ptr(self) -> *const Self::Output;
 
     /// Get a reference of the content.
+    #[allow(clippy::wrong_self_convention)]
     fn as_ref(self) -> &'static Self::Output
     where
         Self::Output: Sync + ZeroInit,
