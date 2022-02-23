@@ -81,6 +81,7 @@ macro_rules! use_systick_tickful {
                 const MAX_TICK_COUNT: UTicks = u32::MAX;
                 const MAX_TIMEOUT: UTicks = u32::MAX;
 
+                #[inline(always)]
                 unsafe fn tick_count() -> UTicks {
                     // Safety: CPU Lock active
                     unsafe { TIMER_STATE.tick_count() }
@@ -89,6 +90,7 @@ macro_rules! use_systick_tickful {
 
             // Safety: Only `use_systick_tickful!` is allowed to `impl` this
             unsafe impl imp::SysTickTickfulInstance for $Traits {
+                #[inline(always)]
                 unsafe fn handle_tick() {
                     // Safety: Interrupt context, CPU Lock inactive
                     unsafe { TIMER_STATE.handle_tick::<Self>() };

@@ -48,7 +48,7 @@ where
     StaticInterruptHandler::define()
         .line(INTERRUPT_SYSTICK)
         .start(
-            #[inline]
+            #[inline(always)]
             || unsafe { Traits::handle_tick() },
         )
         .finish(b);
@@ -95,7 +95,7 @@ impl<TickfulState: TickfulStateTrait> StateCore<TickfulState> {
     /// # Safety
     ///
     /// Interrupt context, CPU Lock inactive
-    #[inline]
+    #[inline(always)]
     pub unsafe fn handle_tick<Traits: SysTickTickfulInstance>(&self) {
         <System<Traits> as raw::KernelBase>::raw_acquire_cpu_lock().unwrap();
 
@@ -116,6 +116,7 @@ impl<TickfulState: TickfulStateTrait> StateCore<TickfulState> {
     /// # Safety
     ///
     /// CPU Lock active
+    #[inline]
     pub unsafe fn tick_count(&self) -> UTicks {
         // Safety: CPU Lock protects it from concurrent access
         let inner = unsafe { &mut *self.inner.get() };
