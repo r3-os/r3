@@ -683,7 +683,7 @@ pub const unsafe fn new_interrupt_handler_table<
         i += 1;
     }
 
-    let storage = const_array_from_fn! {
+    const_array_from_fn! {
         fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> Option<InterruptHandlerFn> {
             // The interrupt line
             let line = I::N;
@@ -709,9 +709,7 @@ pub const unsafe fn new_interrupt_handler_table<
             Handlers,
             NUM_HANDLERS,
         >], i>(MakeCombinedHandlers(PhantomData))).collect::<[_; NumLines]>()
-    };
-
-    storage
+    }
 }
 
 #[doc(hidden)]
