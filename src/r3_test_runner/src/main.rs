@@ -66,6 +66,9 @@ struct Opt {
     /// reporting.
     #[clap(long = "small-rt")]
     small_rt: bool,
+    /// Extra command-line flags to pass to `rustc`
+    #[clap(long = "rustflags")]
+    additional_rustflags: Option<String>,
     /// If specified, only run tests containing this string in their names
     ///
     /// See the documentation of `TestFilter::from_str` for full syntax.
@@ -154,6 +157,7 @@ async fn main_inner() -> anyhow::Result<()> {
         opt.target,
         &target_arch,
         target_arch_opt,
+        opt.additional_rustflags.unwrap_or_default(),
     )
     .await
     .map_err(MainError::TestDriver)?;

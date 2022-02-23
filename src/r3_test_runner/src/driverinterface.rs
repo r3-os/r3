@@ -1,5 +1,6 @@
 //! Interface to a test driver
 use std::{
+    fmt::Write,
     future::Future,
     path::{Path, PathBuf},
     pin::Pin,
@@ -100,6 +101,7 @@ impl TestDriver {
         target: &'static dyn targets::Target,
         target_arch: &targets::Arch,
         target_arch_opt: targets::BuildOpt,
+        additional_rustflags: String,
     ) -> impl Future<Output = Result<Self, TestDriverNewError>> {
         // Choose the right test driver for the given target architecture
         let crate_name = match target_arch {
@@ -118,7 +120,14 @@ impl TestDriver {
                 return Err(TestDriverNewError::BadDriverPath(crate_path));
             }
 
-            Self::new_inner(crate_path, target, crate_name, target_arch_opt).await
+            Self::new_inner(
+                crate_path,
+                target,
+                crate_name,
+                target_arch_opt,
+                additional_rustflags,
+            )
+            .await
         }
     }
 
@@ -127,6 +136,7 @@ impl TestDriver {
         target: &'static dyn targets::Target,
         crate_name: &'static str,
         target_arch_opt: targets::BuildOpt,
+        additional_rustflags: String,
     ) -> Result<Self, TestDriverNewError> {
         // Move to the driver directory
         log::debug!("cd-ing to '{}'", crate_path.display());
@@ -192,24 +202,31 @@ impl TestDriver {
                 .map_err(|e| TestDriverNewError::WriteError(generated_file_path, e))?;
         }
 
-        let rustflags_linkarg = fn_formats::DisplayFmt(|f| {
-            for name in linker_scripts.inputs.iter() {
-                write!(f, " -C link-arg=-T{}", name)?;
-            }
-            Ok(())
-        });
-
         // Derive `RUSTFLAGS`.
+        let mut rustflags = std::env::var("RUSTFLAGS").unwrap_or_default();
+        if !rustflags.is_empty() {
+            // An unintentionally set `RUSTFLAGS` may cause a hard-to-understand
+            // build/test failure or compromise the validity of the tests, so
+            // warn the user about this behavior
+            log::info!(
+                "RUSTFLAGS appears to be non-empty; it will be combined with \
+                the default flags for the current test target"
+            );
+        }
+
+        write!(rustflags, " {}", additional_rustflags).unwrap();
+
+        for name in linker_scripts.inputs.iter() {
+            write!(rustflags, " -C link-arg=-T{}", name).unwrap();
+        }
+
         let target_features = &target_arch_opt.target_features;
-        let rustflags = if target_features.is_empty() {
-            rustflags_linkarg.to_string()
-        } else {
-            format!(
-                "{} -C target-feature={}",
-                rustflags_linkarg, target_features
-            )
-        };
         log::debug!("target_features = {:?}", target_features);
+        if !target_features.is_empty() {
+            write!(rustflags, " -C target-feature={}", target_features).unwrap();
+        };
+
+        log::debug!("rustflags = {:?}", rustflags);
 
         Ok(Self {
             rustflags,
