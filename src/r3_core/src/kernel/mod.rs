@@ -10,10 +10,10 @@ mod macros;
 pub mod cfg;
 mod error;
 pub mod event_group;
+mod global;
 pub mod hook;
 pub mod hunk;
 pub mod interrupt;
-mod kernel;
 pub mod mutex;
 pub mod raw;
 pub mod raw_cfg;
@@ -26,10 +26,10 @@ pub use {
     event_group::{
         EventGroup, EventGroupBits, EventGroupRef, EventGroupWaitFlags, StaticEventGroup,
     },
+    global::*,
     hook::StartupHook,
     hunk::Hunk,
     interrupt::{InterruptLine, InterruptNum, InterruptPriority, StaticInterruptHandler},
-    kernel::*,
     mutex::{Mutex, MutexProtocol, MutexRef, StaticMutex},
     raw::{Id, QueueOrder},
     semaphore::{Semaphore, SemaphoreRef, SemaphoreValue, StaticSemaphore},
