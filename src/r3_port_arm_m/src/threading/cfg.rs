@@ -53,6 +53,10 @@ pub trait ThreadingOptions {
 
 /// Defines the entry points of a port instantiation. Implemented by
 /// [`use_port!`].
+///
+/// # Safety
+///
+/// This trait is not intended to be implemented in any other means.
 pub unsafe trait EntryPoint {
     /// Proceed with the boot process.
     ///

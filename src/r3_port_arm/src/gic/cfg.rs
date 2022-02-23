@@ -138,6 +138,10 @@ pub trait GicOptions {
 }
 
 /// Provides access to a system-global GIC instance. Implemented by [`use_gic!`].
+///
+/// # Safety
+///
+/// This trait is not intended to be implemented in any other means.
 pub unsafe trait Gic {
     #[doc(hidden)]
     /// Get `GicRegs` representing the system-global GIC instance.

@@ -30,7 +30,7 @@ pub const fn sym_static<T: 'static, const ALIGN: usize>(
     x
 }
 
-pub unsafe trait SymStaticExt: Sized {
+pub trait SymStaticExt: Sized + private::Sealed {
     type Output;
 
     /// Get a raw pointer of the content.
@@ -45,7 +45,13 @@ pub unsafe trait SymStaticExt: Sized {
     }
 }
 
-unsafe impl<T, const ALIGN: usize> SymStaticExt for SymStatic<T, ALIGN> {
+mod private {
+    use super::*;
+    pub trait Sealed {}
+    impl<T, const ALIGN: usize> Sealed for SymStatic<T, ALIGN> {}
+}
+
+impl<T, const ALIGN: usize> SymStaticExt for SymStatic<T, ALIGN> {
     type Output = T;
 
     #[inline(always)]

@@ -23,6 +23,11 @@
 //! them.
 use crate::{bag::Bag, closure::Closure, kernel::raw, time::Duration, utils::PhantomInvariant};
 
+/// The base configuration interface.
+///
+/// # Safety
+///
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait CfgBase {
     type System: raw::KernelBase;
     fn num_task_priority_levels(&mut self, new_value: usize);
@@ -35,6 +40,13 @@ pub unsafe trait CfgBase {
     fn startup_hook_define(&mut self, func: fn());
 }
 
+/// The low-level kernel static configuration interface to define [tasks][1].
+///
+/// [1]: crate::kernel::StaticTask
+///
+/// # Safety
+///
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait CfgTask: CfgBase {
     fn task_define<Properties: ~const Bag>(
         &mut self,
@@ -53,6 +65,14 @@ pub struct TaskDescriptor<System> {
     pub stack_size: Option<usize>,
 }
 
+/// The low-level kernel static configuration interface to define [event
+/// groups][1].
+///
+/// [1]: crate::kernel::StaticEventGroup
+///
+/// # Safety
+///
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait CfgEventGroup: CfgBase
 where
     Self::System: raw::KernelEventGroup,
@@ -72,6 +92,13 @@ pub struct EventGroupDescriptor<System> {
     pub queue_order: raw::QueueOrder,
 }
 
+/// The low-level kernel static configuration interface to define [mutexes][1].
+///
+/// [1]: crate::kernel::StaticMutex
+///
+/// # Safety
+///
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait CfgMutex: CfgBase
 where
     Self::System: raw::KernelMutex,
@@ -90,6 +117,14 @@ pub struct MutexDescriptor<System> {
     pub protocol: raw::MutexProtocol,
 }
 
+/// The low-level kernel static configuration interface to define
+/// [semaphores][1].
+///
+/// [1]: crate::kernel::StaticSemaphore
+///
+/// # Safety
+///
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait CfgSemaphore: CfgBase
 where
     Self::System: raw::KernelSemaphore,
@@ -110,6 +145,13 @@ pub struct SemaphoreDescriptor<System> {
     pub queue_order: raw::QueueOrder,
 }
 
+/// The low-level kernel static configuration interface to define [timers][1].
+///
+/// [1]: crate::kernel::StaticTimer
+///
+/// # Safety
+///
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait CfgTimer: CfgBase
 where
     Self::System: raw::KernelTimer,
@@ -131,6 +173,15 @@ pub struct TimerDescriptor<System> {
     pub period: Option<Duration>,
 }
 
+/// The low-level kernel static configuration interface to define [interrupt
+/// lines][1] and the associated [interrupt handlers][2].
+///
+/// [1]: crate::kernel::InterruptLine
+/// [2]: crate::kernel::StaticInterruptHandler
+///
+/// # Safety
+///
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait CfgInterruptLine: CfgBase
 where
     Self::System: raw::KernelInterruptLine,
