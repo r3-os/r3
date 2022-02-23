@@ -96,7 +96,6 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     if let [None, None] = D::app().int {
         log::warn!("No interrupt lines defined, skipping the test");
         D::success();
-        return;
     }
 }
 
@@ -116,6 +115,5 @@ fn isr0<System: SupportedSystem, D: Driver<App<System>>>() {
     if D::app().int[1].is_none() {
         log::warn!("Only one interrupt line is defined, skipping the second part of the test");
         D::success();
-        return;
     }
 }
