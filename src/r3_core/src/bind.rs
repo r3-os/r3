@@ -767,6 +767,7 @@ macro_rules! impl_unzip_bind_for_tuples {
 
             fn unzip(self) -> Self::Target {
                 #[allow(unused_unsafe)] // for `Bind<'_, _, ()>`
+                #[allow(clippy::unused_unit)] // for `Bind<'_, _, ()>`
                 unsafe {
                     let divide = DivideBind::new(self);
                     let hunk = divide.original_hunk();
@@ -1746,6 +1747,7 @@ macro_rules! impl_binder_on_tuples {
                 let _ = ctx;
             }
 
+            #[allow(clippy::unused_unit)]
             fn into_runtime_binder(self) -> Self::Runtime {
                 ( $( self.$I.into_runtime_binder(), )* )
             }
@@ -1759,6 +1761,7 @@ macro_rules! impl_binder_on_tuples {
 
             #[allow(unused_unsafe)]
             #[allow(unused_variables)]
+            #[allow(clippy::unused_unit)]
             #[inline]
             unsafe fn materialize<'call>(self) -> Self::Target<'call> {
                 unsafe {
