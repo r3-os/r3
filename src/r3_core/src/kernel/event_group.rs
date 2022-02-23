@@ -161,7 +161,6 @@ impl<System: raw::KernelEventGroup> EventGroupDefiner<System> {
                 initial_bits: initial,
                 ..self.inner
             },
-            ..self
         }
     }
 
@@ -175,7 +174,6 @@ impl<System: raw::KernelEventGroup> EventGroupDefiner<System> {
                 queue_order: queue_order,
                 ..self.inner
             },
-            ..self
         }
     }
 
