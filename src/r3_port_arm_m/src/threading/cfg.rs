@@ -119,6 +119,7 @@ macro_rules! use_port {
                 cfg::{ThreadingOptions, EntryPoint},
             };
 
+            #[inline(always)]
             pub(super) fn port_state() -> &'static State {
                 <$Traits as PortInstance>::port_state()
             }
@@ -145,14 +146,17 @@ macro_rules! use_port {
                 // must be double-word aligned."
                 const STACK_ALIGN: usize = 8;
 
+                #[inline(always)]
                 unsafe fn dispatch_first_task() -> ! {
                     port_state().dispatch_first_task::<Self>()
                 }
 
+                #[inline(always)]
                 unsafe fn yield_cpu() {
                     port_state().yield_cpu::<Self>()
                 }
 
+                #[inline(always)]
                 unsafe fn exit_and_dispatch(task: &'static TaskCb<Self>) -> ! {
                     port_state().exit_and_dispatch::<Self>(task);
                 }
@@ -167,14 +171,17 @@ macro_rules! use_port {
                     port_state().leave_cpu_lock::<Self>()
                 }
 
+                #[inline(always)]
                 unsafe fn initialize_task_state(task: &'static TaskCb<Self>) {
                     port_state().initialize_task_state::<Self>(task)
                 }
 
+                #[inline(always)]
                 fn is_cpu_lock_active() -> bool {
                     port_state().is_cpu_lock_active::<Self>()
                 }
 
+                #[inline(always)]
                 fn is_task_context() -> bool {
                     port_state().is_task_context::<Self>()
                 }
@@ -215,6 +222,7 @@ macro_rules! use_port {
             }
 
             unsafe impl EntryPoint for $Traits {
+                #[inline]
                 unsafe fn start() -> ! {
                     unsafe { port_state().port_boot::<$Traits>() }
                 }

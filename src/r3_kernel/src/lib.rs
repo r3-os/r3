@@ -713,6 +713,7 @@ pub trait PortToKernel {
 }
 
 impl<Traits: KernelTraits> PortToKernel for Traits {
+    #[inline(always)]
     unsafe fn boot() -> ! {
         let mut lock = unsafe { klock::assume_cpu_lock::<Traits>() };
 
@@ -749,7 +750,7 @@ impl<Traits: KernelTraits> PortToKernel for Traits {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     unsafe fn choose_running_task() {
         // Safety: The precondition of this method includes CPU Lock being
         // active
@@ -761,6 +762,7 @@ impl<Traits: KernelTraits> PortToKernel for Traits {
         forget(lock);
     }
 
+    #[inline(always)]
     unsafe fn timer_tick() {
         timeout::handle_tick::<Traits>();
     }

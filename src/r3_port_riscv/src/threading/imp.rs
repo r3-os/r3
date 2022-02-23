@@ -221,6 +221,7 @@ impl Init for TaskState {
 }
 
 impl State {
+    #[inline(always)]
     pub unsafe fn port_boot<Traits: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<Traits>() };
 
@@ -254,6 +255,7 @@ impl State {
         unsafe { <Traits as PortToKernel>::boot() };
     }
 
+    #[inline(always)]
     pub unsafe fn dispatch_first_task<Traits: PortInstance>(&'static self) -> ! {
         debug_assert!(self.is_cpu_lock_active::<Traits>());
 
@@ -820,6 +822,7 @@ impl State {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
         &'static self,
         _task: &'static TaskCb<Traits>,

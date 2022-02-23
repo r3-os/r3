@@ -33,6 +33,7 @@ pub unsafe trait PortInstance:
 {
     sym_static!(static PORT_STATE: SymStatic<State> = zeroed!());
 
+    #[inline(always)]
     fn port_state() -> &'static State {
         sym_static(Self::PORT_STATE).as_ref()
     }
@@ -77,6 +78,7 @@ impl Init for TaskState {
 }
 
 impl State {
+    #[inline(always)]
     pub unsafe fn port_boot<Traits: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<Traits>() };
 
@@ -102,6 +104,7 @@ impl State {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn dispatch_first_task<Traits: PortInstance>(&'static self) -> ! {
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
@@ -183,6 +186,7 @@ impl State {
         compiler_fence(Ordering::Acquire);
     }
 
+    #[inline(always)]
     pub unsafe fn exit_and_dispatch<Traits: PortInstance>(
         &'static self,
         _task: &'static TaskCb<Traits>,
