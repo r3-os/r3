@@ -19,7 +19,7 @@ R3 is a proof-of-concept of a static RTOS that utilizes Rust's compile-time func
 
 ## R3 API
 
-- **Tasks** are kernel objects associated with application threads and encapsulate their execution states. Tasks can be activated by application code or automatically at boot time. Tasks are assigned priorities (up to 2¹⁵ levels on a 32-bit target, though the implementation is heavily optimized for a smaller number of priorities), which can be changed at runtime. A task can enable **Priority Boost** to temporarily raise its priority to higher than any other tasks. The number of tasks is only limited by memory available.
+- **Tasks** are kernel objects associated with application threads and encapsulate their execution states. Tasks can be activated by application code or automatically at boot time. Tasks are assigned priorities (up to 2¹⁵ levels on a 32-bit target, though the implementation is heavily optimized for a smaller number of priorities), which can be changed at runtime. The number of tasks is only limited by memory available.
 
 - R3 provides a unified interface to control **interrupt lines** and register **interrupt handlers**. In addition, the Arm M-Profile port supports **unmanaged interrupt lines**, which aren't masked when the kernel is handling a system call.
 
