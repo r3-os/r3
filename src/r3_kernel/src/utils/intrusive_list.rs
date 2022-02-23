@@ -247,7 +247,7 @@ where
     Pool: ops::Index<Index, Output = Element>,
     MapLink: Fn(&Element) -> &LinkCell,
     LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
-    Index: PartialEq + Clone,
+    Index: PartialEq + Copy,
 {
     pub fn new(head: HeadCell, pool: &'a Pool, map_link: MapLink, cell_key: CellKey) -> Self {
         ListAccessorCell {
@@ -286,7 +286,7 @@ where
     Pool: ops::Index<Index, Output = Element>,
     MapLink: Fn(&Element) -> &LinkCell,
     LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
-    Index: PartialEq + Clone,
+    Index: PartialEq + Copy,
     InconsistencyHandler: HandleInconsistency,
 {
     pub fn head_cell(&self) -> &HeadCell {
@@ -357,7 +357,7 @@ where
         item: Index,
         at: Option<Index>,
     ) -> Result<(), InsertError<InconsistencyHandler::Output>> {
-        if (self.map_link)(&self.pool[item.clone()])
+        if (self.map_link)(&self.pool[item])
             .get(&self.cell_key)
             .is_some()
         {
@@ -377,34 +377,34 @@ where
                 (first, false)
             };
 
-            let prev = (self.map_link)(&self.pool[next.clone()])
+            let prev = (self.map_link)(&self.pool[next])
                 .get(&self.cell_key)
                 .ok_or_else(on_inconsistency)?
                 .prev;
 
             // prev.next = item
-            (self.map_link)(&self.pool[prev.clone()]).modify(&mut self.cell_key, |l| match l {
+            (self.map_link)(&self.pool[prev]).modify(&mut self.cell_key, |l| match l {
                 // Don't replace this part with the following code:
                 //
-                //    l.as_mut().ok_or_else(on_inconsistency)?.next = item.clone();
+                //    l.as_mut().ok_or_else(on_inconsistency)?.next = item;
                 //
                 // When `HandleInconsistencyUnchecked` is in use, the above code
                 // can be "optimized" to the following code, which is very
                 // inefficient:
                 //
-                //    l.as_mut().unwrap_or(0).next = item.clone();
+                //    l.as_mut().unwrap_or(0).next = item;
                 //
                 Some(l) => {
-                    l.next = item.clone();
+                    l.next = item;
                     Ok::<(), InconsistencyHandler::Output>(())
                 }
                 None => Err(on_inconsistency()),
             })?;
 
             // next.prev = item
-            (self.map_link)(&self.pool[next.clone()]).modify(&mut self.cell_key, |l| match l {
+            (self.map_link)(&self.pool[next]).modify(&mut self.cell_key, |l| match l {
                 Some(l) => {
-                    l.prev = item.clone();
+                    l.prev = item;
                     Ok::<(), InconsistencyHandler::Output>(())
                 }
                 None => Err(on_inconsistency()),
@@ -412,8 +412,7 @@ where
 
             // item.prev = prev
             // item.next = next
-            (self.map_link)(&self.pool[item.clone()])
-                .set(&mut self.cell_key, Some(Link { prev, next }));
+            (self.map_link)(&self.pool[item]).set(&mut self.cell_key, Some(Link { prev, next }));
 
             if update_first {
                 head.first = Some(item);
@@ -422,12 +421,12 @@ where
         } else {
             debug_assert!(at.is_none());
 
-            let link = (self.map_link)(&self.pool[item.clone()]);
+            let link = (self.map_link)(&self.pool[item]);
             link.set(
                 &mut self.cell_key,
                 Some(Link {
-                    prev: item.clone(),
-                    next: item.clone(),
+                    prev: item,
+                    next: item,
                 }),
             );
 
@@ -461,7 +460,7 @@ where
         &mut self,
         item: Index,
     ) -> Result<Index, ItemError<InconsistencyHandler::Output>> {
-        if (self.map_link)(&self.pool[item.clone()])
+        if (self.map_link)(&self.pool[item])
             .get(&self.cell_key)
             .is_none()
         {
@@ -479,9 +478,9 @@ where
         }}
 
         let link: Link<Index> = {
-            let link_ref = (self.map_link)(&self.pool[item.clone()]);
+            let link_ref = (self.map_link)(&self.pool[item]);
             let mut head = self.head();
-            if head.first.as_ref() == Some(&item) {
+            if head.first == Some(item) {
                 let next = link_ref
                     .get(&self.cell_key)
                     .ok_or_else(on_inconsistency!())?
@@ -509,18 +508,18 @@ where
         let on_inconsistency = on_inconsistency!();
 
         // link.prev.next = link.next
-        (self.map_link)(&self.pool[link.prev.clone()]).modify(&mut self.cell_key, |l| match l {
+        (self.map_link)(&self.pool[link.prev]).modify(&mut self.cell_key, |l| match l {
             Some(l) => {
-                l.next = link.next.clone();
+                l.next = link.next;
                 Ok::<(), InconsistencyHandler::Output>(())
             }
             None => Err(on_inconsistency()),
         })?;
 
         // link.next.prev = link.prev
-        (self.map_link)(&self.pool[link.next.clone()]).modify(&mut self.cell_key, |l| match l {
+        (self.map_link)(&self.pool[link.next]).modify(&mut self.cell_key, |l| match l {
             Some(l) => {
-                l.prev = link.prev.clone();
+                l.prev = link.prev;
                 Ok::<(), InconsistencyHandler::Output>(())
             }
             None => Err(on_inconsistency()),
@@ -528,7 +527,7 @@ where
 
         // item.prev = null
         // item.next = null
-        (self.map_link)(&self.pool[item.clone()]).set(&mut self.cell_key, None);
+        (self.map_link)(&self.pool[item]).set(&mut self.cell_key, None);
 
         Ok(item)
     }
@@ -564,7 +563,7 @@ where
             .get(&self.cell_key)
             .ok_or(ItemError::NotLinked)?
             .next;
-        Ok(if Some(&next) == self.head().first.as_ref() {
+        Ok(if Some(next) == self.head().first {
             None
         } else {
             Some(next)
@@ -574,7 +573,7 @@ where
     /// Get the previous element of the specified element.
     #[inline]
     pub fn prev(&self, i: Index) -> Result<Option<Index>, ItemError<InconsistencyHandler::Output>> {
-        Ok(if Some(&i) == self.head().first.as_ref() {
+        Ok(if Some(i) == self.head().first {
             None
         } else {
             Some(
@@ -623,18 +622,18 @@ where
     MapLink: 'a + Fn(&Element) -> &LinkCell,
     Element: 'a + 'b,
     LinkCell: CellLike<CellKey, Target = Option<Link<Index>>>,
-    Index: PartialEq + Clone,
+    Index: PartialEq + Copy,
     InconsistencyHandler: HandleInconsistency,
 {
     type Item = Result<(Index, &'a Element), InconsistencyHandler::Output>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.next.take() {
-            self.next = match self.accessor.next(next.clone()) {
+            self.next = match self.accessor.next(next) {
                 Ok(x) => x,
                 Err(_) => return Some(Err(self.accessor.inconsistency_handler.on_inconsistency())),
             };
-            Some(Ok((next.clone(), &self.accessor.pool[next])))
+            Some(Ok((next, &self.accessor.pool[next])))
         } else {
             None
         }
