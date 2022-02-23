@@ -50,9 +50,11 @@ jobs:
           path: ./target/debug
           key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/r3_test_runner/**', 'src/r3_test_suite/**') }}
 
-      - name: Enable LTO
+      - name: "Set -Clto -Ccodegen-units=1 -Copt-level=z"
         run: |
-          echo "lto = true" >> Cargo.toml
+          echo 'lto = true' >> Cargo.toml
+          echo 'codegen-units = 1' >> Cargo.toml
+          echo 'opt-level = "z"' >> Cargo.toml
 
       - name: Generate a size report
         run: |
