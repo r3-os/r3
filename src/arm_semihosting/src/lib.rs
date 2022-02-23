@@ -46,6 +46,7 @@
 
 #![deny(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::result_unit_err)]
 #![no_std]
 
 #[macro_use]
