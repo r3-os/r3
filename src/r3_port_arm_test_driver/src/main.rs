@@ -3,12 +3,12 @@
 //! padding-bottom: 100%" href="http://derpibooru.org/2079083"
 //! title="Screwdriver"></a></div>
 #![doc = include_str!("./common.md")]
-#![feature(const_fn_trait_bound)]
-#![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_refs_to_cell)]
-#![feature(naked_functions)]
 #![feature(const_trait_impl)]
+#![feature(naked_functions)]
+#![feature(const_mut_refs)]
 #![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(feature = "run", no_std)]

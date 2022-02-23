@@ -4,10 +4,10 @@
 //! [R3]: ::r3
 //! [RZ/A1H]: https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz/rza/rza1h.html
 //! [GR-PEACH]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html
-#![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![no_std]

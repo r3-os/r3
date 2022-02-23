@@ -3,11 +3,11 @@
 //!
 //! [R3]: ::r3
 //! [Raspberry Pi Pico]: https://pico.raspberrypi.org
-#![feature(raw_ref_op)]
-#![feature(const_fn_trait_bound)]
-#![feature(const_mut_refs)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
+#![feature(raw_ref_op)]
 #![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![no_std]

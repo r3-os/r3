@@ -272,10 +272,10 @@ define_object! {
 /// ## Periodic Timer
 ///
 /// ```rust
-/// # #![feature(const_fn_trait_bound)]
-/// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
+/// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_trait_impl)]
+/// # #![feature(const_mut_refs)]
 /// use r3_core::{kernel::{Cfg, StaticTimer, traits}, time::Duration};
 ///
 /// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
@@ -312,10 +312,10 @@ define_object! {
 /// ## One-Shot Timer
 ///
 /// ```rust
-/// # #![feature(const_fn_trait_bound)]
-/// # #![feature(const_mut_refs)]
 /// # #![feature(const_fn_fn_ptr_basics)]
+/// # #![feature(const_fn_trait_bound)]
 /// # #![feature(const_trait_impl)]
+/// # #![feature(const_mut_refs)]
 /// use r3_core::{kernel::{Cfg, StaticTimer, traits, prelude::*}, time::Duration};
 ///
 /// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>

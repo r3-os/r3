@@ -42,8 +42,8 @@ define_object! {
 ///
 /// ```rust
 /// #![feature(const_fn_trait_bound)]
-/// #![feature(const_mut_refs)]
 /// #![feature(const_trait_impl)]
+/// #![feature(const_mut_refs)]
 /// use r3_core::kernel::{
 ///     LockMutexError, StaticMutex, MutexProtocol, Cfg, traits, prelude::*,
 /// };

@@ -1,9 +1,9 @@
 //! Runs test cases defined in `r3_test_suite`.
-#![feature(never_type)]
-#![feature(const_mut_refs)]
 #![feature(const_fn_trait_bound)]
-#![feature(slice_ptr_len)]
 #![feature(const_refs_to_cell)]
+#![feature(const_mut_refs)]
+#![feature(slice_ptr_len)]
+#![feature(never_type)]
 
 use r3_port_std::PortInstance;
 use std::sync::atomic::{AtomicBool, Ordering};

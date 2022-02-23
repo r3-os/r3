@@ -1,8 +1,8 @@
-#![feature(const_fn_trait_bound)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_fn_trait_bound)]
 #![feature(const_refs_to_cell)]
-#![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
 #![deny(unsafe_op_in_unsafe_fn)]
 use r3::{
     kernel::{prelude::*, traits, StaticTask},

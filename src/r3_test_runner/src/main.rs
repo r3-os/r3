@@ -1,5 +1,5 @@
-#![feature(decl_macro)] // `macro`
 #![feature(must_not_suspend)] // `must_not_suspend` lint
+#![feature(decl_macro)] // `macro`
 #![warn(must_not_suspend)]
 use anyhow::Context;
 use clap::Parser;
