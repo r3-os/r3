@@ -191,18 +191,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
-name = "basic_gr_peach"
-version = "0.0.0"
-dependencies = [
- "r3",
- "r3_kernel",
- "r3_port_arm",
- "r3_support_rza1",
- "rtt-target 0.2.2",
- "rza1",
-]
-
-[[package]]
 name = "bbqueue"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1768,6 +1756,18 @@ dependencies = [
  "r3",
  "r3_kernel",
  "r3_port_std",
+]
+
+[[package]]
+name = "r3_example_basic_gr_peach"
+version = "0.0.0"
+dependencies = [
+ "r3",
+ "r3_kernel",
+ "r3_port_arm",
+ "r3_support_rza1",
+ "rtt-target 0.2.2",
+ "rza1",
 ]
 
 [[package]]

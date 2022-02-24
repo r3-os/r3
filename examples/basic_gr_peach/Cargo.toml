@@ -1,5 +1,5 @@
 [package]
-name = "basic_gr_peach"
+name = "r3_example_basic_gr_peach"
 version = "0.0.0"
 edition = "2021"
 publish = false
