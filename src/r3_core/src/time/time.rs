@@ -5,7 +5,7 @@ use crate::{
     utils::{Init, ZeroInit},
 };
 
-/// Represents a timestamp used by the API surface of the R3 RTOS.
+/// Represents a timestamp used by the API surface of R3-OS.
 ///
 /// The origin is application-defined. If an application desires to represent a
 /// calender time using `Time`, it's recommended to use the midnight UTC on

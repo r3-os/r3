@@ -2,7 +2,7 @@ use core::{fmt, ops};
 
 use crate::utils::{Init, ZeroInit};
 
-/// Represents a signed time span used by the API surface of the R3 RTOS.
+/// Represents a signed time span used by the API surface of R3-OS.
 ///
 /// `Duration` is backed by `i32` and can represent the range
 /// [-35′47.483648″, +35′47.483647″] with microsecond precision.

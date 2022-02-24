@@ -1,9 +1,9 @@
-The original kernel of [R3 RTOS][].
+The original kernel of [R3-OS][].
 
 - Traditional uniprocessor tickless real-time kernel with preemptive scheduling
 - The kernel is split into a target-independent portion and a target-specific portion. The target-specific portion (called *a port*) is provided as a separate crate. An application **combines them using the trait system**.
 
-[R3 RTOS]: ../r3/index.html
+[R3-OS]: ../r3/index.html
 
 <!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
 <div class="admonition-follows"></div>

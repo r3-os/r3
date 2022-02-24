@@ -1,4 +1,4 @@
-The core API definition for [R3 RTOS][r3].
+The core API definition for [R3-OS][r3].
 
 The core API represents the low-level interface between kernel and application code. It includes [`raw`](crate::kernel::raw) and [`raw_cfg`](crate::kernel::raw_cfg) traits implemented by kernel implementations as well as common data types, such as [`Time`](crate::time::Time). Because breaking changes in the core API would result in ecosystem split, it's designed to be more stable than the façade API ([`r3`][r3]).
 
@@ -41,7 +41,7 @@ opt-level = 2
 
 ## System Type
 
-The R3 RTOS utilizes Rust's trait system to allow system designers to construct a system in a modular way. An R3 application is built around a marker type called a **system type**. It implements various traits, whose implementations are provided by a kernel implementation, such as [`r3_kernel`], to provide a basic kernel API and encapsulate the kernel's configuration, such as resource allocation for kernel objects. The application and higher-level wrappers interact with the kernel through these trait implementations.
+R3-OS utilizes Rust's trait system to allow system designers to construct a system in a modular way. An R3 application is built around a marker type called a **system type**. It implements various traits, whose implementations are provided by a kernel implementation, such as [`r3_kernel`], to provide a basic kernel API and encapsulate the kernel's configuration, such as resource allocation for kernel objects. The application and higher-level wrappers interact with the kernel through these trait implementations.
 
 <span class="center">![trait_binding]</span>
 
@@ -250,7 +250,7 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
 <div class="admonition-follows"></div>
 
-> **Relation to Other Specifications:** Inspired by the μITRON4.0 specification. CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in the R3 RTOS. This means phrases like “when the CPU is locked” are not allowed.
+> **Relation to Other Specifications:** Inspired by the μITRON4.0 specification. CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in R3-OS. This means phrases like “when the CPU is locked” are not allowed.
 >
 > CPU Lock corresponds to `SuspendOSInterrupts` and `ResumeOSInterrupts` from the OSEK/VDX specification.
 
@@ -352,7 +352,7 @@ The behavior of system calls is undefined inside an unmanaged interrupt handler.
 
 # Kernel Timing
 
-The R3 RTOS provides a timing system to enable tracking timed events such as wait operations with timeout.
+R3-OS provides a timing system to enable tracking timed events such as wait operations with timeout.
 
 The kernel uses **microseconds** as the system time unit. A span of time ([`Duration`]) is represented by a 32-bit signed integer (the negative part is only used by the clock adjustment API), which can hold up to 35′47.483647″.
 

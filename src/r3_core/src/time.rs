@@ -1,4 +1,4 @@
-//! Temporal quantification for the R3 kernel.
+//! Temporal quantification for R3-OS.
 //!
 //! > Duck Guy: “Maybe time's just a construct of human perception, an illusion created by—”
 //! >
