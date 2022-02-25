@@ -7,6 +7,7 @@ members = [
     "examples/basic_wio_terminal",
     "examples/common",
     "examples/smp_rp_pico",
+    "scripts/doctest",
     "src/arm_semihosting",
     "src/r3",
     "src/r3_core",
