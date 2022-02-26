@@ -19,6 +19,7 @@
 #![feature(assert_matches)]
 #![feature(const_mut_refs)]
 #![feature(const_ptr_read)]
+#![feature(const_convert)]
 #![feature(const_option)]
 #![feature(const_deref)]
 #![feature(const_heap)]
