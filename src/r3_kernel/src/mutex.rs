@@ -281,9 +281,6 @@ fn poll_core<Traits: KernelTraits>(
 ///
 /// The task must be in Running or Waiting state.
 #[inline]
-// FIXME: The extra parentheses in `debug_assert_matches!` are needed until
-//        <https://github.com/murarth/assert_matches/pull/10> is fixed
-#[allow(unused_parens)]
 fn lock_core<Traits: KernelTraits>(
     mutex_cb: &'static MutexCb<Traits>,
     task: &'static task::TaskCb<Traits>,
@@ -291,7 +288,7 @@ fn lock_core<Traits: KernelTraits>(
 ) {
     debug_assert_matches!(
         task.st.read(&*lock),
-        (task::TaskSt::Running | task::TaskSt::Waiting)
+        task::TaskSt::Running | task::TaskSt::Waiting
     );
 
     mutex_cb.owning_task.replace(&mut *lock, Some(task));
