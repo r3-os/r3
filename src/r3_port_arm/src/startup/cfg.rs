@@ -115,7 +115,8 @@ impl MemoryMapSection {
             panic!("`virtual_range` must not be empty");
         }
 
-        // FIXME: `<Range as PartialEq>::eq` is not `const fn`
+        // `<Range as PartialEq>::eq` is not `const fn` yet
+        // [ref:range_const_partial_eq]
         if virtual_range.end > 0x1_0000_0000
             || (virtual_range.start == 0 && virtual_range.end == 0x1_0000_0000)
         {

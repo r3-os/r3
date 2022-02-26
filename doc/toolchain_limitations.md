@@ -542,6 +542,31 @@ const _: () = assert!(PartialEq::eq(&Some(A), &Some(A)));  // error
 ```
 
 
+### `[tag:range_const_partial_eq]` `Range<T>: !~const PartialEq`
+
+The standard library doesn't provide a `const` trait implementation of `PartialEq` for `Range<T>`.
+
+```rust
+#![feature(const_trait_impl)]
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+assert!(PartialEq::eq(&(A..A), &(A..A)));
+```
+
+```rust,compile_fail,E0277
+#![feature(const_trait_impl)]
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+const _: () = assert!(PartialEq::eq(&(A..A), &(A..A)));  // error
+```
+
+
 ### `[tag:type_id_partial_eq]` `TypeId: !const PartialEq`
 
 The standard library doesn't provide a `const` trait implementation of `PartialEq` for `core::any::TypeId`.

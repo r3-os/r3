@@ -12,13 +12,10 @@ use crate::sp804::{cfg::Sp804Options, sp804_regs};
 ///
 /// Only meant to be implemented by [`use_sp804!`].
 pub unsafe trait Sp804Instance: KernelTraits + Sp804Options {
-    // FIXME: Specifying `TicklessCfg::new(...)` here causes a "cycle
-    //        detected" error
+    // FIXME: Specifying `TicklessCfg::new(...)` here used to cause a "cycle
+    //        detected" error, but now it doesn't
     const TICKLESS_CFG: TicklessCfg;
 
-    // FIXME: Specifying `TicklessState<{ Self::TICKLESS_CFG }>` here
-    //        fails with an error message similar to
-    //        <https://github.com/rust-lang/rust/issues/72821>
     type TicklessState: TicklessStateTrait;
 
     fn tickless_state() -> *mut Self::TicklessState;
