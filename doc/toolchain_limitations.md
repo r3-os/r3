@@ -61,6 +61,36 @@ fn foo<C: CfgMutex>() {}
 ```
 
 
+### `[tag:impl_trait_false_type_alias_bounds]` `type_alias_bounds` misfires when `impl Trait` is used in a portion of a type alias
+
+*Upstream issue:* [rust-lang/rust#94395](https://github.com/rust-lang/rust/issues/94395)
+
+```rust,compile_fail
+#![feature(type_alias_impl_trait)]
+
+// error: bounds on generic parameters are not enforced in type aliases
+#[deny(type_alias_bounds)]
+type Alias<T: Send> = (impl Send,);
+
+pub fn foo<T: Send>(x: T) -> Alias<T> {
+    (x,)
+}
+```
+
+Removing `: Send` from the type alias as per the compiler's suggestion results in a hard error.
+
+```rust,compile_fail,E0277
+#![feature(type_alias_impl_trait)]
+
+// error[E0277]: `T` cannot be sent between threads safely
+type Alias<T> = (impl Send,);
+
+pub fn foo<T: Send>(x: T) -> Alias<T> {
+    (x,)
+}
+```
+
+
 ## Language features and `const fn`s
 
 ### `[tag:const_for]` `for` loops are unusable in `const fn`
@@ -670,6 +700,13 @@ pub macro public() {
 ### `[tag:downstream_intra_doc_link]` Intra-doc links can't refer to downstream crates
 
 *Upstream issue:* [rust-lang/rust#74481](https://github.com/rust-lang/rust/issues/74481)
+
+
+### `[tag:rustdoc_images]` There's no supported way to include images from relative paths in a rustdoc output
+
+*Upstream issue:* [rust-lang/rust#32104](https://github.com/rust-lang/rust/issues/32104)
+
+A doc comment can include an image tag with a relative path, but this won't render correctly because rustdoc doesn't copy the referenced image file to the appropriate directory.
 
 
 ## Miscellaneous
