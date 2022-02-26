@@ -22,12 +22,7 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
         }: TaskDescriptor<Self::System>,
         properties: Properties,
     ) -> task::TaskId {
-        // FIXME: `Option::unwrap_or` isn't `const fn` yet
-        let mut stack = task::StackHunk::auto(if let Some(x) = stack_size {
-            x
-        } else {
-            Traits::STACK_DEFAULT_SIZE
-        });
+        let mut stack = task::StackHunk::auto(stack_size.unwrap_or(Traits::STACK_DEFAULT_SIZE));
 
         if let Some(hunk) = properties.get::<StackHunk<Self::System>>() {
             let stack_size = if let Some(stack_size) = stack_size {
