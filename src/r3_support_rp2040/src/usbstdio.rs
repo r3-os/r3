@@ -223,8 +223,6 @@ impl UsbStdioGlobal {
                     write_buf.consume(num_bytes);
                 }
                 Err(nb::Error::WouldBlock) => {}
-                // FIXME: `Infallible` is uninhabited, so this arm is really unreachable
-                Err(nb::Error::Other(_)) => unreachable!(),
             }
         }
     }

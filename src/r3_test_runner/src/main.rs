@@ -1,3 +1,4 @@
+#![feature(exhaustive_patterns)]
 #![feature(must_not_suspend)] // `must_not_suspend` lint
 #![feature(decl_macro)] // `macro`
 #![warn(must_not_suspend)]

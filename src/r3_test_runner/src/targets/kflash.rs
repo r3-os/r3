@@ -488,10 +488,6 @@ async fn read_to_end_and_discard_for_some_time(
 ) -> std::io::Result<()> {
     log::trace!("Starting discarding stale data in the receive buffer");
     match tokio::time::timeout(Duration::from_millis(100), read_to_end_and_discard(reader)).await {
-        // FIXME: This match arm is really unreachable because `Infallible` is
-        //        uninhabited. Waiting for `exhaustive_patterns` feature
-        //        <https://github.com/rust-lang/rust/issues/51085>
-        Ok(Ok(_)) => unreachable!(),
         Ok(Err(e)) => Err(e),
         Err(_) => Ok(()),
     }
