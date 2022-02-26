@@ -839,6 +839,27 @@ const _: () = foo();
 ```
 
 
+### `[tag:method_repr_align]` `#[repr(align(_))]` is not supported on associated functions or methods
+
+*Upstream issue:* [rust-lang/rust#82232 (comment)](https://github.com/rust-lang/rust/issues/82232#issuecomment-905929314)
+
+```rust
+#![feature(fn_align)]
+#[repr(align(4))]
+fn foo() {}
+```
+
+```rust,compile_fail,E0517
+#![feature(fn_align)]
+struct A;
+impl A {
+    // error[E0517]: attribute should be applied to a struct, enum, function, or union
+    #[repr(align(4))]
+    fn foo() {}
+}
+```
+
+
 [1]: https://github.com/stepchowfun/tagref
 [2]: https://doc.rust-lang.org/1.58.1/rustdoc/documentation-tests.html#documentation-tests
 [3]: https://github.com/rust-lang/rust/issues
