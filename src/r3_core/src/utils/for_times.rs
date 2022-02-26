@@ -232,6 +232,8 @@ macro_rules! const_array_from_fn {
             ))
         }
 
+        // `MaybeUninit::array_assume_init` is not `const fn` yet
+        // [ref:const_array_assume_init]
         const unsafe fn __assume_init<
             $($iter_gparam $($iter_gparam_bounds)*,)*
             const LEN: usize
@@ -244,8 +246,6 @@ macro_rules! const_array_from_fn {
         }
 
         // Safety: See the body of `__assume_init`.
-        // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
-        //        it becomes `const fn`
         unsafe { __assume_init::<$($ctx_t,)* {$len_value}>(array) }
     }};
 }

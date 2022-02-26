@@ -126,7 +126,7 @@ impl Duration {
     /// overflows.
     #[inline]
     pub const fn checked_mul(self, other: i32) -> Option<Self> {
-        // FIXME: `Option::map` is not `const fn` yet
+        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
         if let Some(x) = self.micros.checked_mul(other) {
             Some(Self::from_micros(x))
         } else {
@@ -138,7 +138,7 @@ impl Duration {
     /// overflows or `other` is zero.
     #[inline]
     pub const fn checked_div(self, other: i32) -> Option<Self> {
-        // FIXME: `Option::map` is not `const fn` yet
+        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
         if let Some(x) = self.micros.checked_div(other) {
             Some(Self::from_micros(x))
         } else {
@@ -150,7 +150,7 @@ impl Duration {
     /// `self == MIN`.
     #[inline]
     pub const fn checked_abs(self) -> Option<Self> {
-        // FIXME: `Option::map` is not `const fn` yet
+        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
         if let Some(x) = self.micros.checked_abs() {
             Some(Self::from_micros(x))
         } else {
@@ -162,7 +162,7 @@ impl Duration {
     /// overflows.
     #[inline]
     pub const fn checked_add(self, other: Self) -> Option<Self> {
-        // FIXME: `Option::map` is not `const fn` yet
+        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
         if let Some(x) = self.micros.checked_add(other.micros) {
             Some(Self::from_micros(x))
         } else {
@@ -174,7 +174,7 @@ impl Duration {
     /// overflows.
     #[inline]
     pub const fn checked_sub(self, other: Self) -> Option<Self> {
-        // FIXME: `Option::map` is not `const fn` yet
+        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
         if let Some(x) = self.micros.checked_sub(other.micros) {
             Some(Self::from_micros(x))
         } else {

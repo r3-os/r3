@@ -433,7 +433,7 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: raw::KernelInt
     interrupt_lines: &ComptimeVec<CfgInterruptLineInfo>,
     interrupt_handlers: &ComptimeVec<CfgInterruptHandler>,
 ) {
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     let mut i = 0;
     while i < interrupt_handlers.len() {
         let handler = &interrupt_handlers[i];
@@ -541,9 +541,10 @@ pub type InterruptHandlerFn = unsafe extern "C" fn();
 /// ```
 type ProtoCombinedHandlerFn = fn();
 
-// FIXME: Passing `&'static [_]` as a const generic parameter causes ICE:
+// FIXME: Passing `&'static [_]` as a const generic parameter caused ICE:
 //        <https://github.com/rust-lang/rust/issues/73727>
-//       `CfgInterruptHandlerList` is a work-around for this issue.
+//       `CfgInterruptHandlerList` was introduced as a work-around for this
+//       issue, but this might not be necessary anymore.
 /// A static list of [`CfgInterruptHandler`]s.
 #[doc(hidden)]
 pub trait CfgInterruptHandlerList {
@@ -589,6 +590,8 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
     const fn proto_combined_handlers_array() -> [ProtoCombinedHandlerFn; NUM_HANDLERS] {
         // FIXME: Unable to do this inside a `const` item because of
         //        <https://github.com/rust-lang/rust/pull/72934>
+        // FIXME: The above limitaiton has been fixed by
+        //        <https://github.com/rust-lang/rust/pull/78578>
         const_array_from_fn! {
             fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> ProtoCombinedHandlerFn {
                 #[inline(always)]
@@ -629,6 +632,8 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
     const fn combined_handlers_array() -> [Option<InterruptHandlerFn>; NUM_HANDLERS] {
         // FIXME: Unable to do this inside a `const` item because of
         //        <https://github.com/rust-lang/rust/pull/72934>
+        // FIXME: The above limitaiton has been fixed by
+        //        <https://github.com/rust-lang/rust/pull/78578>
         const_array_from_fn! {
             fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> Option<InterruptHandlerFn> {
                 extern "C" fn combined_handler<T: MakeCombinedHandlersTrait, I: Nat>() {
@@ -670,12 +675,13 @@ pub const unsafe fn new_interrupt_handler_table<
 
     // Actually, these equality is automatically checked by
     // `const_array_from_fn!`, but do the check here as well to clarify
-    // this function's precondition
-    // FIXME: `assert_eq!` not supported in a const context yet
+    // this function's precondition.
+    //
+    // `assert_eq!` not supported in a const context yet [ref:const_assert_eq]
     assert!(NumLines::N == NUM_LINES);
     assert!(Handlers::NumHandlers::N == NUM_HANDLERS);
 
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     let mut i = 0;
     while i < NUM_HANDLERS {
         let handler = Handlers::HANDLERS[i];
@@ -716,7 +722,7 @@ pub const unsafe fn new_interrupt_handler_table<
 
 #[doc(hidden)]
 pub const fn num_required_interrupt_line_slots(handlers: &[CfgInterruptHandler]) -> usize {
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     let mut i = 0;
     let mut out = 0;
     while i < handlers.len() {

@@ -129,6 +129,7 @@ unsafe impl<System: raw::KernelBase> const TaskHandle for LocalTask<System> {
 
 // FIXME: Implementing `const PartialEq` would require all provided methods to
 //        be implemented (for now)
+// FIXME: This is no longer true
 impl<System: raw::KernelBase, T: TaskHandle<System = System>> PartialEq<T> for LocalTask<System> {
     #[inline]
     fn eq(&self, other: &T) -> bool {

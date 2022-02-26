@@ -141,7 +141,9 @@ impl Time {
     #[inline]
     pub fn duration_since(self, reference: Self) -> Option<Duration> {
         // FIXME: `?` is not allowed in `const fn` yet
-        // FIXME: `try_into` is not supported in `const fn` yet
+        // FIXME: It's available under `feature(const_try)`
+        // FIXME: `i128::try_into` is not supported in `const fn` yet
+        // FIXME: It's available under `feature(const_num_from_num)`
         Some(Duration::from_micros(
             (self.micros as i128 - reference.micros as i128)
                 .try_into()

@@ -8,6 +8,7 @@ use core::fmt;
 //        (1) It's decided that interior mutability implies `!Copy`.
 //        (2) A trait indicating the absence of interior mutability, such as
 //        the one proposed by the now-closed [RFC 2944], is added to `core`.
+//        [ref:missing_interior_mutability_trait]
 //
 // [RFC 2944]: https://github.com/rust-lang/rfcs/pull/2944
 //

@@ -214,12 +214,12 @@ impl QueueOrder {
             QueueOrder::TaskPriority => QueueOrderKind::TaskPriority,
         };
 
-        // FIXME: `for` is not usable in `const fn` yet
-        // FIXME: Iterators are still unusable in `const fn`
+        // `for` is unusable in `const fn` [ref:const_for]
         let mut i = 0;
         let values = System::RAW_SUPPORTED_QUEUE_ORDERS;
         while i < values.len() {
-            // FIXME: `#[derive(PartialEq)]` doesn't derive `const PartialEq`
+            // `#[derive(PartialEq)]` doesn't derive `const PartialEq`
+            // [ref:derive_const_partial_eq]
             if let Some(value) = values[i] {
                 if value as u8 == kind as u8 {
                     return true;
@@ -435,12 +435,12 @@ impl MutexProtocol {
             MutexProtocol::Ceiling(_) => MutexProtocolKind::Ceiling,
         };
 
-        // FIXME: `for` is not usable in `const fn` yet
-        // FIXME: Iterators are still unusable in `const fn`
+        // `for` is unusable in `const fn` [ref:const_for]
         let mut i = 0;
         let values = System::RAW_SUPPORTED_MUTEX_PROTOCOLS;
         while i < values.len() {
-            // FIXME: `#[derive(PartialEq)]` doesn't derive `const PartialEq`
+            // `#[derive(PartialEq)]` doesn't derive `const PartialEq`
+            // [ref:derive_const_partial_eq]
             if let Some(value) = values[i] {
                 if value as u8 == kind as u8 {
                     return true;

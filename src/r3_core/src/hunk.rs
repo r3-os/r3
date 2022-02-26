@@ -281,9 +281,8 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
         hunk::Hunk::from_offset(this.offset as *const u8 as usize)
     }
 
-    // FIXME: The following methods are not `const fn` on account of
-    //        <https://github.com/rust-lang/const-eval/issues/11> being
-    //        unresolved
+    // The following methods are not `const fn` on account of `const`s being
+    // unable to refer to `static`s [ref:const_static_item_ref]
 
     /// Get a raw pointer to the hunk's contents.
     #[inline]
@@ -348,7 +347,7 @@ unsafe impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized>
 {
 }
 
-/// FIXME: `Ord::max` is not available in `const fn`
+// `Ord::max` is not available in `const fn` [ref:int_const_ord]
 const fn max(x: usize, y: usize) -> usize {
     if x > y {
         x

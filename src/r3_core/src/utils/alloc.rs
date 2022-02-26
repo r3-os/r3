@@ -191,6 +191,7 @@ impl<P, T: ~const FnOnce(P, &ConstAllocator) -> Output, Output> const FnOnceCons
 
         // FIXME: The following implementation doesn't work because of
         //        <https://github.com/rust-lang/rust/issues/86897>
+        // FIXME: Seems okay now, probably bc of `const_precise_live_drops`
         // (self.1)(self.0, allocator)
     }
 }

@@ -35,15 +35,15 @@ impl<T: Init, const LEN: usize> Init for [T; LEN] {
     const INIT: Self = {
         let mut array = super::mem::uninit_array::<T, LEN>();
 
-        // FIXME: Work-around for `for` being unsupported in `const fn`
+        // `for` is unusable in `const fn` [ref:const_for]
         let mut i = 0;
         while i < LEN {
             array[i] = mem::MaybeUninit::new(T::INIT);
             i += 1;
         }
 
-        // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
-        //        it becomes `const fn`
+        // `MaybeUninit::array_assume_init` is not `const fn` yet
+        // [ref:const_array_assume_init]
         // Safety: The memory layout of `[MaybeUninit<T>; LEN]` is
         // identical to `[T; LEN]`. We initialized all elements, so it's
         // safe to reinterpret that range as `[T; LEN]`.

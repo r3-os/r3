@@ -92,7 +92,7 @@ impl<T> const Drop for Hole<'_, T> {
     }
 }
 
-// FIXME: Work-around for `[T]::get_unchecked<usize>` not being `const fn` yet
+// `[T]::get_unchecked<usize>` is not `const fn` yet [ref:const_slice_get_unchecked]
 trait GetUnchecked {
     type Element;
     unsafe fn get_unchecked2(&self, i: usize) -> &Self::Element;
@@ -107,7 +107,7 @@ impl<Element> const GetUnchecked for [Element] {
     }
 }
 
-// FIXME: Work-around for `[T]::get_unchecked_mut<usize>` not being `const fn` yet
+// `[T]::get_unchecked_mut<usize>` is not `const fn` yet [ref:const_slice_get_unchecked]
 trait GetUncheckedMut {
     type Element;
     unsafe fn get_unchecked_mut2(&mut self, i: usize) -> &mut Self::Element;

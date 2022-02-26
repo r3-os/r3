@@ -2,7 +2,7 @@ The core API definition for [R3-OS][r3].
 
 The core API represents the low-level interface between kernel and application code. It includes [`raw`](crate::kernel::raw) and [`raw_cfg`](crate::kernel::raw_cfg) traits implemented by kernel implementations as well as common data types, such as [`Time`](crate::time::Time). Because breaking changes in the core API would result in ecosystem split, it's designed to be more stable than the façade API ([`r3`][r3]).
 
-<!-- FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481> -->
+<!-- Intra-doc links can't refer to downstream crates [ref:downstream_intra_doc_link] -->
 [r3]: ../r3/index.html
 
 <!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
@@ -62,8 +62,7 @@ Kernel objects are **defined** (we use this specific word for static creation) i
 
 The configuration process assigns handles, such as [`StaticTask`][]`<System>`, to the defined kernel objects, which can be returned by a configuration function and passed over up to the build macro, which returns it to the caller. By storing it in a `const` item, application code can access the defined kernel objects from everywhere.
 
-<!-- FIXME: When <https://github.com/rust-lang/cargo/issues/4242> is resolved,
-            the following code block will be doc-testable  -->
+<!-- FIXME: To work around <https://github.com/rust-lang/cargo/issues/4242>, implement <https://github.com/rust-lang/futures-rs/pull/2305> and make the following code block doc-testable  -->
 
 ```rust,ignore
 type System = r3_kernel::System<SystemTraits>;
@@ -138,7 +137,7 @@ mod m {
 [`kernel::Mutex`]: crate::kernel::Mutex
 [`kernel::Hunk`]: crate::kernel::Hunk
 [`hunk::Hunk`]: crate::hunk::Hunk
-<!-- FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481> -->
+<!-- Intra-doc links can't refer to downstream crates [ref:downstream_intra_doc_link] -->
 [mutex object]: ../r3/sync/mutex/type.StaticMutex.html
 
 # Object Handles
@@ -197,7 +196,7 @@ When an invalid object ID is passed to a kernel function, it may cause an undefi
 [RFC 3128]: https://rust-lang.github.io/rfcs/3128-io-safety.html
 [`r3::kernel::raw`]: crate::kernel::raw
 [`r3::kernel::Mutex`]: crate::kernel::Mutex
-<!-- FIXME: Intra-doc links can't refer to downstream crates <https://github.com/rust-lang/rust/issues/74481> -->
+<!-- Intra-doc links can't refer to downstream crates [ref:downstream_intra_doc_link] -->
 [`r3::sync::StaticMutex`]: ../r3/sync/mutex/type.StaticMutex.html
 [`MutexRef`]: crate::kernel::MutexRef
 [`Mutex`]: crate::kernel::Mutex

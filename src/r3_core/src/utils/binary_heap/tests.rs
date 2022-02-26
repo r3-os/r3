@@ -173,7 +173,7 @@ fn position_tracking(bytecode: Vec<u8>) {
 }
 
 /// Test `BinaryHeap` on `ComptimeVec`
-#[allow(dead_code)] // FIXME: Spurious?
+#[allow(dead_code)] // [ref:unnamed_const_dead_code]
 const fn test_comptime_vec(a: &ConstAllocator) {
     struct Ctx;
 
@@ -194,7 +194,7 @@ const fn test_comptime_vec(a: &ConstAllocator) {
     v.heap_push(40, Ctx);
     v.heap_push(96, Ctx);
 
-    // FIXME: `Option<T>::eq` is not `const fn` yet
+    // `Option<T>::eq` is not `const fn` [ref:option_const_partial_eq]
     assert!(matches!(v.heap_pop(Ctx), Some(10)));
     assert!(matches!(v.heap_pop(Ctx), Some(16)));
     assert!(matches!(v.heap_pop(Ctx), Some(17)));

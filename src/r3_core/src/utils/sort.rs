@@ -1,4 +1,5 @@
-// FIXME: Work-around for `[T]::sort████████` being unsupported in `const fn`
+// Work-around for `[T]::sort████████` being unsupported in `const fn`
+// [ref:const_slice_sort_unstable]
 /// Sort the specified slice using the specified comparator.
 ///
 /// This sort is not stable.
@@ -10,8 +11,9 @@ where
     // library.
 
     // This binary heap respects the invariant `parent >= child`.
-    // FIXME: Closures aren't `~const FnMut` yet, so this `sift_down` was
-    //        replaced with a bare `const fn`
+    //
+    // Closures aren't `~const FnMut` yet [ref:const_closures], so this
+    // `sift_down` was replaced with a bare `const fn`
     const fn sift_down<T, Comparer>(v: &mut [T], mut node: usize, mut is_less: Comparer)
     where
         Comparer: ~const FnMut(&T, &T) -> bool + Copy,
@@ -40,7 +42,7 @@ where
     }
 
     // Build the heap in linear time.
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     let mut i = v.len() / 2;
     while i > 0 {
         i -= 1;
@@ -57,7 +59,8 @@ where
 
 /// `const fn`-compatible closure.
 ///
-/// FIXME: This is a work-around for closures not being `~const Fn████`
+/// This is a work-around for closures not being `const Fn`.
+/// <!-- [ref:const_closures] -->
 macro_rules! closure {
     (|$($pname:ident: $pty:ty),*| -> $rty:ty $x:block) => {{
         const fn __closure__($($pname: $pty),*) -> $rty $x
