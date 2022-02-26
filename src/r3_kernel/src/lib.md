@@ -38,8 +38,7 @@ Application code uses the following macros to build a kernel trait type in a mod
  - A port-provided macro like **`r3_xxx_port::use_port!`** (named in this way by convention) instantiates port-specfific items.
  - **[`r3_kernel::build!`][]** instantiates the kernel and kernel-private static data based on the kernel configuration supplied in the form of a **[configuration function][]**.
 
-<!-- FIXME: When <https://github.com/rust-lang/cargo/issues/4242> is resolved,
-            the following code block will be doc-testable  -->
+<!-- FIXME: To work around <https://github.com/rust-lang/cargo/issues/4242>, implement <https://github.com/rust-lang/futures-rs/pull/2305> and make the following code block doc-testable  -->
 
 ```rust,ignore
 type System = r3_kernel::System<SystemTraits>;

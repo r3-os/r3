@@ -209,7 +209,7 @@ fn ctz_array_lut<const LEN: usize>(x: usize) -> u32 {
     impl<const LEN: usize> LutTrait for Lut<LEN> {
         const LUT: &'static [u8] = &{
             let mut array = [0u8; LEN];
-            // FIXME: Work-around for `for` being unsupported in `const fn`
+            // `for` is unusable in `const fn` [ref:const_for]
             let mut i = 0;
             while i < array.len() {
                 array[i] = i.trailing_zeros() as u8;

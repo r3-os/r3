@@ -426,6 +426,19 @@ const _: () = Ok::<(), ()>(()).expect("");
 ```
 
 
+### `[tag:const_result_map]` `Result::map[_err]` is not `const fn`
+
+```rust
+const fn identity<T>(x: T) -> T { x }
+Ok::<(), ()>(()).map(identity);
+```
+
+```rust,compile_fail,E0015
+const fn identity<T>(x: T) -> T { x }
+const _: () = { Ok::<(), ()>(()).map(identity); };
+```
+
+
 ### `[tag:const_slice_get_unchecked]` `<[T]>::get_unchecked` is not `const fn`
 
 ```rust

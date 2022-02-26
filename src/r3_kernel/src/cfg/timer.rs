@@ -20,7 +20,7 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
         _properties: Properties,
     ) -> timer::TimerId {
         let period = if let Some(period) = period {
-            // FIXME: Work-around for `Result::expect` being not `const fn`
+            // `Result::expect` is not `const fn` yet [ref:const_result_expect]
             if let Ok(x) = timeout::time32_from_duration(period) {
                 x
             } else {
@@ -32,7 +32,7 @@ unsafe impl<Traits: KernelTraits> const CfgTimer for CfgBuilder<Traits> {
         };
 
         let delay = if let Some(delay) = delay {
-            // FIXME: Work-around for `Result::expect` being not `const fn`
+            // `Result::expect` is not `const fn` yet [ref:const_result_expect]
             if let Ok(x) = timeout::time32_from_duration(delay) {
                 x
             } else {

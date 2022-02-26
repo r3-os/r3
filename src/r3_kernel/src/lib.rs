@@ -372,9 +372,8 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
     #[doc(hidden)]
     type TaskReadyQueue: readyqueue::Queue<Self>;
 
-    // FIXME: This is a work-around for trait methods being uncallable in `const fn`
-    //        <https://github.com/rust-lang/rfcs/pull/2632>
-    //        <https://github.com/rust-lang/const-eval/pull/8>
+    // FIXME: This is a work-around for trait methods being uncallable in `const
+    //        fn`, but is this really still necessary?
     /// All possible values of `TaskPriority`.
     ///
     /// `TASK_PRIORITY_LEVELS[i]` is equivalent to
@@ -800,9 +799,7 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
     #[doc(hidden)]
     fn hunk_pool_ptr() -> *mut u8;
 
-    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
-    //        to be resolved because `TaskCb` includes interior mutability
-    //        and can't be referred to by `const`
+    // This can't be `const` because of [ref:const_static_item_ref]
     #[doc(hidden)]
     fn task_cb_pool() -> &'static [TaskCb<Self>];
 
@@ -812,9 +809,7 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
         Self::task_cb_pool().get(i)
     }
 
-    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
-    //        to be resolved because `EventGroupCb` includes interior mutability
-    //        and can't be referred to by `const`
+    // This can't be `const` because of [ref:const_static_item_ref]
     #[doc(hidden)]
     fn event_group_cb_pool() -> &'static [EventGroupCb<Self>];
 
@@ -824,9 +819,7 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
         Self::event_group_cb_pool().get(i)
     }
 
-    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
-    //        to be resolved because `EventGroupCb` includes interior mutability
-    //        and can't be referred to by `const`
+    // This can't be `const` because of [ref:const_static_item_ref]
     #[doc(hidden)]
     fn mutex_cb_pool() -> &'static [MutexCb<Self>];
 
@@ -836,9 +829,7 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
         Self::mutex_cb_pool().get(i)
     }
 
-    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
-    //        to be resolved because `EventGroupCb` includes interior mutability
-    //        and can't be referred to by `const`
+    // This can't be `const` because of [ref:const_static_item_ref]
     #[doc(hidden)]
     fn semaphore_cb_pool() -> &'static [SemaphoreCb<Self>];
 
@@ -848,9 +839,7 @@ pub unsafe trait KernelCfg2: Port + Sized + KernelStatic<System<Self>> {
         Self::semaphore_cb_pool().get(i)
     }
 
-    // FIXME: Waiting for <https://github.com/rust-lang/const-eval/issues/11>
-    //        to be resolved because `TimerCb` includes interior mutability
-    //        and can't be referred to by `const`
+    // This can't be `const` because of [ref:const_static_item_ref]
     #[doc(hidden)]
     fn timer_cb_pool() -> &'static [TimerCb<Self>];
 
