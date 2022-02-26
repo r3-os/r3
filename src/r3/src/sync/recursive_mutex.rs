@@ -310,7 +310,8 @@ where
     System: traits::KernelMutex + traits::KernelStatic,
 {
     /// Complete the definition of a mutex, returning a reference to the mutex.
-    // FIXME: `~const CfgBase` is not implied - compiler bug?
+    // `CfgMutex` can't have `~const CfgBase` as a supertrait because of
+    // [ref:const_supertraits], hence we need to specify `~const CfgBase` here
     pub const fn finish<C: ~const traits::CfgMutex<System = System> + ~const traits::CfgBase, T>(
         self,
         cfg: &mut Cfg<C>,
