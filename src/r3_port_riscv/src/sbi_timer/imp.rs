@@ -12,13 +12,10 @@ use crate::sbi_timer::cfg::SbiTimerOptions;
 ///
 /// Only meant to be implemented by [`use_sbi_timer!`].
 pub unsafe trait TimerInstance: KernelTraits + SbiTimerOptions {
-    // FIXME: Specifying `TicklessCfg::new(...)` here causes a "cycle
-    //        detected" error
+    // FIXME: Specifying `TicklessCfg::new(...)` here used to cause a "cycle
+    //        detected" error, but now it doesn't
     const TICKLESS_CFG: TicklessCfg;
 
-    // FIXME: Specifying `TicklessState<{ Self::TICKLESS_CFG }>` here
-    //        fails with an error message similar to
-    //        <https://github.com/rust-lang/rust/issues/72821>
     type TicklessState: TicklessStateTrait;
 
     fn tickless_state() -> *mut Self::TicklessState;
