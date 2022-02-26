@@ -17,7 +17,7 @@ pub const fn make_interrupt_handler_table<Traits: KernelTraits>() -> InterruptHa
     let mut table = [InterruptHandler { undefined: 0 }; NUM_INTERRUPTS];
     let mut i = 0;
 
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     while i < table.len() {
         table[i] = if let Some(x) = Traits::INTERRUPT_HANDLERS.get(i + 16) {
             InterruptHandler { defined: x }
@@ -29,7 +29,7 @@ pub const fn make_interrupt_handler_table<Traits: KernelTraits>() -> InterruptHa
 
     // Disallow registering in range `0..16` except for SysTick
     i = 0;
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     while i < 16 {
         if i != INTERRUPT_SYSTICK {
             // TODO: This check trips even if no handler is registered at `i`

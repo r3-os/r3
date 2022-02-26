@@ -72,9 +72,7 @@ fn init(period: u32) {
     peripherals.SYST.enable_counter();
 }
 
-// FIXME: “bounds on generic parameters are not enforced in type aliases”
-//        But it's actually required for this to type-check
-#[allow(type_alias_bounds)]
+#[allow(type_alias_bounds)] // [ref:const_generic_parameter_false_type_alias_bounds]
 pub type State<Traits: SysTickTickfulInstance> =
     StateCore<TickfulState<{ <Traits as SysTickTickfulInstance>::TICKFUL_CFG }>>;
 

@@ -91,6 +91,40 @@ pub fn foo<T: Send>(x: T) -> Alias<T> {
 ```
 
 
+### `[tag:const_generic_parameter_false_type_alias_bounds]` `type_alias_bounds` misfires when the trait bound is used by a const generic parameter
+
+*Upstream issue:* [rust-lang/rust#94398](https://github.com/rust-lang/rust/issues/94398)
+
+```rust,compile_fail
+#![feature(generic_const_exprs)]
+
+trait Trait {
+    const N: usize;
+}
+
+struct Struct<const N: usize>;
+
+// error: bounds on generic parameters are not enforced in type aliases
+#[deny(type_alias_bounds)]
+type Alias<T: Trait> = Struct<{<T as Trait>::N}>;
+```
+
+Removing `: Trait` from the type alias as per the compiler's suggestion results in a hard error.
+
+```rust,compile_fail,E0277
+#![feature(generic_const_exprs)]
+
+trait Trait {
+    const N: usize;
+}
+
+struct Struct<const N: usize>;
+
+// error[E0277]: the trait bound `T: Trait` is not satisfied
+type Alias<T> = Struct<{<T as Trait>::N}>;
+```
+
+
 ## Language features and `const fn`s
 
 ### `[tag:const_for]` `for` loops are unusable in `const fn`

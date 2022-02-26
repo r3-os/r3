@@ -22,7 +22,7 @@ pub trait SysTickOptions {
     /// Defaults to
     /// `(FREQUENCY / FREQUENCY_DENOMINATOR / 100).max(1).min(0x1000000)` (100Hz).
     const TICK_PERIOD: u32 = {
-        // FIXME: Work-around for `Ord::max` not being `const fn`
+        // `Ord::max` is not available in `const fn` [ref:int_const_ord]
         let x = Self::FREQUENCY / Self::FREQUENCY_DENOMINATOR / 100;
         if x == 0 {
             1
