@@ -469,12 +469,23 @@ const _: () = assert!(A == A);
 The standard library doesn't provide a `const` trait implementation of `PartialEq` for `[T; _]`.
 
 ```rust
-assert!(PartialEq::eq(&[0; 4], &[0; 4]));
+#![feature(const_trait_impl)]
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+assert!(PartialEq::eq(&[A, A], &[A, A]));
 ```
 
 ```rust,compile_fail,E0277
 #![feature(const_trait_impl)]
-const _: () = assert!(PartialEq::eq(&[0; 4], &[0; 4]));  // error
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+const _: () = assert!(PartialEq::eq(&[A, A], &[A, A]));  // error
 ```
 
 
@@ -484,12 +495,25 @@ const _: () = assert!(PartialEq::eq(&[0; 4], &[0; 4]));  // error
 The standard library doesn't provide a `const` trait implementation of `PartialEq` for `[T]`.
 
 ```rust
-assert!(PartialEq::eq(b"", b""));
+#![feature(const_trait_impl)]
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+const SLICE: &[A] = &[];
+assert!(PartialEq::eq(SLICE, SLICE));
 ```
 
 ```rust,compile_fail,E0277
 #![feature(const_trait_impl)]
-const _: () = assert!(PartialEq::eq(b"", b""));  // error
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+const SLICE: &[A] = &[];
+const _: () = assert!(PartialEq::eq(SLICE, SLICE));  // error
 ```
 
 
@@ -498,12 +522,23 @@ const _: () = assert!(PartialEq::eq(b"", b""));  // error
 The standard library doesn't provide a `const` trait implementation of `PartialEq` for `Option<T>`.
 
 ```rust
-assert!(PartialEq::eq(&Some(42), &Some(42)));
+#![feature(const_trait_impl)]
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+assert!(PartialEq::eq(&Some(A), &Some(A)));
 ```
 
 ```rust,compile_fail,E0277
 #![feature(const_trait_impl)]
-const _: () = assert!(PartialEq::eq(&Some(42), &Some(42)));  // error
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+const _: () = assert!(PartialEq::eq(&Some(A), &Some(A)));  // error
 ```
 
 
