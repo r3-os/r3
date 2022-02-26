@@ -207,9 +207,6 @@ macro_rules! vec_position {
     }};
 }
 
-// FIXME: The false requirement for `~const Drop` might be an instance of
-//        <https://github.com/rust-lang/rust/issues/86897>
-// FIXME: Doesn't seem to occur anymore, probably bc of `const_precise_live_drops`
 /// Unwrap `Result<T, AllocError>`.
 const fn unwrap_alloc_error<T: ~const Drop>(x: Result<T, AllocError>) -> T {
     match x {

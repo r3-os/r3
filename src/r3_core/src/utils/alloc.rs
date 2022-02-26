@@ -180,19 +180,7 @@ impl<P, T: ~const FnOnce(P, &ConstAllocator) -> Output, Output> const FnOnceCons
 {
     type Output = Output;
     fn call(self, allocator: &ConstAllocator) -> Self::Output {
-        let mut this = core::mem::MaybeUninit::new(self);
-        // Safety: It's initialized
-        let this = unsafe { &mut *this.as_mut_ptr() };
-        // Safety: `md.0` and `md.1` are in `MaybeUninit`, so this will not
-        // cause double free
-        let param = unsafe { core::ptr::read(&this.0) };
-        let func = unsafe { core::ptr::read(&this.1) };
-        func(param, allocator)
-
-        // FIXME: The following implementation doesn't work because of
-        //        <https://github.com/rust-lang/rust/issues/86897>
-        // FIXME: Seems okay now, probably bc of `const_precise_live_drops`
-        // (self.1)(self.0, allocator)
+        (self.1)(self.0, allocator)
     }
 }
 

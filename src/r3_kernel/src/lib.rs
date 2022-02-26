@@ -1,5 +1,6 @@
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_slice_from_raw_parts)]
+#![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
