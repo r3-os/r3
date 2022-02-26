@@ -953,11 +953,7 @@ mod tests {
             const HW_PERIOD: u64 = CFG.hw_max_tick_count() as u64 + 1;
             const PERIOD: u64 = CFG.max_tick_count() as u64 + 1;
 
-            // FIXME: Work-around for <https://github.com/rust-lang/rust/issues/89421>
-            //        (The type `TicklessState<CFG>` cannot be specified inside
-            //        the below `do_test` function probably because the function
-            //        is generic, even though the generic parameter is unrelated
-            //        to the specified type.)
+            // Work-around for [ref:false_unconstrained_generic_const_on_type_alias]
             type TheTicklessState = TicklessState<CFG>;
 
             fn do_test(ops: impl IntoIterator<Item = Op>) {

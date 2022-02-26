@@ -323,6 +323,29 @@ const fn identity<C: ~const Fn()>(x: C) -> C { x }
 const _: () = { identity(|| {}); };
 ```
 
+### `[tag:false_unconstrained_generic_const_on_type_alias]` An unrelated generic parameter causes "unconstrained generic constant" when using a type alias including a generic constant
+
+*Upstream issue:* [rust-lang/rust#89421](https://github.com/rust-lang/rust/issues/89421) (possibly related)
+
+```rust
+#![feature(generic_const_exprs)]
+type Alias<const N: usize> = [(); {N + 1}];
+const N: usize = 1;
+fn foo() {
+    let _: Alias<N> = [(); 2];
+}
+```
+
+```rust,compile_fail
+#![feature(generic_const_exprs)]
+type Alias<const N: usize> = [(); {N + 1}];
+const N: usize = 1;
+fn foo<T>() {
+    // error: unconstrained generic constant
+    let _: Alias<N> = [(); 2];
+}
+```
+
 
 ## `const fn`s and `const` trait implementations
 

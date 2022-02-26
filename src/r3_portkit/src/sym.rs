@@ -243,6 +243,8 @@ pub macro sym_static {
         //        the following PR: <https://github.com/rust-lang/rust/pull/81234>
         //        The const parameter of `__UnsafeSymStaticMarker` takes this
         //        function's alignment.
+        // FIXME: `#[repr(align(...))]` is now implemented. Question: how do we
+        //        use it here?
         //
         #[allow(non_snake_case)]
         $vis unsafe extern "C" fn $name(_: &'static $crate::sym::__UnsafeSymStaticMarker<$ty, {$crate::sym::DEFAULT_FN_ALIGN}>) -> ! {
