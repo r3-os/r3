@@ -737,9 +737,21 @@ const _: () = assert!(2i32.max(3) == 3);
 ### `[tag:const_assert_eq]` `assert_eq!` and similar macros are unusable in `const fn`
 
 ```rust,compile_fail,E0015
-// error[E0015]: cannot call non-const fn `core::panicking::assert_failed::<u32,
-// u32>` in constants
-const _: () = assert_eq!(1u32, 1);
+#![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
+struct A;
+impl const PartialEq for A {
+    fn eq(&self, _: &Self) -> bool { true }
+    fn ne(&self, _: &Self) -> bool { false }
+}
+impl const core::fmt::Debug for A {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        unimplemented!()
+    }
+}
+
+// error[E0015]: cannot call non-const fn `assert_failed::<A, A>` in constants
+const _: () = assert_eq!(A, A);
 ```
 
 
@@ -806,7 +818,7 @@ fn foo(_: &core::mem::MaybeUninit<[u8]>) {}
 ### `[tag:missing_interior_mutability_trait]` Missing trait for representing the lack of interior mutability
 
 *Upstream RFC:* [rust-lang/rfcs#2944](https://github.com/rust-lang/rfcs/pull/2944) (closed)
-
+\
 
 ## Existential types
 
