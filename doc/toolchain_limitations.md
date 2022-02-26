@@ -146,9 +146,10 @@ Technically it's available under the compiler feature `const_for`, but the lack 
 #![feature(const_heap)]
 use core::mem::MaybeUninit;
 struct ClosureEnv(MaybeUninit<*mut ()>);
+// error: untyped pointers are not allowed in constant
 const A: MaybeUninit<*mut ()> = unsafe {
     MaybeUninit::new(core::intrinsics::const_allocate(4, 4) as _)
-}; // error: untyped pointers are not allowed in constant
+};
 ```
 
 
@@ -361,7 +362,9 @@ fn unit(_: usize) {}
 ```rust,compile_fail,E0015
 #![feature(const_trait_impl)]
 #![feature(array_from_fn)]
-const _: [(); 1] = core::array::from_fn(unit);  // error
+// error[E0015]: cannot call non-const fn `std::array::from_fn::<fn(usize)
+// {unit}, (), 1_usize>` in constants
+const _: [(); 1] = core::array::from_fn(unit);
 const fn unit(_: usize) {}
 ```
 
@@ -375,7 +378,9 @@ fn f(_: usize) {}
 
 ```rust,compile_fail,E0015
 #![feature(const_trait_impl)]
-const _: [(); 3] = [0usize, 1, 2].map(f);  // error
+// error[E0015]: cannot call non-const fn `array::<impl [usize; 3]>::map::<
+// fn(usize) {f}, ()>` in constants
+const _: [(); 3] = [0usize, 1, 2].map(f);
 const fn f(_: usize) {}
 ```
 
@@ -404,8 +409,12 @@ const fn comparer(_: &i32, _: &i32) -> Ordering { Ordering::Equal }
 ```
 
 ```rust,compile_fail,E0015
+#![feature(const_mut_refs)]
 use core::cmp::Ordering;
 const fn comparer(_: &i32, _: &i32) -> Ordering { Ordering::Equal }
+// error[E0015]: cannot call non-const fn `core::slice::<impl [i32]>::
+// sort_unstable_by::<for<'r, 's> fn(&'r i32, &'s i32) -> std::cmp::Ordering
+// {comparer}>` in constants
 const _: () = [1].sort_unstable_by(comparer);
 ```
 
@@ -422,6 +431,7 @@ Ok::<(), ()>(()).expect("");
 ```
 
 ```rust,compile_fail,E0015
+// error[E0015]: cannot call non-const fn `Result::<(), ()>::expect` in constants
 const _: () = Ok::<(), ()>(()).expect("");
 ```
 
@@ -435,6 +445,8 @@ Ok::<(), ()>(()).map(identity);
 
 ```rust,compile_fail,E0015
 const fn identity<T>(x: T) -> T { x }
+// error[E0015]: cannot call non-const fn `Result::<(), ()>::map::<(), fn(())
+// {_doctest_main_lib_rs_452_0::identity::<()>}>` in constants
 const _: () = { Ok::<(), ()>(()).map(identity); };
 ```
 
@@ -447,6 +459,8 @@ assert!(unsafe { *b"a".get_unchecked(0) } == b'a');
 
 ```rust,compile_fail,E0015
 // `assert!` is used here due to [ref:const_assert_eq]
+// error[E0015]: cannot call non-const fn `core::slice::<impl [u8]>::
+// get_unchecked::<usize>` in constants
 const _: () = assert!(unsafe { *b"a".get_unchecked(0) } == b'a');
 ```
 
@@ -458,6 +472,8 @@ b"".iter();
 ```
 
 ```rust,compile_fail,E0015
+// error[E0015]: cannot call non-const fn `core::slice::<impl [u8]>::iter` in
+// constants
 const _: () = { b"".iter(); };
 ```
 
@@ -477,6 +493,8 @@ assert!(matches!(
 #![feature(maybe_uninit_array_assume_init)]
 use core::mem::MaybeUninit;
 const _: () = assert!(matches!(
+    // error[E0015]: cannot call non-const fn `MaybeUninit::<i32>::
+    // array_assume_init::<1_usize>` in constants
     unsafe { MaybeUninit::array_assume_init([MaybeUninit::new(42)]) },
     [42]
 ));
@@ -521,7 +539,8 @@ impl const PartialEq for A {
     fn eq(&self, _: &Self) -> bool { true }
     fn ne(&self, _: &Self) -> bool { false }
 }
-const _: () = assert!(PartialEq::eq(&[A, A], &[A, A]));  // error
+// error[E0277]: can't compare `[A; 2]` with `[A; 2]` in const contexts
+const _: () = assert!(PartialEq::eq(&[A, A], &[A, A]));
 ```
 
 
@@ -549,7 +568,8 @@ impl const PartialEq for A {
     fn ne(&self, _: &Self) -> bool { false }
 }
 const SLICE: &[A] = &[];
-const _: () = assert!(PartialEq::eq(SLICE, SLICE));  // error
+// error[E0277]: can't compare `[A]` with `[A]` in const contexts
+const _: () = assert!(PartialEq::eq(SLICE, SLICE));
 ```
 
 
@@ -574,7 +594,8 @@ impl const PartialEq for A {
     fn eq(&self, _: &Self) -> bool { true }
     fn ne(&self, _: &Self) -> bool { false }
 }
-const _: () = assert!(PartialEq::eq(&Some(A), &Some(A)));  // error
+// error[E0277]: can't compare `Option<A>` with `Option<A>` in const contexts
+const _: () = assert!(PartialEq::eq(&Some(A), &Some(A)));
 ```
 
 
@@ -599,7 +620,9 @@ impl const PartialEq for A {
     fn eq(&self, _: &Self) -> bool { true }
     fn ne(&self, _: &Self) -> bool { false }
 }
-const _: () = assert!(PartialEq::eq(&(A..A), &(A..A)));  // error
+// error[E0277]: can't compare `std::ops::Range<A>` with `std::ops::Range<A>` in
+// const contexts
+const _: () = assert!(PartialEq::eq(&(A..A), &(A..A)));
 ```
 
 
@@ -615,7 +638,8 @@ assert!(TypeId::of::<()>() == TypeId::of::<()>());
 ```rust,compile_fail,E0015
 #![feature(const_type_id)]
 use core::any::TypeId;
-const _: () = assert!(TypeId::of::<()>() == TypeId::of::<()>());  // error
+// error[E0015]: cannot call non-const operator in constants
+const _: () = assert!(TypeId::of::<()>() == TypeId::of::<()>());
 ```
 
 
@@ -632,6 +656,8 @@ assert!(matches!((2..4).next(), Some(2)));
 #![feature(const_mut_refs)]
 // `assert!` is used here due to [ref:const_assert_eq]
 // `matches!` is used here due to [ref:option_const_partial_eq]
+// error[E0277]: the trait bound `std::ops::Range<i32>: ~const Iterator` is not
+// satisfied
 const _: () = assert!(matches!((2..4).next(), Some(2)));
 ```
 
@@ -703,13 +729,16 @@ assert!(2i32.max(3) == 3);
 
 ```rust,compile_fail,E0277
 #![feature(const_trait_impl)]
-const _: () = assert!(2i32.max(3) == 3);  // error
+// error[E0277]: the trait bound `i32: ~const Ord` is not satisfied
+const _: () = assert!(2i32.max(3) == 3);
 ```
 
 
 ### `[tag:const_assert_eq]` `assert_eq!` and similar macros are unusable in `const fn`
 
 ```rust,compile_fail,E0015
+// error[E0015]: cannot call non-const fn `core::panicking::assert_failed::<u32,
+// u32>` in constants
 const _: () = assert_eq!(1u32, 1);
 ```
 
@@ -721,6 +750,7 @@ core::cell::Cell::new(0).set(42);
 ```
 
 ```rust,compile_fail,E0015
+// error[E0015]: cannot call non-const fn `Cell::<i32>::set` in constants
 const _: () = core::cell::Cell::new(0).set(42);
 ```
 
@@ -732,6 +762,8 @@ core::cell::RefCell::new(0).borrow();
 ```
 
 ```rust,compile_fail,E0015
+// error[E0015]: cannot call non-const fn `RefCell::<i32>::borrow` in constants
+// error[E0493]: destructors cannot be evaluated at compile-time
 const _: () = { core::cell::RefCell::new(0).borrow(); };
 ```
 
@@ -763,6 +795,8 @@ const _: () = tokenlock::with_branded_token(|token| {
 *Upstream issue:* [rust-lang/rust#80158](https://github.com/rust-lang/rust/issues/80158)
 
 ```rust,compile_fail,E0277
+// error[E0277]: the size for values of type `[u8]` cannot be known at
+// compilation time
 fn foo(_: &core::mem::MaybeUninit<[u8]>) {}
 ```
 
