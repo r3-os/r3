@@ -16,49 +16,11 @@ jobs:
         with:
           profile: minimal
 
-      # The invocations must be in dependency order to make sure `--all-features`
-      # for `--all-features` to apply to every documented crate
-      # FIXME: Or can we just specify multiple packages with `-p`?
-      - name: Build Documentation for “r3_port_std”
+      - name: Build Documentation
         uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_std --all-features }
-
-      - name: Build Documentation for “r3_port_arm”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_arm --all-features }
-
-      - name: Build Documentation for “r3_port_arm_m”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_arm_m --all-features }
-
-      - name: Build Documentation for “r3_port_riscv”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_port_riscv --all-features }
-
-      # FIXME: `rp2040` causes ICE <https://github.com/rust-lang/rust/issues/93476>
-      # - name: Build Documentation for “r3_support_rp2040”
-      #   uses: actions-rs/cargo@v1
-      #   with: { command: doc, args: -p r3_support_rp2040 --all-features }
-
-      - name: Build Documentation for “r3_support_rza1”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_support_rza1 --all-features }
-
-      - name: Build Documentation for “r3_portkit”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_portkit --all-features }
-
-      - name: Build Documentation for “r3_kernel”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_kernel --all-features }
-
-      - name: Build Documentation for “r3”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3 --all-features }
-
-      - name: Build Documentation for “r3_core”
-        uses: actions-rs/cargo@v1
-        with: { command: doc, args: -p r3_core --all-features }
+        with:
+          command: doc
+          args: -p r3_port_std -p r3_port_arm -p r3_port_arm_m -p r3_port_riscv -p r3_support_rp2040 -p r3_support_rza1 -p r3_portkit -p r3_kernel -p r3 -p r3_core --all-features
 
       - name: Generate Badge
         run: |
