@@ -2,7 +2,7 @@
 use r3::kernel::{traits, Cfg, InterruptLine, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
 use r3_port_arm::Gic;
-use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
+use r3_portkit::tickless::{TicklessCfg, TicklessOptions, TicklessStateTrait};
 use rza1::ostm0 as ostm;
 
 use crate::os_timer::cfg::OsTimerOptions;
@@ -13,13 +13,17 @@ use crate::os_timer::cfg::OsTimerOptions;
 ///
 /// Only meant to be implemented by [`use_os_timer!`].
 pub unsafe trait OsTimerInstance: KernelTraits + OsTimerOptions + Gic {
-    // FIXME: Specifying `TicklessCfg::new(...)` here causes a "cycle
-    //        detected" error
-    const TICKLESS_CFG: TicklessCfg;
+    const TICKLESS_CFG: TicklessCfg = match TicklessCfg::new(TicklessOptions {
+        hw_freq_num: <Self as OsTimerOptions>::FREQUENCY,
+        hw_freq_denom: <Self as OsTimerOptions>::FREQUENCY_DENOMINATOR,
+        hw_headroom_ticks: <Self as OsTimerOptions>::HEADROOM,
+        force_full_hw_period: true,
+        resettable: false,
+    }) {
+        Ok(x) => x,
+        Err(e) => e.panic(),
+    };
 
-    // FIXME: Specifying `TicklessState<{ Self::TICKLESS_CFG }>` here
-    //        fails with an error message similar to
-    //        <https://github.com/rust-lang/rust/issues/72821>
     type TicklessState: TicklessStateTrait;
 
     fn tickless_state() -> *mut Self::TicklessState;
