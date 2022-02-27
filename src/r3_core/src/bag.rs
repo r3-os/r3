@@ -88,6 +88,7 @@ mod private {
     impl<Left: ~const Bag, Right: ~const Bag> const Sealed for super::Either<Left, Right> {}
 }
 
+// `TypeId` doesn't implement `const PartialEq` [ref:type_id_partial_eq]
 /// A wrapper of [`core::any::TypeId`] that is usable in a constant context.
 struct TypeId {
     inner: core::any::TypeId,
@@ -110,8 +111,8 @@ impl TypeId {
             type TypeIdBytes = [u8; core::mem::size_of::<core::any::TypeId>()];
             let x: TypeIdBytes = transmute(self.inner);
             let y: TypeIdBytes = transmute(other.inner);
-            // FIXME: Work-around for `[u8; _]: PartialEq` not being `const fn`
-            // FIXME: Work-around for `Range: Iterator` not being `const`
+            // Can't just do `x == y` due to [ref:array_const_partial_eq].
+            // A non-idiomatic loop must be used due to [ref:const_for].
             let mut i = 0;
             while i < x.len() {
                 if x[i] != y[i] {

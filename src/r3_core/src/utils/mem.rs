@@ -29,9 +29,10 @@ pub const unsafe fn transmute<T, U>(x: T) -> U {
 /// This function is a `const fn` version of the [unstable]
 /// `MaybeUninit::uninit_array` method.
 ///
-/// FIXME: Remove this function when `MaybeUninit::uninit_array` becomes `const fn`
-///
 /// [unstable]: https://github.com/rust-lang/rust/pull/65580
+// FIXME: Remove this function when `MaybeUninit::uninit_array` becomes `const fn`
+// FIXME: It is now unstably, but let's keep this function not to require the
+//        applications to add a `#![feature(...)]`
 pub const fn uninit_array<T, const LEN: usize>() -> [MaybeUninit<T>; LEN] {
     [MaybeUninit::<T>::INIT; LEN]
 }
@@ -49,8 +50,8 @@ mod tests {
                 MaybeUninit::new(2),
                 MaybeUninit::new(3),
             ];
-            // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
-            //        it becomes `const fn`
+            // `MaybeUninit::array_assume_init` is not `const fn`
+            // [ref:const_array_assume_init]
             unsafe { transmute(array) }
         };
         assert_eq!(ARRAY1, [1, 2, 3]);

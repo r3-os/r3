@@ -28,11 +28,11 @@ use crate::utils::{mem::transmute, Init};
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct ClosureEnv(Option<&'static ()>);
-// FIXME: The contained type must be an initialized reference to avoid compile
-//        errors that occur with the current compiler. Ideally it should be
-//        `MaybeUninit<*mut ()>`, which, however, when a CTFE-heap allocation is
-//        stored, produces an enigmatic error "untyped pointers are not allowed
-//        in constant".
+// The contained type must be an initialized reference to avoid compile errors
+// that occur with the current compiler. Ideally it should be
+// `MaybeUninit<*mut ()>`, which, however, when a CTFE-heap allocation is
+// stored, produces an enigmatic error "untyped pointers are not allowed in
+// constant". [ref:const_untyped_pointer] [tag:closure_env_must_be_init]
 
 impl const Default for ClosureEnv {
     #[inline]
@@ -52,8 +52,9 @@ impl fmt::Debug for ClosureEnv {
     }
 }
 
-// FIMXE: Want to parameterize, but there's no way to make the `fn` pointer
-//        high-ranked with generics
+// Want to parameterize, but there's no way to make the `fn` pointer
+// high-ranked with generics [ref:generic_fn_ptr_wrapper]
+//
 /// A light-weight closure, which is comprised of a function pointer and an
 /// environment parameter.
 #[derive(Debug, Copy, Clone)]
@@ -130,8 +131,8 @@ impl Closure {
         unsafe {
             // FIXME: `ClosureEnv` can hold up to `size_of::<ClosureEnv>()`
             //        bytes in-line, but this can't be leveraged because its
-            //        current representation `Option<&()>` requires that it be
-            //        devoid of uninitialized bytes.
+            //        current representation requires that it be devoid of
+            //        uninitialized bytes. [ref:closure_env_must_be_init]
             if size == 0 {
                 Self::from_raw_parts(trampoline_zst::<T>, ClosureEnv(None))
             } else {
@@ -181,8 +182,8 @@ unsafe extern "C" fn trampoline_zst<T: FnOnce()>(_: ClosureEnv) {
 #[inline]
 unsafe extern "C" fn trampoline_indirect<T: FnOnce()>(env: ClosureEnv) {
     let p_func: *const T = unsafe { transmute(env) };
-    // FIXME: Since there's no trait indicating the lack of interior mutability,
-    //        we have to copy `T` onto stack
+    // Since there's no trait indicating the lack of interior mutability,
+    // we have to copy `T` onto stack. [ref:missing_interior_mutability_trait]
     let func: T = unsafe { p_func.read() };
     func()
 }

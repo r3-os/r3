@@ -219,8 +219,7 @@ unsafe impl<T> ZeroInit for BindData<T> {}
 // Main configuration interface
 // ----------------------------------------------------------------------------
 
-// FIXME: `T: ?Sized` is incompatible with `MaybeUninit<T>`
-//        <https://github.com/rust-lang/rust/issues/80158>
+// [ref:unsized_maybe_uninit] prevents `T: ?Sized`
 /// A defined binding.
 ///
 /// The configuration-time metadata is stored in a pool with lifetime `'pool`.
@@ -237,7 +236,7 @@ impl<System, T> const Clone for Bind<'_, System, T> {
         *self
     }
 
-    // FIXME: `clone_from` is not `#[default_method_body_is_const]` yet
+    // `clone_from` needed due to [ref:clone_from_default]
     #[inline]
     fn clone_from(&mut self, source: &Self) {
         *self = *source;
@@ -298,7 +297,7 @@ impl<System, T> const Clone for BindRef<System, T> {
         *self
     }
 
-    // FIXME: `clone_from` is not `#[default_method_body_is_const]` yet
+    // `clone_from` needed due to [ref:clone_from_default]
     #[inline]
     fn clone_from(&mut self, source: &Self) {
         *self = *source;
@@ -798,11 +797,11 @@ impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System,
             let divide = DivideBind::new(self);
             let hunk = divide.original_hunk();
 
-            // FIXME: `core::array::from_fn` is not usable in `const fn`
+            // `core::array::from_fn` isn't `const fn` [ref:const_array_from_fn]
             let mut out =
                 ComptimeVec::new_in(self.bind_registry.borrow().binds.allocator().clone());
 
-            // FIXME: `for` loops are unusable in `const fn`
+            // `for` loops are unusable in `const fn` [ref:const_for]
             let mut i = 0;
             while i < LEN {
                 out.push(divide.slice(hunk.transmute::<BindData<T>>().wrapping_offset(i as isize)));
@@ -945,7 +944,8 @@ impl CfgBindRegistry {
         // Because of [ref:bind_finalization_immediate_panic], reaching here
         // means the operation was successful
 
-        // FIXME: `for` loops are barely useful in `const fn` at the moment
+        // `for` loops are barely useful in `const fn` at the moment
+        // [ref:const_for]
         let mut i = 0;
         while i < callback.bind_init_order.len() {
             let bind_i = callback.bind_init_order[i];
@@ -1153,11 +1153,9 @@ macro_rules! impl_fn_bind {
             {
                 type Output = Output;
 
-                // FIXME: `impl` type alias in trait impls implicitly captures
-                // the surrounding environment's generic parameters? That's
-                // probably why the type alias has to be outside this `impl`
-                // block, which has `$BinderI` and the compiler would demand the
-                // removal of `+ 'static`.
+                // This opaque type must be defined outside this trait to
+                // prevent the unintended capturing of `$BinderI`.
+                // [ref:opaque_type_extraneous_capture]
                 type BoundFn = BoundFn<T, Output, $( $RuntimeBinderI, )*>;
 
                 fn bind(
@@ -1293,9 +1291,9 @@ where
 {
     type Output = NewOutput;
 
-    // FIXME: `impl` type alias in trait impls implicitly captures the
-    // surrounding environment's generic parameters? That's probably why this
-    // `impl` type alias has to stay outside this `impl` block.
+    // This opaque type must be defined outside this trait to
+    // prevent the unintended capturing of `Binder`.
+    // [ref:opaque_type_extraneous_capture]
     type BoundFn = MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>;
 
     fn bind(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Self::BoundFn {
@@ -1781,7 +1779,7 @@ where
     type Runtime = [Binder::Runtime; LEN];
 
     fn register_dependency(&self, ctx: &mut CfgBindCtx<'_>) {
-        // FIXME: `for` loops are unusable in `const fn`
+        // `for` loops are unusable in `const fn` [ref:const_for]
         let mut i = 0;
         while i < LEN {
             self[i].register_dependency(ctx);
@@ -1791,10 +1789,10 @@ where
 
     fn into_runtime_binder(self) -> Self::Runtime {
         unsafe {
-            // FIXME: `[T; N]::map` is unusable in `const fn`
+            // `[T; N]::map` is unusable in `const fn` [ref:const_array_map]
             let mut out: [MaybeUninit<Binder::Runtime>; LEN] = MaybeUninit::uninit_array();
             let this = MaybeUninit::new(self);
-            // FIXME: `for` loops are unusable in `const fn`
+            // `for` loops are unusable in `const fn` [ref:const_for]
             let mut i = 0;
             while i < LEN {
                 out[i] = MaybeUninit::new(

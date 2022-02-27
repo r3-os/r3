@@ -46,7 +46,7 @@ pub const fn sincos(theta: f64) -> (f64, f64) {
     let mut x = 1.0;
     let mut y = 0.0;
 
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     let mut i = 0;
     while i < 32 {
         if (theta_i & (1u32 << i)) != 0 {

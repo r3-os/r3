@@ -35,6 +35,7 @@ pub unsafe trait CfgBase {
     fn startup_hook_define(&mut self, func: fn());
 }
 
+// The supertrait can't be `~const` due to [ref:const_supertraits]
 pub unsafe trait CfgTask: CfgBase {
     fn task_define<Properties: ~const Bag>(
         &mut self,
@@ -53,6 +54,7 @@ pub struct TaskDescriptor<System> {
     pub stack_size: Option<usize>,
 }
 
+// The supertrait can't be `~const` due to [ref:const_supertraits]
 pub unsafe trait CfgEventGroup: CfgBase
 where
     Self::System: raw::KernelEventGroup,
@@ -72,6 +74,7 @@ pub struct EventGroupDescriptor<System> {
     pub queue_order: raw::QueueOrder,
 }
 
+// The supertrait can't be `~const` due to [ref:const_supertraits]
 pub unsafe trait CfgMutex: CfgBase
 where
     Self::System: raw::KernelMutex,
@@ -90,6 +93,7 @@ pub struct MutexDescriptor<System> {
     pub protocol: raw::MutexProtocol,
 }
 
+// The supertrait can't be `~const` due to [ref:const_supertraits]
 pub unsafe trait CfgSemaphore: CfgBase
 where
     Self::System: raw::KernelSemaphore,
@@ -110,6 +114,7 @@ pub struct SemaphoreDescriptor<System> {
     pub queue_order: raw::QueueOrder,
 }
 
+// The supertrait can't be `~const` due to [ref:const_supertraits]
 pub unsafe trait CfgTimer: CfgBase
 where
     Self::System: raw::KernelTimer,
@@ -131,6 +136,7 @@ pub struct TimerDescriptor<System> {
     pub period: Option<Duration>,
 }
 
+// The supertrait can't be `~const` due to [ref:const_supertraits]
 pub unsafe trait CfgInterruptLine: CfgBase
 where
     Self::System: raw::KernelInterruptLine,

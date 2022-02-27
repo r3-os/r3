@@ -281,6 +281,8 @@ define_object! {
 /// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
+// The following bound is necessary becauase of a bug in the compiler
+// [ref:trait_constraints_on_associated_types_do_not_propagate]
 ///     C::System: traits::KernelTimer,
 /// {
 ///     StaticTimer::define()
@@ -321,6 +323,8 @@ define_object! {
 /// const fn configure<C>(b: &mut Cfg<C>) -> StaticTimer<C::System>
 /// where
 ///     C: ~const traits::CfgTimer,
+// The following bound is necessary becauase of a bug in the compiler
+// [ref:trait_constraints_on_associated_types_do_not_propagate]
 ///     C::System: traits::KernelTimer,
 /// {
 ///     StaticTimer::define()

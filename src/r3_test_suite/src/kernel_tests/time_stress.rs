@@ -26,7 +26,7 @@ impl<System: SupportedSystem> App<System> {
             + ~const traits::CfgEventGroup,
     {
         let mut i = 0;
-        // FIXME: Work-around for `for` being unsupported in `const fn`
+        // `for` is unusable in `const fn` [ref:const_for]
         while i < TASKS.len() {
             StaticTask::define()
                 .start((i, task_body::<System, D>))

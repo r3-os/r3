@@ -43,14 +43,14 @@ impl<System: SupportedSystem> AppInner<System> {
             let mut timers = [MaybeUninit::<StaticTimer<System>>::uninit(); 64];
 
             let mut i = 0;
-            // FIXME: Work-around for `for` being unsupported in `const fn`
+            // `for` is unusable in `const fn` [ref:const_for]
             while i < timers.len() {
                 timers[i] = MaybeUninit::new(StaticTimer::define().start(|| {}).finish(b));
                 i += 1;
             }
 
-            // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
-            //        it becomes `const fn`
+            // `MaybeUninit::array_assume_init` is not `const fn` yet
+            // [ref:const_array_assume_init]
             unsafe { core::mem::transmute_copy(&timers) }
         };
 

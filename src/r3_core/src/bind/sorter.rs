@@ -101,8 +101,8 @@ impl Init for SorterBindInfo1 {
     };
 }
 
-// FIXME: This could be merged into one `SorterBindInfo` if `tokenlock` could
-// be used in `const fn`
+// This could be merged into one `SorterBindInfo` if `tokenlock` could
+// be used in `const fn` [ref:tokenlock_const]
 /// A temporary storage to store information about a binding.
 #[derive(Clone, Copy)]
 pub(super) struct SorterBindInfo2 {
@@ -157,7 +157,7 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
     assert!(temp_vertices.is_empty());
 
     {
-        // FIXME: Waiting for `Iterator` to be usable in `const fn`
+        // `for` loops are unusable in `const fn` [ref:const_for]
         let mut bind_i = 0;
         while bind_i < num_binds {
             let bind_users = cb.bind_users(bind_i);
@@ -165,7 +165,7 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
             let mut num_indefinite_shared = 0;
             let mut num_indefinite_exclusive = 0;
 
-            // FIXME: Waiting for `Iterator` to be usable in `const fn`
+            // `for` loops are unusable in `const fn` [ref:const_for]
             let mut i = 0;
             while i < bind_users.len() {
                 // Reject impossible combinations that should be caught earlier
@@ -380,7 +380,7 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
                     SuccessorIterState::BindInitToBorrowingUser(bind_i, bind_user_i) => {
                         let cb = self.cb.borrow();
                         let bind_users = cb.bind_users(bind_i);
-                        // FIXME: `[T]::get` is not `const fn` yet
+                        // `[T]::get` is not `const fn` yet [ref:const_slice_get]
                         if bind_user_i < bind_users.len() {
                             self.st = SuccessorIterState::BindInitToBorrowingUser(
                                 bind_i,
@@ -436,7 +436,7 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
                     SuccessorIterState::BindDisownToTakingUser(bind_i, bind_user_i) => {
                         let cb = self.cb.borrow();
                         let bind_users = cb.bind_users(bind_i);
-                        // FIXME: `[T]::get` is not `const fn` yet
+                        // `[T]::get` is not `const fn` yet [ref:const_slice_get]
                         if bind_user_i < bind_users.len() {
                             self.st =
                                 SuccessorIterState::BindDisownToTakingUser(bind_i, bind_user_i + 1);
@@ -533,7 +533,8 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
 // Helper traits
 // --------------------------------------------------------------------------
 
-// FIXME: `Iterator` is currently very hard to implement `const`-ly
+// `const Iterator` is currently very hard to implement
+// [ref:iterator_const_default]
 /// An [`Iterator`][] usable in `const fn`.
 trait MyIterator {
     type Item;
@@ -599,13 +600,13 @@ const fn topological_sort<
 ) -> bool
 where
     Graph: ~const GraphAccess<VertexRef>,
-    // FIXME: The compiler ignores `~const` in the associated type definition?
+    // [ref:const_trait_not_implied] necessitates `: ~const MyIterator`
     Graph::VertexIter<'a>: ~const MyIterator + ~const Drop,
-    // FIXME: The compiler ignores `~const` in the associated type definition?
+    // [ref:const_trait_not_implied] necessitates `: ~const MyIterator`
     Graph::SuccessorIter<'a>: ~const MyIterator + ~const Drop,
     VertexRef: Copy,
     VertexRefLessThan: ~const FnMut(&VertexRef, &VertexRef) -> bool,
-    // FIXME: `~const Deref[Mut]` isn't implied because of
+    // `~const Deref[Mut]` isn't implied because of
     // [ref:veclike_const_supertrait]
     ReadyVertexQueue: ~const VecLike<Element = VertexRef> + ~const Deref + ~const DerefMut,
     for<'index> VertexInfoMap: ~const Index<&'index VertexRef, Output = TopologicalSortVertexInfo>

@@ -1073,9 +1073,9 @@ impl State {
         };
 
         // FIXME: Add `#[repr(align(4))]` to this function. `.align 2` in `asm!`
-        //        actually doesn't work as intended. This attribute is being
-        //        implemented by the following PR:
-        //        <https://github.com/rust-lang/rust/pull/81234>
+        //        actually doesn't work as intended. `#[repr(align(_))]` is now
+        //        supported by the compiler, but for some reason, it doesn't
+        //        work for associated functions. [ref:method_repr_align]
 
         unsafe {
             pp_asm!("

@@ -197,6 +197,7 @@ extern "C" fn reset_handler1<Traits: EntryPoint + StartupOptions>() {
 //        `error: internal compiler error: src/librustc_mir/monomorphize/
 //         collector.rs:802:9: cannot create local mono-item for DefId(4:27 ~
 //         r3_port_arm[c8c4]::startup[0]::unhandled_exception_handler[0])`
+// FIXME: This doesn't seem to happen anymore
 pub extern "C" fn unhandled_exception_handler() -> ! {
     panic!("reserved exception");
 }
@@ -299,14 +300,14 @@ impl<T: StartupOptions + EntryPoint> StartupExt for T {
 
         // Create section entries based on `MEMORY_MAP`
         let mmap = Self::MEMORY_MAP;
-        // FIXME: Work-around for `for` being unsupported in `const fn`
+        // `for` is unusable in `const fn` [ref:const_for]
         let mut i = 0;
         while i < mmap.len() {
             let section = &mmap[i];
             let start_i = section.virtual_start / 0x100000;
             let end_i = start_i + section.len / 0x100000;
 
-            // FIXME: Work-around for `for` being unsupported in `const fn`
+            // `for` is unusable in `const fn` [ref:const_for]
             let mut k = start_i;
             while k < end_i {
                 if occupied[k] {
@@ -329,7 +330,7 @@ impl<T: StartupOptions + EntryPoint> StartupExt for T {
 
 const fn memory_map_maps_va<T: StartupOptions>(va: usize) -> bool {
     let mmap = T::MEMORY_MAP;
-    // FIXME: Work-around for `for` being unsupported in `const fn`
+    // `for` is unusable in `const fn` [ref:const_for]
     let mut i = 0;
     while i < mmap.len() {
         let section = &mmap[i];

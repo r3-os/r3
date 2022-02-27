@@ -1,7 +1,8 @@
 use arrayvec::ArrayVec;
 use core::ops;
 
-// FIXME: [tag:veclike_const_supertrait] Can't specify `~const Deref` yet
+// [tag:veclike_const_supertrait] Can't specify `~const Deref` due to
+// [ref:const_supertraits]
 pub trait VecLike: ops::Deref<Target = [<Self as VecLike>::Element]> + ops::DerefMut {
     type Element;
     fn is_empty(&self) -> bool;

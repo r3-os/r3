@@ -335,8 +335,8 @@ pub struct TaskAttr<
     /// The parameter supplied for `entry_point`.
     pub entry_param: ClosureEnv,
 
-    // FIXME: Ideally, `stack` should directly point to the stack region. But
-    //        this is blocked by <https://github.com/rust-lang/const-eval/issues/11>
+    // Ideally, `stack` should directly point to the stack region. But
+    // this is blocked by [ref:const_static_item_ref]
     /// The hunk representing the stack region for the task.
     pub stack: StackHunk<Traits>,
 

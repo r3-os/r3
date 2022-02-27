@@ -258,8 +258,7 @@ macro_rules! impl_source_setter {
 
         // `#[autowrap]`
         $(
-            // FIXME: False `type_alias_bounds`; the `'static` bound is required
-            #[allow(type_alias_bounds)]
+            #[allow(type_alias_bounds)]  // [ref:impl_trait_false_type_alias_bounds]
             type MappedFunc<Func, T: 'static> = __pr::FnBindMap<
                 Func,
                 impl FnOnce(T) -> $Wrapper<T> + Send + Copy + 'static

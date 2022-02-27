@@ -115,7 +115,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// levels.
     pub const fn num_task_priority_levels(&mut self, new_value: usize)
     where
-        // FIXME: `~const` is not allowed in `impl`??
+        // `~const` must appear here due to [ref:impl_block_const_bounds]
         C: ~const raw_cfg::CfgBase,
     {
         self.raw.num_task_priority_levels(new_value);
@@ -130,6 +130,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// [1]: KernelStatic
     pub const fn finish_phase1(&mut self) -> CfgPhase1Data<C::System>
     where
+        // `~const` must appear here due to [ref:impl_block_const_bounds]
         C: ~const raw_cfg::CfgBase,
     {
         assert!(
@@ -161,6 +162,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// [1]: KernelStatic
     pub const fn finish_phase2(&mut self) -> CfgPhase2Data<C::System>
     where
+        // `~const` must appear here due to [ref:impl_block_const_bounds]
         C: ~const raw_cfg::CfgBase,
     {
         assert!(
@@ -210,7 +212,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         let mut i = 0;
         while i < self.interrupt_lines.len() {
             let interrupt_line = &self.interrupt_lines[i];
-            // FIXME: `<[T]>::get` is not `const fn` yet
+            // `<[T]>::get` is not `const fn` yet [ref:const_slice_get]
             let start = if interrupt_line.num < C::System::CFG_INTERRUPT_HANDLERS.len() {
                 C::System::CFG_INTERRUPT_HANDLERS[interrupt_line.num]
             } else {
@@ -245,6 +247,7 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
     /// [1]: KernelStatic
     pub const fn finish_phase3(self) -> CfgPhase3Data<C::System>
     where
+        // `~const` must appear here due to [ref:impl_block_const_bounds]
         C: ~const raw_cfg::CfgBase,
         C::System: CfgPhase2,
     {
@@ -701,7 +704,7 @@ pub macro attach_phase1($params:expr, impl CfgPhase1<$System:ty> for $Ty:ty $(,)
     };
 }
 
-// FIXME: A false `unused_macros`; it's actually used by `attach_*!`
+// [ref:decl_macro_unused] It's actually used by `attach_*!`
 #[allow(unused_macros)]
 macro array_item_from_fn($(
     $static_or_const:tt $out:ident: [$ty:ty; _] = (0..$len:expr).map(|$var:ident| $map:expr);

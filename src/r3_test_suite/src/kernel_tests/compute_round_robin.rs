@@ -65,7 +65,7 @@ impl<System: SupportedSystem> App<System> {
 
         let mut tasks = [None; NUM_TASKS];
 
-        // FIXME: Work-around for `for` being unsupported in `const fn`
+        // `for` is unusable in `const fn` [ref:const_for]
         let mut i = 0;
         while i < NUM_TASKS {
             let task_state = if i == 0 {
@@ -93,7 +93,7 @@ impl<System: SupportedSystem> App<System> {
             i += 1;
         }
 
-        // FIXME: Rewrite this with `<[_; 4]>::map` when it's compatible with `const fn`
+        // `<[_; 4]>::map` is unusable in `const fn` [ref:const_array_map]
         let tasks = [tasks[0].unwrap(), tasks[1].unwrap(), tasks[2].unwrap()];
 
         let state = Hunk::<_, State>::define().finish(b);

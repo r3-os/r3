@@ -145,7 +145,7 @@ impl<System: SupportedSystem> App<System> {
 
         let mut tasks = [None; NUM_TASKS];
 
-        // FIXME: Work-around for `for` being unsupported in `const fn`
+        // `for` is unusable in `const fn` [ref:const_for]
         let mut i = 0;
         while i < NUM_TASKS {
             tasks[i] = Some(
@@ -158,7 +158,7 @@ impl<System: SupportedSystem> App<System> {
             i += 1;
         }
 
-        // FIXME: Rewrite this with `<[_; 2]>::map` when it's compatible with `const fn`
+        // `<[_; 2]>::map` is unusable in `const fn` [ref:const_array_map]
         let tasks = [tasks[0].unwrap(), tasks[1].unwrap()];
 
         let judge_task = StaticTask::define()

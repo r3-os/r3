@@ -37,6 +37,7 @@ impl<T> const Drop for ComptimeVec<T> {
     fn drop(&mut self) {
         // FIXME: [tag:fixme_comptime_drop_elem] We can't use `<T as ~const
         // Drop>:: drop` here because `ComptimeVec<T>` can't have `T: ~const Drop`
+        // FIXME: Actually we can; see [ref:drop_const_bounds]
         // self.clear();
 
         // Safety: The referent is a valid heap allocation from `self.allocator`,
@@ -161,15 +162,12 @@ impl<T> ComptimeVec<T> {
     where
         T: Copy,
     {
-        // FIXME: Work-around for `assert_eq!` being unsupported in `const fn`
+        // `assert!` is used here due to [ref:const_assert_eq]
         assert!(self.len() == LEN);
 
-        // FIXME: use <https://github.com/rust-lang/rust/issues/80908> when
-        //        it becomes `const fn`
-        // Safety: This is equivalent to `transmute_copy(&self.storage)`. The
-        // memory layout of `[MaybeUninit<T>; LEN]` is identical to `[T; LEN]`.
-        // We initialized all elements in `storage[0..LEN]`, so it's safe to
-        // reinterpret that range as `[T; LEN]`.
+        // Safety: The memory layout of `[MaybeUninit<T>; LEN]` is identical to
+        // `[T; LEN]`. We initialized all elements in `storage[0..LEN]`, so it's
+        // safe to reinterpret that range as `[T; LEN]`.
         unsafe { *(self.ptr.as_ptr() as *const [T; LEN]) }
     }
 }
@@ -188,9 +186,8 @@ impl<T> const ops::DerefMut for ComptimeVec<T> {
     }
 }
 
-// FIXME: Waiting for <https://github.com/rust-lang/rust/issues/67792>
-// FIXME: Waiting for `Iterator` to be usable in `const fn`
-// FIXME: Waiting for `FnMut` to be usable in `const fn`
+// Slices aren't iterable in `const fn` [ref:const_slice_iter]
+// Closures are unusable in `const fn` [ref:const_closures]
 /// An implementation of `$vec.iter().position(|$item| $predicate)` that is
 /// compatible with a const context.
 #[allow(unused_macros)]
@@ -212,6 +209,7 @@ macro_rules! vec_position {
 
 // FIXME: The false requirement for `~const Drop` might be an instance of
 //        <https://github.com/rust-lang/rust/issues/86897>
+// FIXME: Doesn't seem to occur anymore, probably bc of `const_precise_live_drops`
 /// Unwrap `Result<T, AllocError>`.
 const fn unwrap_alloc_error<T: ~const Drop>(x: Result<T, AllocError>) -> T {
     match x {
@@ -236,18 +234,19 @@ mod tests {
 
     #[test]
     fn as_slice() {
-        #[allow(dead_code)] // FIXME: False lint?
+        #[allow(dead_code)] // [ref:unnamed_const_dead_code]
         const fn array(allocator: &ConstAllocator) {
             let mut x = ComptimeVec::new_in(allocator.clone());
             x.push(1);
             x.push(2);
             x.push(3);
             x.push(4);
-            // FIXME: `assert_matches!` is not usable in `const fn` yet
-            //        `Option<T>::eq` is not `const fn` yet
+            // `assert!` is used here due to [ref:const_assert_eq]
+            // `matches!` is used here due to [ref:option_const_partial_eq]
             assert!(matches!(x.pop(), Some(4)));
             let slice = x.as_slice();
-            // FIXME: `assert_matches!` is not usable in `const fn` yet
+            // `assert!` is used here due to [ref:const_assert_eq]
+            // `matches!` is used here due to [ref:slice_const_partial_eq]
             assert!(matches!(slice, [1, 2, 3]));
         }
         const _: () = ConstAllocator::with(array);
@@ -260,7 +259,7 @@ mod tests {
             x.push(1);
             x.push(2);
             x.push(3);
-            // FIXME: Closures don't implement `~const Fn`?
+            // Closures don't implement `const Fn` [ref:const_closures]
             const fn transform(x: &i32) -> i32 {
                 *x + 1
             }
@@ -316,7 +315,7 @@ mod tests {
 
     #[test]
     fn drop_on_clear() {
-        #[allow(dead_code)] // FIXME: False lint?
+        #[allow(dead_code)] // [ref:unnamed_const_dead_code]
         const fn array(allocator: &ConstAllocator) {
             let mut x = ComptimeVec::new_in(allocator.clone());
 

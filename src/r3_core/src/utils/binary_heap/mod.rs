@@ -46,7 +46,7 @@ pub trait BinaryHeap: VecLike {
 
 impl<T> const BinaryHeap for T
 where
-    // FIXME: `~const Deref` isn't implied because of
+    // `~const Deref` isn't implied because of
     // [ref:veclike_const_supertrait]
     T: ~const VecLike + ~const core::ops::Deref + ~const core::ops::DerefMut,
     T::Element: ~const Drop,

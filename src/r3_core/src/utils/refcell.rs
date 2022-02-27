@@ -1,5 +1,6 @@
 //! `const fn`-compatible [`core::cell::RefCell`].
-// FIXME: `RefCell::borrow`, etc. are not `const fn` yet, hence this stuff
+// `RefCell::borrow`, etc. are not `const fn` yet [ref:ref_cell_const],
+// hence this stuff
 use core::{
     cell::UnsafeCell,
     ops::{Deref, DerefMut},
@@ -7,7 +8,7 @@ use core::{
 
 /// A mutable memory location with dynamically checked borrow rules
 pub struct RefCell<T: ?Sized> {
-    // FIXME: `Cell` isn't `const fn`-compatible either
+    // `Cell` isn't `const fn`-compatible either [ref:cell_const]
     borrow: UnsafeCell<BorrowFlag>,
     value: UnsafeCell<T>,
 }
@@ -44,7 +45,7 @@ impl<T: ?Sized> RefCell<T> {
     /// Immutably borrows the wrapped value.
     #[track_caller]
     pub const fn borrow(&self) -> Ref<'_, T> {
-        // FIXME: `Result::expect` is not `const fn` yet
+        // `Result::expect` is not `const fn` yet [ref:const_result_expect]
         if let Ok(x) = self.try_borrow() {
             x
         } else {
@@ -70,7 +71,7 @@ impl<T: ?Sized> RefCell<T> {
     /// Mutably borrows the wrapped value.
     #[track_caller]
     pub const fn borrow_mut(&self) -> RefMut<'_, T> {
-        // FIXME: `Result::expect` is not `const fn` yet
+        // `Result::expect` is not `const fn` yet [ref:const_result_expect]
         if let Ok(x) = self.try_borrow_mut() {
             x
         } else {
