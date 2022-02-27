@@ -35,6 +35,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_ptr_read)]
 #![feature(specialization)]
+#![feature(const_convert)]
 #![feature(const_type_id)] // `TypeId::of` as `const fn`
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
 #![feature(slice_ptr_len)]
@@ -45,6 +46,7 @@
 #![feature(const_swap)]
 #![feature(decl_macro)]
 #![feature(never_type)] // `!`
+#![feature(const_try)]
 #![feature(let_else)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![cfg_attr(test, feature(is_sorted))]
