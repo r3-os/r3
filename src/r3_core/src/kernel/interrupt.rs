@@ -584,14 +584,7 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
 impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDLERS: usize>
     MakeCombinedHandlers<System, Handlers, NUM_HANDLERS>
 {
-    const PROTO_COMBINED_HANDLERS_ARRAY: [ProtoCombinedHandlerFn; NUM_HANDLERS] =
-        Self::proto_combined_handlers_array();
-
-    const fn proto_combined_handlers_array() -> [ProtoCombinedHandlerFn; NUM_HANDLERS] {
-        // FIXME: Unable to do this inside a `const` item because of
-        //        <https://github.com/rust-lang/rust/pull/72934>
-        // FIXME: The above limitaiton has been fixed by
-        //        <https://github.com/rust-lang/rust/pull/78578>
+    const PROTO_COMBINED_HANDLERS_ARRAY: [ProtoCombinedHandlerFn; NUM_HANDLERS] = {
         const_array_from_fn! {
             fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> ProtoCombinedHandlerFn {
                 #[inline(always)]
@@ -624,16 +617,9 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
             // for the iteration
             (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; Handlers::NumHandlers]>()
         }
-    }
+    };
 
-    const COMBINED_HANDLERS_ARRAY: [Option<InterruptHandlerFn>; NUM_HANDLERS] =
-        Self::combined_handlers_array();
-
-    const fn combined_handlers_array() -> [Option<InterruptHandlerFn>; NUM_HANDLERS] {
-        // FIXME: Unable to do this inside a `const` item because of
-        //        <https://github.com/rust-lang/rust/pull/72934>
-        // FIXME: The above limitaiton has been fixed by
-        //        <https://github.com/rust-lang/rust/pull/78578>
+    const COMBINED_HANDLERS_ARRAY: [Option<InterruptHandlerFn>; NUM_HANDLERS] = {
         const_array_from_fn! {
             fn iter<[T: MakeCombinedHandlersTrait], I: Nat>(ref mut cell: T) -> Option<InterruptHandlerFn> {
                 extern "C" fn combined_handler<T: MakeCombinedHandlersTrait, I: Nat>() {
@@ -658,7 +644,7 @@ impl<System: raw::KernelBase, Handlers: CfgInterruptHandlerList, const NUM_HANDL
             // for the iteration
             (0..NUM_HANDLERS).map(|i| iter::<[Self], i>(Self(PhantomData))).collect::<[_; Handlers::NumHandlers]>()
         }
-    }
+    };
 }
 
 /// Construct a table of combined second-level interrupt handlers. Only meant to
