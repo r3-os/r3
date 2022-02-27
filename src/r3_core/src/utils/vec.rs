@@ -2,21 +2,29 @@ use core::{alloc::Layout, ops, ptr::NonNull};
 
 use super::{AllocError, Allocator, ConstAllocator};
 
-/// `Vec` that can only be used in a constant context.
-///
-/// # Elements are forgotten on drop
-///
-/// Due to the current compiler restrictions [ref:fixme_comptime_drop_elem], the
-/// destructor is not called for the elements when a `ComptimeVec` is dropped.
 #[doc(hidden)]
-pub struct ComptimeVec<T> {
+pub struct UserDrop<T>(T);
+
+impl<T> const Drop for UserDrop<T> {
+    #[inline]
+    fn drop(&mut self) {}
+}
+
+/// `Vec` that can only be used in a constant context.
+#[doc(hidden)]
+#[allow(drop_bounds)] // Due to the work-around for [ref:drop_const_bounds]
+pub struct ComptimeVec<T>
+where
+    // Work-around for [ref:drop_const_bounds]
+    UserDrop<T>: Drop,
+{
     ptr: NonNull<T>,
     len: usize,
     capacity: usize,
     allocator: ConstAllocator,
 }
 
-impl<T: ~const Clone> const Clone for ComptimeVec<T> {
+impl<T: ~const Clone + ~const Drop> const Clone for ComptimeVec<T> {
     fn clone(&self) -> Self {
         // FIXME: Work-around for a mysterious error saying "the trait bound
         // `for<'r> fn(&'r T) -> T {<T as Clone>::clone}: ~const FnMut<(&T,)>`
@@ -33,12 +41,17 @@ impl<T: ~const Clone> const Clone for ComptimeVec<T> {
     }
 }
 
-impl<T> const Drop for ComptimeVec<T> {
+impl<T> const Drop for ComptimeVec<T>
+where
+    // Work-around for [ref:drop_const_bounds]
+    UserDrop<T>: ~const Drop,
+{
     fn drop(&mut self) {
-        // FIXME: [tag:fixme_comptime_drop_elem] We can't use `<T as ~const
-        // Drop>:: drop` here because `ComptimeVec<T>` can't have `T: ~const Drop`
-        // FIXME: Actually we can; see [ref:drop_const_bounds]
-        // self.clear();
+        if core::mem::needs_drop::<T>() {
+            // Wrap `T` with `UserDrop` before dropping to work around
+            // [ref:drop_const_bounds]
+            while self.pop().map(UserDrop).is_some() {}
+        }
 
         // Safety: The referent is a valid heap allocation from `self.allocator`,
         // and `self` logically owns it
@@ -321,10 +334,6 @@ mod tests {
             x.push(allocator.clone());
             x.push(allocator.clone());
             x.push(allocator.clone());
-
-            // FIXME: `ComptimeVec::drop` can't do this currently because of
-            //        [ref:fixme_comptime_drop_elem]
-            x.clear();
         }
         const _: () = ConstAllocator::with(array);
     }

@@ -864,14 +864,6 @@ pub(crate) struct CfgBindRegistry {
     binds: ComptimeVec<CfgBindInfo>,
 }
 
-impl const Drop for CfgBindRegistry {
-    fn drop(&mut self) {
-        // FIXME: `ComptimeVec::drop` can't do this currently because of
-        //        [ref:fixme_comptime_drop_elem]
-        self.binds.clear();
-    }
-}
-
 struct CfgBindInfo {
     /// The initializer for the binder. It'll be registered as a startup hook
     /// on finalization.

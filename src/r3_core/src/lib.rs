@@ -25,6 +25,7 @@
 #![feature(maybe_uninit_slice)]
 #![feature(const_nonnull_new)]
 #![feature(const_impl_trait)]
+#![feature(const_option_ext)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(const_ptr_write)]
