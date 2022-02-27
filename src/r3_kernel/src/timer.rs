@@ -1,5 +1,5 @@
 //! Timers
-use core::{fmt, marker::PhantomData, mem::ManuallyDrop};
+use core::{fmt, marker::PhantomData};
 use r3_core::{
     closure::Closure,
     kernel::{traits, SetTimerDelayError, SetTimerPeriodError, StartTimerError, StopTimerError},
@@ -104,9 +104,7 @@ pub struct TimerCb<Traits: KernelCfg2> {
     ///    timeout object is unlinked. The delay can be retrieved by
     ///    [`timeout::Timeout::at_raw`].
     ///
-    // FIXME: `!Drop` is a requirement of `array_item_from_fn!` that ideally
-    //        should be removed
-    pub(super) timeout: ManuallyDrop<timeout::Timeout<Traits>>,
+    pub(super) timeout: timeout::Timeout<Traits>,
 
     /// `true` iff the timer is in the Active state.
     pub(super) active: CpuLockCell<Traits, bool>,
