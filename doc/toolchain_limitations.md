@@ -1,6 +1,6 @@
 # Toolchain Limitations
 
-This document lists some of the known limitations or incomplete features present in the current compiler toolchain or the compiler itself, which, when resolved, will improve the quality of our codebase.
+This document lists some of the known limitations or incomplete features present in the current compiler toolchain, the compiler itself, or the dependent packages, which, when resolved, will improve the quality of our codebase.
 
 All items in here are given [Tagref][1] tags for cross-referencing. All code examples in here are [doc-tested][2] to maintain validity.
 
