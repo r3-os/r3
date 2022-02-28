@@ -74,7 +74,7 @@ where
         }
 
         // Configure peripherals
-        let p = unsafe { rp2040::Peripherals::steal() };
+        let p = unsafe { rp2040_pac::Peripherals::steal() };
         r3_support_rp2040::clock::init_clock(
             &p.CLOCKS,
             &p.XOSC,

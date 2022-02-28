@@ -8,7 +8,7 @@ fn panic(info: &PanicInfo) -> ! {
     unsafe { asm!("cpsid i") };
 
     // Check which core we are running on
-    let p = unsafe { rp2040::Peripherals::steal() };
+    let p = unsafe { rp2040_pac::Peripherals::steal() };
     let cpuid = p.SIO.cpuid.read().bits();
 
     match cpuid {

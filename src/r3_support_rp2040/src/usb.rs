@@ -1,7 +1,7 @@
 // This module is only intended to be used internally, hence the semver
 // exemption. It probably should be in a HAL or board crate.
 #![cfg(feature = "semver-exempt")]
-use rp2040::USBCTRL_REGS;
+use rp2040_pac::USBCTRL_REGS;
 use usb_device::{
     endpoint::{EndpointAddress, EndpointType},
     UsbDirection,

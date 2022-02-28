@@ -9,12 +9,12 @@
 ///  - Watchdog ticks = 1MHz
 ///
 pub fn init_clock(
-    clocks: &rp2040::CLOCKS,
-    xosc: &rp2040::XOSC,
-    pll_sys: &rp2040::PLL_SYS,
-    pll_usb: &rp2040::PLL_USB,
-    resets: &rp2040::RESETS,
-    watchdog: &rp2040::WATCHDOG,
+    clocks: &rp2040_pac::CLOCKS,
+    xosc: &rp2040_pac::XOSC,
+    pll_sys: &rp2040_pac::PLL_SYS,
+    pll_usb: &rp2040_pac::PLL_USB,
+    resets: &rp2040_pac::RESETS,
+    watchdog: &rp2040_pac::WATCHDOG,
 ) {
     // Disable Resus
     clocks.clk_sys_resus_ctrl.write(|b| b.enable().clear_bit());

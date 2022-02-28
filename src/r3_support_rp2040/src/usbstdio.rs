@@ -76,15 +76,15 @@ pub trait Options: 'static + Send + Sync {
 /// the standard output ([`crate::stdout`]).
 pub const fn configure<'pool, C, TOptions: Options>(
     b: &mut Cfg<'pool, C>,
-    rp2040_resets: Bind<'pool, C::System, rp2040::RESETS>,
-    rp2040_usbctrl_regs: Bind<'pool, C::System, rp2040::USBCTRL_REGS>,
+    rp2040_resets: Bind<'pool, C::System, rp2040_pac::RESETS>,
+    rp2040_usbctrl_regs: Bind<'pool, C::System, rp2040_pac::USBCTRL_REGS>,
 ) where
     C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
     C::System: traits::KernelInterruptLine + traits::KernelStatic,
 {
     bind(
         (rp2040_resets.borrow_mut(), rp2040_usbctrl_regs.take()),
-        |rp2040_resets: &mut rp2040::RESETS, rp2040_usbctrl_regs: rp2040::USBCTRL_REGS| {
+        |rp2040_resets: &mut rp2040_pac::RESETS, rp2040_usbctrl_regs: rp2040_pac::USBCTRL_REGS| {
             // Reset PLL
             rp2040_resets.reset.modify(|_, w| w.usbctrl().set_bit());
             rp2040_resets.reset.modify(|_, w| w.usbctrl().clear_bit());
@@ -121,7 +121,7 @@ pub const fn configure<'pool, C, TOptions: Options>(
     .finish(b);
 
     let int_num =
-        rp2040::Interrupt::USBCTRL_IRQ as InterruptNum + r3_port_arm_m::INTERRUPT_EXTERNAL0;
+        rp2040_pac::Interrupt::USBCTRL_IRQ as InterruptNum + r3_port_arm_m::INTERRUPT_EXTERNAL0;
 
     InterruptLine::define()
         .line(int_num)

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+- [`rp2040-pac ^0.3`](https://crates.io/crates/rp2040-pac) replaces [`rp2040 ^0.1`](https://crates.io/crates/rp2040) as the RP2040 peripheral access crate used by `r3_support_rp2040`.
+
 ## [0.1.1] - 2021-10-29
 
 This release only includes changes to the documentation.
