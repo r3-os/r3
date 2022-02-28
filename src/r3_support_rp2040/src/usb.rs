@@ -340,12 +340,10 @@ impl usb_device::bus::UsbBus for UsbBus {
                 | (self.ep_max_packet_size[ep_addr.index()] as u32),
         );
 
-        // Clear the status bit
-        // FIXME: `buff_status` is RO in SVD and the RP2040 manual, but the
-        // example code does write it
-        unsafe {
-            (&raw const self.usbctrl_regs.buff_status as *mut u32).write_volatile(1 << ep_i);
-        }
+        // Clear the status bit (writing one clears it)
+        self.usbctrl_regs
+            .buff_status
+            .write(|w| unsafe { w.bits(1 << ep_i) });
 
         Ok(buf.len())
     }
@@ -463,16 +461,10 @@ impl usb_device::bus::UsbBus for UsbBus {
                 }
             }
 
-            // Clear the status bits for IN endpoints
-            //
-            // FIXME: `buff_status` is RO in SVD and the RP2040 manual, but the
-            // example code does write it:
-            // <https://github.com/raspberrypi/tinyusb/blob/e0aa405d19e35dbf58cf502b8106455c1a3c2a5c/src/portable/raspberrypi/rp2040/dcd_rp2040.c#L225>
-            let buf_status_cleared_bits = buf_status & 0x55555555;
-            unsafe {
-                (&raw const self.usbctrl_regs.buff_status as *mut u32)
-                    .write_volatile(buf_status_cleared_bits);
-            }
+            // Clear the status bits for IN endpoints (writing ones clears them)
+            self.usbctrl_regs
+                .buff_status
+                .write(|w| unsafe { w.bits(buf_status & 0x55555555) });
         }
 
         // It's harmless to return `Data` when there are no events in the
