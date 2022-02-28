@@ -72,30 +72,12 @@ macro_rules! use_mtime {
                 }
             }
 
-            const TICKLESS_CFG: tickless::TicklessCfg =
-                match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$Traits as MtimeOptions>::FREQUENCY,
-                    hw_freq_denom: <$Traits as MtimeOptions>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$Traits as MtimeOptions>::HEADROOM,
-                    // `mtime` is a 64-bit free-running counter and it is
-                    // expensive to create a 32-bit timer with an arbitrary
-                    // period out of it.
-                    force_full_hw_period: true,
-                    // If clearing `mtime` is not allowed, we must record the
-                    // starting value of `mtime` by calling `reset`.
-                    resettable: !<$Traits as MtimeOptions>::RESET_MTIME,
-                }) {
-                    Ok(x) => x,
-                    Err(e) => e.panic(),
-                };
-
-            static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
+            static mut TIMER_STATE: <$Traits as mtime::imp::TimerInstance>::TicklessState =
+                Init::INIT;
 
             // Safety: Only `use_mtime!` is allowed to `impl` this
             unsafe impl mtime::imp::TimerInstance for $Traits {
-                const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
-
-                type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
+                type TicklessState = tickless::TicklessState<{ Self::TICKLESS_CFG }>;
 
                 fn tickless_state() -> *mut Self::TicklessState {
                     unsafe { core::ptr::addr_of_mut!(TIMER_STATE) }
