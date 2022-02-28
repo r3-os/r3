@@ -1,7 +1,7 @@
 //! The implementation of the SP804 Dual Timer driver.
 use r3_core::kernel::{traits, Cfg, InterruptLine, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
-use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
+use r3_portkit::tickless::{TicklessCfg, TicklessOptions, TicklessStateTrait};
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
 use crate::sp804::{cfg::Sp804Options, sp804_regs};
@@ -12,9 +12,16 @@ use crate::sp804::{cfg::Sp804Options, sp804_regs};
 ///
 /// Only meant to be implemented by [`use_sp804!`].
 pub unsafe trait Sp804Instance: KernelTraits + Sp804Options {
-    // FIXME: Specifying `TicklessCfg::new(...)` here used to cause a "cycle
-    //        detected" error, but now it doesn't
-    const TICKLESS_CFG: TicklessCfg;
+    const TICKLESS_CFG: TicklessCfg = match TicklessCfg::new(TicklessOptions {
+        hw_freq_num: <Self as Sp804Options>::FREQUENCY,
+        hw_freq_denom: <Self as Sp804Options>::FREQUENCY_DENOMINATOR,
+        hw_headroom_ticks: <Self as Sp804Options>::HEADROOM,
+        force_full_hw_period: false,
+        resettable: false,
+    }) {
+        Ok(x) => x,
+        Err(e) => e.panic(),
+    };
 
     type TicklessState: TicklessStateTrait;
 

@@ -76,25 +76,12 @@ macro_rules! use_sp804 {
                 }
             }
 
-            const TICKLESS_CFG: tickless::TicklessCfg =
-                match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$Traits as Sp804Options>::FREQUENCY,
-                    hw_freq_denom: <$Traits as Sp804Options>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$Traits as Sp804Options>::HEADROOM,
-                    force_full_hw_period: false,
-                    resettable: false,
-                }) {
-                    Ok(x) => x,
-                    Err(e) => e.panic(),
-                };
-
-            static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
+            static mut TIMER_STATE: <$Traits as sp804::imp::Sp804Instance>::TicklessState =
+                Init::INIT;
 
             // Safety: Only `use_sp804!` is allowed to `impl` this
             unsafe impl sp804::imp::Sp804Instance for $Traits {
-                const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
-
-                type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
+                type TicklessState = tickless::TicklessState<{ Self::TICKLESS_CFG }>;
 
                 fn tickless_state() -> *mut Self::TicklessState {
                     unsafe { core::ptr::addr_of_mut!(TIMER_STATE) }
