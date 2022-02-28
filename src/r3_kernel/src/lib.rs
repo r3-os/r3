@@ -376,14 +376,9 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
     #[doc(hidden)]
     type TaskReadyQueue: readyqueue::Queue<Self>;
 
-    // FIXME: This is a work-around for trait methods being uncallable in `const
-    //        fn`, but is this really still necessary?
-    /// All possible values of `TaskPriority`.
-    ///
-    /// `TASK_PRIORITY_LEVELS[i]` is equivalent to
-    /// `TaskPriority::try_from(i).unwrap()` except that the latter doesn't work
-    /// in `const fn`.
-    const TASK_PRIORITY_LEVELS: &'static [Self::TaskPriority];
+    /// Convert `usize` to [`Self::TaskPriority`][]. Returns `None` if
+    /// `i >= Self::NUM_TASK_PRIORITY_LEVELS`.
+    fn to_task_priority(i: usize) -> Option<Self::TaskPriority>;
 }
 
 /// Implemented by a port. This trait contains items related to low-level

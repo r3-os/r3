@@ -128,12 +128,8 @@ macro_rules! build {
         // Kernel-specific configuration process
         // ---------------------------------------------------------------------
 
-        // Set up task priority levels
+        // Determine the type ro represent task priority levels
         type TaskPriority = UIntegerWithBound<{ CFG.num_task_priority_levels as u128 - 1 }>;
-        $crate::array_item_from_fn! {
-            const TASK_PRIORITY_LEVELS: [TaskPriority; _] =
-                (0..CFG.num_task_priority_levels).map(|i| i as _);
-        };
 
         // Task ready queue
         type TaskReadyBitmap = FixedPrioBitmap<{ CFG.num_task_priority_levels }>;
@@ -146,11 +142,18 @@ macro_rules! build {
         >;
 
         // Safety: We are `build!`, so it's okay to `impl` this
-        unsafe impl KernelCfg1 for $Traits {
+        unsafe impl const KernelCfg1 for $Traits {
             const NUM_TASK_PRIORITY_LEVELS: usize = CFG.num_task_priority_levels;
             type TaskPriority = TaskPriority;
             type TaskReadyQueue = TaskReadyQueue;
-            const TASK_PRIORITY_LEVELS: &'static [Self::TaskPriority] = &TASK_PRIORITY_LEVELS;
+            #[inline]
+            fn to_task_priority(i: usize) -> Option<Self::TaskPriority> {
+                if i < CFG.num_task_priority_levels {
+                    Some(i as TaskPriority)
+                } else {
+                    None
+                }
+            }
         }
 
         // Instantiiate task structures
