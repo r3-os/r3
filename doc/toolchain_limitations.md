@@ -514,6 +514,14 @@ const _: () = assert!(matches!(
 ));
 ```
 
+### `[tag:const_uninit_array]` `MaybeUninit::uninit_array` is unstable
+
+```rust,compile_fail,E0658
+use core::mem::MaybeUninit;
+// error[E0658]: use of unstable library feature 'maybe_uninit_uninit_array'
+const _: [MaybeUninit<u32>; 4] = MaybeUninit::uninit_array();
+```
+
 
 ### `[tag:derive_const_partial_eq]` `derive(PartialEq)` doesn't derive `~const PartialEq`
 

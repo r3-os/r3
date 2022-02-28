@@ -1,7 +1,5 @@
 use core::mem::{ManuallyDrop, MaybeUninit};
 
-use super::Init;
-
 union Xmute<T, U> {
     t: ManuallyDrop<T>,
     u: ManuallyDrop<U>,
@@ -26,15 +24,11 @@ pub const unsafe fn transmute<T, U>(x: T) -> U {
 
 /// Construct a `[MaybeUninit<T>; LEN]` whose elements are uninitialized.
 ///
-/// This function is a `const fn` version of the [unstable]
-/// `MaybeUninit::uninit_array` method.
-///
-/// [unstable]: https://github.com/rust-lang/rust/pull/65580
-// FIXME: Remove this function when `MaybeUninit::uninit_array` becomes `const fn`
-// FIXME: It is now unstably, but let's keep this function not to require the
-//        applications to add a `#![feature(...)]`
+/// This function exposes the unstable `MaybeUninit::uninit_array` method.
+/// `[ref:const_uninit_array]`
+#[inline]
 pub const fn uninit_array<T, const LEN: usize>() -> [MaybeUninit<T>; LEN] {
-    [MaybeUninit::<T>::INIT; LEN]
+    MaybeUninit::uninit_array()
 }
 
 #[cfg(test)]
