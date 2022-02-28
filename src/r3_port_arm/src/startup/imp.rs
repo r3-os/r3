@@ -193,32 +193,27 @@ extern "C" fn reset_handler1<Traits: EntryPoint + StartupOptions>() {
     unsafe { Traits::start() };
 }
 
-// FIXME: `pub` in these functions is to work around an ICE issue
-//        `error: internal compiler error: src/librustc_mir/monomorphize/
-//         collector.rs:802:9: cannot create local mono-item for DefId(4:27 ~
-//         r3_port_arm[c8c4]::startup[0]::unhandled_exception_handler[0])`
-// FIXME: This doesn't seem to happen anymore
-pub extern "C" fn unhandled_exception_handler() -> ! {
+extern "C" fn unhandled_exception_handler() -> ! {
     panic!("reserved exception");
 }
 
-pub extern "C" fn undefined_instruction_handler() -> ! {
+extern "C" fn undefined_instruction_handler() -> ! {
     panic!("undefined instruction");
 }
 
-pub extern "C" fn supervisor_call_handler() -> ! {
+extern "C" fn supervisor_call_handler() -> ! {
     panic!("unexpected supervisor call");
 }
 
-pub extern "C" fn prefetch_abort_handler() -> ! {
+extern "C" fn prefetch_abort_handler() -> ! {
     panic!("prefetch abort");
 }
 
-pub extern "C" fn data_abort_handler() -> ! {
+extern "C" fn data_abort_handler() -> ! {
     panic!("data abort");
 }
 
-pub extern "C" fn fiq_handler() -> ! {
+extern "C" fn fiq_handler() -> ! {
     panic!("unexpecte fiq");
 }
 
