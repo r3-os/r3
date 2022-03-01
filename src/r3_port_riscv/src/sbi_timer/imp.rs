@@ -2,7 +2,7 @@
 use core::arch::asm;
 use r3_core::kernel::{traits, Cfg, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
-use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
+use r3_portkit::tickless::{TicklessCfg, TicklessOptions, TicklessStateTrait};
 
 use crate::sbi_timer::cfg::SbiTimerOptions;
 
@@ -12,9 +12,21 @@ use crate::sbi_timer::cfg::SbiTimerOptions;
 ///
 /// Only meant to be implemented by [`use_sbi_timer!`].
 pub unsafe trait TimerInstance: KernelTraits + SbiTimerOptions {
-    // FIXME: Specifying `TicklessCfg::new(...)` here used to cause a "cycle
-    //        detected" error, but now it doesn't
-    const TICKLESS_CFG: TicklessCfg;
+    const TICKLESS_CFG: TicklessCfg = match TicklessCfg::new(TicklessOptions {
+        hw_freq_num: <Self as SbiTimerOptions>::FREQUENCY,
+        hw_freq_denom: <Self as SbiTimerOptions>::FREQUENCY_DENOMINATOR,
+        hw_headroom_ticks: <Self as SbiTimerOptions>::HEADROOM,
+        // `stime` is a 64-bit free-running counter and it is
+        // expensive to create a 32-bit timer with an arbitrary
+        // period out of it.
+        force_full_hw_period: true,
+        // Clearing `stime` is not possible, so we must record the
+        // starting value of `stime` by calling `reset`.
+        resettable: true,
+    }) {
+        Ok(x) => x,
+        Err(e) => e.panic(),
+    };
 
     type TicklessState: TicklessStateTrait;
 

@@ -27,7 +27,10 @@ impl port::SysTickOptions for SystemTraits {
 ///  - Must be called from core0.
 ///  - Must not be called more than once.
 ///
-pub unsafe fn core1_launch(sio: &rp2040::sio::RegisterBlock, psm: &rp2040::psm::RegisterBlock) {
+pub unsafe fn core1_launch(
+    sio: &rp2040_pac::sio::RegisterBlock,
+    psm: &rp2040_pac::psm::RegisterBlock,
+) {
     use core::ptr::addr_of;
     extern "C" {
         static _core1_stack_start: u32;
@@ -124,7 +127,7 @@ pub struct Core1(());
 
 impl Core1 {
     #[inline]
-    pub fn new(sio: &rp2040::sio::RegisterBlock) -> Option<Self> {
+    pub fn new(sio: &rp2040_pac::sio::RegisterBlock) -> Option<Self> {
         if sio.cpuid.read().bits() == 1 {
             Some(Core1(()))
         } else {
@@ -134,7 +137,7 @@ impl Core1 {
 }
 
 pub fn write_bytes(_core1: Core1, s: &[u8]) {
-    let p = unsafe { rp2040::Peripherals::steal() };
+    let p = unsafe { rp2040_pac::Peripherals::steal() };
     let sio = p.SIO;
 
     for chunk in s.chunks(4) {
@@ -193,7 +196,7 @@ fn task1_body() {
     let c1 = Core1(());
     write_bytes(c1, b"core1: task1 is running\n");
 
-    let p = unsafe { rp2040::Peripherals::steal() };
+    let p = unsafe { rp2040_pac::Peripherals::steal() };
 
     // Configure GP25 (connected to LED on Pico) for output
     // <https://github.com/jannic/rp-microcontroller-rs/blob/master/boards/rp-pico/examples/blink/main.rs>
@@ -202,11 +205,9 @@ fn task1_body() {
     p.SIO.gpio_oe_clr.write(|w| unsafe { w.bits(1 << pin) });
     p.SIO.gpio_out_clr.write(|w| unsafe { w.bits(1 << pin) });
 
-    p.PADS_BANK0
-        .gpio25
-        .write(|w| w.ie().bit(true).od().bit(false));
+    p.PADS_BANK0.gpio[25].write(|w| w.ie().bit(true).od().bit(false));
 
-    p.IO_BANK0.gpio25_ctrl.write(|w| w.funcsel().sio_25());
+    p.IO_BANK0.gpio[25].gpio_ctrl.write(|w| w.funcsel().sio());
 
     p.SIO.gpio_oe_set.write(|w| unsafe { w.bits(1 << pin) });
     p.SIO.gpio_out_set.write(|w| unsafe { w.bits(1 << pin) });

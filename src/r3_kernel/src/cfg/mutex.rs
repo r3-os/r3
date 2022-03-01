@@ -4,7 +4,7 @@ use r3_core::kernel::{
     MutexProtocol,
 };
 
-use crate::{cfg::CfgBuilder, klock::CpuLockCell, mutex, wait, KernelTraits, Port};
+use crate::{cfg::CfgBuilder, klock::CpuLockCell, mutex, wait, KernelCfg1, KernelTraits, Port};
 
 unsafe impl<Traits: KernelTraits> const CfgMutex for CfgBuilder<Traits> {
     fn mutex_define<Properties: ~const r3_core::bag::Bag>(
@@ -28,19 +28,13 @@ pub struct CfgBuilderMutex {
 }
 
 impl CfgBuilderMutex {
-    pub const fn to_state<System: Port>(&self) -> mutex::MutexCb<System> {
+    pub const fn to_state<Traits: Port + ~const KernelCfg1>(&self) -> mutex::MutexCb<Traits> {
         mutex::MutexCb {
             ceiling: match self.protocol {
                 MutexProtocol::None => None,
-                MutexProtocol::Ceiling(ceiling) => {
-                    if ceiling < System::NUM_TASK_PRIORITY_LEVELS {
-                        Some(System::TASK_PRIORITY_LEVELS[ceiling])
-                    } else {
-                        panic!(
-                            "mutex's priority ceiling must be less than `num_task_priority_levels`"
-                        );
-                    }
-                }
+                MutexProtocol::Ceiling(ceiling) => Some(Traits::to_task_priority(ceiling).expect(
+                    "mutex's priority ceiling must be less than `num_task_priority_levels`",
+                )),
 
                 // The default value is implementation-defined
                 _ => None,

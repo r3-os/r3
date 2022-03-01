@@ -436,6 +436,20 @@ const _: () = Ok::<(), ()>(()).expect("");
 ```
 
 
+### `[tag:const_result_ok]` `Result::ok` is not `const fn`
+
+*Upstream PR:* [rust-lang/rust#92385](https://github.com/rust-lang/rust/pull/92385) will unstably add this
+
+```rust
+Ok::<(), ()>(()).ok();
+```
+
+```rust,compile_fail,E0015
+// error[E0015]: cannot call non-const fn `Result::<(), ()>::ok` in constants
+const _: () = { Ok::<(), ()>(()).ok(); };
+```
+
+
 ### `[tag:const_result_map]` `Result::map[_err]` is not `const fn`
 
 ```rust
@@ -498,6 +512,14 @@ const _: () = assert!(matches!(
     unsafe { MaybeUninit::array_assume_init([MaybeUninit::new(42)]) },
     [42]
 ));
+```
+
+### `[tag:const_uninit_array]` `MaybeUninit::uninit_array` is unstable
+
+```rust,compile_fail,E0658
+use core::mem::MaybeUninit;
+// error[E0658]: use of unstable library feature 'maybe_uninit_uninit_array'
+const _: [MaybeUninit<u32>; 4] = MaybeUninit::uninit_array();
 ```
 
 

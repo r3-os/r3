@@ -1,4 +1,4 @@
-use core::{mem::ManuallyDrop, num::NonZeroUsize};
+use core::num::NonZeroUsize;
 use r3_core::{
     closure::Closure,
     kernel::raw_cfg::{CfgTimer, TimerDescriptor},
@@ -92,7 +92,7 @@ impl CfgBuilderTimer {
 
         timer::TimerCb {
             attr,
-            timeout: ManuallyDrop::new(timeout),
+            timeout,
             period: CpuLockCell::new(self.period),
             active: CpuLockCell::new(false),
         }

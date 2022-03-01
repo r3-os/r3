@@ -1,7 +1,7 @@
 //! The implementation of the `mtime`-based timer driver.
 use r3_core::kernel::{traits, Cfg, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
-use r3_portkit::tickless::{TicklessCfg, TicklessStateTrait};
+use r3_portkit::tickless::{TicklessCfg, TicklessOptions, TicklessStateTrait};
 use tock_registers::{
     interfaces::{Readable, Writeable},
     registers::ReadWrite,
@@ -15,9 +15,21 @@ use crate::mtime::cfg::MtimeOptions;
 ///
 /// Only meant to be implemented by [`use_mtime!`].
 pub unsafe trait TimerInstance: KernelTraits + MtimeOptions {
-    // FIXME: Specifying `TicklessCfg::new(...)` here used to cause a "cycle
-    //        detected" error, but now it doesn't
-    const TICKLESS_CFG: TicklessCfg;
+    const TICKLESS_CFG: TicklessCfg = match TicklessCfg::new(TicklessOptions {
+        hw_freq_num: <Self as MtimeOptions>::FREQUENCY,
+        hw_freq_denom: <Self as MtimeOptions>::FREQUENCY_DENOMINATOR,
+        hw_headroom_ticks: <Self as MtimeOptions>::HEADROOM,
+        // `mtime` is a 64-bit free-running counter and it is
+        // expensive to create a 32-bit timer with an arbitrary
+        // period out of it.
+        force_full_hw_period: true,
+        // If clearing `mtime` is not allowed, we must record the
+        // starting value of `mtime` by calling `reset`.
+        resettable: !<Self as MtimeOptions>::RESET_MTIME,
+    }) {
+        Ok(x) => x,
+        Err(e) => e.panic(),
+    };
 
     type TicklessState: TicklessStateTrait;
 

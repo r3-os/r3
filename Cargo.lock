@@ -1799,8 +1799,8 @@ dependencies = [
  "r3_kernel",
  "r3_port_arm_m",
  "r3_support_rp2040",
- "rp2040",
  "rp2040-boot2",
+ "rp2040-pac",
 ]
 
 [[package]]
@@ -1843,8 +1843,8 @@ dependencies = [
  "r3_kernel",
  "r3_port_arm_m",
  "r3_support_rp2040",
- "rp2040",
  "rp2040-boot2",
+ "rp2040-pac",
 ]
 
 [[package]]
@@ -1907,7 +1907,7 @@ dependencies = [
  "r3_port_arm_m",
  "r3_support_rp2040",
  "r3_test_suite",
- "rp2040",
+ "rp2040-pac",
  "rtt-target 0.2.2",
 ]
 
@@ -2009,7 +2009,7 @@ dependencies = [
  "r3",
  "r3_port_arm_m",
  "r3_portkit",
- "rp2040",
+ "rp2040-pac",
  "usb-device",
  "usbd-serial",
  "vcell",
@@ -2309,23 +2309,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "rp2040"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ed6f0ca1c2a3e4e602719212574a8692e52c51fd26e8c5a582424ae20fcd784"
-dependencies = [
- "bare-metal 0.2.5",
- "cortex-m 0.7.4",
- "vcell",
-]
-
-[[package]]
 name = "rp2040-boot2"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b480fe63133f0d639f82ce5a027fee7cac7ac92f67ef1896ee036a6f9737128"
 dependencies = [
  "crc-any",
+]
+
+[[package]]
+name = "rp2040-pac"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13a6106d5db01c7171a39c1f7696780912db9b42fe7ac722db60069c8904ea7c"
+dependencies = [
+ "cortex-m 0.7.4",
+ "vcell",
 ]
 
 [[package]]

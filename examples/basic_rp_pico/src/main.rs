@@ -78,7 +78,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     let (rp2040_resets, rp2040_usbctrl_regs, rp2040_sio, rp2040_pads_bank0, rp2040_io_bank0) =
         bind((), || {
             // Configure peripherals
-            let p = rp2040::Peripherals::take().unwrap();
+            let p = rp2040_pac::Peripherals::take().unwrap();
             support_rp2040::clock::init_clock(
                 &p.CLOCKS,
                 &p.XOSC,
@@ -158,9 +158,9 @@ fn task1_body() {
 }
 
 fn task2_body(
-    rp2040_sio: &mut rp2040::SIO,
-    rp2040_pads_bank0: &mut rp2040::PADS_BANK0,
-    rp2040_io_bank0: &mut rp2040::IO_BANK0,
+    rp2040_sio: &mut rp2040_pac::SIO,
+    rp2040_pads_bank0: &mut rp2040_pac::PADS_BANK0,
+    rp2040_io_bank0: &mut rp2040_pac::IO_BANK0,
 ) {
     // <https://github.com/jannic/rp-microcontroller-rs/blob/master/boards/rp-pico/examples/blink/main.rs>
     // TODO: Documentate what this code does
@@ -173,11 +173,11 @@ fn task2_body(
         .gpio_out_clr
         .write(|w| unsafe { w.bits(1 << pin) });
 
-    rp2040_pads_bank0
-        .gpio25
-        .write(|w| w.ie().bit(true).od().bit(false));
+    rp2040_pads_bank0.gpio[25].write(|w| w.ie().bit(true).od().bit(false));
 
-    rp2040_io_bank0.gpio25_ctrl.write(|w| w.funcsel().sio_25());
+    rp2040_io_bank0.gpio[25]
+        .gpio_ctrl
+        .write(|w| w.funcsel().sio());
 
     rp2040_sio
         .gpio_oe_set

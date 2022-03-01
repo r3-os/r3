@@ -6,13 +6,10 @@
 // [Deno]: https://deno.land/
 //
 // Usage: deno run --allow-read scripts/check-workspace.ts
-import { parse as parseFlags } from "https://deno.land/std@0.75.0/flags/mod.ts";
-// FIXME: `std`'s TOML parser is incomplete
-//        (e.g., <https://github.com/denoland/deno/issues/6394>)
-// import { parse as parseToml } from "https://deno.land/std@0.75.0/encoding/toml.ts";
-import { parse as parseToml } from "https://jspm.dev/toml@3";
-import * as path from "https://deno.land/std@0.75.0/path/mod.ts";
-import * as log from "https://deno.land/std@0.75.0/log/mod.ts";
+import { parse as parseFlags } from "https://deno.land/std@0.125.0/flags/mod.ts";
+import { parse as parseToml } from "https://deno.land/std@0.125.0/encoding/toml.ts";
+import * as path from "https://deno.land/std@0.125.0/path/mod.ts";
+import * as log from "https://deno.land/std@0.125.0/log/mod.ts";
 
 const parsedArgs = parseFlags(Deno.args, {
     "alias": {

@@ -57,7 +57,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 
     let (rp2040_resets, rp2040_usbctrl_regs) = bind((), || {
         // Configure peripherals
-        let p = unsafe { rp2040::Peripherals::steal() };
+        let p = unsafe { rp2040_pac::Peripherals::steal() };
         support_rp2040::clock::init_clock(
             &p.CLOCKS,
             &p.XOSC,
@@ -101,7 +101,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     let mutex1 = StaticMutex::define().finish(b);
 
     // Listen for messages from core1
-    let int_fifo = rp2040::Interrupt::SIO_IRQ_PROC0 as InterruptNum + port::INTERRUPT_EXTERNAL0;
+    let int_fifo = rp2040_pac::Interrupt::SIO_IRQ_PROC0 as InterruptNum + port::INTERRUPT_EXTERNAL0;
     InterruptLine::define()
         .line(int_fifo)
         // The priority should be lower than USB interrupts so that USB packets
@@ -113,7 +113,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     StaticInterruptHandler::define()
         .line(int_fifo)
         .start(|| {
-            let p = unsafe { rp2040::Peripherals::steal() };
+            let p = unsafe { rp2040_pac::Peripherals::steal() };
             let sio = p.SIO;
             while sio.fifo_st.read().vld().bit_is_set() {
                 let bytes = sio.fifo_rd.read().bits().to_le_bytes();

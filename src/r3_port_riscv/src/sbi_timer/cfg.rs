@@ -72,30 +72,12 @@ macro_rules! use_sbi_timer {
                 }
             }
 
-            const TICKLESS_CFG: tickless::TicklessCfg =
-                match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$Traits as SbiTimerOptions>::FREQUENCY,
-                    hw_freq_denom: <$Traits as SbiTimerOptions>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$Traits as SbiTimerOptions>::HEADROOM,
-                    // `stime` is a 64-bit free-running counter and it is
-                    // expensive to create a 32-bit timer with an arbitrary
-                    // period out of it.
-                    force_full_hw_period: true,
-                    // Clearing `stime` is not possible, so we must record the
-                    // starting value of `stime` by calling `reset`.
-                    resettable: true,
-                }) {
-                    Ok(x) => x,
-                    Err(e) => e.panic(),
-                };
-
-            static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
+            static mut TIMER_STATE: <$Traits as sbi_timer::imp::TimerInstance>::TicklessState =
+                Init::INIT;
 
             // Safety: Only `use_sbi_timer!` is allowed to `impl` this
             unsafe impl sbi_timer::imp::TimerInstance for $Traits {
-                const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
-
-                type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
+                type TicklessState = tickless::TicklessState<{ Self::TICKLESS_CFG }>;
 
                 fn tickless_state() -> *mut Self::TicklessState {
                     unsafe { core::ptr::addr_of_mut!(TIMER_STATE) }

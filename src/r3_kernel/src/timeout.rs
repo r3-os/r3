@@ -305,8 +305,7 @@ pub(super) const fn time32_from_duration(duration: Duration) -> Result<Time32, B
     //     .map_err(|_| BadParamError::BadParam)?)
 
     // `map_err` is not `const fn` [ref:const_result_map]
-    // FIXME: But `try_into` is unstably so now
-    if let Some(x) = crate::utils::convert::try_i32_into_u32(duration.as_micros()) {
+    if let Ok(x) = duration.as_micros().try_into() {
         Ok(x)
     } else {
         Err(BadParamError::BadParam)

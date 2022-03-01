@@ -44,7 +44,6 @@ macro_rules! If {
 
 mod aligned_storage;
 pub mod binary_heap;
-pub(crate) mod convert;
 mod ctz;
 mod freeze;
 mod int;

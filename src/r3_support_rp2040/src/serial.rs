@@ -3,22 +3,22 @@
 // exemption. It probably should be in a HAL crate.
 #![cfg(feature = "semver-exempt")]
 
-/// The extension trait for [`rp2040::UART0`][].
+/// The extension trait for [`rp2040_pac::UART0`][].
 ///
 /// # Safety
 ///
-/// This is only meant to be implemented on `rp2040::UART0`.
+/// This is only meant to be implemented on `rp2040_pac::UART0`.
 pub unsafe trait UartExt:
-    core::ops::Deref<Target = rp2040::uart0::RegisterBlock> + Sized
+    core::ops::Deref<Target = rp2040_pac::uart0::RegisterBlock> + Sized
 {
     fn global() -> Self {
         assert_eq!(core::mem::size_of::<Self>(), 0);
         unsafe { core::mem::zeroed() }
     }
 
-    fn configure_pins(&self, io_bank0: &rp2040::io_bank0::RegisterBlock);
+    fn configure_pins(&self, io_bank0: &rp2040_pac::io_bank0::RegisterBlock);
 
-    fn reset(&self, resets: &rp2040::resets::RegisterBlock);
+    fn reset(&self, resets: &rp2040_pac::resets::RegisterBlock);
 
     #[inline]
     fn configure_uart(&self, baud_rate: u32) {
@@ -53,20 +53,20 @@ pub unsafe trait UartExt:
     }
 }
 
-unsafe impl UartExt for rp2040::UART0 {
+unsafe impl UartExt for rp2040_pac::UART0 {
     #[inline]
-    fn configure_pins(&self, io_bank0: &rp2040::io_bank0::RegisterBlock) {
+    fn configure_pins(&self, io_bank0: &rp2040_pac::io_bank0::RegisterBlock) {
         // GPIO0 → UART0 TX (F2)
         // GPIO1 → UART0 RX (F2)
-        io_bank0
-            .gpio0_ctrl
+        io_bank0.gpio[0]
+            .gpio_ctrl
             .write(|b| unsafe { b.funcsel().bits(2) });
-        io_bank0
-            .gpio1_ctrl
+        io_bank0.gpio[1]
+            .gpio_ctrl
             .write(|b| unsafe { b.funcsel().bits(2) });
     }
 
-    fn reset(&self, resets: &rp2040::resets::RegisterBlock) {
+    fn reset(&self, resets: &rp2040_pac::resets::RegisterBlock) {
         resets.reset.modify(|_, w| w.uart0().set_bit());
         resets.reset.modify(|_, w| w.uart0().clear_bit());
         while resets.reset_done.read().uart0().bit_is_clear() {}

@@ -1136,24 +1136,16 @@ mod tests {
                 ]);
             }
 
-            // FIXME: Using `#[quickcheck]` here causes "undefined identifier"
-            //        errors for `do_test`, etc.
-            #[test]
-            fn quickcheck() {
-                quickcheck::quickcheck::<fn(Vec<u64>, u32, u32)>(
-                    |values: Vec<u64>, s1: u32, s2: u32| {
-                        do_test(
-                            values
-                                .chunks_exact(2)
-                                .map(|c| Op {
-                                    timeout: (c[0].rotate_left(s1) % (MAX_TIMEOUT as u64 + 1))
-                                        as u32,
-                                    latency: (c[1].rotate_left(s2) % ($hw_headroom_ticks + 1))
-                                        as u32,
-                                })
-                                .take(10),
-                        );
-                    },
+            #[quickcheck_macros::quickcheck]
+            fn quickcheck(values: Vec<u64>, s1: u32, s2: u32) {
+                do_test(
+                    values
+                        .chunks_exact(2)
+                        .map(|c| Op {
+                            timeout: (c[0].rotate_left(s1) % (MAX_TIMEOUT as u64 + 1)) as u32,
+                            latency: (c[1].rotate_left(s2) % ($hw_headroom_ticks + 1)) as u32,
+                        })
+                        .take(10),
                 );
             }
         }

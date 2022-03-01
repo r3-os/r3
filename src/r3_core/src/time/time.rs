@@ -139,16 +139,10 @@ impl Time {
     /// Get the duration since the specified timestamp as [`Duration`]. Returns
     /// `None` if the result overflows the representable range of `Duration`.
     #[inline]
-    pub fn duration_since(self, reference: Self) -> Option<Duration> {
-        // FIXME: `?` is not allowed in `const fn` yet
-        // FIXME: It's available under `feature(const_try)`
-        // FIXME: `i128::try_into` is not supported in `const fn` yet
-        // FIXME: It's available under `feature(const_num_from_num)`
-        Some(Duration::from_micros(
-            (self.micros as i128 - reference.micros as i128)
-                .try_into()
-                .ok()?,
-        ))
+    pub const fn duration_since(self, reference: Self) -> Option<Duration> {
+        Some(Duration::from_micros(result_ok(
+            (self.micros as i128 - reference.micros as i128).try_into(),
+        )?))
     }
 
     /// Advance the time by `duration` and return the result.
@@ -284,3 +278,12 @@ impl TryFrom<Time> for chrono_0p4::DateTime<chrono_0p4::Utc> {
 }
 
 // TODO: Add more tests
+
+/// Polyfill for `[ref:const_result_ok]`
+#[inline]
+const fn result_ok<T, E: ~const Drop>(x: Result<T, E>) -> Option<T> {
+    match x {
+        Ok(x) => Some(x),
+        Err(_x) => None,
+    }
+}

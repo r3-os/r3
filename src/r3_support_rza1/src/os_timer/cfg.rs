@@ -75,25 +75,12 @@ macro_rules! use_os_timer {
                 }
             }
 
-            const TICKLESS_CFG: tickless::TicklessCfg =
-                match tickless::TicklessCfg::new(tickless::TicklessOptions {
-                    hw_freq_num: <$Traits as OsTimerOptions>::FREQUENCY,
-                    hw_freq_denom: <$Traits as OsTimerOptions>::FREQUENCY_DENOMINATOR,
-                    hw_headroom_ticks: <$Traits as OsTimerOptions>::HEADROOM,
-                    force_full_hw_period: true,
-                    resettable: false,
-                }) {
-                    Ok(x) => x,
-                    Err(e) => e.panic(),
-                };
-
-            static mut TIMER_STATE: tickless::TicklessState<TICKLESS_CFG> = Init::INIT;
+            static mut TIMER_STATE: <$Traits as os_timer::imp::OsTimerInstance>::TicklessState =
+                Init::INIT;
 
             // Safety: Only `use_os_timer!` is allowed to `impl` this
             unsafe impl os_timer::imp::OsTimerInstance for $Traits {
-                const TICKLESS_CFG: tickless::TicklessCfg = TICKLESS_CFG;
-
-                type TicklessState = tickless::TicklessState<TICKLESS_CFG>;
+                type TicklessState = tickless::TicklessState<{ Self::TICKLESS_CFG }>;
 
                 fn tickless_state() -> *mut Self::TicklessState {
                     unsafe { core::ptr::addr_of_mut!(TIMER_STATE) }

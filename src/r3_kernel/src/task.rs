@@ -796,12 +796,8 @@ fn set_task_base_priority<Traits: KernelTraits>(
     task_cb: &'static TaskCb<Traits>,
     base_priority: usize,
 ) -> Result<(), SetTaskPriorityError> {
-    // Validate the given priority
-    if base_priority >= Traits::NUM_TASK_PRIORITY_LEVELS {
-        return Err(SetTaskPriorityError::BadParam);
-    }
     let base_priority_internal =
-        Traits::TaskPriority::try_from(base_priority).unwrap_or_else(|_| unreachable!());
+        Traits::to_task_priority(base_priority).ok_or(SetTaskPriorityError::BadParam)?;
 
     let st = *task_cb.st.read(&*lock);
 

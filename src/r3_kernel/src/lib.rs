@@ -1,5 +1,7 @@
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_slice_from_raw_parts)]
+#![feature(maybe_uninit_uninit_array)]
+#![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
@@ -9,6 +11,7 @@
 #![feature(generic_const_exprs)]
 #![feature(const_refs_to_cell)]
 #![feature(maybe_uninit_slice)]
+#![feature(const_option_ext)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(const_ptr_write)]
@@ -17,6 +20,7 @@
 #![feature(assert_matches)]
 #![feature(const_mut_refs)]
 #![feature(const_ptr_read)]
+#![feature(const_convert)]
 #![feature(const_option)]
 #![feature(const_deref)]
 #![feature(const_heap)]
@@ -372,14 +376,9 @@ pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
     #[doc(hidden)]
     type TaskReadyQueue: readyqueue::Queue<Self>;
 
-    // FIXME: This is a work-around for trait methods being uncallable in `const
-    //        fn`, but is this really still necessary?
-    /// All possible values of `TaskPriority`.
-    ///
-    /// `TASK_PRIORITY_LEVELS[i]` is equivalent to
-    /// `TaskPriority::try_from(i).unwrap()` except that the latter doesn't work
-    /// in `const fn`.
-    const TASK_PRIORITY_LEVELS: &'static [Self::TaskPriority];
+    /// Convert `usize` to [`Self::TaskPriority`][]. Returns `None` if
+    /// `i >= Self::NUM_TASK_PRIORITY_LEVELS`.
+    fn to_task_priority(i: usize) -> Option<Self::TaskPriority>;
 }
 
 /// Implemented by a port. This trait contains items related to low-level

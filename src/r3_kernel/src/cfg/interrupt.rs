@@ -39,8 +39,7 @@ impl CfgBuilderInterruptLine {
     pub const fn to_init(&self) -> interrupt::InterruptLineInit {
         interrupt::InterruptLineInit {
             line: self.line,
-            // FIXME: `Option::unwrap_or` is not `const fn` yet
-            priority: if let Some(i) = self.priority { i } else { 0 },
+            priority: self.priority.unwrap_or(0),
             flags: {
                 let mut f = 0;
                 if self.priority.is_some() {

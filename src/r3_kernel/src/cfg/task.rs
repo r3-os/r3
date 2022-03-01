@@ -8,7 +8,7 @@ use r3_core::{
     utils::Init,
 };
 
-use crate::{cfg::CfgBuilder, klock::CpuLockCell, task, KernelTraits};
+use crate::{cfg::CfgBuilder, klock::CpuLockCell, task, KernelCfg1, KernelTraits};
 
 unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
     fn task_define<Properties: ~const r3_core::bag::Bag>(
@@ -22,12 +22,7 @@ unsafe impl<Traits: KernelTraits> const CfgTask for CfgBuilder<Traits> {
         }: TaskDescriptor<Self::System>,
         properties: Properties,
     ) -> task::TaskId {
-        // FIXME: `Option::unwrap_or` isn't `const fn` yet
-        let mut stack = task::StackHunk::auto(if let Some(x) = stack_size {
-            x
-        } else {
-            Traits::STACK_DEFAULT_SIZE
-        });
+        let mut stack = task::StackHunk::auto(stack_size.unwrap_or(Traits::STACK_DEFAULT_SIZE));
 
         if let Some(hunk) = properties.get::<StackHunk<Self::System>>() {
             let stack_size = if let Some(stack_size) = stack_size {
@@ -74,9 +69,12 @@ impl<Traits: KernelTraits> Clone for CfgBuilderTask<Traits> {
 impl<Traits: KernelTraits> Copy for CfgBuilderTask<Traits> {}
 
 impl<Traits: KernelTraits> CfgBuilderTask<Traits> {
-    pub const fn to_state(&self, attr: &'static task::TaskAttr<Traits>) -> task::TaskCb<Traits> {
+    pub const fn to_state(&self, attr: &'static task::TaskAttr<Traits>) -> task::TaskCb<Traits>
+    where
+        Traits: ~const KernelCfg1,
+    {
         // `self.priority` has already been checked by `to_attr`
-        let priority = Traits::TASK_PRIORITY_LEVELS[self.priority];
+        let priority = Traits::to_task_priority(self.priority).unwrap();
 
         task::TaskCb {
             port_task_state: Traits::PORT_TASK_STATE_INIT,
@@ -95,17 +93,17 @@ impl<Traits: KernelTraits> CfgBuilderTask<Traits> {
         }
     }
 
-    pub const fn to_attr(&self) -> task::TaskAttr<Traits> {
+    pub const fn to_attr(&self) -> task::TaskAttr<Traits>
+    where
+        Traits: ~const KernelCfg1,
+    {
         let (entry_point, entry_param) = self.start.as_raw_parts();
         task::TaskAttr {
             entry_point,
             entry_param,
             stack: self.stack,
-            priority: if self.priority < Traits::NUM_TASK_PRIORITY_LEVELS {
-                Traits::TASK_PRIORITY_LEVELS[self.priority]
-            } else {
-                panic!("task's `priority` must be less than `num_task_priority_levels`");
-            },
+            priority: Traits::to_task_priority(self.priority)
+                .expect("task's `priority` must be less than `num_task_priority_levels`"),
         }
     }
 }
