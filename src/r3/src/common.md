@@ -12,10 +12,10 @@
 }
 
 /* #![doc(html_logo_url = ...)] */
-body.theme-dark .logo-container.rust-logo > img[src$="logo-small.svg"] {
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
     filter: brightness(0) invert(1) brightness(0.9);
 }
-body.theme-ayu .logo-container.rust-logo > img[src$="logo-small.svg"] {
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
     filter: brightness(0) invert(1) brightness(0.85);
 }
 
