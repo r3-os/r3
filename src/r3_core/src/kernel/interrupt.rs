@@ -541,10 +541,6 @@ pub type InterruptHandlerFn = unsafe extern "C" fn();
 /// ```
 type ProtoCombinedHandlerFn = fn();
 
-// FIXME: Passing `&'static [_]` as a const generic parameter caused ICE:
-//        <https://github.com/rust-lang/rust/issues/73727>
-//       `CfgInterruptHandlerList` was introduced as a work-around for this
-//       issue, but this might not be necessary anymore.
 /// A static list of [`CfgInterruptHandler`]s.
 #[doc(hidden)]
 pub trait CfgInterruptHandlerList {
