@@ -10,6 +10,7 @@ import { parse as parseFlags } from "https://deno.land/std@0.125.0/flags/mod.ts"
 import { parse as parseToml } from "https://deno.land/std@0.125.0/encoding/toml.ts";
 import * as path from "https://deno.land/std@0.125.0/path/mod.ts";
 import * as log from "https://deno.land/std@0.125.0/log/mod.ts";
+import { exists } from "https://deno.land/std@0.125.0/fs/exists.ts";
 
 const parsedArgs = parseFlags(Deno.args, {
     "alias": {
@@ -45,6 +46,9 @@ const EXPECTED_SOURCE_FRAGMENTS = [
     // We want published crates to have consistent logos
     '#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]',
 ];
+
+const COMMON_HEADER_PATH = "src/common.md";
+const EXPECTED_RUSTDOC_ARGS = `--html-in-header ${COMMON_HEADER_PATH}`;
 
 const logger = log.getLogger();
 let hasError = false;
@@ -146,6 +150,29 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
                 }
             }
         }
+
+        // We want `common.md` applied for the entire crate in order that the
+        // upper-left logo is properly styled [tag:doc_global_styling]
+        const docsMetadata = pkg?.metadata?.docs?.rs ?? {};
+        if (publish) {
+            const docsArgs = docsMetadata['rustdoc-args'] ?? [];
+
+            // Poor man's `docsArgs.windows(2).any(|x| x == ...)`
+            const docsArgsConcat = docsArgs.join(' ');
+            if (docsArgsConcat.indexOf(EXPECTED_RUSTDOC_ARGS) < 0) {
+                logger.error(`${crateRelPath}: package.metadata.docs.rs.rustdoc-args doesn't ` +
+                    `include '${EXPECTED_RUSTDOC_ARGS}'.`);
+                hasError = true;
+            }
+
+            // The file referenced by `EXPECTED_RUSTDOC_ARGS` should actually
+            // exist
+            const commonHeaderPath  = path.join(cratePath, COMMON_HEADER_PATH);
+            if (!await exists(commonHeaderPath)) {
+                logger.error(`${crateRelPath}: '${commonHeaderPath}' doesn't exist.`);
+                hasError = true;
+            }
+        }
     }
 }
 
@@ -165,6 +192,13 @@ interface CargoMeta {
         keywords?: string[],
         repository?: string,
         publish?: boolean,
+        metadata?: {
+            docs?: {
+                rs?: {
+                    "rustdoc-args"?: string[],
+                },
+            },
+        },
     },
     dependencies?: { [name: string]: Dep },
     "dev-dependencies"?: { [name: string]: Dep },

@@ -40,3 +40,4 @@ harness = false
 
 [package.metadata.docs.rs]
 targets = []
+rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

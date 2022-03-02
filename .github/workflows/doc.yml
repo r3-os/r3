@@ -18,6 +18,9 @@ jobs:
 
       - name: Install dependencies (Linux)
         run: .github/scripts/install-deno.sh
+      - name: Set rustdoc flags
+        run: |
+          echo "RUSTDOCFLAGS=--html-in-header `pwd`/src/r3/src/common.md" >> $GITHUB_ENV
 
       - name: Build Documentation
         uses: actions-rs/cargo@v1

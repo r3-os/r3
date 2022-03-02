@@ -35,3 +35,4 @@ nb = { version = "1.0.0", optional = true }
 
 [package.metadata.docs.rs]
 targets = []
+rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]
