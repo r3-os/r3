@@ -21,5 +21,6 @@ memoffset = { version = "0.6.5", features = ["unstable_const"] }
 r0 = { version = "1.0.0" }
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []
 rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

@@ -28,5 +28,6 @@ rza1 = { version = "0.2.0", features = ["ostm"] }
 nb = { version = "1.0.0", optional = true }
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []
 rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

@@ -26,5 +26,6 @@ cortex-m-rt = ">= 0.6.12, < 0.8.0"
 cortex-m = ">= 0.6.2, < 0.8.0"
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []
 rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

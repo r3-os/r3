@@ -173,6 +173,13 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
                 hasError = true;
             }
         }
+
+        // The enabled features must be consistent between docs.rs and
+        // our API documentation website [ref:doc_all_features]
+        if (publish && !docsMetadata["all-features"]) {
+            logger.error(`${crateRelPath}: package.metadata.docs.rs.all-features is ` +
+                `not set.`);
+        }
     }
 }
 
@@ -196,6 +203,7 @@ interface CargoMeta {
             docs?: {
                 rs?: {
                     "rustdoc-args"?: string[],
+                    "all-features"?: boolean,
                 },
             },
         },

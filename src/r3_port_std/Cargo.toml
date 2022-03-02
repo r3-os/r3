@@ -39,5 +39,6 @@ name = "test_suite"
 harness = false
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []
 rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]
