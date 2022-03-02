@@ -1,7 +1,7 @@
 name: Docs
 on:
   push:
-    branches: [🦆]
+    branches: [🦆, 📝-*]
 
 jobs:
   check:
@@ -37,9 +37,27 @@ jobs:
         run: |
           cp doc/logo-small.svg output
 
-      - name: Deploy
+      # If we are on the main branch, deploy it to the website
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@4.1.0
+        if: github.ref == 'refs/heads/🦆'
         with:
           branch: gh-pages
           folder: output
           single-commit: true
+
+
+      # Otherwise, put it on the Actions page to allow download
+      - name: Archive the generated documentation
+        if: github.ref != 'refs/heads/🦆'
+        # use tar + compressor for faster upload and smaller artifact size
+        run: |
+          cd output
+          tar -cv doc | xz > r3-api-docs.tar.xz
+
+      - name: Upload the generated documentation as an artifact
+        uses: actions/upload-artifact@v2
+        if: github.ref != 'refs/heads/🦆'
+        with:
+          name: r3-api-docs
+          path: output/r3-api-docs.tar.xz
