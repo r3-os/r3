@@ -13,7 +13,7 @@ emulate-lr-sc = []
 maintain-pie = []
 preload-registers = []
 
-# Enable the diagram rendering by svgbob
+# Enable the diagram rendering by svgbob and other stuff [ref:doc_feature]
 doc = ["svgbobdoc/enable"]
 
 [dependencies]

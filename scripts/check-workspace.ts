@@ -87,7 +87,7 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
             continue;
         }
 
-        const {package: pkg, dependencies = {}} = crateMeta;
+        const {package: pkg, dependencies = {}, features = {}} = crateMeta;
         const {publish = true, version} = pkg;
 
         // CC-VER-UNPUBLISHED
@@ -174,6 +174,20 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
             }
         }
 
+        // The custom logo needs a custom stylesheet [ref:doc_global_styling],
+        // so it must be enabled conditionally. The `doc` Cargo feature is used
+        // to toggle this. [tag:doc_feature]
+        //
+        // This means that the appearance will be degraded when `doc` is used
+        // alone without the appropriate stylesheet, but this can only happen
+        // in "unofficial" documentation builds.
+        if (publish) {
+            if (typeof features.doc == "undefined") {
+                logger.error(`${crateRelPath}: features.doc is not present.`);
+                hasError = true;
+            }
+        }
+
         // The enabled features must be consistent between docs.rs and
         // our API documentation website [ref:doc_all_features]
         if (publish && !docsMetadata["all-features"]) {
@@ -208,6 +222,7 @@ interface CargoMeta {
             },
         },
     },
+    features?: { [name: string]: string[] },
     dependencies?: { [name: string]: Dep },
     "dev-dependencies"?: { [name: string]: Dep },
 }

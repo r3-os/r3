@@ -17,7 +17,7 @@ sync = []
 # Exposes `r3_core`'s features'
 chrono_0p4 = ["r3_core/chrono_0p4"]
 
-# Enable the diagram rendering by svgbob and other fancy stuff
+# Enable the diagram rendering by svgbob and other fancy stuff [ref:doc_feature]
 doc = ["svgbobdoc/enable", "embed-doc-image", "r3_core/doc"]
 
 # Displays a "some features are disabled" warning in the documentation

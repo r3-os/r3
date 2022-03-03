@@ -8,6 +8,7 @@ keywords = ["r3", "simulator"]
 repository = "https://github.com/r3-os/r3"
 
 [features]
+# Used for documentation builds [ref:doc_feature]
 doc = ["svgbobdoc/enable"]
 
 [dependencies]

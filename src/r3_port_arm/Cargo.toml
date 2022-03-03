@@ -11,6 +11,9 @@ repository = "https://github.com/r3-os/r3"
 [features]
 preload-registers = []
 
+# Used for documentation builds [ref:doc_feature]
+doc = []
+
 [dependencies]
 r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
 r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
