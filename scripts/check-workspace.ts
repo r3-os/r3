@@ -43,8 +43,12 @@ await log.setup({
 });
 
 const EXPECTED_SOURCE_FRAGMENTS = [
-    // We want published crates to have consistent logos
-    '#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]',
+    // We want published crates to have consistent logos, which should
+    // appear conditionally [ref:doc_feature]
+    `#![cfg_attr(
+    feature = "doc",
+    doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
+)]`,
 ];
 
 const COMMON_HEADER_PATH = "src/common.md";

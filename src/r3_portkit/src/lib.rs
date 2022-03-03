@@ -5,7 +5,10 @@
 #![feature(adt_const_params)]
 #![feature(core_panic)]
 #![feature(decl_macro)]
-#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
+#![cfg_attr(
+    feature = "doc",
+    doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
+)]
 #![no_std]
 
 #[cfg(doc)]
