@@ -156,7 +156,8 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
         }
 
         // We want `common.md` applied for the entire crate in order that the
-        // upper-left logo is properly styled [tag:doc_global_styling]
+        // upper-left custom logo is properly styled in official documentation
+        // builds [tag:doc_global_styling]
         const docsMetadata = pkg?.metadata?.docs?.rs ?? {};
         if (publish) {
             const docsArgs = docsMetadata['rustdoc-args'] ?? [];
@@ -179,12 +180,24 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
         }
 
         // The custom logo needs a custom stylesheet [ref:doc_global_styling],
-        // so it must be enabled conditionally. The `doc` Cargo feature is used
-        // to toggle this. [tag:doc_feature]
+        // so it must be disabled conditionally if the custom stylesheet isn't
+        // applied globally. The `doc` Cargo feature is used to toggle this.
+        // [tag:doc_feature] In summary, there are two cases we consider:
         //
-        // This means that the appearance will be degraded when `doc` is used
-        // alone without the appropriate stylesheet, but this can only happen
-        // in "unofficial" documentation builds.
+        //  - In official documentation builds (docs.rs and our API
+        //    documentation website), the `doc` Cargo feature is enabled, and
+        //    the custom stylesheet is applied globally using `RUSTDOCFLAGS`.
+        //    The result is a custom logo styled consistently.
+        //
+        //  - In unofficial documentation builds (e.g., `cargo doc` in
+        //    downstream workspaces), the `doc` Cargo feature is disabled by
+        //    default, and the custom stylesheet is not applied globally. The
+        //    custom logo is disabled by `cfg_attr` in this case.
+        //
+        // We don't handle the cases where `doc` is enabled in unofficial
+        // builds. In such cases, the custom logo will be styled properly or
+        // improperly depending on whether `common.md` is included by `#[doc =
+        // ...]` in that file.
         if (publish) {
             if (typeof features.doc == "undefined") {
                 logger.error(`${crateRelPath}: features.doc is not present.`);

@@ -20,6 +20,7 @@ jobs:
         run: .github/scripts/install-deno.sh
       - name: Set rustdoc flags
         run: |
+          # [ref:doc_global_styling]
           echo "RUSTDOCFLAGS=--html-in-header `pwd`/src/r3/src/common.md" >> $GITHUB_ENV
 
       - name: Build Documentation
@@ -31,6 +32,11 @@ jobs:
 
       - name: Replace the non-local crate documentation with redirect pages to docs.rs
         run: deno run -A scripts/externalize-non-local-docs.ts -y
+
+      - name: Check the generated documentation
+        run: |
+          # Don't fail the pipeline on errors because they are mostly minor
+          deno run --allow-read scripts/check-doc.ts || true
 
       - name: Generate Badge
         run: |
