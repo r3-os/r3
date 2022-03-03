@@ -16,11 +16,17 @@ jobs:
         with:
           profile: minimal
 
+      - name: Install dependencies (Linux)
+        run: .github/scripts/install-deno.sh
+
       - name: Build Documentation
         uses: actions-rs/cargo@v1
         with:
           command: doc
           args: -p r3_port_std -p r3_port_arm -p r3_port_arm_m -p r3_port_riscv -p r3_support_rp2040 -p r3_support_rza1 -p r3_portkit -p r3_kernel -p r3 -p r3_core --all-features
+
+      - name: Replace the non-local crate documentation with redirect pages to docs.rs
+        run: deno run -A scripts/externalize-non-local-docs.ts -y
 
       - name: Generate Badge
         run: |
@@ -45,7 +51,6 @@ jobs:
           branch: gh-pages
           folder: output
           single-commit: true
-
 
       # Otherwise, put it on the Actions page to allow download
       - name: Archive the generated documentation
