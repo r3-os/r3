@@ -29,7 +29,7 @@
 //!
 //! # Stability
 //!
-//! This module is covered by the kernel-side API stability guarantee.
+//! This module is covered by [the kernel-side API stability guarantee][2].
 //!
 //! The trait paths in this module are covered by the application-side API
 //! stability guarantee. Application code should only use these traits in trait
@@ -37,6 +37,7 @@
 //! stable wrapper [outside this module](../index.html) instead.
 //!
 //! [1]: crate::kernel::cfg::KernelStatic
+//! [2]: crate#stability
 use crate::{bag::Bag, closure::Closure, kernel::raw, time::Duration, utils::PhantomInvariant};
 
 /// The trait for all kernel-specific low-level configurator types, used by

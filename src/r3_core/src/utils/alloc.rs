@@ -16,7 +16,9 @@ macro_rules! const_try_result {
 ///
 /// # Stability
 ///
-/// This type is subject to the kernel-side API stability guarantee.
+/// This type is subject to [the kernel-side API stability guarantee][1].
+///
+/// [1]: crate#stability
 pub struct ConstAllocator {
     // We very much want to put these in `core::cell::*`, but they aren't very
     // useful in `const fn`, unfortunately.
@@ -210,7 +212,9 @@ impl const Drop for ConstAllocator {
 ///
 /// # Stability
 ///
-/// This trait is subject to the kernel-side API stability guarantee.
+/// This trait is subject to [the kernel-side API stability guarantee][1].
+///
+/// [1]: crate#stability
 #[derive(Clone, Copy)]
 pub struct AllocError;
 
@@ -222,7 +226,9 @@ pub struct AllocError;
 ///
 /// # Stability
 ///
-/// This trait is subject to the kernel-side API stability guarantee.
+/// This trait is subject to [the kernel-side API stability guarantee][1].
+///
+/// [1]: crate#stability
 pub unsafe trait Allocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 

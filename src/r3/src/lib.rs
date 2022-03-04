@@ -62,7 +62,9 @@ mod tests;
 pub use r3_core::{bag, hunk, kernel, time};
 
 /// Utilities. This module re-exports items from [`r3_core::utils`] that are
-/// subject to the application-side API stability guarantee.
+/// subject to [the application-side API stability guarantee][1].
+///
+/// [1]: r3_core#stability
 pub mod utils {
     pub use r3_core::utils::{Init, ZeroInit};
 }

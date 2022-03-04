@@ -2,12 +2,14 @@ use core::{cell::UnsafeCell, mem, sync::atomic};
 
 /// Trait for zero-initializable types.
 ///
-/// This trait is subject to the API stability guarantee.
+/// This trait is subject to [the application-side API stability guarantee][1].
 ///
 /// # Safety
 ///
 /// Zero-initialization is not safe for all types. For example, references
 /// (`&_`)
+///
+/// [1]: crate#stability
 pub unsafe trait ZeroInit {}
 
 unsafe impl<T> ZeroInit for atomic::AtomicPtr<T> {}

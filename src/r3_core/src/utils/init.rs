@@ -9,7 +9,9 @@ use core::{
 /// Trait for types having a constant default value. This is essentially a
 /// constant version of `Default`.
 ///
-/// This trait is subject to the API stability guarantee.
+/// This trait is subject to [the application-side API stability guarantee][1].
+///
+/// [1]: crate#stability
 pub trait Init {
     /// The default value.
     const INIT: Self;

@@ -1,7 +1,9 @@
 //! Utility
 //!
-//! **This module is exempt from the API stability guarantee** unless specified
-//! otherwise. It's exposed mostly because it's needed by macros.
+//! **This module is exempt from [the API stability guarantee][1]** unless
+//! specified otherwise. It's exposed mostly because it's needed by macros.
+//!
+//! [1]: crate#stability
 use core::marker::PhantomData;
 
 /// Conditional type
