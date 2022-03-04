@@ -18,15 +18,25 @@ jobs:
 
       - name: Install dependencies (Linux)
         run: .github/scripts/install-deno.sh
+      - name: Set rustdoc flags
+        run: |
+          # [ref:doc_global_styling]
+          echo "RUSTDOCFLAGS=--html-in-header `pwd`/src/r3/src/common.md" >> $GITHUB_ENV
 
       - name: Build Documentation
         uses: actions-rs/cargo@v1
         with:
           command: doc
+          # Documentate all published packages with all features enabled [tag:doc_all_features]
           args: -p r3_port_std -p r3_port_arm -p r3_port_arm_m -p r3_port_riscv -p r3_support_rp2040 -p r3_support_rza1 -p r3_portkit -p r3_kernel -p r3 -p r3_core --all-features
 
       - name: Replace the non-local crate documentation with redirect pages to docs.rs
         run: deno run -A scripts/externalize-non-local-docs.ts -y
+
+      - name: Check the generated documentation
+        run: |
+          # Don't fail the pipeline on errors because they are mostly minor
+          deno run --allow-read scripts/check-doc.ts || true
 
       - name: Generate Badge
         run: |

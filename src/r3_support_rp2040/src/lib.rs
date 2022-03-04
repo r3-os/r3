@@ -9,7 +9,10 @@
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(raw_ref_op)]
-#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
+#![cfg_attr(
+    feature = "doc",
+    doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
+)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![no_std]
 

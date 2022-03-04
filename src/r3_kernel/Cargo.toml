@@ -15,7 +15,7 @@ inline_syscall = []
 priority_boost = []
 system_time = []
 
-# Enable the diagram rendering by svgbob
+# Enable the diagram rendering by svgbob and other stuff [ref:doc_feature]
 doc = ["svgbobdoc/enable"]
 
 # Enable all optional kernel features
@@ -53,3 +53,4 @@ log = "0.4.8"
 [package.metadata.docs.rs]
 all-features = true
 targets = []
+rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

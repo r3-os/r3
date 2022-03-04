@@ -11,6 +11,9 @@ repository = "https://github.com/r3-os/r3"
 [features]
 preload-registers = []
 
+# Used for documentation builds [ref:doc_feature]
+doc = []
+
 [dependencies]
 r3_portkit = { version = "0.1.1", path = "../r3_portkit" }
 r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
@@ -26,4 +29,6 @@ cortex-m-rt = ">= 0.6.12, < 0.8.0"
 cortex-m = ">= 0.6.2, < 0.8.0"
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []
+rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

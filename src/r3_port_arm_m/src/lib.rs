@@ -11,7 +11,10 @@
 #![feature(asm_const)]
 #![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]
+#![cfg_attr(
+    feature = "doc",
+    doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
+)]
 #![doc = include_str!("./lib.md")]
 #![no_std]
 

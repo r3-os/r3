@@ -8,6 +8,7 @@ keywords = ["r3", "simulator"]
 repository = "https://github.com/r3-os/r3"
 
 [features]
+# Used for documentation builds [ref:doc_feature]
 doc = ["svgbobdoc/enable"]
 
 [dependencies]
@@ -28,3 +29,4 @@ log = { version = "0.4.8" }
 [package.metadata.docs.rs]
 all-features = true
 targets = []
+rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

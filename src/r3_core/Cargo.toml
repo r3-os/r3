@@ -11,7 +11,7 @@ repository = "https://github.com/r3-os/r3"
 [features]
 default = []
 
-# Enable the diagram rendering by svgbob and other fancy stuff
+# Enable the diagram rendering by svgbob and other fancy stuff [ref:doc_feature]
 doc = ["svgbobdoc/enable"]
 
 # Displays a "some features are disabled" warning in the documentation
@@ -41,3 +41,4 @@ log = "0.4.8"
 [package.metadata.docs.rs]
 all-features = true
 targets = []
+rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

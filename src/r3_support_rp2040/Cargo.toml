@@ -19,6 +19,9 @@ semver-exempt = [
     "nb",
 ]
 
+# Used for documentation builds [ref:doc_feature]
+doc = []
+
 [dependencies]
 r3_port_arm_m = { version = "0.2.0", path = "../r3_port_arm_m" }
 r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
@@ -34,4 +37,6 @@ vcell = { version = "0.1.2", optional = true }
 nb = { version = "1.0.0", optional = true }
 
 [package.metadata.docs.rs]
+all-features = true
 targets = []
+rustdoc-args = ["--html-in-header", "src/common.md"]  # [ref:doc_global_styling]

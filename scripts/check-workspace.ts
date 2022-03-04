@@ -10,6 +10,7 @@ import { parse as parseFlags } from "https://deno.land/std@0.125.0/flags/mod.ts"
 import { parse as parseToml } from "https://deno.land/std@0.125.0/encoding/toml.ts";
 import * as path from "https://deno.land/std@0.125.0/path/mod.ts";
 import * as log from "https://deno.land/std@0.125.0/log/mod.ts";
+import { exists } from "https://deno.land/std@0.125.0/fs/exists.ts";
 
 const parsedArgs = parseFlags(Deno.args, {
     "alias": {
@@ -42,9 +43,16 @@ await log.setup({
 });
 
 const EXPECTED_SOURCE_FRAGMENTS = [
-    // We want published crates to have consistent logos
-    '#![doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")]',
+    // We want published crates to have consistent logos, which should
+    // appear conditionally [ref:doc_feature]
+    `#![cfg_attr(
+    feature = "doc",
+    doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
+)]`,
 ];
+
+const COMMON_HEADER_PATH = "src/common.md";
+const EXPECTED_RUSTDOC_ARGS = `--html-in-header ${COMMON_HEADER_PATH}`;
 
 const logger = log.getLogger();
 let hasError = false;
@@ -83,7 +91,7 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
             continue;
         }
 
-        const {package: pkg, dependencies = {}} = crateMeta;
+        const {package: pkg, dependencies = {}, features = {}} = crateMeta;
         const {publish = true, version} = pkg;
 
         // CC-VER-UNPUBLISHED
@@ -146,6 +154,63 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
                 }
             }
         }
+
+        // We want `common.md` applied for the entire crate in order that the
+        // upper-left custom logo is properly styled in official documentation
+        // builds [tag:doc_global_styling]
+        const docsMetadata = pkg?.metadata?.docs?.rs ?? {};
+        if (publish) {
+            const docsArgs = docsMetadata['rustdoc-args'] ?? [];
+
+            // Poor man's `docsArgs.windows(2).any(|x| x == ...)`
+            const docsArgsConcat = docsArgs.join(' ');
+            if (docsArgsConcat.indexOf(EXPECTED_RUSTDOC_ARGS) < 0) {
+                logger.error(`${crateRelPath}: package.metadata.docs.rs.rustdoc-args doesn't ` +
+                    `include '${EXPECTED_RUSTDOC_ARGS}'.`);
+                hasError = true;
+            }
+
+            // The file referenced by `EXPECTED_RUSTDOC_ARGS` should actually
+            // exist
+            const commonHeaderPath  = path.join(cratePath, COMMON_HEADER_PATH);
+            if (!await exists(commonHeaderPath)) {
+                logger.error(`${crateRelPath}: '${commonHeaderPath}' doesn't exist.`);
+                hasError = true;
+            }
+        }
+
+        // The custom logo needs a custom stylesheet [ref:doc_global_styling],
+        // so it must be disabled conditionally if the custom stylesheet isn't
+        // applied globally. The `doc` Cargo feature is used to toggle this.
+        // [tag:doc_feature] In summary, there are two cases we consider:
+        //
+        //  - In official documentation builds (docs.rs and our API
+        //    documentation website), the `doc` Cargo feature is enabled, and
+        //    the custom stylesheet is applied globally using `RUSTDOCFLAGS`.
+        //    The result is a custom logo styled consistently.
+        //
+        //  - In unofficial documentation builds (e.g., `cargo doc` in
+        //    downstream workspaces), the `doc` Cargo feature is disabled by
+        //    default, and the custom stylesheet is not applied globally. The
+        //    custom logo is disabled by `cfg_attr` in this case.
+        //
+        // We don't handle the cases where `doc` is enabled in unofficial
+        // builds. In such cases, the custom logo will be styled properly or
+        // improperly depending on whether `common.md` is included by `#[doc =
+        // ...]` in that file.
+        if (publish) {
+            if (typeof features.doc == "undefined") {
+                logger.error(`${crateRelPath}: features.doc is not present.`);
+                hasError = true;
+            }
+        }
+
+        // The enabled features must be consistent between docs.rs and
+        // our API documentation website [ref:doc_all_features]
+        if (publish && !docsMetadata["all-features"]) {
+            logger.error(`${crateRelPath}: package.metadata.docs.rs.all-features is ` +
+                `not set.`);
+        }
     }
 }
 
@@ -165,7 +230,16 @@ interface CargoMeta {
         keywords?: string[],
         repository?: string,
         publish?: boolean,
+        metadata?: {
+            docs?: {
+                rs?: {
+                    "rustdoc-args"?: string[],
+                    "all-features"?: boolean,
+                },
+            },
+        },
     },
+    features?: { [name: string]: string[] },
     dependencies?: { [name: string]: Dep },
     "dev-dependencies"?: { [name: string]: Dep },
 }
