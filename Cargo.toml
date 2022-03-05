@@ -59,5 +59,11 @@ git = "https://github.com/r3-os/rust-riscv-rt.git"
 branch = "refresh/0.8"
 version = "0.6.2"
 
+[patch.crates-io.memoffset]
+# FIXME: Waiting for the fix for false clippy warnings
+# <https://github.com/Gilnaa/memoffset/pull/64> to be published to crates.io
+git = "https://github.com/Gilnaa/memoffset.git"
+rev = "2a74b62c26724ff9c67e4e3ad05378a1af53f195"
+
 [profile.release]
 debug = true
