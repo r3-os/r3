@@ -171,7 +171,7 @@ use core::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit};
 use crate::{
     closure::Closure,
     hunk::Hunk,
-    kernel::{self, cfg, raw, raw_cfg, StartupHook},
+    kernel::{self, cfg, prelude::*, raw, raw_cfg, StartupHook},
     utils::{refcell::RefCell, ComptimeVec, ConstAllocator, Init, PhantomInvariant, ZeroInit},
 };
 
@@ -818,15 +818,79 @@ impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System,
 // ----------------------------------------------------------------------------
 
 /// Represents a permission to dereference [`BindRef`][].
+///
+/// # Example
+///
+/// ```rust
+/// #![feature(const_fn_fn_ptr_basics)]
+/// #![feature(const_fn_trait_bound)]
+/// #![feature(const_trait_impl)]
+/// #![feature(const_mut_refs)]
+/// use r3_core::{
+///     bind::{Bind, BindRef, BindTable},
+///     kernel::{cfg::Cfg, traits, StaticTask},
+///     prelude::*,
+/// };
+///
+/// const fn configure_app<C>(cfg: &mut Cfg<C>)
+/// where
+///     C: ~const traits::CfgBase +
+///        ~const traits::CfgTask,
+///     C::System: traits::KernelBase + traits::KernelStatic,
+/// {
+///     let foo = Bind::define().init(|| {
+///         // `BindTable::get()` will fail because some bindings might not
+///         // be initialized at this point
+///         assert!(BindTable::<C::System>::get().is_err());
+///
+///         42
+///     }).finish(cfg).as_ref();
+///
+///     StaticTask::define()
+///         .start(move || {
+///             // Task code can get `BindTable` because tasks can only
+///             // run after the boot phase is complete
+///             let bt = BindTable::get().unwrap();
+///             assert_eq!(bt[foo], 42);
+///         })
+///         .priority(2)
+///         .active(true)
+///         .finish(cfg);
+/// }
+/// ```
 pub struct BindTable<System> {
     _phantom: PhantomInvariant<System>,
+}
+
+/// Error type for [`BindTable::get`][].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum GetBindTableError {
+    /// [The boot phase][] is not complete.
+    ///
+    /// [the boot phase]: crate#threads
+    BadContext,
 }
 
 impl<System> BindTable<System>
 where
     System: raw::KernelBase + cfg::KernelStatic,
 {
-    // TODO: pub fn get() -> Result<Self> {}
+    /// Get a reference to `BindTable` if [the boot phase][] is complete.
+    ///
+    /// Returns `Err(BadContext)` if the boot phase hasn't completed yet, and
+    /// therefore it's unsafe to dereference [`BindRef`]s.
+    ///
+    /// [the boot phase]: crate#threads
+    #[inline]
+    pub fn get() -> Result<&'static Self, GetBindTableError> {
+        if System::is_boot_complete() {
+            Ok(&Self {
+                _phantom: Init::INIT,
+            })
+        } else {
+            Err(GetBindTableError::BadContext)
+        }
+    }
 
     /// Get a reference to `BindTable` without checking if it's safe to do so
     /// in the current context.
@@ -834,7 +898,7 @@ where
     /// # Safety
     ///
     /// The returned reference may be used to borrow binding contents that are
-    /// uninitialized or being mutably borrowed somewhere else.
+    /// uninitialized or being mutably borrowed by a binding initializer.
     #[inline]
     pub const unsafe fn get_unchecked() -> &'static Self {
         &Self {
