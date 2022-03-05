@@ -55,11 +55,10 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     ///
     /// # Safety
     ///
-    /// See the [Safety][2] section of `Kernel::release_cpu_lock`'s
+    /// See the [Safety][1] section of `Kernel::release_cpu_lock`'s
     /// documentation.
     ///
     /// [1]: crate::kernel::Kernel::release_cpu_lock
-    /// [2]: crate::kernel::Kernel::release_cpu_lock#safety
     unsafe fn raw_release_cpu_lock() -> Result<(), CpuLockError>;
 
     /// Return a flag indicating whether CPU Lock is currently active.
@@ -69,11 +68,10 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     ///
     /// # Safety
     ///
-    /// See the [Safety][2] section of `Kernel::unboost_priority`'s
+    /// See the [Safety][1] section of `Kernel::unboost_priority`'s
     /// documentation.
     ///
     /// [1]: crate::kernel::Kernel::unboost_priority
-    /// [2]: crate::kernel::Kernel::unboost_priority#safety
     unsafe fn raw_unboost_priority() -> Result<(), BoostPriorityError>;
 
     /// Implements [`Kernel::is_priority_boost_active`][1].
@@ -107,11 +105,10 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     ///
     /// # Safety
     ///
-    /// See the [Safety][2] section of `Kernel::exit_task`'s
+    /// See the [Safety][1] section of `Kernel::exit_task`'s
     /// documentation.
     ///
     /// [1]: crate::kernel::Kernel::exit_task
-    /// [2]: crate::kernel::Kernel::exit_task#safety
     unsafe fn raw_exit_task() -> Result<!, ExitTaskError>;
 
     /// Implements [`Kernel::park`][1].
