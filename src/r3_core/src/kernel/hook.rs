@@ -12,9 +12,11 @@ use crate::{
 /// There are no operations defined for startup hooks, so this type
 /// is only used for static configuration.
 ///
-/// Startup hooks execute during the boot process with [CPU Lock] active, after
-/// initializing kernel structures and before scheduling the first task.
+/// Startup hooks execute during [the boot phase][] with [CPU Lock][] active,
+/// after initializing kernel structures and before scheduling the first task.
+/// <!-- [ref:startup_hook_cpu_lock_active] -->
 ///
+/// [the boot phase]: crate#threads
 /// [CPU Lock]: crate#system-states
 ///
 /// <div class="admonition-follows"></div>

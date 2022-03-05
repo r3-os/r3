@@ -256,15 +256,17 @@ Like a lock guard of a mutex, CPU Lock can be thought of as something to be “o
 
 # Threads
 
-An **(execution) thread** is a sequence of instructions executed by a processor. There can be multiple threads existing at the same time and the kernel is responsible for deciding which thread to run at any point on a processor (this process is called scheduling). The location in a program where a thread starts execution is called the thread's **entry point function** for the thread. A thread exits when it returns from its entry point function¹ or calls [`exit_task`](crate::kernel::Kernel::exit_task) (valid only for tasks).
+An **(execution) thread** is a logical sequence of instructions executed by a processor. There can be multiple threads existing at the same time, and the kernel is responsible for deciding which thread to run at any point on a processor (this process is called scheduling)². The location in a program where a thread starts execution is called the thread's **entry point function** for the thread. A thread exits when it returns from its entry point function¹ or calls [`exit_task`](crate::kernel::Kernel::exit_task) (valid only for tasks).
 
- ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.
+<small> ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.</small>
+
+<small> ² The execution of code responsible for scheduling is not considered pertaining to any threads.</small>
 
 The properties of threads such as how and when they are created and whether they can block or not are specific to each thread type.
 
-The initial thread that starts up the kernel is called the **main thread**. This is where the initialization of kernel structures takes place. Additionally, an application can register one or more [**startup hooks**] to execute user code here. <!-- [tag:startup_hook_cpu_lock_active] --> Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits when the kernel dispatches the first task.
+The initial thread that starts up the kernel is called the **main thread**. The part of the kernel's lifecycle where the main thread executes is called the kernel's **boot phase**, and this is where the initialization of kernel structures takes place. An application can register one or more [**startup hooks**] to execute user code here. <!-- [tag:startup_hook_cpu_lock_active] --> Startup hooks execute with CPU Lock active and *should never deactivate CPU Lock*. The main thread exits, i.e., the boot phase completes when the kernel dispatches the first task and starts multi-tasking. The following diagram depicts the kernel lifecycle during and after the boot phase.
 
-<!-- TODO: It's useful to introduce a term "the boot phase". -->
+<span class="center">![system_lifecycle]</span>
 
 [**startup hooks**]: crate::kernel::StartupHook
 

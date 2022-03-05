@@ -57,6 +57,7 @@
 )]
 #![doc = include_str!("./lib.md")]
 #![doc = include_str!("./common.md")]
+#![doc = include!("../doc/system_lifecycle.rs")] // `![system_lifecycle]`
 #![doc = include!("../doc/trait_binding.rs")] // `![trait_binding]`
 #![doc = include!("../doc/static_cfg.rs")] // `![static_cfg]`
 #![cfg_attr(
