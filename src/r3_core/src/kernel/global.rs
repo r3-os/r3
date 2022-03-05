@@ -128,6 +128,35 @@ pub trait Kernel: private::Sealed {
     /// [Priority Boost]: crate#system-states
     fn is_priority_boost_active() -> bool;
 
+    /// Return a flag indicating whether the calling context is a
+    /// [task context][].
+    ///
+    /// This is equivalent to [`is_boot_complete`][]`() &&
+    /// !`[`is_interrupt_context`][]`()`.
+    ///
+    /// [task context]: crate#contexts
+    /// [`is_boot_complete`]: Self::is_boot_complete
+    /// [`is_interrupt_context`]: Self::is_interrupt_context
+    fn is_task_context() -> bool;
+
+    /// Return a flag indicating whether the calling context is an
+    /// [interrupt context][].
+    ///
+    /// This is equivalent to [`is_boot_complete`][]`() &&
+    /// !`[`is_task_context`][]`()`.
+    ///
+    /// [interrupt context]: crate#contexts
+    /// [`is_boot_complete`]: Self::is_boot_complete
+    /// [`is_task_context`]: Self::is_task_context
+    fn is_interrupt_context() -> bool;
+
+    /// Return a flag indicating whether [the boot phase][] is complete, i.e.,
+    /// all startup hooks completed execution, and the kernel started
+    /// scheduling tasks and taking interrupts.
+    ///
+    /// [the boot phase]: crate#threads
+    fn is_boot_complete() -> bool;
+
     /// Set the current [system time].
     ///
     /// This method *does not change* the relative arrival times of outstanding
@@ -379,6 +408,21 @@ impl<T: raw::KernelBase> Kernel for T {
     #[inline]
     fn is_priority_boost_active() -> bool {
         <T as raw::KernelBase>::raw_is_priority_boost_active()
+    }
+
+    #[inline]
+    fn is_task_context() -> bool {
+        <T as raw::KernelBase>::raw_is_task_context()
+    }
+
+    #[inline]
+    fn is_interrupt_context() -> bool {
+        <T as raw::KernelBase>::raw_is_interrupt_context()
+    }
+
+    #[inline]
+    fn is_boot_complete() -> bool {
+        <T as raw::KernelBase>::raw_is_boot_complete()
     }
 
     #[inline]

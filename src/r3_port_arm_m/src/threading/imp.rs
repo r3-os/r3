@@ -83,8 +83,6 @@ impl State {
     pub unsafe fn port_boot<Traits: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<Traits>() };
 
-        unsafe { *self.running_task_ptr.get() = Traits::state().running_task_ptr() as *mut () };
-
         // Claim the ownership of `Peripherals`
         let mut peripherals = unsafe { cortex_m::Peripherals::steal() };
 
@@ -107,6 +105,9 @@ impl State {
 
     #[inline(always)]
     pub unsafe fn dispatch_first_task<Traits: PortInstance>(&'static self) -> ! {
+        // [tag:running_task_ptr_set_in_dft]
+        unsafe { *self.running_task_ptr.get() = Traits::state().running_task_ptr() as *mut () };
+
         // Pend PendSV
         cortex_m::peripheral::SCB::set_pendsv();
 
@@ -550,6 +551,27 @@ impl State {
         // All tasks use PSP. The idle task is the exception, but user
         // code cannot run in the idle task, so we can ignore this.
         cortex_m::register::control::read().spsel() == cortex_m::register::control::Spsel::Psp
+    }
+
+    #[inline]
+    pub fn is_interrupt_context<Traits: PortInstance>(&self) -> bool {
+        // `IPSR.Exception != 0`
+        unsafe {
+            let ipsr: u32;
+            pp_asm!(
+                "mrs {}, ipsr",
+                out(reg) ipsr,
+                options(nomem, preserves_flags, nostack),
+            );
+            (ipsr & ((1u32 << 9) - 1)) != 0
+        }
+    }
+
+    #[inline]
+    pub fn is_scheduler_active<Traits: PortInstance>(&self) -> bool {
+        // `runnin_task_ptr` is assigned by `dispatch_first_task`
+        // [ref:running_task_ptr_set_in_dft]
+        unsafe { !(*self.running_task_ptr.get()).is_null() }
     }
 
     pub fn set_interrupt_line_priority<Traits: PortInstance>(

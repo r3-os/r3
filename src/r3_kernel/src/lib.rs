@@ -207,6 +207,21 @@ unsafe impl<Traits: KernelTraits> raw::KernelBase for System<Traits> {
         false
     }
 
+    #[inline]
+    fn raw_is_task_context() -> bool {
+        Traits::is_task_context()
+    }
+
+    #[inline]
+    fn raw_is_interrupt_context() -> bool {
+        Traits::is_interrupt_context()
+    }
+
+    #[inline]
+    fn raw_is_boot_complete() -> bool {
+        Traits::is_scheduler_active()
+    }
+
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]
     fn raw_set_time(time: Time) -> Result<(), r3_core::kernel::TimeError> {
         timeout::set_system_time::<Traits>(time)
@@ -503,10 +518,20 @@ pub unsafe trait PortThreading: KernelCfg1 + KernelStatic<System<Self>> {
     fn is_cpu_lock_active() -> bool;
 
     /// Return a flag indicating whether the current context is
-    /// [an task context].
+    /// [a task context].
     ///
-    /// [an task context]: crate#contexts
+    /// [a task context]: r3_core#contexts
     fn is_task_context() -> bool;
+
+    /// Return a flag indicating whether the current context is
+    /// [an interrupt context].
+    ///
+    /// [an interrupt context]: r3_core#contexts
+    fn is_interrupt_context() -> bool;
+
+    /// Return a flag indicating whether [`Self::dispatch_first_task`][] was
+    /// called.
+    fn is_scheduler_active() -> bool;
 }
 
 /// Implemented by a port. This trait contains items related to controlling

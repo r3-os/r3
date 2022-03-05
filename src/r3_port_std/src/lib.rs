@@ -471,6 +471,26 @@ impl State {
         })
     }
 
+    pub fn is_interrupt_context<Traits: PortInstance>(&self) -> bool {
+        expect_worker_thread::<Traits>();
+
+        THREAD_ROLE.with(|role| match role.get() {
+            ThreadRole::Task | ThreadRole::Boot => false,
+            ThreadRole::Interrupt => true,
+            _ => panic!("`is_task_context` was called from an unknown thread"),
+        })
+    }
+
+    pub fn is_scheduler_active<Traits: PortInstance>(&self) -> bool {
+        expect_worker_thread::<Traits>();
+
+        THREAD_ROLE.with(|role| match role.get() {
+            ThreadRole::Interrupt | ThreadRole::Task => true,
+            ThreadRole::Boot => false,
+            _ => panic!("`is_task_context` was called from an unknown thread"),
+        })
+    }
+
     pub fn set_interrupt_line_priority<Traits: PortInstance>(
         &'static self,
         num: InterruptNum,
@@ -786,6 +806,14 @@ macro_rules! use_port {
 
                 fn is_task_context() -> bool {
                     PORT_STATE.is_task_context::<Self>()
+                }
+
+                fn is_interrupt_context() -> bool {
+                    PORT_STATE.is_interrupt_context::<Self>()
+                }
+
+                fn is_scheduler_active() -> bool {
+                    PORT_STATE.is_scheduler_active::<Self>()
                 }
             }
 

@@ -91,6 +91,7 @@ impl State {
                 mov sp, r0
 
                 # Save the stack pointer for later use
+                # [tag:arm_main_stack_assigned_in_dft]
                 str r0, [r1]
 
                 b {push_second_level_state_and_dispatch}.dispatch
@@ -440,6 +441,18 @@ impl State {
         let cpsr: u32;
         unsafe { asm!("mrs {}, cpsr", out(reg) cpsr) };
         (cpsr & 0xf) == 0xf // System mode
+    }
+
+    #[inline]
+    pub fn is_interrupt_context<Traits: PortInstance>(&self) -> bool {
+        self.is_scheduler_active::<Traits>() && !self.is_task_context::<Traits>()
+    }
+
+    #[inline]
+    pub fn is_scheduler_active<Traits: PortInstance>(&self) -> bool {
+        // `main_stack` is assigned by `dispatch_first_task`
+        // [ref:arm_main_stack_assigned_in_dft]
+        unsafe { *self.main_stack.get() != 0 }
     }
 
     /// Implements [`crate::EntryPoint::irq_entry`]

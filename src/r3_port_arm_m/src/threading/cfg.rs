@@ -189,6 +189,16 @@ macro_rules! use_port {
                 fn is_task_context() -> bool {
                     port_state().is_task_context::<Self>()
                 }
+
+                #[inline(always)]
+                fn is_interrupt_context() -> bool {
+                    port_state().is_interrupt_context::<Self>()
+                }
+
+                #[inline(always)]
+                fn is_scheduler_active() -> bool {
+                    port_state().is_scheduler_active::<Self>()
+                }
             }
 
             unsafe impl PortInterrupts for $Traits {

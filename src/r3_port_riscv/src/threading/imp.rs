@@ -269,6 +269,7 @@ impl State {
             pp_asm!("
             "   crate::threading::imp::asm_inc::define_load_store!()              "
                 # Save the stack pointer for later use
+                # [tag:riscv_main_stack_assigned_in_dft]
                 STORE sp, ({MAIN_STACK}), a0
 
                 # `xstatus.XPIE` will be `1` all the time except in a software
@@ -962,8 +963,21 @@ impl State {
         (Traits::Csr::xstatus().read() & Traits::Csr::XSTATUS_XIE) == 0
     }
 
+    #[inline]
     pub fn is_task_context<Traits: PortInstance>(&self) -> bool {
         unsafe { INTERRUPT_NESTING < 0 }
+    }
+
+    #[inline]
+    pub fn is_interrupt_context<Traits: PortInstance>(&self) -> bool {
+        self.is_scheduler_active::<Traits>() && !self.is_task_context::<Traits>()
+    }
+
+    #[inline]
+    pub fn is_scheduler_active<Traits: PortInstance>(&self) -> bool {
+        // `MAIN_STACK` is assigned by `dispatch_first_task`
+        // [ref:riscv_main_stack_assigned_in_dft]
+        unsafe { MAIN_STACK != 0 }
     }
 
     pub fn set_interrupt_line_priority<Traits: PortInstance>(
