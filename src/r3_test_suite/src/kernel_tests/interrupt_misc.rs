@@ -1,7 +1,12 @@
 //! Validates error codes returned by interrupt line manipulation methods. Also,
 //! checks miscellaneous properties of interrupt lines.
-use r3::kernel::{
-    self, prelude::*, traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler, StaticTask,
+use core::sync::atomic::{AtomicBool, Ordering};
+use r3::{
+    hunk::Hunk,
+    kernel::{
+        self, prelude::*, traits, Cfg, InterruptLine, StartupHook, StaticInterruptHandler,
+        StaticTask,
+    },
 };
 
 use super::Driver;
@@ -17,6 +22,7 @@ impl<T: traits::KernelBase + traits::KernelInterruptLine + traits::KernelStatic>
 
 pub struct App<System: SupportedSystem> {
     int: Option<InterruptLine<System>>,
+    interrupt_expected: Hunk<System, AtomicBool>,
 }
 
 impl<System: SupportedSystem> App<System> {
@@ -36,6 +42,8 @@ impl<System: SupportedSystem> App<System> {
             .start(startup_hook::<System, D>)
             .finish(b);
 
+        let interrupt_expected = Hunk::<System, AtomicBool>::define().finish(b);
+
         let int = if let [int_line, ..] = *D::INTERRUPT_LINES {
             unsafe {
                 StaticInterruptHandler::define()
@@ -50,7 +58,10 @@ impl<System: SupportedSystem> App<System> {
             None
         };
 
-        App { int }
+        App {
+            int,
+            interrupt_expected,
+        }
     }
 }
 
@@ -167,9 +178,25 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
         value => panic!("{:?}", value),
     }
 
-    D::success();
+    if let &[pri, ..] = D::INTERRUPT_PRIORITIES {
+        D::app().interrupt_expected.store(true, Ordering::Relaxed);
+        log::debug!("Pending the interrupt line");
+        int.set_priority(pri).unwrap();
+        int.pend().unwrap();
+    } else {
+        log::warn!("No interrupt priorities defined, skipping the rest of the test");
+        D::success();
+    }
 }
 
 fn isr<System: SupportedSystem, D: Driver<App<System>>>() {
-    unreachable!();
+    log::debug!("The interrupt handler is running");
+    assert!(D::app().interrupt_expected.load(Ordering::Relaxed));
+
+    // Context query
+    assert!(!System::is_task_context());
+    assert!(System::is_interrupt_context());
+    assert!(System::is_boot_complete());
+
+    D::success();
 }

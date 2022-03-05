@@ -25,6 +25,7 @@ TODO
 ### Added
 
 - Bindings (`Bind`), a static storage with runtime initialization and configuration-time borrow checking. They can be used, for example, to provide a task or timer callback with a state data storage that can be mutably borrowed and persists across invocations.
+- `Kernel::{is_task_context, is_interrupt_context, is_boot_complete}`
 
 ### Fixed
 

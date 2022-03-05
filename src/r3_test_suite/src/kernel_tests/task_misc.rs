@@ -129,6 +129,11 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
     // task.
     assert_eq!(LocalTask::current().unwrap(), app.task1);
 
+    // Context query
+    assert!(System::is_task_context());
+    assert!(!System::is_interrupt_context());
+    assert!(System::is_boot_complete());
+
     // CPU Lock active
     System::acquire_cpu_lock().unwrap();
     assert_eq!(

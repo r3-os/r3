@@ -81,6 +81,21 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     /// [1]: crate::kernel::Kernel::is_priority_boost_active
     fn raw_is_priority_boost_active() -> bool;
 
+    /// Implements [`Kernel::is_task_context`][1].
+    ///
+    /// [1]: crate::kernel::Kernel::is_task_context
+    fn raw_is_task_context() -> bool;
+
+    /// Implements [`Kernel::is_interrupt_context`][1].
+    ///
+    /// [1]: crate::kernel::Kernel::is_interrupt_context
+    fn raw_is_interrupt_context() -> bool;
+
+    /// Implements [`Kernel::is_boot_complete`][1].
+    ///
+    /// [1]: crate::kernel::Kernel::is_boot_complete
+    fn raw_is_boot_complete() -> bool;
+
     /// Implements [`Kernel::set_time`][1].
     ///
     /// [1]: crate::kernel::Kernel::set_time
