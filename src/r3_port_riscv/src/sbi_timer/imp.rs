@@ -1,4 +1,9 @@
 //! The implementation of the SBI-based timer driver.
+#[cfg(any(
+    target_arch = "riscv32",
+    target_arch = "riscv64",
+    target_arch = "riscv128"
+))]
 use core::arch::asm;
 use r3_core::kernel::{traits, Cfg, StaticInterruptHandler};
 use r3_kernel::{KernelTraits, PortToKernel, System, UTicks};
@@ -119,7 +124,7 @@ trait TimerInstanceExt: TimerInstance {
         unimplemented!("target mismatch")
     }
 
-    fn set_timecmp(value: u64) {
+    fn set_timecmp(_value: u64) {
         unimplemented!("target mismatch")
     }
 

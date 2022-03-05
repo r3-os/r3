@@ -26,7 +26,7 @@ impl<T: ?Sized + fmt::Debug + Copy + Eq + Ord + Hash + Send + Sync + 'static> Id
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     type RawDebugPrinter: fmt::Debug + Send + Sync;
 
@@ -53,7 +53,13 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
 
     /// Implements [`Kernel::release_cpu_lock`][1].
     ///
+    /// # Safety
+    ///
+    /// See the [Safety][2] section of `Kernel::release_cpu_lock`'s
+    /// documentation.
+    ///
     /// [1]: crate::kernel::Kernel::release_cpu_lock
+    /// [2]: crate::kernel::Kernel::release_cpu_lock#safety
     unsafe fn raw_release_cpu_lock() -> Result<(), CpuLockError>;
 
     /// Return a flag indicating whether CPU Lock is currently active.
@@ -61,7 +67,13 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
 
     /// Implements [`Kernel::unboost_priority`][1].
     ///
+    /// # Safety
+    ///
+    /// See the [Safety][2] section of `Kernel::unboost_priority`'s
+    /// documentation.
+    ///
     /// [1]: crate::kernel::Kernel::unboost_priority
+    /// [2]: crate::kernel::Kernel::unboost_priority#safety
     unsafe fn raw_unboost_priority() -> Result<(), BoostPriorityError>;
 
     /// Implements [`Kernel::is_priority_boost_active`][1].
@@ -78,7 +90,13 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
 
     /// Implements [`Kernel::exit_task`][1].
     ///
+    /// # Safety
+    ///
+    /// See the [Safety][2] section of `Kernel::exit_task`'s
+    /// documentation.
+    ///
     /// [1]: crate::kernel::Kernel::exit_task
+    /// [2]: crate::kernel::Kernel::exit_task#safety
     unsafe fn raw_exit_task() -> Result<!, ExitTaskError>;
 
     /// Implements [`Kernel::park`][1].
@@ -102,26 +120,46 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
     /// Implements [`Task::activate`][1].
     ///
     /// [1]: crate::kernel::task::TaskMethods::activate
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_task_activate(this: Self::RawTaskId) -> Result<(), ActivateTaskError>;
 
     /// Implements [`Task::interrupt`][1].
     ///
     /// [1]: crate::kernel::task::TaskMethods::interrupt
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_task_interrupt(this: Self::RawTaskId) -> Result<(), InterruptTaskError>;
 
     /// Implements [`Task::unpark_exact`][1].
     ///
     /// [1]: crate::kernel::task::TaskMethods::unpark_exact
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_task_unpark_exact(this: Self::RawTaskId) -> Result<(), UnparkExactError>;
 
     /// Implements [`Task::priority`][1].
     ///
     /// [1]: crate::kernel::task::TaskMethods::priority
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_task_priority(this: Self::RawTaskId) -> Result<usize, GetTaskPriorityError>;
 
     /// Implements [`Task::effective_priority`][1].
     ///
     /// [1]: crate::kernel::task::TaskMethods::effective_priority
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_task_effective_priority(
         this: Self::RawTaskId,
     ) -> Result<usize, GetTaskPriorityError>;
@@ -131,7 +169,7 @@ pub unsafe trait KernelBase: fmt::Debug + Copy + Sized + 'static {
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelTime: KernelBase {
     /// Implements [`Kernel::time`][1].
     ///
@@ -143,7 +181,7 @@ pub unsafe trait KernelTime: KernelBase {
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelBoostPriority: KernelBase {
     /// Implements [`Kernel::boost_priority`][1].
     ///
@@ -155,11 +193,15 @@ pub unsafe trait KernelBoostPriority: KernelBase {
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelTaskSetPriority: KernelBase {
     /// Implements [`Task::set_priority`][1].
     ///
     /// [1]: crate::kernel::task::TaskMethods::set_priority
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_task_set_priority(
         this: Self::RawTaskId,
         priority: usize,
@@ -170,7 +212,7 @@ pub unsafe trait KernelTaskSetPriority: KernelBase {
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelAdjustTime: KernelBase {
     /// Implements [`Kernel::time_user_headroom`][1].
     ///
@@ -248,7 +290,7 @@ pub enum QueueOrderKind {
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelEventGroup: KernelBase {
     /// The type to identify event groups.
     type RawEventGroupId: Id;
@@ -256,6 +298,10 @@ pub unsafe trait KernelEventGroup: KernelBase {
     /// Implements [`EventGroup::set`][1].
     ///
     /// [1]: crate::kernel::event_group::EventGroupMethods::set
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_event_group_set(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -264,6 +310,10 @@ pub unsafe trait KernelEventGroup: KernelBase {
     /// Implements [`EventGroup::clear`][1].
     ///
     /// [1]: crate::kernel::event_group::EventGroupMethods::clear
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_event_group_clear(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -272,6 +322,10 @@ pub unsafe trait KernelEventGroup: KernelBase {
     /// Implements [`EventGroup::get`][1].
     ///
     /// [1]: crate::kernel::event_group::EventGroupMethods::get
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_event_group_get(
         this: Self::RawEventGroupId,
     ) -> Result<EventGroupBits, GetEventGroupError>;
@@ -279,6 +333,10 @@ pub unsafe trait KernelEventGroup: KernelBase {
     /// Implements [`EventGroup::wait`][1].
     ///
     /// [1]: crate::kernel::event_group::EventGroupMethods::wait
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_event_group_wait(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -288,6 +346,10 @@ pub unsafe trait KernelEventGroup: KernelBase {
     /// Implements [`EventGroup::wait_timeout`][1].
     ///
     /// [1]: crate::kernel::event_group::EventGroupMethods::wait_timeout
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_event_group_wait_timeout(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -298,6 +360,10 @@ pub unsafe trait KernelEventGroup: KernelBase {
     /// Implements [`EventGroup::poll`][1].
     ///
     /// [1]: crate::kernel::event_group::EventGroupMethods::poll
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_event_group_poll(
         this: Self::RawEventGroupId,
         bits: EventGroupBits,
@@ -326,7 +392,7 @@ pub type EventGroupBits = u32;
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelMutex: KernelBase {
     /// The type to identify mutexes.
     type RawMutexId: Id;
@@ -342,21 +408,37 @@ pub unsafe trait KernelMutex: KernelBase {
     /// Implements [`Mutex::is_locked`][1].
     ///
     /// [1]: crate::kernel::mutex::MutexMethods::is_locked
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_mutex_is_locked(this: Self::RawMutexId) -> Result<bool, QueryMutexError>;
 
     /// Implements [`Mutex::unlock`][1].
     ///
     /// [1]: crate::kernel::mutex::MutexMethods::unlock
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_mutex_unlock(this: Self::RawMutexId) -> Result<(), UnlockMutexError>;
 
     /// Implements [`Mutex::lock`][1].
     ///
     /// [1]: crate::kernel::mutex::MutexMethods::lock
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_mutex_lock(this: Self::RawMutexId) -> Result<(), LockMutexError>;
 
     /// Implements [`Mutex::lock_timeout`][1].
     ///
     /// [1]: crate::kernel::mutex::MutexMethods::lock_timeout
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_mutex_lock_timeout(
         this: Self::RawMutexId,
         timeout: Duration,
@@ -365,11 +447,19 @@ pub unsafe trait KernelMutex: KernelBase {
     /// Implements [`Mutex::try_lock`][1].
     ///
     /// [1]: crate::kernel::mutex::MutexMethods::try_lock
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_mutex_try_lock(this: Self::RawMutexId) -> Result<(), TryLockMutexError>;
 
     /// Implements [`Mutex::mark_consistent`][1].
     ///
     /// [1]: crate::kernel::mutex::MutexMethods::mark_consistent
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_mutex_mark_consistent(
         this: Self::RawMutexId,
     ) -> Result<(), MarkConsistentMutexError>;
@@ -469,7 +559,7 @@ pub enum MutexProtocolKind {
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelSemaphore: KernelBase {
     /// The type to identify semaphores.
     type RawSemaphoreId: Id;
@@ -477,11 +567,19 @@ pub unsafe trait KernelSemaphore: KernelBase {
     /// Implements [`Semaphore::drain`][1].
     ///
     /// [1]: crate::kernel::semaphore::SemaphoreMethods::drain
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_semaphore_drain(this: Self::RawSemaphoreId) -> Result<(), DrainSemaphoreError>;
 
     /// Implements [`Semaphore::get`][1].
     ///
     /// [1]: crate::kernel::semaphore::SemaphoreMethods::get
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_semaphore_get(
         this: Self::RawSemaphoreId,
     ) -> Result<SemaphoreValue, GetSemaphoreError>;
@@ -489,6 +587,10 @@ pub unsafe trait KernelSemaphore: KernelBase {
     /// Implements [`Semaphore::signal`][1].
     ///
     /// [1]: crate::kernel::semaphore::SemaphoreMethods::signal
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_semaphore_signal(
         this: Self::RawSemaphoreId,
         count: SemaphoreValue,
@@ -497,6 +599,10 @@ pub unsafe trait KernelSemaphore: KernelBase {
     /// Implements [`Semaphore::signal_one`][1].
     ///
     /// [1]: crate::kernel::semaphore::SemaphoreMethods::signal_one
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_semaphore_signal_one(
         this: Self::RawSemaphoreId,
     ) -> Result<(), SignalSemaphoreError>;
@@ -504,11 +610,19 @@ pub unsafe trait KernelSemaphore: KernelBase {
     /// Implements [`Semaphore::wait_one`][1].
     ///
     /// [1]: crate::kernel::semaphore::SemaphoreMethods::wait_one
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_semaphore_wait_one(this: Self::RawSemaphoreId) -> Result<(), WaitSemaphoreError>;
 
     /// Implements [`Semaphore::wait_one_timeout`][1].
     ///
     /// [1]: crate::kernel::semaphore::SemaphoreMethods::wait_one_timeout
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_semaphore_wait_one_timeout(
         this: Self::RawSemaphoreId,
         timeout: Duration,
@@ -517,6 +631,10 @@ pub unsafe trait KernelSemaphore: KernelBase {
     /// Implements [`Semaphore::poll_one`][1].
     ///
     /// [1]: crate::kernel::semaphore::SemaphoreMethods::poll_one
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_semaphore_poll_one(this: Self::RawSemaphoreId) -> Result<(), PollSemaphoreError>;
 }
 
@@ -540,7 +658,7 @@ pub type SemaphoreValue = usize;
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelTimer: KernelBase {
     /// The type to identify timers.
     type RawTimerId: Id;
@@ -548,16 +666,28 @@ pub unsafe trait KernelTimer: KernelBase {
     /// Implements [`Timer::start`][1].
     ///
     /// [1]: crate::kernel::timer::TimerMethods::start
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_timer_start(this: Self::RawTimerId) -> Result<(), StartTimerError>;
 
     /// Implements [`Timer::stop`][1].
     ///
     /// [1]: crate::kernel::timer::TimerMethods::stop
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_timer_stop(this: Self::RawTimerId) -> Result<(), StopTimerError>;
 
     /// Implements [`Timer::set_delay`][1].
     ///
     /// [1]: crate::kernel::timer::TimerMethods::set_delay
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_timer_set_delay(
         this: Self::RawTimerId,
         delay: Option<Duration>,
@@ -566,6 +696,10 @@ pub unsafe trait KernelTimer: KernelBase {
     /// Implements [`Timer::set_period`][1].
     ///
     /// [1]: crate::kernel::timer::TimerMethods::set_period
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_timer_set_period(
         this: Self::RawTimerId,
         period: Option<Duration>,
@@ -576,7 +710,7 @@ pub unsafe trait KernelTimer: KernelBase {
 ///
 /// # Safety
 ///
-/// See [the module documentation](self).
+/// See the [Safety](self#safety) section of the module documentation.
 pub unsafe trait KernelInterruptLine: KernelBase {
     /// The range of interrupt priority values considered [managed].
     ///
@@ -599,6 +733,10 @@ pub unsafe trait KernelInterruptLine: KernelBase {
     /// Implements [`InterruptLine::set_priority`][1].
     ///
     /// [1]: crate::kernel::InterruptLine::set_priority
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_interrupt_line_set_priority(
         this: InterruptNum,
         value: InterruptPriority,
@@ -607,12 +745,20 @@ pub unsafe trait KernelInterruptLine: KernelBase {
     /// Implements [`InterruptLine::enable`][1].
     ///
     /// [1]: crate::kernel::InterruptLine::enable
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_interrupt_line_enable(this: InterruptNum)
         -> Result<(), EnableInterruptLineError>;
 
     /// Implements [`InterruptLine::disable`][1].
     ///
     /// [1]: crate::kernel::InterruptLine::disable
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_interrupt_line_disable(
         this: InterruptNum,
     ) -> Result<(), EnableInterruptLineError>;
@@ -620,16 +766,28 @@ pub unsafe trait KernelInterruptLine: KernelBase {
     /// Implements [`InterruptLine::pend`][1].
     ///
     /// [1]: crate::kernel::InterruptLine::pend
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_interrupt_line_pend(this: InterruptNum) -> Result<(), PendInterruptLineError>;
 
     /// Implements [`InterruptLine::clear`][1].
     ///
     /// [1]: crate::kernel::InterruptLine::clear
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_interrupt_line_clear(this: InterruptNum) -> Result<(), ClearInterruptLineError>;
 
     /// Implements [`InterruptLine::is_pending`][1].
     ///
     /// [1]: crate::kernel::InterruptLine::is_pending
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](self#safety) section of the module documentation.
     unsafe fn raw_interrupt_line_is_pending(
         this: InterruptNum,
     ) -> Result<bool, QueryInterruptLineError>;

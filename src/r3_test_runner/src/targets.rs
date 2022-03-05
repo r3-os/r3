@@ -636,7 +636,7 @@ impl std::str::FromStr for Arch {
     ///  - `-feat2` disables the feature `feat2`.
     ///
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut i = s.find(&['-', '+'][..]).unwrap_or_else(|| s.len());
+        let mut i = s.find(&['-', '+'][..]).unwrap_or(s.len());
         let base = &s[0..i];
         let mut arch = Self::NAMED_ARCHS
             .iter()

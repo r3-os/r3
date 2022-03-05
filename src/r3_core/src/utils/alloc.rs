@@ -230,8 +230,11 @@ pub struct AllocError;
 ///
 /// [1]: crate#stability
 pub unsafe trait Allocator {
+    /// Attempts to allocate a block of memory.
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
+    /// Behaves like `allocate`, but also ensures that the returned memory is
+    /// zero-initialized.
     #[default_method_body_is_const]
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = const_try_result!(self.allocate(layout));
@@ -240,8 +243,18 @@ pub unsafe trait Allocator {
         Ok(ptr)
     }
 
+    /// Deallocates the memory referenced by `ptr`.
+    ///
+    /// # Safety
+    ///
+    /// See [`core::alloc::Allocator::deallocate`]'s documentation.
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
+    /// Attempts to extend the memory block.
+    ///
+    /// # Safety
+    ///
+    /// See [`core::alloc::Allocator::grow`]'s documentation.
     #[default_method_body_is_const]
     unsafe fn grow(
         &self,
@@ -269,6 +282,12 @@ pub unsafe trait Allocator {
         Ok(new_ptr)
     }
 
+    /// Behaves like `grow`, but also ensures that the new contents are set to
+    /// zero before being returned.
+    ///
+    /// # Safety
+    ///
+    /// See [`core::alloc::Allocator::grow_zeroed`]'s documentation.
     #[default_method_body_is_const]
     unsafe fn grow_zeroed(
         &self,
@@ -296,6 +315,11 @@ pub unsafe trait Allocator {
         Ok(new_ptr)
     }
 
+    /// Attempts to shrink the memory block.
+    ///
+    /// # Safety
+    ///
+    /// See [`core::alloc::Allocator::shrink`]'s documentation.
     #[default_method_body_is_const]
     unsafe fn shrink(
         &self,
@@ -323,6 +347,7 @@ pub unsafe trait Allocator {
         Ok(new_ptr)
     }
 
+    /// Creates a “by reference” adapter for this instance of `Allocator`.
     #[default_method_body_is_const]
     fn by_ref(&self) -> &Self
     where

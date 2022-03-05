@@ -215,6 +215,7 @@ impl State {
 }
 
 impl Init for TaskState {
+    #[allow(clippy::declare_interior_mutable_const)] // it's intentional
     const INIT: Self = Self {
         sp: UnsafeCell::new(0),
     };

@@ -766,6 +766,7 @@ macro_rules! impl_unzip_bind_for_tuples {
 
             fn unzip(self) -> Self::Target {
                 #[allow(unused_unsafe)] // for `Bind<'_, _, ()>`
+                #[allow(clippy::unused_unit)] // for `Bind<'_, _, ()>`
                 unsafe {
                     let divide = DivideBind::new(self);
                     let hunk = divide.original_hunk();
@@ -900,10 +901,12 @@ impl CfgBindRegistry {
                 // [tag:bind_finalization_immediate_panic] The errors are
                 // reported by panicking immediately for now
                 match e {
-                    sorter::SorterError::BindCycle { bind_is: _ } => {
+                    sorter::SorterError::BindCycle { bind_is } => {
+                        let _ = bind_is; // TODO: Display the bindings' names
                         panic!("the binding initialization order contains a cycle");
                     }
-                    sorter::SorterError::ConflictingIndefiniteBorrow { bind_i: _ } => {
+                    sorter::SorterError::ConflictingIndefiniteBorrow { bind_i } => {
+                        let _ = bind_i; // TODO: Display the binding's name
                         panic!("conflicting indefinite borrows");
                     }
                 }
@@ -1734,6 +1737,7 @@ macro_rules! impl_binder_on_tuples {
                 let _ = ctx;
             }
 
+            #[allow(clippy::unused_unit)]
             fn into_runtime_binder(self) -> Self::Runtime {
                 ( $( self.$I.into_runtime_binder(), )* )
             }
@@ -1747,6 +1751,7 @@ macro_rules! impl_binder_on_tuples {
 
             #[allow(unused_unsafe)]
             #[allow(unused_variables)]
+            #[allow(clippy::unused_unit)]
             #[inline]
             unsafe fn materialize<'call>(self) -> Self::Target<'call> {
                 unsafe {

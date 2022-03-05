@@ -62,6 +62,7 @@ pub mod gic {
 /// The standard startup code.
 #[doc(hidden)]
 pub mod startup {
+    #[cfg_attr(not(target_os = "none"), allow(dead_code))]
     pub mod cfg;
     #[cfg(target_os = "none")]
     pub mod imp;

@@ -264,9 +264,17 @@ pub trait InterruptController {
 pub trait InterruptControllerToPort {
     /// Enable external interrupts by setting `mie.MEIE` or its counterpart
     /// for [`ThreadingOptions::PRIVILEGE_LEVEL`].
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](#safety) section of the trait documentation.
     unsafe fn enable_external_interrupts();
 
     /// Disable external interrupts by clearing `mie.MEIE` or its counterpart
     /// for [`ThreadingOptions::PRIVILEGE_LEVEL`].
+    ///
+    /// # Safety
+    ///
+    /// See the [Safety](#safety) section of the trait documentation.
     unsafe fn disable_external_interrupts();
 }

@@ -161,7 +161,12 @@ pub trait PlicOptions {
     const USE_NESTING: bool = false;
 }
 
-/// Provides access to a system-global PLIC instance. Implemented by [`use_plic!`].
+/// Provides access to a system-global PLIC instance. Implemented by
+/// [`use_plic!`].
+///
+/// # Safety
+///
+/// This trait is not intended to be implemented in any other means.
 pub unsafe trait Plic: PlicOptions {
     #[doc(hidden)]
     /// Get [`plic_regs::Plic`] representing the memory-mapped interface for the

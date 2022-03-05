@@ -156,6 +156,7 @@ impl Init for StartupHookAttr {
 }
 
 impl CfgStartupHook {
+    #[allow(clippy::wrong_self_convention)]
     pub const fn to_attr(&self) -> StartupHookAttr {
         StartupHookAttr { start: self.start }
     }

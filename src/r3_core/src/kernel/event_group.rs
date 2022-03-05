@@ -161,7 +161,6 @@ impl<System: raw::KernelEventGroup> EventGroupDefiner<System> {
                 initial_bits: initial,
                 ..self.inner
             },
-            ..self
         }
     }
 
@@ -172,10 +171,9 @@ impl<System: raw::KernelEventGroup> EventGroupDefiner<System> {
     pub const fn queue_order(self, queue_order: raw::QueueOrder) -> Self {
         Self {
             inner: raw_cfg::EventGroupDescriptor {
-                queue_order: queue_order,
+                queue_order,
                 ..self.inner
             },
-            ..self
         }
     }
 

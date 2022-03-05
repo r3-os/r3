@@ -394,7 +394,6 @@ impl<System: raw::KernelMutex> MutexDefiner<System> {
                 protocol,
                 ..self.inner
             },
-            ..self
         }
     }
 

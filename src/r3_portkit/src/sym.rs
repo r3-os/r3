@@ -30,13 +30,15 @@ pub const fn sym_static<T: 'static, const ALIGN: usize>(
     x
 }
 
-pub unsafe trait SymStaticExt: Sized {
+pub trait SymStaticExt: Sized + private::Sealed {
     type Output;
 
     /// Get a raw pointer of the content.
+    #[allow(clippy::wrong_self_convention)]
     fn as_ptr(self) -> *const Self::Output;
 
     /// Get a reference of the content.
+    #[allow(clippy::wrong_self_convention)]
     fn as_ref(self) -> &'static Self::Output
     where
         Self::Output: Sync + ZeroInit,
@@ -45,7 +47,13 @@ pub unsafe trait SymStaticExt: Sized {
     }
 }
 
-unsafe impl<T, const ALIGN: usize> SymStaticExt for SymStatic<T, ALIGN> {
+mod private {
+    use super::*;
+    pub trait Sealed {}
+    impl<T, const ALIGN: usize> Sealed for SymStatic<T, ALIGN> {}
+}
+
+impl<T, const ALIGN: usize> SymStaticExt for SymStatic<T, ALIGN> {
     type Output = T;
 
     #[inline(always)]
@@ -142,72 +150,70 @@ pub const DEFAULT_FN_ALIGN: usize = if cfg!(target_arch = "aarch64") {
 /// impl Tr for &'_ u8 {}
 /// impl<T> Tr for (T,) {}
 ///
-/// fn main() {
-///     // TODO: Replace with the following when const arguments become
-///     //       inferrable:
-///     //
-///     //       let sr1: SymStatic<InteriorMutable, _> = u8::VAR;
-///     let sr1 = sym_static(u8::VAR);
-///     sr1.as_ref().0.set(42);
-///     assert_eq!(sr1.as_ref().0.get(), 42);
+/// // TODO: Replace with the following when const arguments become
+/// //       inferrable:
+/// //
+/// //       let sr1: SymStatic<InteriorMutable, _> = u8::VAR;
+/// let sr1 = sym_static(u8::VAR);
+/// sr1.as_ref().0.set(42);
+/// assert_eq!(sr1.as_ref().0.get(), 42);
 ///
-///     // Each instantiation gets a unique storage.
-///     let sr2 = sym_static(u16::VAR);
-///     assert_eq!(sr2.as_ref().0.get(), 0);
-///     sr2.as_ref().0.set(84);
-///     assert_eq!(sr1.as_ref().0.get(), 42);
-///     assert_eq!(sr2.as_ref().0.get(), 84);
+/// // Each instantiation gets a unique storage.
+/// let sr2 = sym_static(u16::VAR);
+/// assert_eq!(sr2.as_ref().0.get(), 0);
+/// sr2.as_ref().0.set(84);
+/// assert_eq!(sr1.as_ref().0.get(), 42);
+/// assert_eq!(sr2.as_ref().0.get(), 84);
 ///
-///     // ...however, types only differing by lifetime parameters do not
-///     // get a unique storage.
-///     fn inner<'a>(_: &'a mut u8) {
-///         let sr1 = sym_static(<&'static u8>::VAR);
-///         let sr2 = sym_static(<&'a u8>::VAR);
-///         sr1.as_ref().0.set(1);
-///         sr2.as_ref().0.set(2);
-///         assert_eq!(sr1.as_ref().0.get(), 2);
-///         assert_eq!(sr2.as_ref().0.get(), 2);
-///     }
-///     inner(&mut 42);
-///
-///     // Since it appears as a `fn` item, it can be passed to `asm!` by a
-///     // `sym` input.
-///     let got_value: usize;
-///     #[cfg(target_arch = "x86_64")]
-///     #[cfg(target_os = "linux")]
-///     unsafe {
-///         asm!("
-///             mov {0}, qword ptr [rip + {1}_@GOTPCREL]
-///             mov {0}, qword ptr [{0}]",
-///             out(reg) got_value, sym u8::VAR,
-///         );
-///     }
-///     #[cfg(target_arch = "x86_64")]
-///     #[cfg(not(target_os = "linux"))]
-///     unsafe { asm!("mov {}, qword ptr [rip + {}_]", out(reg) got_value, sym u8::VAR) };
-///     #[cfg(target_arch = "aarch64")]
-///     #[cfg(target_os = "macos")]
-///     unsafe {
-///         asm!("
-///             adrp {0}, {1}_@PAGE
-///             ldr {0}, [{0}, {1}_@PAGEOFF]
-///             ",
-///             out(reg) got_value, sym u8::VAR
-///         );
-///     }
-///     #[cfg(target_arch = "aarch64")]
-///     #[cfg(not(target_os = "macos"))]
-///     unsafe {
-///         asm!("
-///             adrp {0}, :got:{1}_
-///             ldr {0}, [{0}, #:got_lo12:{1}_]
-///             ldr {0}, [{0}]
-///             ",
-///             out(reg) got_value, sym u8::VAR
-///         )
-///     };
-///     assert_eq!(got_value, 42);
+/// // ...however, types only differing by lifetime parameters do not
+/// // get a unique storage.
+/// fn inner<'a>(_: &'a mut u8) {
+///     let sr1 = sym_static(<&'static u8>::VAR);
+///     let sr2 = sym_static(<&'a u8>::VAR);
+///     sr1.as_ref().0.set(1);
+///     sr2.as_ref().0.set(2);
+///     assert_eq!(sr1.as_ref().0.get(), 2);
+///     assert_eq!(sr2.as_ref().0.get(), 2);
 /// }
+/// inner(&mut 42);
+///
+/// // Since it appears as a `fn` item, it can be passed to `asm!` by a
+/// // `sym` input.
+/// let got_value: usize;
+/// #[cfg(target_arch = "x86_64")]
+/// #[cfg(target_os = "linux")]
+/// unsafe {
+///     asm!("
+///         mov {0}, qword ptr [rip + {1}_@GOTPCREL]
+///         mov {0}, qword ptr [{0}]",
+///         out(reg) got_value, sym u8::VAR,
+///     );
+/// }
+/// #[cfg(target_arch = "x86_64")]
+/// #[cfg(not(target_os = "linux"))]
+/// unsafe { asm!("mov {}, qword ptr [rip + {}_]", out(reg) got_value, sym u8::VAR) };
+/// #[cfg(target_arch = "aarch64")]
+/// #[cfg(target_os = "macos")]
+/// unsafe {
+///     asm!("
+///         adrp {0}, {1}_@PAGE
+///         ldr {0}, [{0}, {1}_@PAGEOFF]
+///         ",
+///         out(reg) got_value, sym u8::VAR
+///     );
+/// }
+/// #[cfg(target_arch = "aarch64")]
+/// #[cfg(not(target_os = "macos"))]
+/// unsafe {
+///     asm!("
+///         adrp {0}, :got:{1}_
+///         ldr {0}, [{0}, #:got_lo12:{1}_]
+///         ldr {0}, [{0}]
+///         ",
+///         out(reg) got_value, sym u8::VAR
+///     )
+/// };
+/// assert_eq!(got_value, 42);
 /// ```
 pub macro sym_static {
     (
