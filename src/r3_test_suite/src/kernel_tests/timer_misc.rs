@@ -146,8 +146,10 @@ fn timer1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>
 
     assert_eq!(param, 42);
 
-    // FIXME: Re-add this assertion
-    // assert!(!System::is_task_context());
+    // Context query
+    assert!(!System::is_task_context());
+    assert!(System::is_interrupt_context());
+    assert!(System::is_boot_complete());
 
     // Check `timer1`'s expiration time in `task`
     // (`System::time` is disallowed in a non-task context)
