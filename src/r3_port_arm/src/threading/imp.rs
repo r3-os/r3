@@ -84,7 +84,7 @@ impl State {
             asm!("
                 mov r0, sp
 
-                # Switch to Traits mode
+                # Switch to System mode
                 cps #0x1f
 
                 # `dispatch` needs stack
