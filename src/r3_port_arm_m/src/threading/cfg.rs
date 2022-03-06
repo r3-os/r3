@@ -123,12 +123,12 @@ macro_rules! use_port {
                 cfg::{ThreadingOptions, EntryPoint},
             };
 
-            #[inline(always)]
-            pub(super) fn port_state() -> &'static State {
-                <$Traits as PortInstance>::port_state()
-            }
+            static PORT_STATE: State = $crate::r3_core::utils::Init::INIT;
 
-            unsafe impl PortInstance for $Traits {}
+            unsafe impl PortInstance for $Traits {
+                $crate::r3_portkit::sym::sym_static!(
+                    #[sym(p_port_state)] fn port_state() -> &State { &PORT_STATE });
+            }
 
             // Assume `$Traits: KernelTraits`
             unsafe impl PortThreading for $Traits {
@@ -152,52 +152,52 @@ macro_rules! use_port {
 
                 #[inline(always)]
                 unsafe fn dispatch_first_task() -> ! {
-                    port_state().dispatch_first_task::<Self>()
+                    PORT_STATE.dispatch_first_task::<Self>()
                 }
 
                 #[inline(always)]
                 unsafe fn yield_cpu() {
-                    port_state().yield_cpu::<Self>()
+                    PORT_STATE.yield_cpu::<Self>()
                 }
 
                 #[inline(always)]
                 unsafe fn exit_and_dispatch(task: &'static TaskCb<Self>) -> ! {
-                    port_state().exit_and_dispatch::<Self>(task);
+                    PORT_STATE.exit_and_dispatch::<Self>(task);
                 }
 
                 #[inline(always)]
                 unsafe fn enter_cpu_lock() {
-                    port_state().enter_cpu_lock::<Self>()
+                    PORT_STATE.enter_cpu_lock::<Self>()
                 }
 
                 #[inline(always)]
                 unsafe fn leave_cpu_lock() {
-                    port_state().leave_cpu_lock::<Self>()
+                    PORT_STATE.leave_cpu_lock::<Self>()
                 }
 
                 #[inline(always)]
                 unsafe fn initialize_task_state(task: &'static TaskCb<Self>) {
-                    port_state().initialize_task_state::<Self>(task)
+                    PORT_STATE.initialize_task_state::<Self>(task)
                 }
 
                 #[inline(always)]
                 fn is_cpu_lock_active() -> bool {
-                    port_state().is_cpu_lock_active::<Self>()
+                    PORT_STATE.is_cpu_lock_active::<Self>()
                 }
 
                 #[inline(always)]
                 fn is_task_context() -> bool {
-                    port_state().is_task_context::<Self>()
+                    PORT_STATE.is_task_context::<Self>()
                 }
 
                 #[inline(always)]
                 fn is_interrupt_context() -> bool {
-                    port_state().is_interrupt_context::<Self>()
+                    PORT_STATE.is_interrupt_context::<Self>()
                 }
 
                 #[inline(always)]
                 fn is_scheduler_active() -> bool {
-                    port_state().is_scheduler_active::<Self>()
+                    PORT_STATE.is_scheduler_active::<Self>()
                 }
             }
 
@@ -209,36 +209,36 @@ macro_rules! use_port {
                     line: InterruptNum,
                     priority: InterruptPriority,
                 ) -> Result<(), SetInterruptLinePriorityError> {
-                    port_state().set_interrupt_line_priority::<Self>(line, priority)
+                    PORT_STATE.set_interrupt_line_priority::<Self>(line, priority)
                 }
 
                 unsafe fn enable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError> {
-                    port_state().enable_interrupt_line::<Self>(line)
+                    PORT_STATE.enable_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn disable_interrupt_line(line: InterruptNum) -> Result<(), EnableInterruptLineError> {
-                    port_state().disable_interrupt_line::<Self>(line)
+                    PORT_STATE.disable_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn pend_interrupt_line(line: InterruptNum) -> Result<(), PendInterruptLineError> {
-                    port_state().pend_interrupt_line::<Self>(line)
+                    PORT_STATE.pend_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn clear_interrupt_line(line: InterruptNum) -> Result<(), ClearInterruptLineError> {
-                    port_state().clear_interrupt_line::<Self>(line)
+                    PORT_STATE.clear_interrupt_line::<Self>(line)
                 }
 
                 unsafe fn is_interrupt_line_pending(
                     line: InterruptNum,
                 ) -> Result<bool, QueryInterruptLineError> {
-                    port_state().is_interrupt_line_pending::<Self>(line)
+                    PORT_STATE.is_interrupt_line_pending::<Self>(line)
                 }
             }
 
             unsafe impl EntryPoint for $Traits {
                 #[inline]
                 unsafe fn start() -> ! {
-                    unsafe { port_state().port_boot::<$Traits>() }
+                    unsafe { PORT_STATE.port_boot::<$Traits>() }
                 }
 
                 const HANDLE_PEND_SV: unsafe extern "C" fn() =

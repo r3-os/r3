@@ -1,11 +1,8 @@
 use core::{arch::asm, cell::UnsafeCell, mem::MaybeUninit, slice};
 use memoffset::offset_of;
-use r3_core::{
-    kernel::traits,
-    utils::{Init, ZeroInit},
-};
+use r3_core::{kernel::traits, utils::Init};
 use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
-use r3_portkit::sym::{sym_static, SymStaticExt};
+use r3_portkit::sym::sym_static;
 
 use super::cfg::{InterruptController, ThreadingOptions, Timer};
 
@@ -17,12 +14,7 @@ use super::cfg::{InterruptController, ThreadingOptions, Timer};
 pub unsafe trait PortInstance:
     KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions + InterruptController + Timer
 {
-    sym_static!(static PORT_STATE: SymStatic<State> = zeroed!());
-
-    #[inline(always)]
-    fn port_state() -> &'static State {
-        sym_static(Self::PORT_STATE).as_ref()
-    }
+    sym_static!(#[sym(p_port_state)] fn port_state() -> &State);
 }
 
 #[repr(C)]
@@ -42,7 +34,14 @@ impl State {
 }
 
 unsafe impl Sync for State {}
-unsafe impl ZeroInit for State {}
+
+impl Init for State {
+    const INIT: Self = Self {
+        dispatch_pending: UnsafeCell::new(false),
+        main_stack: UnsafeCell::new(0),
+        running_task_ptr: UnsafeCell::new(core::ptr::null_mut()),
+    };
+}
 
 #[derive(Debug)]
 #[repr(C)]
@@ -180,8 +179,9 @@ impl State {
 
         unsafe {
             asm!("
-                movw r0, :lower16:{PORT_STATE}_
-                movt r0, :upper16:{PORT_STATE}_
+                movw r0, :lower16:{p_port_state}_
+                movt r0, :upper16:{p_port_state}_
+                ldr r0, [r0]
 
                 # Skip saving the second-level state if the current context
                 # is an idle task. Also, in this case, we don't have a stack,
@@ -205,8 +205,8 @@ impl State {
 
                 # Store SP to `TaskState`.
                 #
-                #    <r0 = &PORT_STATE>
-                #    r0 = *PORT_STATE.running_task_ptr // == running_task
+                #    <r0 = &port_state>
+                #    r0 = *port_state.running_task_ptr // == running_task
                 #    r0.port_task_state.sp = sp_usr
                 #
                 ldr r0, [r0, #{OFFSET_RUNNING_TASK_PTR}]
@@ -260,7 +260,7 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
                 idle_task = sym Self::idle_task::<Traits>,
-                PORT_STATE = sym Traits::PORT_STATE,
+                p_port_state = sym Traits::p_port_state,
                 OFFSET_RUNNING_TASK_PTR = const Self::OFFSET_RUNNING_TASK_PTR,
                 OFFSET_MAIN_STACK = const Self::OFFSET_MAIN_STACK,
                 options(noreturn),
@@ -278,8 +278,9 @@ impl State {
             asm!("
                 # Read `port_state().dispatch_pending`. If it's clear, branch
                 # to `NotShortcutting`
-                movw r0, :lower16:{PORT_STATE}_
-                movt r0, :upper16:{PORT_STATE}_
+                movw r0, :lower16:{p_port_state}_
+                movt r0, :upper16:{p_port_state}_
+                ldr r0, [r0]
                 ldrb r1, [r0, #{OFFSET_DISPATCH_PENDING}]
                 tst r1, r1
                 bne 0f
@@ -307,7 +308,7 @@ impl State {
                 push_second_level_state_and_dispatch =
                     sym Self::push_second_level_state_and_dispatch::<Traits>,
                 idle_task = sym Self::idle_task::<Traits>,
-                PORT_STATE = sym Traits::PORT_STATE,
+                p_port_state = sym Traits::p_port_state,
                 OFFSET_DISPATCH_PENDING = const Self::OFFSET_DISPATCH_PENDING,
                 options(noreturn),
             );
