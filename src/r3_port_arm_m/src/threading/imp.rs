@@ -10,13 +10,10 @@ use r3_core::{
         traits, ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
         PendInterruptLineError, QueryInterruptLineError, SetInterruptLinePriorityError,
     },
-    utils::{Init, ZeroInit},
+    utils::Init,
 };
 use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb};
-use r3_portkit::{
-    pptext::pp_asm,
-    sym::{sym_static, SymStaticExt},
-};
+use r3_portkit::{pptext::pp_asm, sym::sym_static};
 
 use crate::{
     ThreadingOptions, INTERRUPT_EXTERNAL0, INTERRUPT_NUM_RANGE, INTERRUPT_PRIORITY_RANGE,
@@ -31,12 +28,7 @@ use crate::{
 pub unsafe trait PortInstance:
     KernelTraits + Port<PortTaskState = TaskState> + ThreadingOptions
 {
-    sym_static!(static PORT_STATE: SymStatic<State> = zeroed!());
-
-    #[inline(always)]
-    fn port_state() -> &'static State {
-        sym_static(Self::PORT_STATE).as_ref()
-    }
+    sym_static!(#[sym(p_port_state)] fn port_state() -> &State);
 }
 /// Converts [`InterruptNum`] to [`cortex_m::interrupt::Nr`].
 #[derive(Clone, Copy)]
@@ -61,7 +53,12 @@ impl State {
 }
 
 unsafe impl Sync for State {}
-unsafe impl ZeroInit for State {}
+
+impl Init for State {
+    const INIT: Self = Self {
+        running_task_ptr: UnsafeCell::new(core::ptr::null_mut()),
+    };
+}
 
 #[derive(Debug)]
 #[repr(C)]
@@ -276,7 +273,8 @@ impl State {
             #
             #    <r0 = &running_task>
 
-            ldr r0, ={PORT_STATE}_
+            ldr r0, ={p_port_state}_
+            ldr r0, [r0]
             ldr r0, [r0, #{OFFSET_RUNNING_TASK_PTR}]
 
             ldr r1, [r0]                                                    "
@@ -395,7 +393,7 @@ impl State {
             bx lr
         ",
             choose_next_task = sym choose_next_task::<Traits>,
-            PORT_STATE = sym Traits::PORT_STATE,
+            p_port_state = sym Traits::p_port_state,
             OFFSET_RUNNING_TASK_PTR = const Self::OFFSET_RUNNING_TASK_PTR,
             options(noreturn),
         );

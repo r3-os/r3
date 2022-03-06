@@ -9,6 +9,7 @@
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
+#![feature(asm_const)]
 #![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(feature = "run", no_std)]

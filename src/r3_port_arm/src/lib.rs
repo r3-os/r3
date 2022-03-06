@@ -27,7 +27,7 @@ pub extern crate r3_core;
 #[doc(hidden)]
 pub extern crate r3_kernel;
 
-/// Used by `use_sp804!`
+/// Used by `use_sp804!` and `use_port!`
 #[doc(hidden)]
 pub extern crate r3_portkit;
 

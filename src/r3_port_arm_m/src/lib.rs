@@ -60,5 +60,8 @@ pub extern crate r3_core;
 pub extern crate r3_kernel;
 /// Used by `use_port!`
 #[doc(hidden)]
+pub extern crate r3_portkit;
+/// Used by `use_port!`
+#[doc(hidden)]
 #[cfg(target_os = "none")]
 pub use cortex_m_rt;
