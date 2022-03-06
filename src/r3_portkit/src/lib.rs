@@ -3,8 +3,11 @@
 #![feature(const_fn_trait_bound)]
 #![feature(generic_const_exprs)]
 #![feature(adt_const_params)]
+#![feature(naked_functions)]
 #![feature(core_panic)]
 #![feature(decl_macro)]
+#![feature(asm_const)]
+#![feature(asm_sym)]
 #![cfg_attr(
     feature = "doc",
     doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")

@@ -272,3 +272,28 @@ pub macro sym_static {
         }
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    extern crate std;
+    use std::{dbg, prelude::rust_2021::*};
+
+    trait Tr {
+        sym_static!(static VAR: SymStatic<u32> = zeroed!());
+    }
+
+    impl Tr for &'static u8 {}
+    impl Tr for &'static u16 {}
+    impl Tr for &'static u32 {}
+
+    #[test]
+    fn uniqueness() {
+        let var1 = dbg!(sym_static(<&'static u8>::VAR).as_ptr());
+        let var2 = dbg!(sym_static(<&'static u16>::VAR).as_ptr());
+        let var3 = dbg!(sym_static(<&'static u32>::VAR).as_ptr());
+        assert_ne!(var1, var2);
+        assert_ne!(var2, var3);
+        assert_ne!(var1, var3);
+    }
+}
