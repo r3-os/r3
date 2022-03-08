@@ -49,6 +49,10 @@ As a general thumb rule, you should not directly access hardware registers (e.g.
 
 This port agrees with `::cortex_m` in that updating `PRIMASK` is `unsafe` because using it incorrectly can break a certain type of critical section.
 
+Calling a kernel function with interrupts disabled is strongly discouraged as doing so will lead to a deadlock or a [`BadContext`][] error.
+
+[`BadContext`]: r3_core::kernel::ResultCode::BadContext
+
 ## Stack Overflow
 
 This port doesn't support detecting stack overflow.
