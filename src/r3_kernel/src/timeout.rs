@@ -400,7 +400,6 @@ pub(super) struct Timeout<Traits: KernelTraits> {
     /// Un-implement `Unpin`.
     _pin: PhantomPinned,
 
-    // TODO: callback
     _phantom: core::marker::PhantomData<Traits>,
 }
 
