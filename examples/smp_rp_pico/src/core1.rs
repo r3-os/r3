@@ -86,7 +86,9 @@ unsafe extern "C" fn core1_entry() -> ! {
     unsafe { <SystemTraits as port::EntryPoint>::start() }
 }
 
-#[repr(C, align(128))]
+// Cortex-M0+ Technical Reference Manual: “If implemented, the VTOR enables
+// bits[31:8] of the vector table address to be specified.”
+#[repr(C, align(256))]
 struct VectorTable<T>(T);
 
 static CORE1_VECTOR_TABLE: VectorTable<[unsafe extern "C" fn(); 48]> = {
