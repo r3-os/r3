@@ -351,7 +351,7 @@ define_error! {
     ///
     /// [`Kernel::exit_task`]: super::Kernel::exit_task
     pub enum ExitTaskError {
-        /// CPU Lock is active, or the current context is not a task context.
+        /// The current context is not a task context.
         BadContext,
     }
 }
