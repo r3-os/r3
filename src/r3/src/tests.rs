@@ -8,8 +8,7 @@ pub(crate) macro doc_test(
     $( #[doc = $doc:expr] )*
 ) {concat!(
 ignore_if_port_std_does_not_support_target!($head), "\n ",
-"#   #![feature(const_fn_fn_ptr_basics)]
- #   #![feature(const_refs_to_cell)]
+"#   #![feature(const_refs_to_cell)]
  #   #![feature(const_trait_impl)]
  #   #![feature(const_mut_refs)]
  #   #![deny(unsafe_op_in_unsafe_fn)]

@@ -10,7 +10,6 @@
 #![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(generic_associated_types)]
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_slice_first_last)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_cell_into_inner)]

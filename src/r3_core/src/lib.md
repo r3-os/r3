@@ -103,7 +103,6 @@ fn task_body() {
 Configuration functions are highly composable as they can make nested calls to other configuration functions. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, encapsulate them, and expose a higher-level interface. For example, a [mutex object] similar to `std::sync::Mutex` can be created by combining [`kernel::Mutex`]`<System>` (a low-level mutex object) and a [`hunk::Hunk`]`<System, UnsafeCell<T>>` (a typed hunk), which in turn is built on top of [`kernel::Hunk`]`<System>` (a low-level untyped hunk).
 
 ```rust
-# #![feature(const_fn_fn_ptr_basics)]
 # #![feature(const_trait_impl)]
 # #![feature(const_mut_refs)]
 # use r3_core::kernel::{Cfg, traits};

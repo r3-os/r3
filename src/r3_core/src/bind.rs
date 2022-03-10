@@ -692,7 +692,6 @@ impl<'pool, System, T> DivideBind<'pool, System, T> {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(const_fn_fn_ptr_basics)]
 /// #![feature(const_trait_impl)]
 /// #![feature(const_mut_refs)]
 /// use r3_core::{bind::Bind, kernel::{Cfg, traits}, prelude::*};
@@ -821,7 +820,6 @@ impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System,
 /// # Example
 ///
 /// ```rust
-/// #![feature(const_fn_fn_ptr_basics)]
 /// #![feature(const_trait_impl)]
 /// #![feature(const_mut_refs)]
 /// use r3_core::{

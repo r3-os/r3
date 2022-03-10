@@ -46,7 +46,6 @@ The R3 original kernel is provided as a separate package [`r3_kernel`][].
 ## Example
 
 ```rust
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_refs_to_cell)]
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]

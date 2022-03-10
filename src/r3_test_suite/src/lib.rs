@@ -1,5 +1,4 @@
 #![feature(const_fn_floating_point_arithmetic)]
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_transmute_copy)]
 #![feature(const_refs_to_cell)]
