@@ -1,6 +1,5 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_ptr_offset_from)]
-#![feature(const_fn_trait_bound)]
 #![feature(const_refs_to_cell)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]

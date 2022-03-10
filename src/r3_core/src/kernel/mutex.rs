@@ -41,7 +41,6 @@ define_object! {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(const_fn_trait_bound)]
 /// #![feature(const_trait_impl)]
 /// #![feature(const_mut_refs)]
 /// use r3_core::kernel::{

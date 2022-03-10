@@ -5,7 +5,6 @@
 //! [RZ/A1H]: https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz/rza/rza1h.html
 //! [GR-PEACH]: https://www.renesas.com/us/en/products/gadget-renesas/boards/gr-peach.html
 #![feature(const_fn_fn_ptr_basics)]
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![cfg_attr(
