@@ -263,10 +263,9 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
     where
         Callback: ~const SorterCallback,
     {
-        type VertexIter<'b>
+        type VertexIter<'b> = VertexIter<'a>
         where
-            Self: 'b,
-        = VertexIter<'a>;
+            Self: 'b;
 
         fn vertices(&self) -> Self::VertexIter<'_> {
             VertexIter {
@@ -275,10 +274,9 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
             }
         }
 
-        type SuccessorIter<'b>
+        type SuccessorIter<'b> = SuccessorIter<'a, Callback>
         where
-            Self: 'b,
-        = SuccessorIter<'a, Callback>;
+            Self: 'b;
 
         fn successors(&self, v: &Vertex) -> Self::SuccessorIter<'_> {
             let st = match *v {

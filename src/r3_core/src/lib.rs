@@ -10,13 +10,11 @@
 #![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(generic_associated_types)]
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_slice_first_last)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_cell_into_inner)]
 #![feature(const_ptr_offset_from)]
 #![feature(type_alias_impl_trait)]
-#![feature(const_fn_trait_bound)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_slice_ptr_len)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
@@ -24,7 +22,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(maybe_uninit_slice)]
 #![feature(const_nonnull_new)]
-#![feature(const_impl_trait)]
+#![feature(const_result_drop)]
 #![feature(const_option_ext)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]

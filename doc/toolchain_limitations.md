@@ -168,7 +168,6 @@ fn clone_projection<T: Trait>(p: &T::Proj) -> T::Proj {
 ```
 
 ```rust,compile_fail,E0277
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 
 trait Trait {
@@ -201,7 +200,6 @@ trait Trait: ~const Clone {}
 ### `[tag:impl_block_const_bounds]` The trait bounds of an `impl` block can't include `~const`
 
 ```rust,compile_fail
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 struct Cfg<C>(C);
 trait CfgBase {}
@@ -214,7 +212,6 @@ impl<C: ~const CfgBase> Cfg<C> {
 A work-around is to move the trait bounds to the `const fn`s inside.
 
 ```rust
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 struct Cfg<C>(C);
 trait CfgBase {}
@@ -232,7 +229,6 @@ impl<C> Cfg<C> {
 The following code doesn't compile (which is okay) because `T` might not be `T: const Drop`.
 
 ```rust,compile_fail,E0493
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
@@ -248,7 +244,6 @@ impl<T> const Drop for Type<T> {
 The obvious solution is to add `T: ~const Drop` to the `Drop` implementation as well as to the type definition. However, this doesn't work because `~const` is not allowed to appear in the type definition.
 
 ```rust,compile_fail,E0367
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
@@ -266,7 +261,6 @@ impl<T: ~const Drop> const Drop for Type<T> {
 According to [rust-lang/rust#93028](https://github.com/rust-lang/rust/pull/93028), we can actually remove `~const` from this type definition, and the compiler permits the `Drop` implementation to have an extra `~const`. Unfortunately, this leaves a `Drop` trait bound on the type, which actually cover different types than `~const Drop` does. That's because `T: ~const Drop` means that `T` can be dropped in a constant context (n.b. this is [a special case for `Drop`](https://internals.rust-lang.org/t/pre-rfc-revamped-const-trait-impl-aka-rfc-2632/15192#const-drop-in-generic-code-6) and doesn't apply to other traits), while `T: Drop` means that `T` has a user-defined `Drop` implementation.
 
 ```rust,compile_fail,E0277
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
@@ -283,7 +277,6 @@ let _ = Type(Some(()));
 A work-around is to enclose `T` in a container that unconditionally implements `const Drop`.
 
 ```rust
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
@@ -308,7 +301,6 @@ const _: () = { let _ = Type(Some(())); };
 ### `[tag:const_closures]` Closures can't be `impl const Fn`
 
 ```rust
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 const fn identity<C: ~const Fn()>(x: C) -> C { x }
 const fn foo() {}
@@ -317,7 +309,6 @@ identity(|| {});
 ```
 
 ```rust,compile_fail,E0277
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 const fn identity<C: ~const Fn()>(x: C) -> C { x }
 // error[E0277]: the trait bound `[closure@lib.rs:6:26: 6:31]: ~const Fn<()>` is not satisfied
@@ -433,20 +424,6 @@ Ok::<(), ()>(()).expect("");
 ```rust,compile_fail,E0015
 // error[E0015]: cannot call non-const fn `Result::<(), ()>::expect` in constants
 const _: () = Ok::<(), ()>(()).expect("");
-```
-
-
-### `[tag:const_result_ok]` `Result::ok` is not `const fn`
-
-*Upstream PR:* [rust-lang/rust#92385](https://github.com/rust-lang/rust/pull/92385) will unstably add this
-
-```rust
-Ok::<(), ()>(()).ok();
-```
-
-```rust,compile_fail,E0015
-// error[E0015]: cannot call non-const fn `Result::<(), ()>::ok` in constants
-const _: () = { Ok::<(), ()>(()).ok(); };
 ```
 
 

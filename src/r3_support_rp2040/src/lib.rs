@@ -3,8 +3,6 @@
 //!
 //! [R3]: ::r3
 //! [Raspberry Pi Pico]: https://pico.raspberrypi.org
-#![feature(const_fn_fn_ptr_basics)]
-#![feature(const_fn_trait_bound)]
 #![feature(exhaustive_patterns)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
