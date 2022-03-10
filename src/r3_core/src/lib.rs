@@ -24,6 +24,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(maybe_uninit_slice)]
 #![feature(const_nonnull_new)]
+#![feature(const_result_drop)]
 #![feature(const_impl_trait)]
 #![feature(const_option_ext)]
 #![feature(const_ptr_offset)]
