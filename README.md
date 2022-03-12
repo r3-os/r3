@@ -3,6 +3,10 @@
 </h1>
 
 <p align="center">
+<strong>Experimental RTOS powered by CTFE and generics, for deeply embedded systems</strong>
+</p>
+
+<p align="center">
 <img src="https://img.shields.io/github/workflow/status/r3-os/r3/CI/%F0%9F%A6%86?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <a href="https://crates.io/crates/r3"><img src="https://img.shields.io/crates/v/r3?style=for-the-badge"></a> <a href="https://r3-os.github.io/r3/doc/r3/index.html"><img src="https://r3-os.github.io/r3/doc/badge.svg"></a>
 </p>
 
@@ -10,7 +14,7 @@
 <a href="https://repl.it/@yvt/R3-Kernel-Hosted-Port#main.rs"><b>Try it on Repl.it</b></a>
 </p>
 
-**R3-OS** (or simply **R3**) is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation) and const traits to decouple kernel interfaces from implementation.
+**R3-OS** (or simply **R3**) is an experimental static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation) and const traits to decouple kernel interfaces from implementation.
 
 - **All kernel objects are defined statically** for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.
 - A kernel and its configurator **don't require an external build tool or a specialized procedural macro**, maintaining transparency and inter-crate composability.
@@ -19,13 +23,13 @@
 
 ## R3 API
 
-- **Tasks** are kernel objects associated with application threads and encapsulate their execution states. Tasks can be activated by application code or automatically at boot time. Tasks are assigned priorities (up to 2¹⁵ levels on a 32-bit target, though the implementation is heavily optimized for a smaller number of priorities), which can be changed at runtime. The number of tasks is only limited by memory available.
+- **Tasks** are the standard way to spawn application threads. They are kernel objects encapsulating the associated threads' execution states and can be activated by application code or automatically at boot time. Tasks have dynamic priorities and can block to relinquish the processor for lower-priority tasks.
 
-- R3 provides a unified interface to control **interrupt lines** and register **interrupt handlers**. In addition, the Arm M-Profile port supports **unmanaged interrupt lines**, which aren't masked when the kernel is handling a system call.
+- R3 provides a unified interface to control **interrupt lines** and register **interrupt handlers**. Some kernels (e.g., the Arm M-Profile port of the original kernel) support **unmanaged interrupt lines**, which aren't masked when the kernel is handling a system call and thus provide superior real-time performance.
 
 - R3 supports common synchronization primitives such as **mutexes**, **semaphores**, and **event groups**. The mutexes can use [the priority ceiling protocol] to avoid unbounded priority inversion and mutual deadlock. Tasks can **park** themselves.
 
-- The kernel timing mechanism drives **software timers** and a **system-global clock** with microsecond precision. The system clock can be rewound or fast-forwarded for drift compensation. The timing algorithm has a logarithmic time complexity and is therefore scalable. The implementation is robust against a large interrupt processing delay.
+- The kernel timing mechanism drives **software timers** and a **system-global clock** with microsecond precision. The system clock can be rewound or fast-forwarded for drift compensation.
 
 - **Bindings** are a statically-defined storage with runtime initialization and configuration-time borrow checking. They can be bound to tasks and other objects to provide safe mutable access.
 
@@ -38,6 +42,10 @@
 The R3 original kernel is provided as a separate package [`r3_kernel`][].
 
 - Traditional uniprocessor tickless real-time kernel with preemptive scheduling
+
+- Implements a software-based scheduler supporting a customizable number of task priorities (up to 2¹⁵ levels on a 32-bit target, though the implementation is heavily optimized for a smaller number of priorities) and an unlimited number of tasks.
+
+- Provides a scalable kernel timing mechanism with a logarithmic time complexity. This implementation is robust against a large interrupt processing delay.
 
 - Supports **Arm M-Profile** (all versions shipped so far), **Armv7-A** (no FPU), **RISC-V** as well as **the simulator port** that runs on a host system.
 
