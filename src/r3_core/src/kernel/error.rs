@@ -51,30 +51,64 @@ macro_rules! define_result_code {
 }
 
 define_result_code! {
-    /// All result codes (including success) that the C API can return.
+    /// All result codes (including the one indicating success) that a kernel
+    /// function can return.
     ///
     /// <div class="admonition-follows"></div>
     ///
-    /// > **Relation to Other Specifications:** All error codes are
-    /// > intentionally matched to their closest equivalents in μITRON4.0 for no
-    /// > particular reasons.
+    /// > **Relation to Other Specifications:** The error variants were loosely
+    /// > inspired from μITRON4.0 for no particular reasons.
     ///
     /// <div class="admonition-follows"></div>
     ///
-    /// > **Rationale:** Using the C API result codes internally reduces the
-    /// > interop overhead at an API surface.
+    /// > **Rationale:**
+    /// > Giving them explicit and stable discriminants makes it possible to
+    /// > produce them directly in foreign code.
+    /// >
+    /// > The discriminants are assigned in a way that maximizes the execution
+    /// > efficiency based on the following assumptions:
+    /// >
+    /// > - Some variants, such as [`BadContext`][] and [`NoAccess`][], are more
+    /// >   likely to be handled by `unwrap`-ing than other variants. Therefore,
+    /// >   sorting their `u8` interpretations in the increasing order of the
+    /// >   likelihood of being handled by `unwrap`-ing increases the likelihood
+    /// >   of the evaluation of an `unwrap` condition being compiled down to a
+    /// >   single integer comparison.
+    /// >
+    /// > - The discriminants are tightly arranged so that the membership test
+    /// >   with a compile-time result code set can be implemented by a bitfield
+    /// >   look-up table on a general-purpose register.
+    /// >
+    /// > - Most of the error types including subsets of `ResultCode` include
+    /// >   [`BadContext`][], hence by assigning `-1` to it, `Result<(),
+    /// >   $ErrorType>::Ok` will get `0` as its discriminant, which improves
+    /// >   the execution efficiency because comparison to zero can be done
+    /// >   efficiently on most instruction set architectures.
+    /// >   <!-- [ref:zero_discriminant_optimization] -->
     ///
+    /// [`BadContext`]: Self::BadContext
+    /// [`NoAccess`]: Self::NoAccess
+    ///
+    /// # Stability
+    ///
+    /// This type is covered by [the application-side API stability
+    /// guarantee][1]. The explicit discriminants are only covered by the
+    /// kernel-side API stability guarantee. Adding new variants or changing the
+    /// representation size is not considered a breaking change.
+    ///
+    /// [1]: crate#stability
     #[doc = include_str!("../common.md")]
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
     #[repr(i8)]
+    #[non_exhaustive]
     pub enum ResultCode {
         /// The operation was successful. No additional information is available.
         Success = 0,
         /// The operation is not supported.
-        NotSupported = -9,
+        NotSupported = -2,
         /// A parameter is invalid in a way that is no covered by any other error
         /// codes.
-        BadParam = -17,
+        BadParam = -5,
         /// The current operation was rejected by an optional protection
         /// mechanism, e.g., because the specified object identifier ([`Id`]) is
         /// invalid, or the caller lacks the necessary privileges to complete
@@ -116,26 +150,26 @@ define_result_code! {
         ///
         /// [`Id`]: super::Id
         /// [1]: crate#object-safety
-        NoAccess = -18,
+        NoAccess = -3,
         /// The current context disallows the operation.
-        BadContext = -25,
+        BadContext = -1,
         /// The caller does not own the resource.
-        NotOwner = -29,
+        NotOwner = -4,
         /// Resource deadlock would occur.
-        WouldDeadlock = -30,
+        WouldDeadlock = -8,
         /// A target object is in a state that disallows the operation.
-        BadObjectState = -41,
+        BadObjectState = -9,
         /// An operation or an object couldn't be enqueued because there are too
         /// many of such things that already have been enqueued.
-        QueueOverflow = -43,
+        QueueOverflow = -11,
         /// The owner of a mutex exited while holding the mutex lock.
-        Abandoned = -44,
+        Abandoned = -6,
         /// The wait operation was interrupted by [`Task::interrupt`].
         ///
         /// [`Task::interrupt`]: crate::kernel::task::TaskMethods::interrupt
-        Interrupted = -49,
+        Interrupted = -7,
         /// The operation timed out.
-        Timeout = -50,
+        Timeout = -10,
     }
 }
 
@@ -235,6 +269,14 @@ macro_rules! define_error {
                     ResultCode::Success,
                     ResultCode::from(Result::<(), $name>::Ok(())),
                 );
+            }
+
+            #[test]
+            fn is_failure() {
+                // All error values represent failure
+                $(
+                    assert!(ResultCode::from(Err($name::$vname)).is_err());
+                )*
             }
         }
 
@@ -950,5 +992,29 @@ define_error! {
         BadContext,
         /// The duration is negative.
         BadParam,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn success_is_success() {
+        assert!(ResultCode::Success.is_ok());
+    }
+
+    /// Checks that the compiler assigns `0` as `Ok`'s discriminant. While this
+    /// isn't important for correctness nor guaranteed by the compiler, it's a
+    /// useful property for performance. `[tag:zero_discriminant_optimization]`
+    #[test]
+    fn zero_discriminant_optimization() {
+        type LockResult = Result<(), LockMutexError>;
+        assert_eq!(core::mem::size_of::<LockResult>(), 1);
+        assert_eq!(
+            // Safety: It contains no uninitialized bytes
+            unsafe { core::mem::transmute::<_, u8>(LockResult::Ok(())) },
+            0
+        );
     }
 }
