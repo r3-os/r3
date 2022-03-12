@@ -1871,6 +1871,7 @@ dependencies = [
 name = "r3_port_arm"
 version = "0.1.2"
 dependencies = [
+ "macropol",
  "memoffset",
  "r0 1.0.0",
  "r3_core",
@@ -1917,6 +1918,7 @@ dependencies = [
  "arm_semihosting",
  "arrayvec",
  "log",
+ "macropol",
  "r3",
  "r3_kernel",
  "r3_port_arm",

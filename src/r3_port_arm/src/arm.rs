@@ -1,15 +1,14 @@
 /// Implements `register::cpu::RegisterReadWrite::get`.
+#[macropol::macropol]
 macro_rules! sys_coproc_read_raw {
     ($width:ty, [$cp:ident, $crn:ident, $opc1:literal, $crm:ident, $opc2:literal]) => {
+        /// `mrc $&cp, $&opc1, {out_reg}, $&crn, $&crm, $&opc2`
         #[inline]
         fn get(&self) -> u32 {
             let reg;
             unsafe {
                 core::arch::asm!(
-                    concat!(
-                        "mrc ", stringify!($cp), ", ", stringify!($opc1), ", {}, ",
-                        stringify!($crn), ", ", stringify!($crm), ", ", stringify!($opc2)
-                    ),
+                    "mrc $&cp, $&opc1, {}, $&crn, $&crm, $&opc2",
                     lateout(reg) reg,
                 );
             }
@@ -18,16 +17,15 @@ macro_rules! sys_coproc_read_raw {
     };
 }
 /// Implements `register::cpu::RegisterReadWrite::set`.
+#[macropol::macropol]
 macro_rules! sys_coproc_write_raw {
     ($width:ty, [$cp:ident, $crn:ident, $opc1:literal, $crm:ident, $opc2:literal]) => {
+        /// `mcr $&cp, $&opc1, {in_reg}, $&crn, $&crm, $&opc2`
         #[inline]
         fn set(&self, value: u32) {
             unsafe {
                 core::arch::asm!(
-                    concat!(
-                        "mcr ", stringify!($cp), ", ", stringify!($opc1), ", {}, ",
-                        stringify!($crn), ", ", stringify!($crm), ", ", stringify!($opc2)
-                    ),
+                    "mcr $&cp, $&opc1, {}, $&crn, $&crm, $&opc2",
                     in(reg) value,
                 );
             }
