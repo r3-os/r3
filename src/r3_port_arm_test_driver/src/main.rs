@@ -131,7 +131,7 @@ macro_rules! instantiate_test {
             }
 
             fn performance_time() -> u32 {
-                use register::cpu::RegisterReadWrite;
+                use tock_registers::interfaces::Readable;
                 pmu::PMCCNTR.get()
             }
 
@@ -175,7 +175,7 @@ macro_rules! instantiate_test {
             // Start PMU cycle counter
             #[cfg(feature = "kernel_benchmarks")]
             StartupHook::define().start(|| {
-                use register::cpu::RegisterReadWrite;
+                use tock_registers::interfaces::ReadWriteable;
                 pmu::PMCR.modify(pmu::PMCR::E::SET + pmu::PMCR::D::DivideBy1);
                 pmu::PMCNTENSET.modify(pmu::PMCNTENSET::C::SET);
             }).finish(b);

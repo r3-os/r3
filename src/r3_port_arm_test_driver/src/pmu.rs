@@ -34,7 +34,7 @@ macro_rules! sys_coproc_write_raw {
     };
 }
 
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub PMCNTENSET [
         /// PMCCNTR enable bit.
         C OFFSET(31) NUMBITS(1) []
@@ -45,12 +45,19 @@ register::register_bitfields! {u32,
 pub const PMCNTENSET: PMCNTENSETAccessor = PMCNTENSETAccessor;
 pub struct PMCNTENSETAccessor;
 
-impl register::cpu::RegisterReadWrite<u32, PMCNTENSET::Register> for PMCNTENSETAccessor {
+impl tock_registers::interfaces::Readable for PMCNTENSETAccessor {
+    type T = u32;
+    type R = PMCNTENSET::Register;
     sys_coproc_read_raw!(u32, [p15, c9, 0, c12, 1]);
+}
+
+impl tock_registers::interfaces::Writeable for PMCNTENSETAccessor {
+    type T = u32;
+    type R = PMCNTENSET::Register;
     sys_coproc_write_raw!(u32, [p15, c9, 0, c12, 1]);
 }
 
-register::register_bitfields! {u32,
+tock_registers::register_bitfields! {u32,
     pub PMCR [
         /// Clock divider.
         D OFFSET(3) NUMBITS(1) [
@@ -66,8 +73,15 @@ register::register_bitfields! {u32,
 pub const PMCR: PMCRAccessor = PMCRAccessor;
 pub struct PMCRAccessor;
 
-impl register::cpu::RegisterReadWrite<u32, PMCR::Register> for PMCRAccessor {
+impl tock_registers::interfaces::Readable for PMCRAccessor {
+    type T = u32;
+    type R = PMCR::Register;
     sys_coproc_read_raw!(u32, [p15, c9, 0, c12, 0]);
+}
+
+impl tock_registers::interfaces::Writeable for PMCRAccessor {
+    type T = u32;
+    type R = PMCR::Register;
     sys_coproc_write_raw!(u32, [p15, c9, 0, c12, 0]);
 }
 
@@ -75,7 +89,14 @@ impl register::cpu::RegisterReadWrite<u32, PMCR::Register> for PMCRAccessor {
 pub const PMCCNTR: PMCCNTRAccessor = PMCCNTRAccessor;
 pub struct PMCCNTRAccessor;
 
-impl register::cpu::RegisterReadWrite<u32, ()> for PMCCNTRAccessor {
+impl tock_registers::interfaces::Readable for PMCCNTRAccessor {
+    type T = u32;
+    type R = ();
     sys_coproc_read_raw!(u32, [p15, c9, 0, c13, 0]);
+}
+
+impl tock_registers::interfaces::Writeable for PMCCNTRAccessor {
+    type T = u32;
+    type R = ();
     sys_coproc_write_raw!(u32, [p15, c9, 0, c13, 0]);
 }
