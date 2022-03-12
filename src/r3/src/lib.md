@@ -9,7 +9,7 @@ body.theme-dark h1 img:nth-of-type(1) { filter: brightness(8) hue-rotate(-120deg
 body.theme-ayu h1 img:nth-of-type(1) { filter: brightness(8) hue-rotate(-120deg) invert(90%) saturate(2.8) brightness(0.9); }
 </style>
 
-**R3-OS** (or simply **R3**) is a proof-of-concept of a static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation).
+**R3-OS** (or simply **R3**) is an experimental static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation) and const traits to decouple kernel interfaces from implementation.
 
 - **All kernel objects are defined statically** for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.
 - A kernel and its configurator **don't require an external build tool or a specialized procedural macro**, maintaining transparency and inter-crate composability.
