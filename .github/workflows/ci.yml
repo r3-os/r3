@@ -303,12 +303,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { ty: arm, runner_target: nucleo_f401re, runner_args: "" }
-          - { ty: arm, runner_target: gr_peach, runner_args: "" }
-          - { ty: arm, runner_target: rp_pico, runner_args: "" }
+          - { ty: arm, runner_target: nucleo_f401re, runner_args: "", bench: "bench" }
+          - { ty: arm, runner_target: gr_peach, runner_args: "", bench: "bench" }
+          - { ty: arm, runner_target: rp_pico, runner_args: "", bench: "bench" }
 
-          - { ty: riscv, runner_target: red_v, runner_args: "" }
-          - { ty: riscv, runner_target: maix, runner_args: "" }
+          - { ty: riscv, runner_target: red_v, runner_args: "", bench: "bench" }
+          - { ty: riscv, runner_target: maix, runner_args: "", bench: "bench" }
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -346,3 +346,8 @@ jobs:
       - name: Build tests
         run: |
           cargo r3test --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --norun basic
+
+      - name: Build benchmark tests
+        if: matrix.bench == 'bench'  # Benchmark support is optional
+        run: |
+          cargo r3test --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} --norun -b semaphore
