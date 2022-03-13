@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-<strong>Experimental RTOS powered by CTFE and generics, for deeply embedded systems</strong>
+<strong>Experimental static component-oriented RTOS for deeply embedded systems</strong>
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 - **Bindings** are a statically-defined storage with runtime initialization and configuration-time borrow checking. They can be bound to tasks and other objects to provide safe mutable access.
 
-- The utility library includes safe container types such as **`Mutex`** and **`RecursiveMutex`**, which are built upon low-level synchronization primitives.
+- Procedural kernel configuration facilitates **componentization**. The utility library includes safe container types such as **`Mutex`** and **`RecursiveMutex`**, which are built upon low-level synchronization primitives.
 
 [the priority ceiling protocol]: https://en.wikipedia.org/wiki/Priority_ceiling_protocol
 
@@ -92,6 +92,7 @@ struct Objects {
 // Instantiate the kernel, allocate object IDs
 const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Objects);
 
+/// Root configuration
 const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
     System::configure_systick(b);
 
