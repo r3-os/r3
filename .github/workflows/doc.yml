@@ -5,7 +5,7 @@ on:
 
 jobs:
   check:
-    name: Build and Deploy Docs
+    name: Build and deploy docs
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -23,27 +23,27 @@ jobs:
           # [ref:doc_global_styling]
           echo "RUSTDOCFLAGS=--html-in-header `pwd`/src/r3/src/common.md" >> $GITHUB_ENV
 
-      - name: Build Documentation
+      - name: Build API documentation
         uses: actions-rs/cargo@v1
         with:
           command: doc
           # Documentate all published packages with all features enabled [tag:doc_all_features]
           args: -p r3_port_std -p r3_port_arm -p r3_port_arm_m -p r3_port_riscv -p r3_support_rp2040 -p r3_support_rza1 -p r3_portkit -p r3_kernel -p r3 -p r3_core --all-features
 
-      - name: Replace the non-local crate documentation with redirect pages to docs.rs
+      - name: Redirect non-local crate documentation to docs.rs
         run: deno run -A scripts/externalize-non-local-docs.ts -y
 
-      - name: Check the generated documentation
+      - name: Check output
         run: |
           # Don't fail the pipeline on errors because they are mostly minor
           deno run --allow-read scripts/check-doc.ts || true
 
-      - name: Generate Badge
+      - name: Generate badge
         run: |
           rev=`git show-ref --head HEAD | cut -b 1-7`
           wget -nv -O target/doc/badge.svg "https://img.shields.io/badge/docs-$rev-ok?style=for-the-badge"
 
-      - name: Collect Output
+      - name: Collect output
         run: |
           mkdir output
           mv target/doc output
@@ -64,14 +64,14 @@ jobs:
           single-commit: true
 
       # Otherwise, put it on the Actions page to allow download
-      - name: Archive the generated documentation
+      - name: Archive output
         if: github.ref != 'refs/heads/🦆'
         # use tar + compressor for faster upload and smaller artifact size
         run: |
           cd output
           tar -cv doc | xz > r3-api-docs.tar.xz
 
-      - name: Upload the generated documentation as an artifact
+      - name: Upload output as artifact
         uses: actions/upload-artifact@v2
         if: github.ref != 'refs/heads/🦆'
         with:

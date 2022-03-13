@@ -6,7 +6,7 @@ on:
 jobs:
   # Report the binary size of the test suite
   size-freestanding:
-    name: Test
+    name: Build and report size
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     strategy:
