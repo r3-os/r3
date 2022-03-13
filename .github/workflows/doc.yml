@@ -47,11 +47,12 @@ jobs:
         run: |
           mkdir output
           mv target/doc output
-          touch output/.nojekyll
 
-      - name: Copy Image
+      - name: Copy assets
         run: |
           cp doc/logo-small.svg output
+          wget -nv -O output/404.html "https://r3-os.github.io/404.html"
+          touch output/.nojekyll
 
       # If we are on the main branch, deploy it to the website
       - name: Deploy to GitHub Pages
