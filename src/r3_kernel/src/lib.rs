@@ -74,6 +74,10 @@ pub extern crate arrayvec;
 #[doc(hidden)]
 pub extern crate r3_core;
 
+#[cfg(doc)]
+#[doc = include_str!("../CHANGELOG.md")]
+pub mod _changelog_ {}
+
 pub mod utils;
 
 #[cfg(feature = "priority_boost")]
