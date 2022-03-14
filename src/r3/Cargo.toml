@@ -4,7 +4,9 @@ version = "0.1.3"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-description = "Static RTOS API testing the limit of Rust's const eval and generics"
+description = """
+R3-OS: Experimental static component-oriented RTOS for deeply embedded systems
+"""
 categories = ["embedded", "no-std"]
 keywords = ["r3", "rtos"]
 repository = "https://github.com/r3-os/r3"

@@ -3,7 +3,7 @@ name = "r3_port_std"
 version = "0.1.3"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Simulation environment for running R3 on a hosted environment"
+description = "Simulator port for the R3-OS original kernel"
 keywords = ["r3", "simulator"]
 repository = "https://github.com/r3-os/r3"
 
