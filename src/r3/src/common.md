@@ -26,6 +26,8 @@ body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
     width: 40%;
     min-width: 280px;
     border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
 }
 .toc-header + ul::before {
     content: "Contents";
