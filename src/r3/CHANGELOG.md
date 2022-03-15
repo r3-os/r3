@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-**The design has been wholly revamped!** `r3_core` defines the interface between an application and a kernel implementation. `r3` re-exports most of `r3_core` and provides additional items. The current kernel implementation has been moved to `r3_kernel`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
+## [0.2.0] - 2022-03-15
+
+**The design has been wholly revamped!** `r3_core ^0.1` defines the interface between an application and a kernel implementation. `r3` re-exports most of `r3_core` and provides additional items. The current kernel implementation has been moved to `r3_kernel 0.1.0`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
 
 ### Changed
 
@@ -60,7 +62,8 @@ This release only includes changes to the documentation.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3@0.1.3...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3@0.2.0...HEAD
+[0.2.0]: https://github.com/r3-os/r3/compare/r3@0.1.3...r3@0.2.0
 [0.1.3]: https://github.com/r3-os/r3/compare/r3@0.1.2...r3@0.1.3
 [0.1.2]: https://github.com/r3-os/r3/compare/r3@0.1.1...r3@0.1.2
 [0.1.1]: https://github.com/r3-os/r3/compare/r3@0.1.0...r3@0.1.1

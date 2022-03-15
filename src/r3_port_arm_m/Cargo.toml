@@ -1,6 +1,6 @@
 [package]
 name = "r3_port_arm_m"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Cortex-M port for the R3-OS original kernel"
@@ -15,8 +15,8 @@ preload-registers = []
 doc = []
 
 [dependencies]
-r3_portkit = { version = "0.1.1", path = "../r3_portkit" }
-r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
+r3_portkit = { version = "0.2.0", path = "../r3_portkit" }
+r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
 r3_core = { version = "0.1.0", path = "../r3_core" }
 
 memoffset = { version = "0.6.5", features = ["unstable_const"] }

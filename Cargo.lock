@@ -1722,7 +1722,7 @@ checksum = "bd7a31eed1591dcbc95d92ad7161908e72f4677f8fabf2a32ca49b4237cbf211"
 
 [[package]]
 name = "r3"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "embed-doc-image",
  "macropol",
@@ -1848,7 +1848,7 @@ dependencies = [
 
 [[package]]
 name = "r3_kernel"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -1869,7 +1869,7 @@ dependencies = [
 
 [[package]]
 name = "r3_port_arm"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "macropol",
  "memoffset",
@@ -1882,7 +1882,7 @@ dependencies = [
 
 [[package]]
 name = "r3_port_arm_m"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "cortex-m 0.7.4",
  "cortex-m-rt",
@@ -1930,7 +1930,7 @@ dependencies = [
 
 [[package]]
 name = "r3_port_riscv"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "r3_core",
  "r3_kernel",
@@ -1965,7 +1965,7 @@ dependencies = [
 
 [[package]]
 name = "r3_port_std"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "atomic_ref",
  "env_logger",
@@ -1985,7 +1985,7 @@ dependencies = [
 
 [[package]]
 name = "r3_portkit"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "env_logger",
  "itertools 0.10.1",
@@ -2001,7 +2001,7 @@ dependencies = [
 
 [[package]]
 name = "r3_support_rp2040"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "cortex-m 0.7.4",
  "embedded-hal",
@@ -2018,7 +2018,7 @@ dependencies = [
 
 [[package]]
 name = "r3_support_rza1"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "embedded-hal",
  "nb 1.0.0",

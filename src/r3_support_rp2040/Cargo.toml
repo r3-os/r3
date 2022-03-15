@@ -1,6 +1,6 @@
 [package]
 name = "r3_support_rp2040"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Supporting package for running R3-OS on RP2040"
@@ -23,9 +23,9 @@ semver-exempt = [
 doc = []
 
 [dependencies]
-r3_port_arm_m = { version = "0.2.0", path = "../r3_port_arm_m" }
-r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
-r3 = { version = "0.1.0", path = "../r3" }
+r3_port_arm_m = { version = "0.3.0", path = "../r3_port_arm_m" }
+r3_portkit = { version = "0.2.0", path = "../r3_portkit" }
+r3 = { version = "0.2.0", path = "../r3" }
 
 embedded-hal = { version = "0.2.4", optional = true }
 usbd-serial = { version = "0.1.1", optional = true }

@@ -1,6 +1,6 @@
 [package]
 name = "r3_portkit"
-version = "0.1.3"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Utilities for writing a port of R3"
@@ -13,7 +13,7 @@ repository = "https://github.com/r3-os/r3"
 doc = ["svgbobdoc/enable"]
 
 [dependencies]
-r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
+r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
 r3_core = { version = "0.1.0", path = "../r3_core" }
 
 num-rational = { version = "0.4.0", default-features = false }

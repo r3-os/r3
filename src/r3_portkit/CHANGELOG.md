@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] - 2022-03-15
+
 ### Changed
 
+- **Breaking:** Adjusted for the new design of R3-OS (separation between interface and implementation). Supports `r3_kernel ^0.1`.
 - **Breaking:** `sym_static!` was redesigned to address multiple issues.
 
 ## [0.1.3] - 2021-10-29
@@ -35,7 +38,8 @@ This release only includes changes to the documentation.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.3...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_portkit@0.2.0...HEAD
+[0.2.0]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.3...r3_portkit@0.2.0
 [0.1.3]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.2...r3_portkit@0.1.3
 [0.1.2]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.1...r3_portkit@0.1.2
 [0.1.1]: https://github.com/r3-os/r3/compare/r3_portkit@0.1.0...r3_portkit@0.1.1

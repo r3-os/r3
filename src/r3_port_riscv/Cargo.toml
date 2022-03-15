@@ -1,6 +1,6 @@
 [package]
 name = "r3_port_riscv"
-version = "0.1.3"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "RISC-V port for the R3-OS original kernel"
@@ -17,8 +17,8 @@ preload-registers = []
 doc = ["svgbobdoc/enable"]
 
 [dependencies]
-r3_portkit = { version = "0.1.1", path = "../r3_portkit" }
-r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
+r3_portkit = { version = "0.2.0", path = "../r3_portkit" }
+r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
 r3_core = { version = "0.1.0", path = "../r3_core" }
 
 tock-registers = { version = "0.7.0" }

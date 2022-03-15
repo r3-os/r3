@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-03-15
+
+### Changed
+
+- **Breaking:** Adjusted for the new design of R3-OS (separation between interface and implementation). Supports `r3_kernel ^0.1`.
+
 ### Fixed
 
 - The default stack alignment (`PortThreading::STACK_ALIGN`) now conforms to the architectural requirement (double-word alignment).
@@ -35,7 +41,8 @@ This release only includes changes to the documentation.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.2.1...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.3.0...HEAD
+[0.3.0]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.2.1...r3_port_arm_m@0.3.0
 [0.2.1]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.2.0...r3_port_arm_m@0.2.1
 [0.2.0]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.1.1...r3_port_arm_m@0.2.0
 [0.1.1]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.1.0...r3_port_arm_m@0.1.1

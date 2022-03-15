@@ -1,6 +1,6 @@
 [package]
 name = "r3_support_rza1"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Supporting package for running R3-OS on Renesas RZ/A1"
@@ -21,10 +21,10 @@ semver-exempt = [
 doc = []
 
 [dependencies]
-r3_port_arm = { version = "0.1.0", path = "../r3_port_arm" }
-r3_portkit = { version = "0.1.0", path = "../r3_portkit" }
-r3_kernel = { version = "0.0.0", path = "../r3_kernel" }
-r3 = { version = "0.1.0", path = "../r3" }
+r3_port_arm = { version = "0.2.0", path = "../r3_port_arm" }
+r3_portkit = { version = "0.2.0", path = "../r3_portkit" }
+r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
+r3 = { version = "0.2.0", path = "../r3" }
 
 embedded-hal = { version = "0.2.4", optional = true }
 rza1 = { version = "0.2.0", features = ["ostm"] }

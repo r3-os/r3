@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] - 2022-03-15
+
 ### Changed
 
+- **Breaking:** Adjusted for the new design of R3-OS (separation between interface and implementation). Supports `r3_port_arm_m ^0.3`.
 - [`rp2040-pac ^0.3`](https://crates.io/crates/rp2040-pac) replaces [`rp2040 ^0.1`](https://crates.io/crates/rp2040) as the RP2040 peripheral access crate used by `r3_support_rp2040`.
 
 ## [0.1.1] - 2021-10-29
@@ -19,5 +22,6 @@ This release only includes changes to the documentation.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.1.1...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.2.0...HEAD
+[0.2.0]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.1.1...r3_support_rp2040@0.2.0
 [0.1.1]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.1.0...r3_support_rp2040@0.1.1
