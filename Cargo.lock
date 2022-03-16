@@ -931,18 +931,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.8.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
+checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
 dependencies = [
  "either",
 ]
@@ -991,9 +982,9 @@ checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
 
 [[package]]
 name = "jss"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ca5d39d462748cf0ef8dbfc43e65ad01f18c7bbfc6a2f07fa15cda400d67da1"
+checksum = "cc38abf8a418e6f9224344987cf806abc88353f4f6dab7f11b90a0ec7de2c913"
 dependencies = [
  "json",
  "log",
@@ -1035,6 +1026,12 @@ name = "libc"
 version = "0.2.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b2f96d100e1cf1929e7719b7edb3b90ab5298072638fccd77be9ce942ecdfce"
+
+[[package]]
+name = "libm"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33a33a362ce288760ec6a508b94caaec573ae7d3bbbd91b87aa0bad4456839db"
 
 [[package]]
 name = "libudev"
@@ -1213,18 +1210,18 @@ dependencies = [
 
 [[package]]
 name = "mt-dom"
-version = "0.12.3"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b42ad42c45bbb275a35bc5c87d1bf79dc503af6a57925e843c1e476fbba0aff"
+checksum = "603dc1f08675ddd350dd58e0da3f2bc37a5b8114b8aeadf001361a2e3130bd7d"
 dependencies = [
  "log",
 ]
 
 [[package]]
 name = "nalgebra"
-version = "0.29.0"
+version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d506eb7e08d6329505faa8a3a00a5dcc6de9f76e0c77e4b75763ae3c770831ff"
+checksum = "4fb2d0de08694bed883320212c18ee3008576bfe8c306f4c3c4a58b4876998be"
 dependencies = [
  "approx",
  "matrixmultiply",
@@ -1404,6 +1401,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -1473,9 +1471,9 @@ dependencies = [
 
 [[package]]
 name = "parry2d"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e03714e76fd6708c1fa3fc4f58a66dabd723bb87865548657a037beaf9a8eea"
+checksum = "65289d4e196cfaca6643766c0d7288997f3b4cee99eba4cdcc28c1dcb8bf2450"
 dependencies = [
  "approx",
  "arrayvec",
@@ -1988,7 +1986,7 @@ name = "r3_portkit"
 version = "0.2.0"
 dependencies = [
  "env_logger",
- "itertools 0.10.1",
+ "itertools",
  "log",
  "num-integer",
  "num-rational 0.4.0",
@@ -2041,7 +2039,7 @@ dependencies = [
  "env_logger",
  "futures-core",
  "goblin",
- "itertools 0.10.1",
+ "itertools",
  "lazy_static",
  "log",
  "pin-utils",
@@ -2407,9 +2405,9 @@ dependencies = [
 
 [[package]]
 name = "sauron"
-version = "0.43.10"
+version = "0.45.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fcc1e84253bc7a1b26e6e357a4b6200cce6169fa29bbc484bf6ebc16f8bfc45"
+checksum = "4e303e5d713c95a169639a729f2f6909128d1e63ad1ad6cc3723b939df57e14a"
 dependencies = [
  "cfg-if 0.1.10",
  "sauron-core",
@@ -2417,9 +2415,9 @@ dependencies = [
 
 [[package]]
 name = "sauron-core"
-version = "0.43.10"
+version = "0.45.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbbf279de93728dd05fd539058660b04d2696c7ba4ad5c3d59b249b2b68dedeb"
+checksum = "663ff99c3e833b00adda36212cafc6756f4509e0bbae89ddf18de30fec41b846"
 dependencies = [
  "cfg-if 0.1.10",
  "doc-comment",
@@ -2569,9 +2567,9 @@ dependencies = [
 
 [[package]]
 name = "simba"
-version = "0.6.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0b7840f121a46d63066ee7a99fc81dcabbc6105e437cae43528cea199b5a05f"
+checksum = "13a2609e876d4f77f6ab7ff5254fc39b4f1927ba8e6db3d18be7c32534d3725e"
 dependencies = [
  "approx",
  "num-complex",
@@ -2659,11 +2657,11 @@ checksum = "a1206d132b55a9c93e12b7e6f9044a27b563a8dea3a39d9bc1764d613a7dd3fa"
 
 [[package]]
 name = "svgbob"
-version = "0.6.2"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d4aa7d78fdb6c1ee281c82c2d0073272a9bc2178df029b2b056e2c41ad357d4"
+checksum = "516af6ab2f505bd7805e91da84141b25d23d41fc3088dcb2c49614cf1b019524"
 dependencies = [
- "itertools 0.8.2",
+ "itertools",
  "lazy_static",
  "log",
  "nalgebra",
@@ -2675,9 +2673,9 @@ dependencies = [
 
 [[package]]
 name = "svgbobdoc"
-version = "0.3.0-alpha.4"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9908df7c9f79a14455632526a64d45bc7b9b7279de7f9731d7fc668480890ccd"
+checksum = "f2c04b93fc15d79b39c63218f15e3fdffaa4c227830686e3b7c5f41244eb3e50"
 dependencies = [
  "base64",
  "proc-macro2",
