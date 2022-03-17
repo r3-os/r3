@@ -78,7 +78,7 @@ r3_port_riscv = { path = "../r3_port_riscv", optional = true }
 r3_portkit = { path = "../r3_portkit", optional = true }
 r3 = { path = "../r3", optional = true }
 
-rtt-target = { version = "0.2.0", optional = true }
+rtt-target = { version = "0.3.0", optional = true, features = ["riscv"] }
 e310x-hal = { version = "0.9.0", optional = true, features = ["g002"] }
 k210-hal = { version = "0.2.0", optional = true }
 riscv-rt = { version = ">= 0.6.0, < 0.9.0", optional = true }

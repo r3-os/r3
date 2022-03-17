@@ -1420,7 +1420,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ab67bc881453e4c90f958c657c1303670ea87bc1a16e87fd71a40f656dce9"
 dependencies = [
  "cortex-m 0.7.4",
- "rtt-target 0.3.1",
+ "rtt-target",
 ]
 
 [[package]]
@@ -1728,7 +1728,7 @@ dependencies = [
  "r3_kernel",
  "r3_port_arm",
  "r3_support_rza1",
- "rtt-target 0.2.2",
+ "rtt-target",
  "rza1",
 ]
 
@@ -1742,7 +1742,7 @@ dependencies = [
  "r3",
  "r3_kernel",
  "r3_port_arm_m",
- "rtt-target 0.2.2",
+ "rtt-target",
 ]
 
 [[package]]
@@ -1863,7 +1863,7 @@ dependencies = [
  "r3_support_rp2040",
  "r3_test_suite",
  "rp2040-pac",
- "rtt-target 0.2.2",
+ "rtt-target",
 ]
 
 [[package]]
@@ -1915,7 +1915,7 @@ dependencies = [
  "riscv 0.5.6",
  "riscv 0.7.0",
  "riscv-rt 0.6.2",
- "rtt-target 0.2.2",
+ "rtt-target",
 ]
 
 [[package]]
@@ -2275,20 +2275,12 @@ dependencies = [
 
 [[package]]
 name = "rtt-target"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0869b4c5b6a6d8c5583fc473f9eb3423a170f77626b8c8a7fb18eddcda5770e2"
-dependencies = [
- "cortex-m 0.6.7",
- "ufmt-write",
-]
-
-[[package]]
-name = "rtt-target"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "065d6058bb1204f51a562a67209e1817cf714759d5cf845aa45c75fa7b0b9d9b"
 dependencies = [
+ "cortex-m 0.7.4",
+ "riscv 0.6.0",
  "ufmt-write",
 ]
 
