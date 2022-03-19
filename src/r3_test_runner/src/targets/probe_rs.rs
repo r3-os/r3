@@ -353,16 +353,12 @@ impl AsyncBufRead for ReadRtt {
 
         loop {
             match &mut this.st {
-                ReadRttSt::Idle { pos, len, .. } => {
-                    if *pos == *len {
+                &mut ReadRttSt::Idle { pos, len, .. } => {
+                    if pos == len {
                         // Buffer is empty; start reading RTT channels
-                        let (mut buf, mut rtt, mut session) =
-                            match replace(&mut this.st, ReadRttSt::Invalid) {
-                                ReadRttSt::Idle {
-                                    buf, rtt, session, ..
-                                } => (buf, rtt, session),
-                                _ => unreachable!(),
-                            };
+                        let ReadRttSt::Idle { mut buf, mut rtt, mut session, .. } =
+                            replace(&mut this.st, ReadRttSt::Invalid)
+                        else { unreachable!() };
 
                         let halt_on_access = this.options.halt_on_access;
 
@@ -386,11 +382,8 @@ impl AsyncBufRead for ReadRtt {
                         //
                         // Borrow `this.st` again, this time using the full
                         // lifetime of `self`.
-                        if let ReadRttSt::Idle { buf, pos, len, .. } = &this.st {
-                            return Poll::Ready(Ok(&buf[..*len][*pos..]));
-                        } else {
-                            unreachable!()
-                        }
+                        let ReadRttSt::Idle { buf, .. } = &this.st else { unreachable!() };
+                        return Poll::Ready(Ok(&buf[..len][pos..]));
                     }
                 }
 
@@ -423,12 +416,9 @@ impl AsyncBufRead for ReadRtt {
                 ReadRttSt::PollDelay { delay, .. } => {
                     ready!(delay.as_mut().poll(cx));
 
-                    let (buf, rtt, session) = match replace(&mut this.st, ReadRttSt::Invalid) {
-                        ReadRttSt::PollDelay {
-                            buf, rtt, session, ..
-                        } => (buf, rtt, session),
-                        _ => unreachable!(),
-                    };
+                    let ReadRttSt::PollDelay { buf, rtt, session, .. } =
+                        replace(&mut this.st, ReadRttSt::Invalid)
+                    else { unreachable!() };
 
                     this.st = ReadRttSt::Idle {
                         buf,
@@ -445,13 +435,9 @@ impl AsyncBufRead for ReadRtt {
     }
 
     fn consume(mut self: Pin<&mut Self>, amt: usize) {
-        match &mut self.st {
-            ReadRttSt::Idle { pos, len, .. } => {
-                *pos += amt;
-                assert!(*pos <= *len);
-            }
-            _ => unreachable!(),
-        }
+        let ReadRttSt::Idle { pos, len, .. } = &mut self.st else { unreachable!() };
+        *pos += amt;
+        assert!(*pos <= *len);
     }
 }
 
