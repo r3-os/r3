@@ -190,17 +190,24 @@ pub async fn attach_rtt(
         let rtt_scan_region = rtt_scan_region.clone();
 
         let result = spawn_blocking(move || {
-            let _halt_guard = if halt_on_access {
-                Some(CoreHaltGuard::new(session.clone()).map_err(AttachRttError::HaltCore)?)
+            let mut session = session.lock().unwrap();
+            let memory_map = session.target().memory_map.clone();
+            let mut core = session.core(0).map_err(AttachRttError::HaltCore)?;
+            let halt_guard;
+            let core = if halt_on_access {
+                halt_guard = CoreHaltGuard::new(&mut core).map_err(AttachRttError::HaltCore)?;
+                &mut *halt_guard.core
             } else {
-                None
+                &mut core
             };
 
-            match probe_rs_rtt::Rtt::attach_region(session, &rtt_scan_region) {
-                Ok(rtt) => Ok(Some(rtt)),
-                Err(probe_rs_rtt::Error::ControlBlockNotFound) => Ok(None),
-                Err(e) => Err(AttachRttError::AttachRtt(e)),
-            }
+            let result = match probe_rs_rtt::Rtt::attach_region(core, &memory_map, &rtt_scan_region)
+            {
+                Ok(rtt) => Some(rtt),
+                Err(probe_rs_rtt::Error::ControlBlockNotFound) => None,
+                Err(e) => return Err(AttachRttError::AttachRtt(e)),
+            };
+            Ok(result)
         })
         .await
         .unwrap()?;
@@ -244,34 +251,20 @@ fn find_rtt_symbol(elf_bytes: &[u8]) -> Option<u64> {
 }
 
 /// Halts the first core while this RAII guard is held.
-struct CoreHaltGuard(Arc<Mutex<probe_rs::Session>>);
+struct CoreHaltGuard<'a, 'probe> {
+    core: &'a mut probe_rs::Core<'probe>,
+}
 
-impl CoreHaltGuard {
-    fn new(session: Arc<Mutex<probe_rs::Session>>) -> Result<Self, probe_rs::Error> {
-        {
-            let mut session = session.lock().unwrap();
-            let mut core = session.core(0)?;
-            core.halt(std::time::Duration::from_millis(100))?;
-        }
-
-        Ok(Self(session))
+impl<'a, 'probe> CoreHaltGuard<'a, 'probe> {
+    fn new(core: &'a mut probe_rs::Core<'probe>) -> Result<Self, probe_rs::Error> {
+        core.halt(std::time::Duration::from_millis(100))?;
+        Ok(Self { core })
     }
 }
 
-impl Drop for CoreHaltGuard {
+impl Drop for CoreHaltGuard<'_, '_> {
     fn drop(&mut self) {
-        let mut session = self.0.lock().unwrap();
-        let mut core = match session.core(0) {
-            Ok(x) => x,
-            Err(e) => {
-                log::warn!(
-                    "Failed to get the core object while restarting the core (ignored): {:?}",
-                    e
-                );
-                return;
-            }
-        };
-        if let Err(e) = core.run() {
+        if let Err(e) = self.core.run() {
             log::warn!("Failed to restart the core (ignored): {:?}", e);
         }
     }
@@ -448,20 +441,27 @@ impl ReadRtt {
         buf: &mut [u8],
         halt_on_access: bool,
     ) -> tokio::io::Result<usize> {
-        let _halt_guard = if halt_on_access {
-            Some(
-                CoreHaltGuard::new(session)
-                    .map_err(|e| tokio::io::Error::new(tokio::io::ErrorKind::Other, e))?,
-            )
+        // FIXME: Hold the lock in `ReadRtt`; it's pointless to be able to have
+        // two instances of `ReadRtt` pointing to the same `Session` and
+        // performing interleaved reads
+        let mut session = session.lock().unwrap();
+        let mut core = session
+            .core(0)
+            .map_err(|e| tokio::io::Error::new(tokio::io::ErrorKind::Other, e))?;
+        let halt_guard;
+        let core = if halt_on_access {
+            halt_guard = CoreHaltGuard::new(&mut core)
+                .map_err(|e| tokio::io::Error::new(tokio::io::ErrorKind::Other, e))?;
+            &mut *halt_guard.core
         } else {
-            None
+            &mut core
         };
 
         let mut num_read_bytes = 0;
 
         for (i, channel) in rtt.up_channels().iter().enumerate() {
             let num_ch_read_bytes = channel
-                .read(buf)
+                .read(core, buf)
                 .map_err(|e| tokio::io::Error::new(tokio::io::ErrorKind::Other, e))?;
 
             if num_ch_read_bytes != 0 {
