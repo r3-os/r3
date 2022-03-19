@@ -19,15 +19,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - **Breaking:** Adjusted for the new design of R3-OS (separation between interface and implementation). Supports `r3_kernel ^0.1`.
+- Rename `use_timer!` → `use_mtime!`, `TimerOptions` → `MtimeOptions`
 
 ### Added
 
 - The new option `ThreadingOptions::PRIVILEGE_LEVEL` allows for running the kernel in other privilege levels than M-mode.
 - `use_sbi_timer!` can be used to install a timer driver based on [the RISC-V Supervisor Binary Interface](https://github.com/riscv-non-isa/riscv-sbi-doc).
-
-### Changed
-
-- Rename `use_timer!` → `use_mtime!`, `TimerOptions` → `MtimeOptions`
 
 ### Fixed
 
