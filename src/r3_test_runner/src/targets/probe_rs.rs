@@ -1,4 +1,5 @@
 use anyhow::Result;
+use async_mutex::{Mutex as AsyncMutex, MutexGuardArc as AsyncMutexGuard};
 use futures_core::ready;
 use std::{
     future::Future,
@@ -6,7 +7,7 @@ use std::{
     mem::replace,
     path::Path,
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::Arc,
     task::{Context, Poll},
     time::{Duration, Instant},
 };
@@ -60,7 +61,7 @@ impl Target for NucleoF401re {
 }
 
 struct ProbeRsDebugProbe {
-    session: Arc<Mutex<probe_rs::Session>>,
+    session: Arc<AsyncMutex<probe_rs::Session>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -86,7 +87,7 @@ impl ProbeRsDebugProbe {
     ) -> anyhow::Result<Self> {
         let probe = probe_rs::Probe::open(probe_sel).map_err(OpenError::OpenProbe)?;
 
-        let session = Arc::new(Mutex::new(
+        let session = Arc::new(AsyncMutex::new(
             probe.attach(target_sel).map_err(OpenError::Attach)?,
         ));
 
@@ -100,28 +101,29 @@ impl DebugProbe for ProbeRsDebugProbe {
         exe: &Path,
     ) -> Pin<Box<dyn Future<Output = Result<DynAsyncRead<'_>>> + '_>> {
         let exe = exe.to_owned();
-        let session = Arc::clone(&self.session);
 
         Box::pin(async move {
+            let mut session = self.session.lock_arc().await;
+
             // Flash the executable
             log::debug!("Flashing '{0}'", exe.display());
 
-            let session2 = Arc::clone(&session);
             let exe2 = exe.clone();
-            spawn_blocking(move || {
-                let mut session_lock = session2.lock().unwrap();
+            let mut session = spawn_blocking(move || {
                 probe_rs::flashing::download_file(
-                    &mut *session_lock,
+                    &mut *session,
                     &exe2,
                     probe_rs::flashing::Format::Elf,
-                )
+                )?;
+                Ok(session)
             })
             .await
             .unwrap()
             .map_err(RunError::Flash)?;
 
             // Reset the core
-            (session.lock().unwrap().core(0))
+            session
+                .core(0)
                 .map_err(RunError::Reset)?
                 .reset()
                 .map_err(RunError::Reset)?;
@@ -152,7 +154,7 @@ pub struct RttOptions {
 }
 
 pub async fn attach_rtt(
-    session: Arc<Mutex<probe_rs::Session>>,
+    mut session: AsyncMutexGuard<probe_rs::Session>,
     exe: &Path,
     options: RttOptions,
 ) -> Result<DynAsyncRead<'static>, AttachRttError> {
@@ -185,32 +187,32 @@ pub async fn attach_rtt(
     // Attach to RTT
     let start = Instant::now();
     let rtt = loop {
-        let session = session.clone();
         let halt_on_access = options.halt_on_access;
         let rtt_scan_region = rtt_scan_region.clone();
 
-        let result = spawn_blocking(move || {
-            let mut session = session.lock().unwrap();
+        let (result, session2) = spawn_blocking(move || {
             let memory_map = session.target().memory_map.clone();
-            let mut core = session.core(0).map_err(AttachRttError::HaltCore)?;
-            let halt_guard;
-            let core = if halt_on_access {
-                halt_guard = CoreHaltGuard::new(&mut core).map_err(AttachRttError::HaltCore)?;
-                &mut *halt_guard.core
-            } else {
-                &mut core
-            };
+            let result = {
+                let mut core = session.core(0).map_err(AttachRttError::HaltCore)?;
+                let halt_guard;
+                let core = if halt_on_access {
+                    halt_guard = CoreHaltGuard::new(&mut core).map_err(AttachRttError::HaltCore)?;
+                    &mut *halt_guard.core
+                } else {
+                    &mut core
+                };
 
-            let result = match probe_rs_rtt::Rtt::attach_region(core, &memory_map, &rtt_scan_region)
-            {
-                Ok(rtt) => Some(rtt),
-                Err(probe_rs_rtt::Error::ControlBlockNotFound) => None,
-                Err(e) => return Err(AttachRttError::AttachRtt(e)),
+                match probe_rs_rtt::Rtt::attach_region(core, &memory_map, &rtt_scan_region) {
+                    Ok(rtt) => Some(rtt),
+                    Err(probe_rs_rtt::Error::ControlBlockNotFound) => None,
+                    Err(e) => return Err(AttachRttError::AttachRtt(e)),
+                }
             };
-            Ok(result)
+            Ok((result, session))
         })
         .await
         .unwrap()?;
+        session = session2;
 
         if let Some(rtt) = result {
             break rtt;
@@ -271,7 +273,6 @@ impl Drop for CoreHaltGuard<'_, '_> {
 }
 
 struct ReadRtt {
-    session: Arc<Mutex<probe_rs::Session>>,
     options: RttOptions,
     st: ReadRttSt,
 }
@@ -281,6 +282,7 @@ enum ReadRttSt {
     /// `<ReadRtt as AsyncRead>`.
     Idle {
         buf: ReadRttBuf,
+        session: AsyncMutexGuard<probe_rs::Session>,
         rtt: Box<probe_rs_rtt::Rtt>,
         pos: usize,
         len: usize,
@@ -288,12 +290,20 @@ enum ReadRttSt {
 
     /// `ReadRtt` is currently fetching new data from RTT channels.
     Read {
-        join_handle: JoinHandle<tokio::io::Result<(ReadRttBuf, usize, Box<probe_rs_rtt::Rtt>)>>,
+        join_handle: JoinHandle<
+            tokio::io::Result<(
+                ReadRttBuf,
+                AsyncMutexGuard<probe_rs::Session>,
+                usize,
+                Box<probe_rs_rtt::Rtt>,
+            )>,
+        >,
     },
 
     /// `ReadRtt` is waiting for some time before trying reading again.
     PollDelay {
         buf: ReadRttBuf,
+        session: AsyncMutexGuard<probe_rs::Session>,
         rtt: Box<probe_rs_rtt::Rtt>,
         delay: Pin<Box<Sleep>>,
     },
@@ -305,15 +315,15 @@ type ReadRttBuf = Box<[u8; 1024]>;
 
 impl ReadRtt {
     fn new(
-        session: Arc<Mutex<probe_rs::Session>>,
+        session: AsyncMutexGuard<probe_rs::Session>,
         rtt: probe_rs_rtt::Rtt,
         options: RttOptions,
     ) -> Self {
         Self {
-            session,
             options,
             st: ReadRttSt::Idle {
                 buf: Box::new([0u8; 1024]),
+                session,
                 rtt: Box::new(rtt),
                 pos: 0,
                 len: 0,
@@ -346,22 +356,28 @@ impl AsyncBufRead for ReadRtt {
                 ReadRttSt::Idle { pos, len, .. } => {
                     if *pos == *len {
                         // Buffer is empty; start reading RTT channels
-                        let (mut buf, mut rtt) = match replace(&mut this.st, ReadRttSt::Invalid) {
-                            ReadRttSt::Idle { buf, rtt, .. } => (buf, rtt),
-                            _ => unreachable!(),
-                        };
+                        let (mut buf, mut rtt, mut session) =
+                            match replace(&mut this.st, ReadRttSt::Invalid) {
+                                ReadRttSt::Idle {
+                                    buf, rtt, session, ..
+                                } => (buf, rtt, session),
+                                _ => unreachable!(),
+                            };
 
                         let halt_on_access = this.options.halt_on_access;
-                        let session = this.session.clone();
 
                         // Reading RTT is a blocking operation, so do it in a
                         // separate thread
                         let join_handle = spawn_blocking(move || {
-                            let num_read_bytes =
-                                Self::read_inner(session, &mut rtt, &mut *buf, halt_on_access)?;
+                            let num_read_bytes = Self::read_inner(
+                                &mut session,
+                                &mut rtt,
+                                &mut *buf,
+                                halt_on_access,
+                            )?;
 
                             // Send the buffer back to the `ReadRtt`
-                            Ok((buf, num_read_bytes, rtt))
+                            Ok((buf, session, num_read_bytes, rtt))
                         });
 
                         this.st = ReadRttSt::Read { join_handle };
@@ -379,7 +395,7 @@ impl AsyncBufRead for ReadRtt {
                 }
 
                 ReadRttSt::Read { join_handle } => {
-                    let (buf, num_read_bytes, rtt) =
+                    let (buf, session, num_read_bytes, rtt) =
                         match ready!(Pin::new(join_handle).poll(cx)).unwrap() {
                             Ok(x) => x,
                             Err(e) => return Poll::Ready(Err(e)),
@@ -389,12 +405,14 @@ impl AsyncBufRead for ReadRtt {
                         // If no bytes were read, wait for a while and try again
                         ReadRttSt::PollDelay {
                             buf,
+                            session,
                             rtt,
                             delay: Box::pin(sleep(POLL_INTERVAL)),
                         }
                     } else {
                         ReadRttSt::Idle {
                             buf,
+                            session,
                             rtt,
                             pos: 0,
                             len: num_read_bytes,
@@ -405,13 +423,16 @@ impl AsyncBufRead for ReadRtt {
                 ReadRttSt::PollDelay { delay, .. } => {
                     ready!(delay.as_mut().poll(cx));
 
-                    let (buf, rtt) = match replace(&mut this.st, ReadRttSt::Invalid) {
-                        ReadRttSt::PollDelay { buf, rtt, .. } => (buf, rtt),
+                    let (buf, rtt, session) = match replace(&mut this.st, ReadRttSt::Invalid) {
+                        ReadRttSt::PollDelay {
+                            buf, rtt, session, ..
+                        } => (buf, rtt, session),
                         _ => unreachable!(),
                     };
 
                     this.st = ReadRttSt::Idle {
                         buf,
+                        session,
                         rtt,
                         pos: 0,
                         len: 0,
@@ -436,15 +457,11 @@ impl AsyncBufRead for ReadRtt {
 
 impl ReadRtt {
     fn read_inner(
-        session: Arc<Mutex<probe_rs::Session>>,
+        session: &mut probe_rs::Session,
         rtt: &mut probe_rs_rtt::Rtt,
         buf: &mut [u8],
         halt_on_access: bool,
     ) -> tokio::io::Result<usize> {
-        // FIXME: Hold the lock in `ReadRtt`; it's pointless to be able to have
-        // two instances of `ReadRtt` pointing to the same `Session` and
-        // performing interleaved reads
-        let mut session = session.lock().unwrap();
         let mut core = session
             .core(0)
             .map_err(|e| tokio::io::Error::new(tokio::io::ErrorKind::Other, e))?;
