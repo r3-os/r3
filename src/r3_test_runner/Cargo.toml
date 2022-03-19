@@ -11,8 +11,9 @@ r3_test_suite = { path = "../r3_test_suite", default-features = false }
 arg_enum_proc_macro = { version = "0.3.0" }
 aho-corasick = { version = "0.7.13" }
 futures-core = { version = "0.3.5" }
-probe-rs-rtt = { version = "0.11.0" }
+probe-rs-rtt = { version = "0.12.0" }
 tokio-serial = { version = "5.4.1" }
+async-mutex = { version = "1.4.0" }
 lazy_static = { version = "1.4.0" }
 env_logger = { version = "0.8.4" }
 serde_json = { version = "1.0.57" }
@@ -20,7 +21,7 @@ serialport = { version = "4.0.0" }
 itertools = { version = "0.10.0" }
 pin-utils = { version = "0.1.0" }
 thiserror = { version = "1.0.20" }
-probe-rs = { version = "0.11.0" }
+probe-rs = { version = "0.12.0" }
 tempdir = { version = "0.3.7" }
 anyhow = { version = "1.0.32" }
 serde = { version = "1.0.114" }
@@ -31,7 +32,7 @@ log = { version = "0.4.8" }
 crc = { version = "2.0.0" }
 
 [dependencies.goblin]
-version = "0.4.3"
+version = "0.5.0"
 default-features = false
 # FIXME: <https://github.com/m4b/goblin/issues/212> `elf64` isn't actually used
 features = ["std", "elf32", "elf64", "endian_fd"]

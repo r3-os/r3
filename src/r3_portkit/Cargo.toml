@@ -17,7 +17,7 @@ r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
 r3_core = { version = "0.1.0", path = "../r3_core" }
 
 num-rational = { version = "0.4.0", default-features = false }
-svgbobdoc = { version = "0.3.0-alpha.4" }
+svgbobdoc = { version = "0.3.0" }
 
 [dev-dependencies]
 quickcheck_macros = { version = "1.0.0" }

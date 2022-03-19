@@ -35,7 +35,7 @@ use usb_device::{
 };
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 use wio::{
-    hal::{clock::GenericClockController, gpio, usb::UsbBus},
+    hal::{self, clock::GenericClockController, gpio, usb::UsbBus},
     pac::{CorePeripherals, Peripherals},
     prelude::*,
     Pins, Sets,
@@ -262,10 +262,10 @@ fn init_hardware(
 
 type HardwareLateInitInput = (
     GenericClockController,
-    atsamd_hal::pac::MCLK,
+    hal::pac::MCLK,
     Option<wio_terminal::Display>,
-    atsamd_hal::gpio::Port,
-    Option<atsamd_hal::pac::SERCOM7>,
+    hal::gpio::Port,
+    Option<hal::pac::SERCOM7>,
 );
 
 fn init_hardware_late_task_body(
@@ -287,7 +287,7 @@ fn init_hardware_late_task_body(
 /// Implements `DelayMs` using `System::sleep`.
 struct DelayByKernel;
 
-impl atsamd_hal::hal::blocking::delay::DelayMs<u16> for DelayByKernel {
+impl hal::hal::blocking::delay::DelayMs<u16> for DelayByKernel {
     #[inline]
     fn delay_ms(&mut self, ms: u16) {
         System::sleep(r3::time::Duration::from_millis(ms as i32)).unwrap();

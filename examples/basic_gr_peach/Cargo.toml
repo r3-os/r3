@@ -10,5 +10,5 @@ r3_port_arm = { path = "../../src/r3_port_arm" }
 r3_kernel = { path = "../../src/r3_kernel", features = ["system_time"] }
 r3 = { path = "../../src/r3" }
 
-rtt-target = { version = "0.2.0" }
+rtt-target = { version = "0.3.0" }
 rza1 = { version = "0.2.0", features = ["cpg", "gpio", "scif"] }

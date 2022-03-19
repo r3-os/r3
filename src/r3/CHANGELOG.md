@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Upgrade `svgbobdoc` to `^0.3.0` to fix build failures in documentation build
+
 ## [0.2.0] - 2022-03-15
 
 **The design has been wholly revamped!** `r3_core ^0.1` defines the interface between an application and a kernel implementation. `r3` re-exports most of `r3_core` and provides additional items. The current kernel implementation has been moved to `r3_kernel 0.1.0`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.

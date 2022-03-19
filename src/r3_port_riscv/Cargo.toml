@@ -24,7 +24,7 @@ r3_core = { version = "0.1.0", path = "../r3_core" }
 tock-registers = { version = "0.7.0" }
 unstringify = { version = "0.1.4" }
 seq-macro = { version = "0.3.0" }
-svgbobdoc = { version = "0.3.0-alpha.4" }
+svgbobdoc = { version = "0.3.0" }
 riscv-rt = { version = ">= 0.6.0, < 0.9.0" }
 riscv = { version = ">= 0.5.0, < 0.8.0" }
 

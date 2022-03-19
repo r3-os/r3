@@ -271,12 +271,7 @@ macro_rules! instantiate_test {
                     }
                 };
 
-                unsafe {
-                    rtt_target::set_print_channel_cs(
-                        channels.up.0,
-                        &((|arg, f| f(arg)) as rtt_target::CriticalSectionFunc),
-                    )
-                };
+                rtt_target::set_print_channel(channels.up.0);
                 logger_rtt::init(channels.up.1);
             }).finish(b);
 

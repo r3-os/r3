@@ -1,11 +1,12 @@
 use anyhow::Result;
+use async_mutex::Mutex as AsyncMutex;
 use std::{
     fmt::Write,
     future::Future,
     io,
     path::Path,
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::Arc,
     task::{Context, Poll},
 };
 use tempdir::TempDir;
@@ -159,13 +160,13 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             let probe = probe_rs::Probe::open(selector).map_err(RunError::OpenProbe)?;
 
             let selector: probe_rs::config::TargetSelector = "riscv".try_into().unwrap();
-            let session = Arc::new(Mutex::new(
+            let session = Arc::new(AsyncMutex::new(
                 probe.attach(selector).map_err(RunError::Attach)?,
             ));
 
             // Open the RTT channels
             Ok(super::probe_rs::attach_rtt(
-                session,
+                session.try_lock_arc().unwrap(),
                 &exe,
                 super::probe_rs::RttOptions {
                     // The RISC-V External Debug Support specification 0.13 (to
