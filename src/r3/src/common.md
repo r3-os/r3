@@ -152,7 +152,7 @@ function initThemeMonitor() {
         document.body.classList.add(currentClassName);
     }
 
-    var match = themeStyle.href.match(/([a-z]+)\.css$/);
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
     var currentStyle = (match && match[1]) || "light";
     onApplyTheme(currentStyle);
 

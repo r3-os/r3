@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - Upgrade `svgbobdoc` to `^0.3.0` to fix build failures in documentation build
+- Improve rustdoc theme detection on docs.rs
 
 ## 0.1.0 - 2022-03-15
 
