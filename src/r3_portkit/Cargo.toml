@@ -1,6 +1,6 @@
 [package]
 name = "r3_portkit"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Utilities for writing a port of R3"

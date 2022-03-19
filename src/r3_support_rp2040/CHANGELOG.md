@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.1] - 2022-03-19
+
 ### Fixed
 
 - Improve rustdoc theme detection on docs.rs
@@ -26,6 +28,7 @@ This release only includes changes to the documentation.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.2.0...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.2.1...HEAD
+[0.2.1]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.2.0...r3_support_rp2040@0.2.1
 [0.2.0]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.1.1...r3_support_rp2040@0.2.0
 [0.1.1]: https://github.com/r3-os/r3/compare/r3_support_rp2040@0.1.0...r3_support_rp2040@0.1.1
