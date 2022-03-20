@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - **Breaking:** Adjusted for the new design of R3-OS (separation between interface and implementation). Supports `r3_port_arm_m ^0.3`.
+- **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-03-10`
 - [`rp2040-pac ^0.3`](https://crates.io/crates/rp2040-pac) replaces [`rp2040 ^0.1`](https://crates.io/crates/rp2040) as the RP2040 peripheral access crate used by `r3_support_rp2040`.
 
 ## [0.1.1] - 2021-10-29

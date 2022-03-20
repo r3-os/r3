@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.2.0] - 2022-03-15
 
-**The design has been wholly revamped!** `r3_core ^0.1` defines the interface between an application and a kernel implementation. `r3` re-exports most of `r3_core` and provides additional items. The current kernel implementation has been moved to `r3_kernel 0.1.0`. Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
+**The overall design has been revamped!** The original kernel implementation has been moved to a separate crate `r3_kernel`. `r3_core` harbors the interface definition for a kernel implementation, and `r3` provides additional useful items, such as a mutex-backed cell type (`StaticMutex`). Different kernel implementations that use more exotic architectures (such as interrupt-driven multi-threading) or are built on top on existing RTOSes may be added in the future.
 
 ### Changed
 
@@ -29,6 +29,7 @@ While much of the application-level API has retained its general shape, there ar
  - The `chrono` Cargo feature was renamed to `chrono_0p4`.
  - `r3::sync` is now gated by `cfg(feature = "sync")`.
  - `r3::sync::{Mutex, RecursiveMutex}` is now backed by bindings (`Bind`). The default value is now `<T as Default>::default()` instead of `<T as Init>::INIT`. Additional options are available, which means you no longer have to implement `Init` just to put a custom type in `Mutex`, and that each `Mutex` can have a distinct initial value.
+- **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-03-10`
 
 ### Added
 

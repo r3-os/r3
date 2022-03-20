@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - **Breaking:** Adjusted for the new design of R3-OS (separation between interface and implementation). Supports `r3_kernel ^0.1`.
 - Rename `use_timer!` → `use_mtime!`, `TimerOptions` → `MtimeOptions`
+- **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-03-10`
 
 ### Added
 
