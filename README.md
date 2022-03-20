@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-<a href="https://repl.it/@yvt/R3-Kernel-Hosted-Port#main.rs"><b>Try it on Repl.it</b></a>
+<a href="https://replit.com/@yvt/R3-OS-Hosted-Port?v=1#main.rs"><b>Try it on Repl.it</b></a>
 </p>
 
 **R3-OS** (or simply **R3**) is an experimental static RTOS that utilizes Rust's compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation) and const traits to decouple kernel interfaces from implementation.
