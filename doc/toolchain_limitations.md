@@ -376,21 +376,6 @@ const fn f(_: usize) {}
 ```
 
 
-### `[tag:const_slice_get]` `<[T]>::get` is not `const fn`
-
-```rust
-assert!(matches!(b"a".get(0), Some(b'a')));
-assert!(matches!(b"a".get(1), None));
-```
-
-```rust,compile_fail,E0015
-// `assert!` is used here due to [ref:const_assert_eq]
-// `matches!` is used here due to [ref:option_const_partial_eq]
-const _: () = assert!(matches!(b"a".get(0), Some(b'a')));
-const _: () = assert!(matches!(b"a".get(1), None));
-```
-
-
 ### `[tag:const_slice_sort_unstable]` `<[T]>::sort_unstable*` is not `const fn`
 
 ```rust
@@ -439,20 +424,6 @@ const fn identity<T>(x: T) -> T { x }
 // error[E0015]: cannot call non-const fn `Result::<(), ()>::map::<(), fn(())
 // {_doctest_main_lib_rs_452_0::identity::<()>}>` in constants
 const _: () = { Ok::<(), ()>(()).map(identity); };
-```
-
-
-### `[tag:const_slice_get_unchecked]` `<[T]>::get_unchecked` is not `const fn`
-
-```rust
-assert!(unsafe { *b"a".get_unchecked(0) } == b'a');
-```
-
-```rust,compile_fail,E0015
-// `assert!` is used here due to [ref:const_assert_eq]
-// error[E0015]: cannot call non-const fn `core::slice::<impl [u8]>::
-// get_unchecked::<usize>` in constants
-const _: () = assert!(unsafe { *b"a".get_unchecked(0) } == b'a');
 ```
 
 
@@ -658,30 +629,6 @@ assert!(matches!((2..4).next(), Some(2)));
 // error[E0277]: the trait bound `std::ops::Range<i32>: ~const Iterator` is not
 // satisfied
 const _: () = assert!(matches!((2..4).next(), Some(2)));
-```
-
-
-### `[tag:clone_from_default]` `Clone::clone_from` lacks `#[default_method_body_is_const]`
-
-When implementing `const Clone`, you can't use the provided implementation of `Clone::clone_from`.
-
-```rust
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-struct A;
-impl const Clone for A {
-    fn clone(&self) -> Self { A }
-    fn clone_from(&mut self, source: &Self) {}
-}
-```
-
-```rust,compile_fail
-#![feature(const_trait_impl)]
-struct A;
-impl const Clone for A {
-    fn clone(&self) -> Self { A }
-    // error: const trait implementations may not use non-const default functions
-}
 ```
 
 

@@ -193,10 +193,6 @@ impl const Clone for ConstAllocator {
             ref_count: self.ref_count,
         }
     }
-
-    fn clone_from(&mut self, source: &Self) {
-        *self = source.clone();
-    }
 }
 
 impl const Drop for ConstAllocator {

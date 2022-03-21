@@ -235,12 +235,6 @@ impl<System, T> const Clone for Bind<'_, System, T> {
     fn clone(&self) -> Self {
         *self
     }
-
-    // `clone_from` needed due to [ref:clone_from_default]
-    #[inline]
-    fn clone_from(&mut self, source: &Self) {
-        *self = *source;
-    }
 }
 
 /// A [binder][1] that gives `&T` to a bound function.
@@ -295,12 +289,6 @@ impl<System, T> const Clone for BindRef<System, T> {
     #[inline]
     fn clone(&self) -> Self {
         *self
-    }
-
-    // `clone_from` needed due to [ref:clone_from_default]
-    #[inline]
-    fn clone_from(&mut self, source: &Self) {
-        *self = *source;
     }
 }
 
