@@ -20,7 +20,7 @@ impl<'a, T> Hole<'a, T> {
     pub(super) const unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
         debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
-        let elt = unsafe { ptr::read(data.get_unchecked2(pos)) };
+        let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
         Hole {
             data,
             elt: ManuallyDrop::new(elt),
@@ -52,7 +52,7 @@ impl<'a, T> Hole<'a, T> {
     pub(super) const unsafe fn get(&self, index: usize) -> &T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
-        unsafe { self.data.get_unchecked2(index) }
+        unsafe { self.data.get_unchecked(index) }
     }
 
     /// Returns a mutable reference to the element at `index`.
@@ -62,7 +62,7 @@ impl<'a, T> Hole<'a, T> {
     pub(super) const unsafe fn get_mut(&mut self, index: usize) -> &mut T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
-        unsafe { self.data.get_unchecked_mut2(index) }
+        unsafe { self.data.get_unchecked_mut(index) }
     }
 
     /// Move hole to new location
@@ -73,8 +73,8 @@ impl<'a, T> Hole<'a, T> {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
         unsafe {
-            let index_ptr: *const _ = self.data.get_unchecked2(index);
-            let hole_ptr = self.data.get_unchecked_mut2(self.pos);
+            let index_ptr: *const _ = self.data.get_unchecked(index);
+            let hole_ptr = self.data.get_unchecked_mut(self.pos);
             ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
         }
         self.pos = index;
@@ -87,37 +87,7 @@ impl<T> const Drop for Hole<'_, T> {
         // fill the hole again
         unsafe {
             let pos = self.pos;
-            ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut2(pos), 1);
+            ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
         }
-    }
-}
-
-// `[T]::get_unchecked<usize>` is not `const fn` yet [ref:const_slice_get_unchecked]
-trait GetUnchecked {
-    type Element;
-    unsafe fn get_unchecked2(&self, i: usize) -> &Self::Element;
-}
-
-impl<Element> const GetUnchecked for [Element] {
-    type Element = Element;
-
-    #[inline]
-    unsafe fn get_unchecked2(&self, i: usize) -> &Self::Element {
-        unsafe { &*self.as_ptr().add(i) }
-    }
-}
-
-// `[T]::get_unchecked_mut<usize>` is not `const fn` yet [ref:const_slice_get_unchecked]
-trait GetUncheckedMut {
-    type Element;
-    unsafe fn get_unchecked_mut2(&mut self, i: usize) -> &mut Self::Element;
-}
-
-impl<Element> const GetUncheckedMut for [Element] {
-    type Element = Element;
-
-    #[inline]
-    unsafe fn get_unchecked_mut2(&mut self, i: usize) -> &mut Self::Element {
-        unsafe { &mut *self.as_mut_ptr().add(i) }
     }
 }

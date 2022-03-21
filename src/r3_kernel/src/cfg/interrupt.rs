@@ -112,11 +112,6 @@ impl InterruptHandlerTable {
     /// specified interrupt number.
     #[inline]
     pub const fn get(&self, line: InterruptNum) -> Option<InterruptHandlerFn> {
-        // `<[T]>::get` is not `const fn` yet [ref:const_slice_get]
-        if line < self.storage.len() {
-            self.storage[line]
-        } else {
-            None
-        }
+        self.storage.get(line).copied().flatten()
     }
 }

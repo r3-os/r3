@@ -378,17 +378,16 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
                     SuccessorIterState::BindInitToBorrowingUser(bind_i, bind_user_i) => {
                         let cb = self.cb.borrow();
                         let bind_users = cb.bind_users(bind_i);
-                        // `[T]::get` is not `const fn` yet [ref:const_slice_get]
-                        if bind_user_i < bind_users.len() {
+                        if let Some(bind_user) = bind_users.get(bind_user_i) {
                             self.st = SuccessorIterState::BindInitToBorrowingUser(
                                 bind_i,
                                 bind_user_i + 1,
                             );
                             if matches!(
-                                bind_users[bind_user_i].1,
+                                bind_user.1,
                                 BindBorrowType::Borrow | BindBorrowType::BorrowMut
                             ) {
-                                return Some(match bind_users[bind_user_i].0 {
+                                return Some(match bind_user.0 {
                                     BindUsage::Executable => Vertex::Executable,
                                     BindUsage::Bind(user_bind_i) => Vertex::BindInit(user_bind_i),
                                 });
@@ -434,17 +433,16 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
                     SuccessorIterState::BindDisownToTakingUser(bind_i, bind_user_i) => {
                         let cb = self.cb.borrow();
                         let bind_users = cb.bind_users(bind_i);
-                        // `[T]::get` is not `const fn` yet [ref:const_slice_get]
-                        if bind_user_i < bind_users.len() {
+                        if let Some(bind_user) = bind_users.get(bind_user_i) {
                             self.st =
                                 SuccessorIterState::BindDisownToTakingUser(bind_i, bind_user_i + 1);
                             if matches!(
-                                bind_users[bind_user_i].1,
+                                bind_user.1,
                                 BindBorrowType::Take
                                     | BindBorrowType::TakeRef
                                     | BindBorrowType::TakeMut
                             ) {
-                                return Some(match bind_users[bind_user_i].0 {
+                                return Some(match bind_user.0 {
                                     BindUsage::Executable => Vertex::Executable,
                                     BindUsage::Bind(user_bind_i) => Vertex::BindInit(user_bind_i),
                                 });

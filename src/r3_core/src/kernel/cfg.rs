@@ -212,12 +212,10 @@ impl<'c, C: raw_cfg::CfgBase> Cfg<'c, C> {
         let mut i = 0;
         while i < self.interrupt_lines.len() {
             let interrupt_line = &self.interrupt_lines[i];
-            // `<[T]>::get` is not `const fn` yet [ref:const_slice_get]
-            let start = if interrupt_line.num < C::System::CFG_INTERRUPT_HANDLERS.len() {
-                C::System::CFG_INTERRUPT_HANDLERS[interrupt_line.num]
-            } else {
-                None
-            };
+            let start = C::System::CFG_INTERRUPT_HANDLERS
+                .get(interrupt_line.num)
+                .copied()
+                .flatten();
             self.raw.interrupt_line_define(
                 raw_cfg::InterruptLineDescriptor {
                     phantom: Init::INIT,

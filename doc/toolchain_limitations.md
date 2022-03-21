@@ -376,21 +376,6 @@ const fn f(_: usize) {}
 ```
 
 
-### `[tag:const_slice_get]` `<[T]>::get` is not `const fn`
-
-```rust
-assert!(matches!(b"a".get(0), Some(b'a')));
-assert!(matches!(b"a".get(1), None));
-```
-
-```rust,compile_fail,E0015
-// `assert!` is used here due to [ref:const_assert_eq]
-// `matches!` is used here due to [ref:option_const_partial_eq]
-const _: () = assert!(matches!(b"a".get(0), Some(b'a')));
-const _: () = assert!(matches!(b"a".get(1), None));
-```
-
-
 ### `[tag:const_slice_sort_unstable]` `<[T]>::sort_unstable*` is not `const fn`
 
 ```rust
@@ -439,20 +424,6 @@ const fn identity<T>(x: T) -> T { x }
 // error[E0015]: cannot call non-const fn `Result::<(), ()>::map::<(), fn(())
 // {_doctest_main_lib_rs_452_0::identity::<()>}>` in constants
 const _: () = { Ok::<(), ()>(()).map(identity); };
-```
-
-
-### `[tag:const_slice_get_unchecked]` `<[T]>::get_unchecked` is not `const fn`
-
-```rust
-assert!(unsafe { *b"a".get_unchecked(0) } == b'a');
-```
-
-```rust,compile_fail,E0015
-// `assert!` is used here due to [ref:const_assert_eq]
-// error[E0015]: cannot call non-const fn `core::slice::<impl [u8]>::
-// get_unchecked::<usize>` in constants
-const _: () = assert!(unsafe { *b"a".get_unchecked(0) } == b'a');
 ```
 
 
