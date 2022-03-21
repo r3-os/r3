@@ -500,8 +500,8 @@ fn button_reporter_task_body() {
             if (st ^ new_st) & mask != 0 {
                 let _ = write!(
                     Console,
-                    "{b:?}: {}",
-                    ["UP", "DOWN"][(new_st & mask != 0) as usize]
+                    "{b:?}: {dir}",
+                    dir = ["UP", "DOWN"][(new_st & mask != 0) as usize]
                 );
             }
         }

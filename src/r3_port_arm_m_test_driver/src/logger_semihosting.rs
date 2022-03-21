@@ -7,10 +7,10 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record) {
         cortex_m_semihosting::heprintln!(
-            "[{:5} {}] {}",
-            record.level(),
-            record.target(),
-            record.args()
+            "[{level:5} {target}] {args}",
+            level = record.level(),
+            target = record.target(),
+            args = record.args()
         )
         .unwrap();
     }

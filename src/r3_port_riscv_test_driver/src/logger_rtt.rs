@@ -17,10 +17,10 @@ impl log::Log for Logger {
             if let Some(channel) = &mut *log_channel {
                 writeln!(
                     channel,
-                    "[{:5} {}] {}",
-                    record.level(),
-                    record.target(),
-                    record.args()
+                    "[{level:5} {target}] {args}",
+                    level = record.level(),
+                    target = record.target(),
+                    args = record.args()
                 )
                 .unwrap();
             }

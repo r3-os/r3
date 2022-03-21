@@ -22,7 +22,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Disable IRQ
     cortex_m::interrupt::disable();
 
-    r3_support_rp2040::sprintln!("{}{info}", mux::BEGIN_MAIN);
+    r3_support_rp2040::sprintln!("{BEGIN_MAIN}{info}", BEGIN_MAIN = mux::BEGIN_MAIN);
 
     enter_poll_loop();
 }
@@ -50,11 +50,11 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record) {
         r3_support_rp2040::sprintln!(
-            "{}[{:5} {}] {}",
-            mux::BEGIN_LOG,
-            record.level(),
-            record.target(),
-            record.args()
+            "{BEGIN_LOG}[{level:5} {target}] {args}",
+            BEGIN_LOG = mux::BEGIN_LOG,
+            level = record.level(),
+            target = record.target(),
+            args = record.args()
         );
     }
 

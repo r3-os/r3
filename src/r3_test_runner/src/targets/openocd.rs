@@ -121,9 +121,9 @@ impl DebugProbe for GrPeachOpenOcdDebugProbe {
                 format!(
                     "{GR_PEACH_INIT}
                     {GR_PEACH_RESET}
-                    load_image \"{}\"
+                    load_image \"{exe}\"
                     shutdown",
-                    exe.display(),
+                    exe = exe.display(),
                 ),
             )
             .await
