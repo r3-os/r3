@@ -29,7 +29,7 @@ fn main() {
             expect_valid_test_name(name);
 
             // Enable `cfg(kernel_test = "...")`
-            println!("cargo:rustc-cfg=kernel_test=\"{}\"", name);
+            println!("cargo:rustc-cfg=kernel_test=\"{name}\"");
 
             // Include it in `get_selected_kernel_tests_inner`
             kernel_test_list.push(TestMeta("kernel_tests", name));
@@ -37,7 +37,7 @@ fn main() {
             expect_valid_test_name(name);
 
             // Enable `cfg(kernel_benchmark = "...")`
-            println!("cargo:rustc-cfg=kernel_benchmark=\"{}\"", name);
+            println!("cargo:rustc-cfg=kernel_benchmark=\"{name}\"");
 
             // Include it in `get_selected_kernel_benchmarks_inner`
             kernel_benchmark_list.push(TestMeta("kernel_benchmarks", name));
@@ -111,7 +111,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for e in self.0.clone() {
-            write!(f, "{}, ", e)?;
+            write!(f, "{e}, ")?;
         }
         Ok(())
     }

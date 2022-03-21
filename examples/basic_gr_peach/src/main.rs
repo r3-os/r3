@@ -99,7 +99,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 }
 
 fn task1_body() {
-    support_rza1::sprintln!("COTTAGE = {:?}", COTTAGE);
+    support_rza1::sprintln!("COTTAGE = {COTTAGE:?}");
 
     COTTAGE.task2.activate().unwrap();
 }

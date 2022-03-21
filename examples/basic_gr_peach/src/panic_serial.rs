@@ -8,7 +8,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Disable IRQ
     unsafe { asm!("cpsid i") };
 
-    sprintln!("{}", info);
+    sprintln!("{info}");
 
     loop {}
 }

@@ -753,7 +753,7 @@ fn basic_cell_static() {
     let ptr3 = push_static(El(3, Cell::new(None)));
     get_accessor!().push_front(ptr3).unwrap();
 
-    println!("{:?}", &head);
+    println!("{head:?}");
 
     let mut accessor = get_accessor!();
     assert!(!accessor.is_empty());
@@ -777,11 +777,11 @@ fn basic_cell_static() {
     assert_eq!(accessor.prev(ptr2).unwrap(), Some(ptr1));
 
     accessor.remove(ptr1).unwrap();
-    println!("{:?}", &head);
+    println!("{head:?}");
     accessor.remove(ptr2).unwrap();
-    println!("{:?}", &head);
+    println!("{head:?}");
     accessor.remove(ptr3).unwrap();
-    println!("{:?}", &head);
+    println!("{head:?}");
 
     assert!(accessor.is_empty());
 }

@@ -21,9 +21,9 @@ fn panic(info: &PanicInfo) -> ! {
         // with a single semihosting call.
         let buffer = unsafe { &mut BUFFER };
         buffer.clear();
-        let _ = writeln!(buffer, "{}", info);
+        let _ = writeln!(buffer, "{info}");
 
-        let _ = write!(hstdout, "{}", buffer);
+        let _ = write!(hstdout, "{buffer}");
     }
     debug::exit(EXIT_FAILURE);
 

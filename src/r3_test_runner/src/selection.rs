@@ -44,9 +44,9 @@ impl fmt::Display for TestRun<'_> {
 impl fmt::Display for TestCase<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::KernelTest(name) => write!(f, "kernel_tests::{}", name),
-            Self::DriverKernelTest(name) => write!(f, "kernel_tests::{}", name),
-            Self::KernelBenchmark(name) => write!(f, "kernel_benchmarks::{}", name),
+            Self::KernelTest(name) => write!(f, "kernel_tests::{name}"),
+            Self::DriverKernelTest(name) => write!(f, "kernel_tests::{name}"),
+            Self::KernelBenchmark(name) => write!(f, "kernel_benchmarks::{name}"),
         }
     }
 }

@@ -119,12 +119,10 @@ impl DebugProbe for GrPeachOpenOcdDebugProbe {
             tokio::fs::write(
                 &cmd_file,
                 format!(
-                    "{}
-                    {}
+                    "{GR_PEACH_INIT}
+                    {GR_PEACH_RESET}
                     load_image \"{}\"
                     shutdown",
-                    GR_PEACH_INIT,
-                    GR_PEACH_RESET,
                     exe.display(),
                 ),
             )
@@ -143,10 +141,9 @@ impl DebugProbe for GrPeachOpenOcdDebugProbe {
             tokio::fs::write(
                 &cmd_file,
                 format!(
-                    "{}
+                    "{GR_PEACH_INIT}
                     arm semihosting enable
-                    resume 0x{:x}",
-                    GR_PEACH_INIT, entry,
+                    resume {entry:#x}",
                 ),
             )
             .await

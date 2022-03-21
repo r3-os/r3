@@ -22,7 +22,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Disable IRQ
     cortex_m::interrupt::disable();
 
-    r3_support_rp2040::sprintln!("{}{}", mux::BEGIN_MAIN, info);
+    r3_support_rp2040::sprintln!("{}{info}", mux::BEGIN_MAIN);
 
     enter_poll_loop();
 }

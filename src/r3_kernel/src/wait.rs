@@ -568,7 +568,7 @@ impl<Traits: KernelTraits> fmt::Debug for WaitPayload<Traits> {
                 .field("orig_bits", orig_bits)
                 .finish(),
             Self::Semaphore => f.write_str("Semaphore"),
-            Self::Mutex(mutex) => write!(f, "Mutex({:p})", mutex),
+            Self::Mutex(mutex) => write!(f, "Mutex({mutex:p})"),
             Self::Park => f.write_str("Park"),
             Self::Sleep => f.write_str("Sleep"),
             Self::__Nonexhaustive => unreachable!(),

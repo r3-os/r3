@@ -371,10 +371,7 @@ fn open_picoboot() -> Result<PicobootInterface> {
     // Locate the USB PICOBOOT interface
     log::debug!("Looking for the USB PICOBOOT interface");
     let config_desc = device.active_config_descriptor().with_context(|| {
-        format!(
-            "Failed to get the active config descriptor of the device '{:?}'.",
-            device
-        )
+        format!("Failed to get the active config descriptor of the device '{device:?}'.")
     })?;
     let interface = config_desc
         .interfaces()
@@ -438,16 +435,13 @@ fn open_picoboot() -> Result<PicobootInterface> {
     // Open the device
     let mut device_handle = device
         .open()
-        .with_context(|| format!("Failed to open the device '{:?}'.", device))?;
+        .with_context(|| format!("Failed to open the device '{device:?}'."))?;
 
     // Claim the interface
     device_handle
         .claim_interface(interface_i)
         .with_context(|| {
-            format!(
-                "Failed to claim the PICOBOOT interface (number {}).",
-                interface_i
-            )
+            format!("Failed to claim the PICOBOOT interface (number {interface_i}).")
         })?;
 
     // Reset the PICOBOOT interface
@@ -461,12 +455,7 @@ fn open_picoboot() -> Result<PicobootInterface> {
     log::debug!("Sending INTERFACE_RESET");
     device_handle
         .write_control(0x41, 0x41, 0x0000, interface_i as u16, &[], DEFAULE_TIMEOUT)
-        .with_context(|| {
-            format!(
-                "Failed to send INTERFACE_RESET to the device '{:?}'.",
-                device
-            )
-        })?;
+        .with_context(|| format!("Failed to send INTERFACE_RESET to the device '{device:?}'."))?;
 
     Ok(PicobootInterface {
         device_handle,

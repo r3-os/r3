@@ -10,10 +10,10 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut it = self.0.clone().into_iter();
         if let Some(e) = it.next() {
-            write!(f, "{}", e)?;
+            write!(f, "{e}")?;
             drop(e);
             for e in it {
-                write!(f, ",{}", e)?;
+                write!(f, ",{e}")?;
             }
         }
         Ok(())
@@ -29,10 +29,10 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut it = self.0.clone().into_iter();
         if let Some(e) = it.next() {
-            write!(f, "{}", e)?;
+            write!(f, "{e}")?;
             drop(e);
             for e in it {
-                write!(f, ", {}", e)?;
+                write!(f, ", {e}")?;
             }
         }
         Ok(())
