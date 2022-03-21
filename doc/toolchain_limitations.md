@@ -632,30 +632,6 @@ const _: () = assert!(matches!((2..4).next(), Some(2)));
 ```
 
 
-### `[tag:clone_from_default]` `Clone::clone_from` lacks `#[default_method_body_is_const]`
-
-When implementing `const Clone`, you can't use the provided implementation of `Clone::clone_from`.
-
-```rust
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-struct A;
-impl const Clone for A {
-    fn clone(&self) -> Self { A }
-    fn clone_from(&mut self, source: &Self) {}
-}
-```
-
-```rust,compile_fail
-#![feature(const_trait_impl)]
-struct A;
-impl const Clone for A {
-    fn clone(&self) -> Self { A }
-    // error: const trait implementations may not use non-const default functions
-}
-```
-
-
 ### `[tag:iterator_const_default]` `Iterator`'s methods lack `#[default_method_body_is_const]`
 
 Implementing `const Iterator` requires you to implement all of its methods, which is impossible to do correctly.

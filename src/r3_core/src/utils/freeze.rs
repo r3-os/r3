@@ -82,11 +82,6 @@ impl<T: Copy> const Clone for Frozen<T> {
         // Don't use `T as Clone` because it could expose interior mutability.
         *self
     }
-
-    #[inline]
-    fn clone_from(&mut self, source: &Self) {
-        *self = *source;
-    }
 }
 
 impl<T: Copy + ~const fmt::Debug> const fmt::Debug for Frozen<T> {

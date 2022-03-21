@@ -35,10 +35,6 @@ impl<T: ~const Clone + ~const Drop> const Clone for ComptimeVec<T> {
         }
         self.map(clone_shim)
     }
-
-    fn clone_from(&mut self, source: &Self) {
-        *self = source.clone();
-    }
 }
 
 impl<T> const Drop for ComptimeVec<T>
