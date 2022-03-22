@@ -35,7 +35,13 @@ macro_rules! syscall1 {
 #[macro_export]
 macro_rules! hprint {
     ($($tt:tt)*) => {
-        $crate::export::hstdout_fmt(format_args!($($tt)*))
+        match ::core::format_args!($($tt)*) {
+            args => if let ::core::option::Option::Some(s) = args.as_str() {
+                $crate::export::hstdout_str(s)
+            } else {
+                $crate::export::hstdout_fmt(args)
+            },
+        }
     };
 }
 
@@ -45,7 +51,7 @@ macro_rules! hprint {
 #[macro_export]
 macro_rules! hprintln {
     ($($tt:tt)*) => {
-        match $crate::export::hstdout_fmt(format_args!($($tt)*)) {
+        match $crate::hprint!($($tt)*) {
             Ok(()) => $crate::export::hstdout_str("\n"),
             Err(()) => Err(()),
         }
@@ -58,7 +64,13 @@ macro_rules! hprintln {
 #[macro_export]
 macro_rules! heprint {
     ($($tt:tt)*) => {
-        $crate::export::hstderr_fmt(format_args!($($tt)*))
+        match ::core::format_args!($($tt)*) {
+            args => if let ::core::option::Option::Some(s) = args.as_str() {
+                $crate::export::hstderr_str(s)
+            } else {
+                $crate::export::hstderr_fmt(args)
+            },
+        }
     };
 }
 
@@ -68,7 +80,7 @@ macro_rules! heprint {
 #[macro_export]
 macro_rules! heprintln {
     ($($tt:tt)*) => {
-        match $crate::export::hstderr_fmt(format_args!($($tt)*)) {
+        match $crate::heprint!($($tt)*) {
             Ok(()) => $crate::export::hstderr_str("\n"),
             Err(()) => Err(()),
         }

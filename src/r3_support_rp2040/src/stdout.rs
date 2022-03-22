@@ -106,7 +106,13 @@ pub fn write_fmt(args: fmt::Arguments<'_>) {
 #[macro_export]
 macro_rules! sprint {
     ($($tt:tt)*) => {
-        $crate::stdout::write_fmt(format_args!($($tt)*))
+        match ::core::format_args!($($tt)*) {
+            args => if let ::core::option::Option::Some(s) = args.as_str() {
+                $crate::stdout::write_str(s)
+            } else {
+                $crate::stdout::write_fmt(args)
+            },
+        }
     };
 }
 
@@ -114,7 +120,7 @@ macro_rules! sprint {
 #[macro_export]
 macro_rules! sprintln {
     ($($tt:tt)*) => {{
-        $crate::stdout::write_fmt(format_args!($($tt)*));
+        $crate::sprint!($($tt)*);
         $crate::stdout::write_str("\n");
     }};
 }
