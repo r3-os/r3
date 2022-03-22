@@ -34,11 +34,14 @@ macro_rules! syscall1 {
 /// This macro returns a `Result<(), ()>` value
 #[macro_export]
 macro_rules! hprint {
-    ($s:expr) => {
-        $crate::export::hstdout_str($s)
-    };
     ($($tt:tt)*) => {
-        $crate::export::hstdout_fmt(format_args!($($tt)*))
+        match ::core::format_args!($($tt)*) {
+            args => if let ::core::option::Option::Some(s) = args.as_str() {
+                $crate::export::hstdout_str(s)
+            } else {
+                $crate::export::hstdout_fmt(args)
+            },
+        }
     };
 }
 
@@ -47,14 +50,11 @@ macro_rules! hprint {
 /// This macro returns a `Result<(), ()>` value
 #[macro_export]
 macro_rules! hprintln {
-    () => {
-        $crate::export::hstdout_str("\n")
-    };
-    ($s:expr) => {
-        $crate::export::hstdout_str(concat!($s, "\n"))
-    };
-    ($s:expr, $($tt:tt)*) => {
-        $crate::export::hstdout_fmt(format_args!(concat!($s, "\n"), $($tt)*))
+    ($($tt:tt)*) => {
+        match $crate::hprint!($($tt)*) {
+            Ok(()) => $crate::export::hstdout_str("\n"),
+            Err(()) => Err(()),
+        }
     };
 }
 
@@ -63,11 +63,14 @@ macro_rules! hprintln {
 /// This macro returns a `Result<(), ()>` value
 #[macro_export]
 macro_rules! heprint {
-    ($s:expr) => {
-        $crate::export::hstderr_str($s)
-    };
     ($($tt:tt)*) => {
-        $crate::export::hstderr_fmt(format_args!($($tt)*))
+        match ::core::format_args!($($tt)*) {
+            args => if let ::core::option::Option::Some(s) = args.as_str() {
+                $crate::export::hstderr_str(s)
+            } else {
+                $crate::export::hstderr_fmt(args)
+            },
+        }
     };
 }
 
@@ -76,14 +79,11 @@ macro_rules! heprint {
 /// This macro returns a `Result<(), ()>` value
 #[macro_export]
 macro_rules! heprintln {
-    () => {
-        $crate::export::hstderr_str("\n")
-    };
-    ($s:expr) => {
-        $crate::export::hstderr_str(concat!($s, "\n"))
-    };
-    ($s:expr, $($tt:tt)*) => {
-        $crate::export::hstderr_fmt(format_args!(concat!($s, "\n"), $($tt)*))
+    ($($tt:tt)*) => {
+        match $crate::heprint!($($tt)*) {
+            Ok(()) => $crate::export::hstderr_str("\n"),
+            Err(()) => Err(()),
+        }
     };
 }
 

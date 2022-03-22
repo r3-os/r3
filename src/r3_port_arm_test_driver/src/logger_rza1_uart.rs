@@ -9,10 +9,10 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record) {
         r3_support_rza1::sprintln!(
-            "[{:5} {}] {}",
-            record.level(),
-            record.target(),
-            record.args()
+            "[{level:5} {target}] {args}",
+            level = record.level(),
+            target = record.target(),
+            args = record.args()
         );
     }
 

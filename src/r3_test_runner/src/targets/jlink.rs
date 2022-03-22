@@ -100,7 +100,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             let tempdir = TempDir::new("r3_test_runner").map_err(RunError::CreateTempDir)?;
             let section_files: Vec<_> = (0..regions.len())
                 .map(|i| {
-                    let name = format!("{}.bin", i);
+                    let name = format!("{i}.bin");
                     tempdir.path().join(&name)
                 })
                 .collect();

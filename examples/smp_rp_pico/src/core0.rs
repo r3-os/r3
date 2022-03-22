@@ -32,7 +32,7 @@ impl support_rp2040::usbstdio::Options for SystemTraits {
 
         // echo the input with brackets
         if let Ok(s) = core::str::from_utf8(s) {
-            support_rp2040::sprint!("[{}]", s);
+            support_rp2040::sprint!("[{s}]");
         } else {
             support_rp2040::sprint!("[<not UTF-8>]");
         }
@@ -137,7 +137,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 }
 
 fn task1_body() {
-    support_rp2040::sprintln!("COTTAGE = {:?}", COTTAGE);
+    support_rp2040::sprintln!("COTTAGE = {COTTAGE:?}");
 
     COTTAGE.task2.activate().unwrap();
 }

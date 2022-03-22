@@ -72,7 +72,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> Objects {
 }
 
 fn task1_body() {
-    rtt_target::rprintln!("COTTAGE = {:?}", COTTAGE);
+    rtt_target::rprintln!("COTTAGE = {COTTAGE:?}");
 
     COTTAGE.task2.activate().unwrap();
 }

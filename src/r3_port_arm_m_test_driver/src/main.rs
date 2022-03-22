@@ -47,8 +47,8 @@ macro_rules! instantiate_test {
 
             #[cfg(feature = "board-rp_pico")]
             r3_support_rp2040::sprintln!(
-                "{}!- TEST WAS SUCCESSFUL -!",
-                crate::board_rp2040::mux::BEGIN_MAIN,
+                "{BEGIN_MAIN}!- TEST WAS SUCCESSFUL -!",
+                BEGIN_MAIN = crate::board_rp2040::mux::BEGIN_MAIN,
             );
 
             #[cfg(feature = "board-rp_pico")]

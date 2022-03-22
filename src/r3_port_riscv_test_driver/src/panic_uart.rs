@@ -5,7 +5,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Disable interrupts
     unsafe { riscv::register::mstatus::clear_mie() };
 
-    crate::uart::stdout_write_fmt(format_args!("{}\n", info));
+    crate::uart::stdout_write_fmt(format_args!("{info}\n"));
 
     loop {}
 }

@@ -129,7 +129,7 @@ async fn main_inner() -> anyhow::Result<()> {
     if opt.help_targets {
         println!("Supported targets:");
         for (name, target) in targets::TARGETS {
-            println!("  {:30}{}", name, target.target_arch());
+            println!("  {name:30}{}", target.target_arch());
         }
         return Ok(());
     }

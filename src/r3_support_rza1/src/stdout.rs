@@ -101,24 +101,22 @@ pub fn write_fmt(args: fmt::Arguments<'_>) {
 /// Macro for printing to the serial standard output
 #[macro_export]
 macro_rules! sprint {
-    ($s:expr) => {
-        $crate::stdout::write_str($s)
-    };
     ($($tt:tt)*) => {
-        $crate::stdout::write_fmt(format_args!($($tt)*))
+        match ::core::format_args!($($tt)*) {
+            args => if let ::core::option::Option::Some(s) = args.as_str() {
+                $crate::stdout::write_str(s)
+            } else {
+                $crate::stdout::write_fmt(args)
+            },
+        }
     };
 }
 
 /// Macro for printing to the serial standard output, with a newline.
 #[macro_export]
 macro_rules! sprintln {
-    () => {
-        $crate::stdout::write_str("\n")
-    };
-    ($s:expr) => {
-        $crate::stdout::write_str(concat!($s, "\n"))
-    };
-    ($s:expr, $($tt:tt)*) => {
-        $crate::stdout::write_fmt(format_args!(concat!($s, "\n"), $($tt)*))
-    };
+    ($($tt:tt)*) => {{
+        $crate::sprint!($($tt)*);
+        $crate::stdout::write_str("\n");
+    }};
 }

@@ -33,7 +33,7 @@ fn main() {
         write_image(
             &mut generated_code,
             out_dir,
-            &format!("animation_{}", i),
+            &format!("animation_{i}"),
             frame.buffer(),
         );
     }
@@ -61,7 +61,7 @@ fn write_image(out: &mut impl Write, dir: &Path, name: &str, image: &RgbaImage) 
         .map(|image::Rgba(data)| pixelcolor::Rgb888::new(data[0], data[1], data[2]));
 
     let pixels565 = pixels888.map(pixelcolor::Rgb565::from);
-    let name565 = format!("{}_565", name);
+    let name565 = format!("{name}_565");
     std::fs::write(
         dir.join(&name565),
         pixels565

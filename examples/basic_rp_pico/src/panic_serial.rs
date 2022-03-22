@@ -7,7 +7,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Disable IRQ
     unsafe { asm!("cpsid i") };
 
-    r3_support_rp2040::sprintln!("{}", info);
+    r3_support_rp2040::sprintln!("{info}");
 
     loop {}
 }

@@ -214,19 +214,19 @@ impl TestDriver {
             );
         }
 
-        write!(rustflags, " {}", additional_rustflags).unwrap();
+        write!(rustflags, " {additional_rustflags}").unwrap();
 
         for name in linker_scripts.inputs.iter() {
-            write!(rustflags, " -C link-arg=-T{}", name).unwrap();
+            write!(rustflags, " -C link-arg=-T{name}").unwrap();
         }
 
         let target_features = &target_arch_opt.target_features;
-        log::debug!("target_features = {:?}", target_features);
+        log::debug!("target_features = {target_features:?}");
         if !target_features.is_empty() {
-            write!(rustflags, " -C target-feature={}", target_features).unwrap();
+            write!(rustflags, " -C target-feature={target_features}").unwrap();
         };
 
-        log::debug!("rustflags = {:?}", rustflags);
+        log::debug!("rustflags = {rustflags:?}");
 
         Ok(Self {
             rustflags,
@@ -342,7 +342,7 @@ impl TestDriver {
                     target
                         .cargo_features()
                         .iter()
-                        .map(|f| format!("--features={}", f)),
+                        .map(|f| format!("--features={f}")),
                 )
                 .args(if test_run.cpu_lock_by_basepri {
                     Some("--features=cpu-lock-by-basepri")

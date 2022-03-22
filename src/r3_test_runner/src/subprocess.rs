@@ -284,12 +284,12 @@ impl fmt::Display for ShellEscape<'_> {
                         break;
                     }
                 }
-                write!(f, "{}\"", utf8)
+                write!(f, "{utf8}\"")
             } else if bytes.iter().any(|b| special_chars.contains(b)) {
                 // Enclose in single quotes
-                write!(f, "'{}'", utf8)
+                write!(f, "'{utf8}'")
             } else {
-                write!(f, "{}", utf8)
+                write!(f, "{utf8}")
             }
         } else {
             // Some bytes are unprintable.

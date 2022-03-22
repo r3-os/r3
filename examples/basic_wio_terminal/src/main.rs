@@ -500,9 +500,8 @@ fn button_reporter_task_body() {
             if (st ^ new_st) & mask != 0 {
                 let _ = write!(
                     Console,
-                    "{:?}: {}",
-                    b,
-                    ["UP", "DOWN"][(new_st & mask != 0) as usize]
+                    "{b:?}: {dir}",
+                    dir = ["UP", "DOWN"][(new_st & mask != 0) as usize]
                 );
             }
         }
@@ -817,7 +816,7 @@ fn panic(info: &PanicInfo) -> ! {
 
     if let Some(lcd) = lcd.as_mut() {
         let mut msg = arrayvec::ArrayString::<256>::new();
-        if let Err(_) = write!(msg, "panic: {}", info) {
+        if let Err(_) = write!(msg, "panic: {info}") {
             msg.clear();
             msg.push_str("panic: (could not format the message)");
         }

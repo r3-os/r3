@@ -13,7 +13,7 @@ fn panic(info: &PanicInfo) -> ! {
 
     match cpuid {
         0 => {
-            r3_support_rp2040::sprintln!("{}", info);
+            r3_support_rp2040::sprintln!("{info}");
 
             loop {
                 r3_support_rp2040::usbstdio::poll::<crate::core0::SystemTraits>();
@@ -21,7 +21,7 @@ fn panic(info: &PanicInfo) -> ! {
         }
         1 => {
             use crate::core1;
-            core1::write_fmt(core1::Core1::new(&p.SIO).unwrap(), format_args!("{}", info));
+            core1::write_fmt(core1::Core1::new(&p.SIO).unwrap(), format_args!("{info}"));
 
             // Halt the system
             loop {
