@@ -2,6 +2,8 @@
 //!
 //! The implementation is mostly based on the Rust standard library's
 //! `BinaryHeap`.
+use core::marker::Destruct;
+
 mod helpers;
 #[cfg(test)]
 mod tests;
@@ -31,17 +33,17 @@ pub trait BinaryHeap: VecLike {
     /// Remove the least item from the heap and return it.
     fn heap_pop<Ctx>(&mut self, ctx: Ctx) -> Option<Self::Element>
     where
-        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop;
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Destruct;
 
     /// Remove the item at the specified position and return it.
     fn heap_remove<Ctx>(&mut self, i: usize, ctx: Ctx) -> Option<Self::Element>
     where
-        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop;
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Destruct;
 
     /// Push an item onto the heap and return its position.
     fn heap_push<Ctx>(&mut self, item: Self::Element, ctx: Ctx) -> usize
     where
-        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop;
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Destruct;
 }
 
 impl<T> const BinaryHeap for T
@@ -49,18 +51,18 @@ where
     // `~const Deref` isn't implied because of
     // [ref:veclike_const_supertrait]
     T: ~const VecLike + ~const core::ops::Deref + ~const core::ops::DerefMut,
-    T::Element: ~const Drop,
+    T::Element: ~const Destruct,
 {
     fn heap_pop<Ctx>(&mut self, ctx: Ctx) -> Option<Self::Element>
     where
-        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop,
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Destruct,
     {
         self.heap_remove(0, ctx)
     }
 
     fn heap_remove<Ctx>(&mut self, i: usize, mut ctx: Ctx) -> Option<Self::Element>
     where
-        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop,
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Destruct,
     {
         if i >= self.len() {
             return None;
@@ -94,7 +96,7 @@ where
 
     fn heap_push<Ctx>(&mut self, item: Self::Element, ctx: Ctx) -> usize
     where
-        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Drop,
+        Ctx: ~const BinaryHeapCtx<Self::Element> + ~const Destruct,
     {
         let i = self.len();
         self.push(item);
@@ -127,8 +129,8 @@ const unsafe fn sift_up<Element, Ctx>(
     mut ctx: Ctx,
 ) -> usize
 where
-    Ctx: ~const BinaryHeapCtx<Element> + ~const Drop,
-    Element: ~const Drop,
+    Ctx: ~const BinaryHeapCtx<Element> + ~const Destruct,
+    Element: ~const Destruct,
 {
     unsafe {
         // Take out the value at `pos` and create a hole.
@@ -163,8 +165,8 @@ where
 /// `pos` must point to an element within `this`.
 const unsafe fn sift_down<Element, Ctx>(this: &mut [Element], pos: usize, mut ctx: Ctx)
 where
-    Ctx: ~const BinaryHeapCtx<Element> + ~const Drop,
-    Element: ~const Drop,
+    Ctx: ~const BinaryHeapCtx<Element> + ~const Destruct,
+    Element: ~const Destruct,
 {
     let end = this.len();
     unsafe {

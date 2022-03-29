@@ -1,6 +1,5 @@
 #![feature(const_refs_to_cell)]
 #![feature(const_trait_impl)]
-#![feature(const_ptr_offset)]
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
 #![feature(decl_macro)]
