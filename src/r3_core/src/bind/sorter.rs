@@ -49,7 +49,10 @@
 //!
 // FIXME: We might be able to improve the interface when `ComptimeVec` is not
 // restricted to "comptime" anymore
-use core::ops::{Deref, DerefMut, Index, IndexMut};
+use core::{
+    marker::Destruct,
+    ops::{Deref, DerefMut, Index, IndexMut},
+};
 
 use super::{BindBorrowType, BindUsage};
 use crate::utils::{
@@ -538,12 +541,12 @@ trait MyIterator {
 }
 
 trait GraphAccess<VertexRef> {
-    type VertexIter<'a>: ~const MyIterator<Item = VertexRef> + ~const Drop + 'a
+    type VertexIter<'a>: ~const MyIterator<Item = VertexRef> + ~const Destruct + 'a
     where
         Self: 'a;
     fn vertices(&self) -> Self::VertexIter<'_>;
 
-    type SuccessorIter<'a>: ~const MyIterator<Item = VertexRef> + ~const Drop + 'a
+    type SuccessorIter<'a>: ~const MyIterator<Item = VertexRef> + ~const Destruct + 'a
     where
         Self: 'a;
     fn successors(&self, v: &VertexRef) -> Self::SuccessorIter<'_>;
@@ -597,9 +600,9 @@ const fn topological_sort<
 where
     Graph: ~const GraphAccess<VertexRef>,
     // [ref:const_trait_not_implied] necessitates `: ~const MyIterator`
-    Graph::VertexIter<'a>: ~const MyIterator + ~const Drop,
+    Graph::VertexIter<'a>: ~const MyIterator + ~const Destruct,
     // [ref:const_trait_not_implied] necessitates `: ~const MyIterator`
-    Graph::SuccessorIter<'a>: ~const MyIterator + ~const Drop,
+    Graph::SuccessorIter<'a>: ~const MyIterator + ~const Destruct,
     VertexRef: Copy,
     VertexRefLessThan: ~const FnMut(&VertexRef, &VertexRef) -> bool,
     // `~const Deref[Mut]` isn't implied because of

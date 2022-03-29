@@ -1,30 +1,17 @@
-use core::{alloc::Layout, ops, ptr::NonNull};
+use core::{alloc::Layout, marker::Destruct, ops, ptr::NonNull};
 
 use super::{AllocError, Allocator, ConstAllocator};
 
-#[doc(hidden)]
-pub struct UserDrop<T>(T);
-
-impl<T> const Drop for UserDrop<T> {
-    #[inline]
-    fn drop(&mut self) {}
-}
-
 /// `Vec` that can only be used in a constant context.
 #[doc(hidden)]
-#[allow(drop_bounds)] // Due to the work-around for [ref:drop_const_bounds]
-pub struct ComptimeVec<T>
-where
-    // Work-around for [ref:drop_const_bounds]
-    UserDrop<T>: Drop,
-{
+pub struct ComptimeVec<T: Destruct> {
     ptr: NonNull<T>,
     len: usize,
     capacity: usize,
     allocator: ConstAllocator,
 }
 
-impl<T: ~const Clone + ~const Drop> const Clone for ComptimeVec<T> {
+impl<T: ~const Clone + ~const Destruct> const Clone for ComptimeVec<T> {
     fn clone(&self) -> Self {
         // FIXME: Work-around for a mysterious error saying "the trait bound
         // `for<'r> fn(&'r T) -> T {<T as Clone>::clone}: ~const FnMut<(&T,)>`
@@ -37,16 +24,10 @@ impl<T: ~const Clone + ~const Drop> const Clone for ComptimeVec<T> {
     }
 }
 
-impl<T> const Drop for ComptimeVec<T>
-where
-    // Work-around for [ref:drop_const_bounds]
-    UserDrop<T>: ~const Drop,
-{
+impl<T: ~const Destruct> const Drop for ComptimeVec<T> {
     fn drop(&mut self) {
         if core::mem::needs_drop::<T>() {
-            // Wrap `T` with `UserDrop` before dropping to work around
-            // [ref:drop_const_bounds]
-            while self.pop().map(UserDrop).is_some() {}
+            while self.pop().is_some() {}
         }
 
         // Safety: The referent is a valid heap allocation from `self.allocator`,
@@ -133,7 +114,10 @@ impl<T> ComptimeVec<T> {
 
     /// Return a `ComptimeVec` of the same `len` as `self` with function `f`
     /// applied to each element in order.
-    pub const fn map<F: ~const FnMut(&T) -> U + ~const Drop, U>(&self, mut f: F) -> ComptimeVec<U> {
+    pub const fn map<F: ~const FnMut(&T) -> U + ~const Destruct, U>(
+        &self,
+        mut f: F,
+    ) -> ComptimeVec<U> {
         let mut out = ComptimeVec::with_capacity_in(self.len, self.allocator.clone());
         let mut i = 0;
         while i < self.len() {
@@ -146,7 +130,7 @@ impl<T> ComptimeVec<T> {
     /// Remove all elements.
     pub const fn clear(&mut self)
     where
-        T: ~const Drop,
+        T: ~const Destruct,
     {
         if core::mem::needs_drop::<T>() {
             while self.pop().is_some() {}
@@ -217,7 +201,7 @@ macro_rules! vec_position {
 }
 
 /// Unwrap `Result<T, AllocError>`.
-const fn unwrap_alloc_error<T: ~const Drop>(x: Result<T, AllocError>) -> T {
+const fn unwrap_alloc_error<T: ~const Destruct>(x: Result<T, AllocError>) -> T {
     match x {
         Ok(x) => x,
         Err(AllocError) => panic!("compile-time heap allocation failed"),
