@@ -25,7 +25,6 @@
 #![feature(const_result_drop)]
 #![feature(const_slice_index)]
 #![feature(const_option_ext)]
-#![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(const_ptr_write)]
 #![feature(core_intrinsics)]
