@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-03-30`
+- **Breaking (semver-exempt):** The printing macros `sprint[ln]!` now treat their first argument as a format string in all cases to support implicit named arguments (Rust [RFC 2795](https://rust-lang.github.io/rfcs/2795-format-args-implicit-identifiers.html)).
 
 ## [0.2.1] - 2022-03-19
 
