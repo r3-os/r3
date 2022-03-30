@@ -287,7 +287,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> Hunk<System, T> {
     /// Get a raw pointer to the hunk's contents.
     #[inline]
     pub fn as_ptr(this: Self) -> *const T {
-        this.offset.set_ptr_value(Self::untyped_hunk(this).as_ptr())
+        (Self::untyped_hunk(this).as_ptr() as *const u8).with_metadata_of(this.offset)
     }
 
     /// Get a raw pointer to the raw bytes of the hunk.
