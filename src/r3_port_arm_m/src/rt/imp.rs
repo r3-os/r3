@@ -36,7 +36,7 @@ pub const fn make_interrupt_handler_table<Traits: KernelTraits>() -> InterruptHa
             #[cfg(any())]
             assert!(
                 Traits::INTERRUPT_HANDLERS.get(i).is_none(),
-                "registering a handler for a non-internal exception is \
+                "registering a handler for a non-interrupt exception is \
                 disallowed except for SysTick"
             );
         }
