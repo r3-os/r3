@@ -222,7 +222,7 @@ impl TryFrom<Duration> for core::time::Duration {
 
 impl fmt::Debug for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let abs_dur = core::time::Duration::from_micros((self.micros as i64).abs() as u64);
+        let abs_dur = core::time::Duration::from_micros(self.micros.unsigned_abs().into());
         if self.micros < 0 {
             write!(f, "-")?;
         }
