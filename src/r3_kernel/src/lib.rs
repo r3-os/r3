@@ -1,3 +1,4 @@
+#![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(maybe_uninit_uninit_array)]
