@@ -56,10 +56,14 @@
 //! *Import constants as `sym` operands*. Interestingly, the `#[export_name]`
 //! attributes can be used to give symbol names entirely comprised of numbers,
 //! and when such symbols are used in `sym` operands, they are indeed
-//! interpreted as the intended numbers. The catch is that we have to specify
+//! interpreted as the intended numbers. A catch is that we have to specify
 //! `#[export_name]` for each possible value (i.e., we can't easily cover the
-//! whole range of `usize`).
+//! whole range of `usize`). Another catch is that the compiler enforces that
+//! unique symbol names are used in a whole compiled binary. To avoid the issues
+//! caused by this, the symbol names must augmented with crate-specific metadata
+//! (e.g., `#[export_name = "r3_port_riscv-1.2.3*/ 42 /*"]`).
 use core::arch::asm;
+use macro_find_and_replace::replace_token_sequence as replace;
 use unstringify::unstringify;
 
 #[derive(Clone, Copy)]
@@ -148,11 +152,12 @@ macro_rules! define_set {
     (
         impl<Traits: super::ThreadingOptions> CsrSet<Traits> {}
 
+        #[substitute($S:tt $PRIV:ident => PRIV)]
         $( #[$csrexpr_meta:meta] )*
         macro csrexpr {
             $(
                 $( #[$const_meta:meta] )*
-                ($CONST:ident) => { $const_value:literal }
+                ($CONST:ident) => { $($const_value:tt)* }
             ),*
             $(,)?
         }
@@ -183,9 +188,11 @@ macro_rules! define_set {
 
             $(
                 pub const $CONST: usize = {
-                    #[allow(non_snake_case)]
-                    let PRIV = Self::PRIV; // provide a value for `{PRIV}` in `$const_value`
-                    unstringify!($const_value)
+                    // `unstringify!` is unable to expand `replace!`. Replace
+                    // `$PRIV` using a macro-by-example and then pass the
+                    // resultant tokens to `unstringify!`.
+                    macro m($$ $PRIV:tt) { unstringify!($($const_value)*) }
+                    m!("Self::PRIV")
                 };
             )*
         }
@@ -193,7 +200,9 @@ macro_rules! define_set {
         $( #[$csrexpr_meta] )*
         pub(crate) macro csrexpr {
             $(
-                ($CONST) => { $const_value }
+                // An eager-expanded string literal is expected in the output.
+                // Use `replace!` and let `asm!` expand it.
+                ($CONST) => { replace!([$$ $PRIV], ["(/*{PRIV}*/)"], $($const_value)*) }
             ),*
         }
 
@@ -257,40 +266,42 @@ pub const XSTATUS_FS_1: usize = 1 << 14;
 pub const XCAUSE_INTERRUPT: usize = usize::MAX - usize::MAX / 2;
 pub const XCAUSE_EXCEPTIONCODE_MASK: usize = usize::MAX / 2;
 
+#[macropol::macropol(concat = "concat!($parts_comma_sep)")]
 define_set! {
     impl<Traits: super::ThreadingOptions> CsrSet<Traits> {
         /* `csrexpr!` is also exposed as `const`s here */
     }
 
+    #[substitute($PRIV => PRIV)]
     /// Create an assembly expression that evaluates to a CSR number or value.
     /// Assumes the presence of an operand `PRIV = sym Traits::Priv::value`.
     macro csrexpr {
         // CSRs
-        (XSTATUS) => { "{PRIV} * 0x100" },
-        (XIE) => { "{PRIV} * 0x100 + 0x04" },
-        (XEPC) => { "{PRIV} * 0x100 + 0x41" },
-        (XCAUSE) => { "{PRIV} * 0x100 + 0x42" },
-        (XIP) => { "{PRIV} * 0x100 + 0x44" },
+        (XSTATUS) => { "$PRIV * 0x100" },
+        (XIE) => { "$PRIV * 0x100 + 0x04" },
+        (XEPC) => { "$PRIV * 0x100 + 0x41" },
+        (XCAUSE) => { "$PRIV * 0x100 + 0x42" },
+        (XIP) => { "$PRIV * 0x100 + 0x44" },
 
         // CSR values
         // Machine/Supervisor/... Interrupt Enable
-        (XSTATUS_XIE) =>  { "1 << ({PRIV})" },
+        (XSTATUS_XIE) => { "1 << 0 << $PRIV" },
         // Machine/Supervisor/... Previous Interrupt Enable
-        (XSTATUS_XPIE) =>  { "1 << ({PRIV} + 4)" },
+        (XSTATUS_XPIE) => { "1 << 4 << $PRIV" },
 
         /// Machine/Supervisor/... Software Interrupt Enable
-        (XIE_XSIE) =>  { "1 << ({PRIV})" },
+        (XIE_XSIE) => { "1 << 0 << $PRIV" },
         /// Machine/Supervisor/... Timer Interrupt Enable
-        (XIE_XTIE) =>  { "1 << ({PRIV} + 4)" },
+        (XIE_XTIE) => { "1 << 4 << $PRIV" },
         /// Machine/Supervisor/... External Interrupt Enable
-        (XIE_XEIE) =>  { "1 << ({PRIV} + 8)" },
+        (XIE_XEIE) => { "1 << 8 << $PRIV" },
 
         /// Machine/Supervisor/... Software Interrupt Pending
-        (XIP_XSIP) =>  { "1 << ({PRIV})" },
+        (XIP_XSIP) => { "1 << 0 << $PRIV" },
         /// Machine/Supervisor/... Timer Interrupt Pending
-        (XIP_XTIP) =>  { "1 << ({PRIV} + 4)" },
+        (XIP_XTIP) => { "1 << 4 << $PRIV" },
         /// Machine/Supervisor/... External Interrupt Pending
-        (XIP_XEIP) =>  { "1 << ({PRIV} + 8)" },
+        (XIP_XEIP) => { "1 << 8 << $PRIV" },
     }
 
     impl<Traits> CsrSetAccess for CsrSet<Traits> {
@@ -338,10 +349,11 @@ pub trait Num {
 /// `<NumTy<N> as Num>::value` has a symbol name `N`.
 pub struct NumTy<const N: usize>;
 
+#[macropol::macropol]
 seq_macro::seq!(N in 0..4 {
     #[doc(hidden)]
     impl Num for NumTy<N> {
-        #[export_name = stringify!(N)]
+        #[export_name = r#"r3_port_riscv-${env!("CARGO_PKG_VERSION")}*/$&{N}/*"#]
         fn value() {}
     }
 });

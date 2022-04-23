@@ -723,21 +723,21 @@ impl State {
 
                 # xstatus.XPP := X (if `PRIVILEGE_LEVEL != U`)
                 # xstatus.XPIE := 1 (if `maintain-mpie` is enabled)
-                .if {PRIV} == 3
+                .if /*{PRIV}*/ == 3
             "       if cfg!(feature = "maintain-pie") {                             "
                         li a0, {MPP_M} | " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
             "       } else {                                                        "
                         li a0, {MPP_M}
             "       }                                                               "
                     csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
-                .elseif {PRIV} == 1
+                .elseif /*{PRIV}*/ == 1
             "       if cfg!(feature = "maintain-pie") {                             "
                         li a0, {SPP_S} | " crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE) "
             "       } else {                                                        "
                         li a0, {SPP_S}
             "       }                                                               "
                     csrs " crate::threading::imp::csr::csrexpr!(XSTATUS) ", a0
-                .elseif {PRIV} == 0
+                .elseif /*{PRIV}*/ == 0
             "       if cfg!(feature = "maintain-pie") {                             "
                         csrsi " crate::threading::imp::csr::csrexpr!(XSTATUS) ",    "
                             crate::threading::imp::csr::csrexpr!(XSTATUS_XPIE)      "
@@ -779,11 +779,11 @@ impl State {
                 LOAD t5, ({X_SIZE} * 14)(sp)
                 LOAD t6, ({X_SIZE} * 15)(sp)
                 addi sp, sp, ({X_SIZE} * 17)
-                .if {PRIV} == 0
+                .if /*{PRIV}*/ == 0
                     uret
-                .elseif {PRIV} == 1
+                .elseif /*{PRIV}*/ == 1
                     sret
-                .elseif {PRIV} == 3
+                .elseif /*{PRIV}*/ == 3
                     mret
                 .else
                     .error \"unsupported `PRIVILEGE_LEVEL`\"

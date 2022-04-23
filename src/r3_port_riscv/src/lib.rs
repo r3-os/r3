@@ -1,4 +1,5 @@
 #![feature(generic_const_exprs)]
+#![feature(macro_metavar_expr)]
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]

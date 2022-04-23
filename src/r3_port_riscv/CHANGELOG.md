@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-03-30`
 
+### Fixed
+
+- This crate no longer exports symbol names like `0` and `1`, which are prone to name collision.
+
 ## [0.2.1] - 2022-03-19
 
 ### Fixed
