@@ -43,7 +43,7 @@ macro_rules! instantiate_test {
             rtt_target::rprintln!("!- TEST WAS SUCCESSFUL -!");
 
             #[cfg(feature = "output-semihosting")]
-            cortex_m_semihosting::hprintln!("!- TEST WAS SUCCESSFUL -!").unwrap();
+            cortex_m_semihosting::hprintln!("!- TEST WAS SUCCESSFUL -!");
 
             #[cfg(feature = "board-rp_pico")]
             r3_support_rp2040::sprintln!(

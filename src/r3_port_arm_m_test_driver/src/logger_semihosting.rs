@@ -11,8 +11,7 @@ impl log::Log for Logger {
             level = record.level(),
             target = record.target(),
             args = record.args()
-        )
-        .unwrap();
+        );
     }
 
     fn flush(&self) {}
