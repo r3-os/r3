@@ -147,7 +147,7 @@ pub macro sym_static {
                         .dc.a {2}
                     ",
                     sym Self::$sym_name,
-                    const $crate::sym::mem::align_of::<&'static $ty>().trailing_zeros(),
+                    const $crate::sym::mem::align_of::<*const $ty>().trailing_zeros(),
                     sym $static,
                     options(noreturn),
                 );
@@ -170,7 +170,7 @@ mod tests {
     static S1: u32 = 1;
     static S2: u32 = 2;
 
-    impl Tr for &'static u8 {
+    impl Tr for u8 {
         sym_static!(
             #[sym(p_var)]
             fn var() -> &u32 {
@@ -178,7 +178,7 @@ mod tests {
             }
         );
     }
-    impl Tr for &'static u16 {
+    impl Tr for u16 {
         sym_static!(
             #[sym(p_var)]
             fn var() -> &u32 {
@@ -186,7 +186,7 @@ mod tests {
             }
         );
     }
-    impl Tr for &'static u32 {
+    impl Tr for u32 {
         sym_static!(
             #[sym(p_var)]
             fn var() -> &u32 {
@@ -197,9 +197,9 @@ mod tests {
 
     #[test]
     fn uniqueness() {
-        let var1 = dbg!(<&'static u8>::var() as *const u32);
-        let var2 = dbg!(<&'static u16>::var() as *const u32);
-        let var3 = dbg!(<&'static u32>::var() as *const u32);
+        let var1 = dbg!(<u8>::var() as *const u32);
+        let var2 = dbg!(<u16>::var() as *const u32);
+        let var3 = dbg!(<u32>::var() as *const u32);
         assert_ne!(var1, var2);
         assert_ne!(var2, var3);
         assert_ne!(var1, var3);
