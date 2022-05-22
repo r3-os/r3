@@ -2,7 +2,7 @@ The RISC-V port for [the R3 kernel](::r3_kernel).
 
 # Startup code
 
-[`use_rt!`] hooks up the entry points ([`EntryPoint`]) using `#[`[`::riscv_rt::entry`]`]`. If this is not desirable for some reason, you can opt not to use it and call the entry points in other ways.
+[`use_rt!`] hooks up the entry points ([`EntryPoint`]) using `#[`[`::riscv_rt::entry`]`]` (requires the **`riscv-rt`** Cargo feature). If this is not desirable for some reason, you can opt not to use it and call the entry points in other ways.
 
 # Interrupts
 
