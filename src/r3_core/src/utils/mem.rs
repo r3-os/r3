@@ -44,9 +44,7 @@ mod tests {
                 MaybeUninit::new(2),
                 MaybeUninit::new(3),
             ];
-            // `MaybeUninit::array_assume_init` is not `const fn`
-            // [ref:const_array_assume_init]
-            unsafe { transmute(array) }
+            unsafe { MaybeUninit::array_assume_init(array) }
         };
         assert_eq!(ARRAY1, [1, 2, 3]);
     }

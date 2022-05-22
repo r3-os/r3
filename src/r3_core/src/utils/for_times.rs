@@ -232,21 +232,8 @@ macro_rules! const_array_from_fn {
             ))
         }
 
-        // `MaybeUninit::array_assume_init` is not `const fn` yet
-        // [ref:const_array_assume_init]
-        const unsafe fn __assume_init<
-            $($iter_gparam $($iter_gparam_bounds)*,)*
-            const LEN: usize
-        >(array: [MaybeUninit<$ty>; LEN]) -> [$ty; LEN] {
-            // Safety: This is equivalent to `transmute_copy(&array)`. The
-            // memory layout of `[MaybeUninit<T>; $len]` is identical to `[T; $len]`.
-            // We initialized all elements in `array[0..$len]`, so it's safe to
-            // reinterpret that range as `[T; $len]`.
-            unsafe { *(array.as_ptr() as *const _ as *const [$ty; LEN]) }
-        }
-
-        // Safety: See the body of `__assume_init`.
-        unsafe { __assume_init::<$($ctx_t,)* {$len_value}>(array) }
+        // Safety: All elements of `array` are initialized
+        unsafe { MaybeUninit::array_assume_init(array) }
     }};
 }
 
