@@ -49,9 +49,7 @@ impl<System: SupportedSystem> AppInner<System> {
                 i += 1;
             }
 
-            // `MaybeUninit::array_assume_init` is not `const fn` yet
-            // [ref:const_array_assume_init]
-            unsafe { core::mem::transmute_copy(&timers) }
+            unsafe { MaybeUninit::array_assume_init(timers) }
         };
 
         Self { timers }

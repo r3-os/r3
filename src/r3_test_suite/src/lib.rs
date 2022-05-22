@@ -1,4 +1,6 @@
+#![feature(const_maybe_uninit_array_assume_init)]
 #![feature(const_fn_floating_point_arithmetic)]
+#![feature(maybe_uninit_array_assume_init)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_transmute_copy)]
 #![feature(const_refs_to_cell)]

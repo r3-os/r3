@@ -366,28 +366,6 @@ const _: () = { b"".iter(); };
 ```
 
 
-### `[tag:const_array_assume_init]` `MaybeUninit::array_assume_init` is not `const fn`
-
-```rust
-#![feature(maybe_uninit_array_assume_init)]
-use core::mem::MaybeUninit;
-assert!(matches!(
-    unsafe { MaybeUninit::array_assume_init([MaybeUninit::new(42)]) },
-    [42]
-));
-```
-
-```rust,compile_fail,E0015
-#![feature(maybe_uninit_array_assume_init)]
-use core::mem::MaybeUninit;
-const _: () = assert!(matches!(
-    // error[E0015]: cannot call non-const fn `MaybeUninit::<i32>::
-    // array_assume_init::<1_usize>` in constants
-    unsafe { MaybeUninit::array_assume_init([MaybeUninit::new(42)]) },
-    [42]
-));
-```
-
 ### `[tag:const_uninit_array]` `MaybeUninit::uninit_array` is unstable
 
 ```rust,compile_fail,E0658

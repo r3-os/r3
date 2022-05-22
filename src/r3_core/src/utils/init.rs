@@ -44,12 +44,8 @@ impl<T: Init, const LEN: usize> Init for [T; LEN] {
             i += 1;
         }
 
-        // `MaybeUninit::array_assume_init` is not `const fn` yet
-        // [ref:const_array_assume_init]
-        // Safety: The memory layout of `[MaybeUninit<T>; LEN]` is
-        // identical to `[T; LEN]`. We initialized all elements, so it's
-        // safe to reinterpret that range as `[T; LEN]`.
-        unsafe { super::mem::transmute(array) }
+        // Safety: `array`'s elements are fully initialized
+        unsafe { mem::MaybeUninit::array_assume_init(array) }
     };
 }
 
