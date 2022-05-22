@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-03-30`
+- **Breaking:** `use_rt!` is now gated behind `riscv-rt` Cargo feature.
 
 ### Fixed
 

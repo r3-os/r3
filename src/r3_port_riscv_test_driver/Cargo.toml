@@ -24,6 +24,7 @@ run = [
 boot-minimal-s = []
 # Use `riscv-rt` for the startup code
 boot-rt = [
+    "r3_port_riscv/riscv-rt",
     "riscv-rt",
 ]
 
