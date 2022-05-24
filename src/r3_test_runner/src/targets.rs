@@ -81,6 +81,7 @@ impl LinkerScripts {
 
               .text :
               {
+                KEEP(*(.text_pre .text_pre.*));
                 *(.text .text.*);
                 . = ALIGN(4);
                 __etext = .;

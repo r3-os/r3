@@ -90,6 +90,7 @@ macro_rules! instantiate_test {
         port::use_rt!(unsafe SystemTraits);
 
         #[cfg(feature = "boot-minimal-s")]
+        #[link_section = ".text_pre"]
         #[no_mangle]
         #[naked]
         extern "C" fn start() {
