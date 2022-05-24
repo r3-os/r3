@@ -9,6 +9,7 @@
 #![feature(raw_ref_op)]
 #![feature(asm_const)]
 #![feature(asm_sym)]
+#![feature(doc_cfg)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(
     feature = "doc",
@@ -55,6 +56,8 @@ pub mod plic {
 
 /// The binding for [`::riscv_rt`].
 #[doc(hidden)]
+#[cfg(feature = "riscv-rt")]
+#[doc(cfg(feature = "riscv-rt"))]
 pub mod rt {
     pub mod cfg;
     #[cfg(target_os = "none")]
@@ -85,6 +88,7 @@ pub mod sbi_timer {
 
 pub use self::mtime::cfg::*;
 pub use self::plic::cfg::*;
+#[cfg(feature = "riscv-rt")]
 pub use self::rt::cfg::*;
 pub use self::sbi_timer::cfg::*;
 pub use self::threading::cfg::*;

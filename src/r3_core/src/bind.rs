@@ -1216,7 +1216,8 @@ macro_rules! impl_fn_bind {
             type BoundFn<T, Output, $( $RuntimeBinderI, )*>
             where
                 $( $RuntimeBinderI: RuntimeBinder, )*
-                T: Copy + Send + 'static,
+                T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*)
+                    -> Output + Copy + Send + 'static,
              = impl FnOnce() -> Output + Copy + Send + 'static;
 
             const fn bind_inner<
@@ -1345,8 +1346,8 @@ where
 
 type MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
 where
-    InnerBoundFn: Copy + Send + 'static,
-    Mapper: Copy + Send + 'static,
+    InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
+    Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
 = impl FnOnce() -> NewOutput + Copy + Send + 'static;
 
 const fn map_bind_inner<InnerBoundFn, Output, Mapper, NewOutput>(
