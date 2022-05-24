@@ -1,10 +1,10 @@
 name: r3-install-qemu
-description: Install QEMU 5.1.0 from Source
+description: Install QEMU from source
 inputs:
   version:
     description: QEMU version to install
     required: true
-    default: 6.1.0
+    default: 7.0.0
   target-list:
     description: List of targets to build
     required: true
