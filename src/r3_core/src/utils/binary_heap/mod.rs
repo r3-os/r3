@@ -11,12 +11,12 @@ mod veclike;
 pub use self::veclike::*;
 
 /// Context type for [`BinaryHeap`]'s operations.
+#[const_trait]
 pub trait BinaryHeapCtx<Element> {
     /// Return `true` iff `x < y`.
     fn lt(&mut self, x: &Element, y: &Element) -> bool;
 
     /// Called when the element `e` is moved to the new position `new_index`.
-    #[default_method_body_is_const]
     fn on_move(&mut self, e: &mut Element, new_index: usize) {
         let _ = (e, new_index);
     }

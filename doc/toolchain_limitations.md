@@ -536,7 +536,7 @@ const _: () = assert!(matches!((2..4).next(), Some(2)));
 ```
 
 
-### `[tag:iterator_const_default]` `Iterator`'s methods lack `#[default_method_body_is_const]`
+### `[tag:iterator_const_default]` `Iterator` lack `#[const_trait]`
 
 Implementing `const Iterator` requires you to implement all of its methods, which is impossible to do correctly.
 
