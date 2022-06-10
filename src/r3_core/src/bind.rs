@@ -686,8 +686,8 @@ impl<'pool, System, T> DivideBind<'pool, System, T> {
 ///
 /// const fn configure_app<C>(cfg: &mut Cfg<C>)
 /// where
-///     C: ~const traits::CfgBase,
-///     C::System: traits::KernelBase + traits::KernelStatic,
+// `~const CfgBase` not implied due to [ref:const_supertraits]
+///     C: ~const traits::CfgBase + ~const traits::CfgStatic,
 /// {
 ///     let values = Bind::define().init(|| (12, 34)).finish(cfg);
 ///     let (value0, value1) = values.unzip();
