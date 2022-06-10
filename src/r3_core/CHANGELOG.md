@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- The `Cfg*` traits now imply the corresponding `Kernel*` traits (e.g., `C: CfgTimer` implies `C::System: KernelTimer`), making some trait bounds in configuration functions unnecessary.
+
 ## [0.1.2] - 2022-03-30
 
 ### Changed

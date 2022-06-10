@@ -54,9 +54,6 @@ define_object! {
 /// const fn configure<C>(cfg: &mut Cfg<C>) -> Objects<C::System>
 /// where
 ///     C: ~const traits::CfgMutex,
-// The following bound is necessary becauase of a bug in the compiler
-// [ref:trait_constraints_on_associated_types_do_not_propagate]
-///     C::System: traits::KernelMutex,
 /// {
 ///     let mutex = StaticMutex::define()
 ///         .protocol(MutexProtocol::Ceiling(1))

@@ -820,7 +820,7 @@ impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System,
 /// where
 ///     C: ~const traits::CfgBase +
 ///        ~const traits::CfgTask,
-///     C::System: traits::KernelBase + traits::KernelStatic,
+///     C::System: traits::KernelStatic,
 /// {
 ///     let foo = Bind::define().init(|| {
 ///         // `BindTable::get()` will fail because some bindings might not

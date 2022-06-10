@@ -38,29 +38,6 @@ impl<T> StGeneric<for<'a> fn(&'a T)> {
 ```
 
 
-### `[tag:trait_constraints_on_associated_types_do_not_propagate]` Trait constraints on associated types do not propagate to the trait's use sites
-
-*Upstream issue:* [rust-lang/rust#32722](https://github.com/rust-lang/rust/issues/32722)
-
-According to [this comment](https://github.com/rust-lang/rust/issues/32722#issuecomment-618044689), this is a symptom of [rust-lang/rust#20671](https://github.com/rust-lang/rust/issues/20671).
-
-```rust,compile_fail,E0277
-trait KernelMutex {}
-
-trait CfgBase {
-    type System;
-}
-
-trait CfgMutex: CfgBase
-where
-    Self::System: KernelMutex,
-{}
-
-// error[E0277]: the trait bound `<C as CfgBase>::System: KernelMutex` is not satisfied
-fn foo<C: CfgMutex>() {}
-```
-
-
 ### `[tag:impl_trait_false_type_alias_bounds]` `type_alias_bounds` misfires when `impl Trait` is used in a portion of a type alias
 
 *Upstream issue:* [rust-lang/rust#94395](https://github.com/rust-lang/rust/issues/94395)
