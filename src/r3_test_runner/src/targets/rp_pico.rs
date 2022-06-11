@@ -514,7 +514,7 @@ impl PicobootCmd {
                 _addr_size: PicobootCmdArgsAddrSize {
                     _addr: addr,
                     _size: size,
-                    _pad: [0; 8],
+                    _pad: [0; _],
                 },
             },
         }
@@ -534,7 +534,7 @@ impl PicobootCmd {
                     _pc: pc,
                     _sp: sp,
                     _delay_ms: delay_ms,
-                    _pad: [0; 4],
+                    _pad: [0; _],
                 },
             },
         }
