@@ -4,11 +4,11 @@
 // [Deno]: https://deno.land/
 //
 // Usage: deno run -A scripts/externalize-non-local-docs.ts
-import { parse as parseFlags } from "https://deno.land/std@0.125.0/flags/mod.ts";
-import { parse as parseToml } from "https://deno.land/std@0.125.0/encoding/toml.ts";
-import * as path from "https://deno.land/std@0.125.0/path/mod.ts";
-import * as log from "https://deno.land/std@0.125.0/log/mod.ts";
-import { walk } from "https://deno.land/std@0.125.0/fs/walk.ts";
+import { parse as parseFlags } from "https://deno.land/std@0.143.0/flags/mod.ts";
+import { parse as parseToml } from "https://deno.land/std@0.143.0/encoding/toml.ts";
+import * as path from "https://deno.land/std@0.143.0/path/mod.ts";
+import * as log from "https://deno.land/std@0.143.0/log/mod.ts";
+import { walk } from "https://deno.land/std@0.143.0/fs/walk.ts";
 import * as semver from "https://deno.land/x/semver@v1.4.0/mod.ts";
 
 const parsedArgs = parseFlags(Deno.args, {

@@ -2,11 +2,11 @@
 // program.
 //
 // [Deno]: https://deno.land/
-import { parse as parseFlags } from "https://deno.land/std@0.125.0/flags/mod.ts";
-import * as path from "https://deno.land/std@0.125.0/path/mod.ts";
-import * as log from "https://deno.land/std@0.125.0/log/mod.ts";
-import { BufReader } from "https://deno.land/std@0.125.0/io/bufio.ts";
-import { Buffer } from "https://deno.land/std@0.125.0/node/buffer.ts";
+import { parse as parseFlags } from "https://deno.land/std@0.143.0/flags/mod.ts";
+import * as path from "https://deno.land/std@0.143.0/path/mod.ts";
+import * as log from "https://deno.land/std@0.143.0/log/mod.ts";
+import { BufReader } from "https://deno.land/std@0.143.0/io/bufio.ts";
+import { Buffer } from "https://deno.land/std@0.143.0/node/buffer.ts";
 import AsciiTable from "https://deno.land/x/ascii_table@v0.1.0/mod.ts";
 import elfy from "https://esm.sh/elfy@1.0.0";
 
