@@ -63,7 +63,9 @@ jobs:
         run: sudo snap install deno
 
       - name: Check crate metadata
-        run: deno run --allow-read scripts/check-workspace.ts
+        run: |
+          deno --version
+          deno run --allow-read scripts/check-workspace.ts
 
   # Build examples
   build-examples:
