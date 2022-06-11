@@ -1,5 +1,6 @@
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(atomic_mut_ptr)]
+#![feature(lint_reasons)]
 #![feature(thread_local)]
 #![feature(deadline_api)]
 #![cfg_attr(
@@ -113,7 +114,7 @@ pub struct TaskState {
 }
 
 impl Init for TaskState {
-    #[allow(clippy::declare_interior_mutable_const)]
+    #[expect(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self::new();
 }
 
@@ -201,7 +202,7 @@ impl TaskState {
     }
 }
 
-#[allow(clippy::missing_safety_doc)]
+#[expect(clippy::missing_safety_doc)]
 impl State {
     pub const fn new() -> Self {
         Self {
