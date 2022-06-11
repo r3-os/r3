@@ -126,7 +126,6 @@ pub struct MutexCb<
 }
 
 impl<Traits: PortThreading> Init for MutexCb<Traits> {
-    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         ceiling: Init::INIT,
         inconsistent: Init::INIT,

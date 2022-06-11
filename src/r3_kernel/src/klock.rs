@@ -22,7 +22,6 @@ pub(super) type CpuLockKeyhole<Traits> = tokenlock::SingletonTokenId<CpuLockTag<
 pub(super) struct CpuLockCell<Traits, T: ?Sized>(UnsyncTokenLock<T, CpuLockKeyhole<Traits>>);
 
 impl<Traits, T> CpuLockCell<Traits, T> {
-    #[allow(dead_code)]
     pub(super) const fn new(x: T) -> Self {
         Self(UnsyncTokenLock::new(CpuLockKeyhole::INIT, x))
     }

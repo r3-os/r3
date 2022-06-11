@@ -172,7 +172,6 @@ fn ctz3_lut(x: usize) -> u32 {
 /// `x` must be in range `1..8`.
 #[inline]
 // This code groups digits irregularly to express a specific meaning
-#[allow(clippy::inconsistent_digit_grouping)]
 fn ctz3_lut_nonzero(x: usize) -> u32 {
     debug_assert!(x < 8);
     debug_assert!(x != 0);
