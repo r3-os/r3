@@ -209,7 +209,7 @@ pub struct BitmapQueuePerTaskData<
 impl<Traits: PortThreading, PortTaskState: 'static, TaskPriority: 'static> Init
     for BitmapQueuePerTaskData<Traits, PortTaskState, TaskPriority>
 {
-    #[allow(clippy::declare_interior_mutable_const)]
+    #[expect(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self { link: Init::INIT };
 }
 

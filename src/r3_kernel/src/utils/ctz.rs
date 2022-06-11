@@ -1,9 +1,9 @@
 //! Count trailing zeros
-#![allow(clippy::if_same_then_else)]
+#![expect(clippy::if_same_then_else)]
 
 const USIZE_BITS: u32 = usize::BITS;
 
-#[allow(clippy::needless_bool)]
+#[expect(clippy::needless_bool)]
 const HAS_CTZ: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "riscv64") {
     cfg!(target_feature = "b") || cfg!(target_feature = "experimental-b")
 } else if cfg!(target_arch = "arm") {
@@ -21,7 +21,7 @@ const HAS_CTZ: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "ri
 };
 
 /// Indicates whether the target includes a 32-bit hardware multiplier.
-#[allow(clippy::needless_bool)]
+#[expect(clippy::needless_bool)]
 const HAS_MUL: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "riscv64") {
     cfg!(target_feature = "m")
 } else if cfg!(target_arch = "msp430") {
@@ -34,7 +34,7 @@ const HAS_MUL: bool = if cfg!(target_arch = "riscv32") || cfg!(target_arch = "ri
 };
 
 /// Indicates whether the target includes a 32-bit barrel shifter.
-#[allow(clippy::needless_bool)]
+#[expect(clippy::needless_bool)]
 const HAS_SHIFTER: bool = if cfg!(target_arch = "msp430") {
     false
 } else if cfg!(target_arch = "avr") {
@@ -63,7 +63,7 @@ const HAS_SHIFTER: bool = if cfg!(target_arch = "msp430") {
 /// cache for XiP from an external SPI flash. Therefore, using an array-based
 /// LUT on such systems would lead to a catastrophic performance degradation and
 /// must be avoided at any cost.
-#[allow(clippy::needless_bool)]
+#[expect(clippy::needless_bool)]
 const HAS_FAST_LOAD: bool =
     if cfg!(target_arch = "arm") || cfg!(target_arch = "msp430") || cfg!(target_arch = "avr") {
         true
