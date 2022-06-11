@@ -20,7 +20,7 @@ enum FrameExtractorStateInner {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[allow(clippy::enum_variant_names)] // The common suffix `Frame` is intentional
+#[expect(clippy::enum_variant_names)] // The common suffix `Frame` is intentional
 enum FrameExtractorAction {
     /// Clear the partial packet buffer.
     StartFrame,

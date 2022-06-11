@@ -1,5 +1,6 @@
 #![feature(exhaustive_patterns)]
 #![feature(must_not_suspend)] // `must_not_suspend` lint
+#![feature(lint_reasons)] // `#[expect(...)]`
 #![feature(decl_macro)] // `macro`
 #![feature(let_else)] // `let ... = ... else { ... }`
 #![warn(must_not_suspend)]
