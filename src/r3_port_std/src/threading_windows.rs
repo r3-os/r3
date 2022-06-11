@@ -22,8 +22,7 @@ pub use std::thread::ThreadId;
 /// [`std::thread::JoinHandle`] with extra functionalities.
 #[derive(Debug)]
 pub struct JoinHandle<T> {
-    #[allow(dead_code)]
-    std_handle: thread::JoinHandle<T>,
+    _std_handle: thread::JoinHandle<T>,
     thread: Thread,
 }
 
@@ -42,7 +41,10 @@ pub fn spawn(f: impl FnOnce() + Send + 'static) -> JoinHandle<()> {
 
     let thread = Thread { data };
 
-    JoinHandle { std_handle, thread }
+    JoinHandle {
+        _std_handle: std_handle,
+        thread,
+    }
 }
 
 impl<T> JoinHandle<T> {
