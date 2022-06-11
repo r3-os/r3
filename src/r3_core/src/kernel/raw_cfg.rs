@@ -116,10 +116,7 @@ pub struct TaskDescriptor<System> {
 /// [3]: self#stability
 /// [4]: self#safety
 // The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgEventGroup: CfgBase
-where
-    Self::System: raw::KernelEventGroup,
-{
+pub unsafe trait CfgEventGroup: CfgBase<System: raw::KernelEventGroup> {
     fn event_group_define<Properties: ~const Bag>(
         &mut self,
         descriptor: EventGroupDescriptor<Self::System>,
@@ -151,10 +148,7 @@ pub struct EventGroupDescriptor<System> {
 /// [3]: self#stability
 /// [4]: self#safety
 // The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgMutex: CfgBase
-where
-    Self::System: raw::KernelMutex,
-{
+pub unsafe trait CfgMutex: CfgBase<System: raw::KernelMutex> {
     fn mutex_define<Properties: ~const Bag>(
         &mut self,
         descriptor: MutexDescriptor<Self::System>,
@@ -185,10 +179,7 @@ pub struct MutexDescriptor<System> {
 /// [3]: self#stability
 /// [4]: self#safety
 // The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgSemaphore: CfgBase
-where
-    Self::System: raw::KernelSemaphore,
-{
+pub unsafe trait CfgSemaphore: CfgBase<System: raw::KernelSemaphore> {
     fn semaphore_define<Properties: ~const Bag>(
         &mut self,
         descriptor: SemaphoreDescriptor<Self::System>,
@@ -221,10 +212,7 @@ pub struct SemaphoreDescriptor<System> {
 /// [3]: self#stability
 /// [4]: self#safety
 // The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgTimer: CfgBase
-where
-    Self::System: raw::KernelTimer,
-{
+pub unsafe trait CfgTimer: CfgBase<System: raw::KernelTimer> {
     fn timer_define<Properties: ~const Bag>(
         &mut self,
         descriptor: TimerDescriptor<Self::System>,
@@ -258,10 +246,7 @@ pub struct TimerDescriptor<System> {
 /// [3]: self#stability
 /// [4]: self#safety
 // The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgInterruptLine: CfgBase
-where
-    Self::System: raw::KernelInterruptLine,
-{
+pub unsafe trait CfgInterruptLine: CfgBase<System: raw::KernelInterruptLine> {
     fn interrupt_line_define<Properties: ~const Bag>(
         &mut self,
         descriptor: InterruptLineDescriptor<Self::System>,
