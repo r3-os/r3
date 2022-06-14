@@ -1849,7 +1849,8 @@ where
                 );
                 i += 1;
             }
-            crate::utils::mem::transmute(out)
+            // Safety: All elements of `out` are initialized
+            MaybeUninit::array_assume_init(out)
         }
     }
 }
