@@ -19,7 +19,7 @@ impl<const LEN: usize, const ALIGN: usize> Init for AlignedStorage<LEN, ALIGN>
 where
     elain::Align<ALIGN>: elain::Alignment,
 {
-    const INIT: Self = Self(elain::Align::NEW, [MaybeUninit::uninit(); LEN]);
+    const INIT: Self = Self(elain::Align::NEW, MaybeUninit::uninit_array());
 }
 
 #[cfg(test)]

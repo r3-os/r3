@@ -203,7 +203,7 @@ macro_rules! const_array_from_fn {
     ) => {{
         use core::mem::MaybeUninit;
         use $crate::utils::for_times::Nat;
-        let mut array = [MaybeUninit::uninit(); $len_value];
+        let mut array = MaybeUninit::uninit_array::<{$len_value}>();
 
         if array.len() != <$len as Nat>::N {
             unreachable!();

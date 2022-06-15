@@ -1835,7 +1835,7 @@ where
     fn into_runtime_binder(self) -> Self::Runtime {
         unsafe {
             // `[T; N]::map` is unusable in `const fn` [ref:const_array_map]
-            let mut out: [MaybeUninit<Binder::Runtime>; LEN] = MaybeUninit::uninit_array();
+            let mut out = MaybeUninit::uninit_array();
             let this = MaybeUninit::new(self);
             // `for` loops are unusable in `const fn` [ref:const_for]
             let mut i = 0;
