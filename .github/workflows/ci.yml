@@ -156,6 +156,13 @@ jobs:
           args: --workspace -- ${{ env.testflags }}
         env:
           RUST_LOG: debug
+      - name: Test (-p r3_port_std --benches)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p r3_port_std --benches -- ${{ env.testflags }}
+        env:
+          RUST_LOG: debug
 
   # Run tests on the host system with a subset of optional features enabled
   test-hosted-subset:
