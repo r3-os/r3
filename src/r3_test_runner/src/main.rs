@@ -1,4 +1,5 @@
 #![feature(exhaustive_patterns)]
+#![feature(generic_arg_infer)]
 #![feature(must_not_suspend)] // `must_not_suspend` lint
 #![feature(decl_macro)] // `macro`
 #![feature(let_else)] // `let ... = ... else { ... }`

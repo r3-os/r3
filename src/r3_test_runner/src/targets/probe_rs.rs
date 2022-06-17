@@ -322,7 +322,7 @@ impl ReadRtt {
         Self {
             options,
             st: ReadRttSt::Idle {
-                buf: Box::new([0u8; 1024]),
+                buf: Box::new([0u8; _]),
                 session,
                 rtt: Box::new(rtt),
                 pos: 0,

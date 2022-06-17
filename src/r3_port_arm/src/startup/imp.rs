@@ -15,7 +15,7 @@ impl VectorTable {
         Self {
             // trampolines[N]:
             //      ldr pc, [pc, #24]   ; targets + N * 4
-            _trampolines: [0xe59ff018; 8],
+            _trampolines: [0xe59ff018; _],
             // trampolines[N]
             _targets: [
                 unhandled_exception_handler,

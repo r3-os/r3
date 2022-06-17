@@ -1,4 +1,5 @@
 #![feature(const_refs_to_cell)]
+#![feature(generic_arg_infer)]
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]

@@ -1,4 +1,5 @@
 #![feature(const_refs_to_cell)]
+#![feature(generic_arg_infer)]
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
@@ -558,7 +559,7 @@ const USB_BUF_CAP: usize = 64;
 /// The queue through which received data is passed from `poll_usb` to
 /// `usb_in_task_body`
 static USB_BUF_IN: PrimaskMutex<RefCell<([u8; USB_BUF_CAP], usize)>> =
-    PrimaskMutex::new(RefCell::new(([0; USB_BUF_CAP], 0)));
+    PrimaskMutex::new(RefCell::new(([0; _], 0)));
 
 /// USB interrupt handler
 fn poll_usb() {
@@ -705,7 +706,7 @@ mod queue {
             Self {
                 st: StaticMutex::define()
                     .init(|| QueueSt {
-                        buf: [T::INIT; CAP],
+                        buf: [T::INIT; _],
                         read_i: 0,
                         len: 0,
                         waiting_reader: None,
