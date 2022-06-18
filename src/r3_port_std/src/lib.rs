@@ -2,6 +2,7 @@
 #![feature(atomic_mut_ptr)]
 #![feature(thread_local)]
 #![feature(deadline_api)]
+#![feature(once_cell)]
 #![cfg_attr(
     feature = "doc",
     doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
@@ -9,7 +10,6 @@
 #![doc = include_str!("./lib.md")]
 #![deny(unsafe_op_in_unsafe_fn)]
 use atomic_ref::AtomicRef;
-use once_cell::sync::OnceCell;
 use r3_core::{
     kernel::{
         ClearInterruptLineError, EnableInterruptLineError, InterruptNum, InterruptPriority,
@@ -22,6 +22,7 @@ use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb, UTicks};
 use spin::Mutex as SpinMutex;
 use std::{
     cell::Cell,
+    lazy::SyncOnceCell,
     sync::mpsc,
     time::{Duration, Instant},
 };
@@ -96,7 +97,7 @@ pub unsafe trait PortInstance:
 /// the corresponding trait methods of `Port*`.
 #[doc(hidden)]
 pub struct State {
-    thread_group: OnceCell<ums::ThreadGroup<sched::SchedState>>,
+    thread_group: SyncOnceCell<ums::ThreadGroup<sched::SchedState>>,
     timer_cmd_send: SpinMutex<Option<mpsc::Sender<TimerCmd>>>,
     origin: AtomicRef<'static, Instant>,
 }
@@ -205,7 +206,7 @@ impl TaskState {
 impl State {
     pub const fn new() -> Self {
         Self {
-            thread_group: OnceCell::new(),
+            thread_group: SyncOnceCell::new(),
             timer_cmd_send: SpinMutex::new(None),
             origin: AtomicRef::new(None),
         }

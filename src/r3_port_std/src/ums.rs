@@ -1,7 +1,7 @@
 //! Utterly inefficient cross-platform preemptive user-mode scheduling
-use once_cell::sync::OnceCell;
 use slab::Slab;
 use std::{
+    lazy::SyncOnceCell,
     panic::{catch_unwind, AssertUnwindSafe},
     sync::{mpsc, Arc},
     thread::Result,
@@ -75,7 +75,7 @@ struct WorkerThread {
 }
 
 thread_local! {
-    static TLB: OnceCell<ThreadLocalBlock> = OnceCell::new();
+    static TLB: SyncOnceCell<ThreadLocalBlock> = SyncOnceCell::new();
 }
 
 struct ThreadLocalBlock {
