@@ -19,7 +19,6 @@ env_logger = { version = "0.8.4" }
 serde_json = { version = "1.0.57" }
 serialport = { version = "4.0.0" }
 itertools = { version = "0.10.0" }
-pin-utils = { version = "0.1.0" }
 thiserror = { version = "1.0.20" }
 probe-rs = { version = "0.12.0" }
 tempdir = { version = "0.3.7" }

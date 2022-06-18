@@ -3,7 +3,7 @@ use std::{
     fmt::Write,
     future::Future,
     path::{Path, PathBuf},
-    pin::Pin,
+    pin::{pin, Pin},
     time::Duration,
 };
 use tokio::io::AsyncReadExt;
@@ -480,8 +480,7 @@ async fn read_to_end_timeout(
 ) -> tokio::io::Result<Vec<u8>> {
     let mut output = Vec::new();
     let mut buffer = vec![0u8; 16384];
-    let timeout_fut = tokio::time::sleep(timeout);
-    pin_utils::pin_mut!(timeout_fut);
+    let mut timeout_fut = pin!(tokio::time::sleep(timeout));
 
     log::trace!("read_to_end_timeout: Got a stream");
 

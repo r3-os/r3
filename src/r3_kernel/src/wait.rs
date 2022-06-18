@@ -1,4 +1,4 @@
-use core::{cell::Cell, fmt, ops, ptr::NonNull};
+use core::{cell::Cell, fmt, ops, pin::pin, ptr::NonNull};
 use r3_core::{
     kernel::{EventGroupBits, EventGroupWaitFlags, WaitError, WaitTimeoutError},
     utils::Init,
@@ -233,8 +233,11 @@ impl<Traits: PortThreading> Init for TaskWait<Traits> {
 macro_rules! setup_timeout_wait {
     ($lock:ident, $task_cb:expr, $duration_time32:expr) => {
         // Create a timeout object.
-        let timeout = new_timeout_object_for_task($lock.borrow_mut(), $task_cb, $duration_time32);
-        pin_utils::pin_mut!(timeout);
+        let timeout = pin!(new_timeout_object_for_task(
+            $lock.borrow_mut(),
+            $task_cb,
+            $duration_time32
+        ));
 
         // Use `TimeoutGuard` to automatically unregister the timeout when
         // leaving the current lexical scope.
