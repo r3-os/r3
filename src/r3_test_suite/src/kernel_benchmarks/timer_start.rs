@@ -39,8 +39,9 @@ impl<System: SupportedSystem> AppInner<System> {
             + ~const traits::CfgTask
             + ~const traits::CfgTimer,
     {
+        // `<[T; LEN]>::from_fn` is not `const fn` [ref:const_array_from_fn]
         let timers = {
-            let mut timers = [MaybeUninit::<StaticTimer<System>>::uninit(); 64];
+            let mut timers = MaybeUninit::uninit_array();
 
             let mut i = 0;
             // `for` is unusable in `const fn` [ref:const_for]

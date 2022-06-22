@@ -13,6 +13,7 @@
 #![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(generic_associated_types)]
+#![feature(associated_type_bounds)]
 #![feature(const_slice_first_last)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_cell_into_inner)]

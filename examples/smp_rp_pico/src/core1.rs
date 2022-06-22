@@ -100,11 +100,11 @@ static CORE1_VECTOR_TABLE: VectorTable<[unsafe extern "C" fn(); 48]> = {
         fn _core1_stack_start();
     }
 
-    let mut table = [unhandled as _; 48];
+    let mut table = [unhandled as _; _];
 
     let mut i = 0;
     let kernel_handler_table = <SystemTraits as r3_kernel::KernelCfg2>::INTERRUPT_HANDLERS;
-    while i < 48 {
+    while i < table.len() {
         if let Some(handler) = kernel_handler_table.get(i) {
             table[i] = handler;
         }

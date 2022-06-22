@@ -31,7 +31,9 @@ jobs:
           args: -p r3_port_std -p r3_port_arm -p r3_port_arm_m -p r3_port_riscv -p r3_support_rp2040 -p r3_support_rza1 -p r3_portkit -p r3_kernel -p r3 -p r3_core --all-features
 
       - name: Redirect non-local crate documentation to docs.rs
-        run: deno run -A scripts/externalize-non-local-docs.ts -y
+        run: |
+          deno --version
+          deno run -A scripts/externalize-non-local-docs.ts -y
 
       - name: Check output
         run: |

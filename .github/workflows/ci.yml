@@ -63,7 +63,9 @@ jobs:
         run: sudo snap install deno
 
       - name: Check crate metadata
-        run: deno run --allow-read scripts/check-workspace.ts
+        run: |
+          deno --version
+          deno run --allow-read scripts/check-workspace.ts
 
   # Build examples
   build-examples:
@@ -152,6 +154,13 @@ jobs:
         with:
           command: test
           args: --workspace -- ${{ env.testflags }}
+        env:
+          RUST_LOG: debug
+      - name: Test (-p r3_port_std --benches)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p r3_port_std --benches -- ${{ env.testflags }}
         env:
           RUST_LOG: debug
 

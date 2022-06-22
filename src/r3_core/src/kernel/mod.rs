@@ -72,7 +72,7 @@ pub mod prelude {
 pub mod traits {
     #[doc(no_inline)]
     pub use super::{
-        cfg::KernelStatic,
+        cfg::{CfgStatic, KernelStatic},
         event_group::{EventGroupHandle, EventGroupMethods},
         mutex::{MutexHandle, MutexMethods},
         raw::{

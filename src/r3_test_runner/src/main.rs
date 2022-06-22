@@ -1,6 +1,8 @@
 #![feature(exhaustive_patterns)]
+#![feature(generic_arg_infer)]
 #![feature(must_not_suspend)] // `must_not_suspend` lint
 #![feature(decl_macro)] // `macro`
+#![feature(pin_macro)] // `core::pin::pin!`
 #![feature(let_else)] // `let ... = ... else { ... }`
 #![warn(must_not_suspend)]
 use anyhow::Context;

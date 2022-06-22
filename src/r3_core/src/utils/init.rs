@@ -35,7 +35,8 @@ impl<T: ?Sized> Init for PhantomData<T> {
 
 impl<T: Init, const LEN: usize> Init for [T; LEN] {
     const INIT: Self = {
-        let mut array = super::mem::uninit_array::<T, LEN>();
+        // `<[T; LEN]>::from_fn` is not `const fn` [ref:const_array_from_fn]
+        let mut array = mem::MaybeUninit::uninit_array();
 
         // `for` is unusable in `const fn` [ref:const_for]
         let mut i = 0;

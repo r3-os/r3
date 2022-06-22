@@ -30,22 +30,3 @@ pub const unsafe fn transmute<T, U>(x: T) -> U {
 pub const fn uninit_array<T, const LEN: usize>() -> [MaybeUninit<T>; LEN] {
     MaybeUninit::uninit_array()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use core::mem::MaybeUninit;
-
-    #[test]
-    fn uninit_array() {
-        const ARRAY1: [u32; 3] = {
-            let array = [
-                MaybeUninit::new(1u32),
-                MaybeUninit::new(2),
-                MaybeUninit::new(3),
-            ];
-            unsafe { MaybeUninit::array_assume_init(array) }
-        };
-        assert_eq!(ARRAY1, [1, 2, 3]);
-    }
-}

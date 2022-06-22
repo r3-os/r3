@@ -686,8 +686,8 @@ impl<'pool, System, T> DivideBind<'pool, System, T> {
 ///
 /// const fn configure_app<C>(cfg: &mut Cfg<C>)
 /// where
-///     C: ~const traits::CfgBase,
-///     C::System: traits::KernelBase + traits::KernelStatic,
+// `~const CfgBase` not implied due to [ref:const_supertraits]
+///     C: ~const traits::CfgBase + ~const traits::CfgStatic,
 /// {
 ///     let values = Bind::define().init(|| (12, 34)).finish(cfg);
 ///     let (value0, value1) = values.unzip();
@@ -820,7 +820,7 @@ impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System,
 /// where
 ///     C: ~const traits::CfgBase +
 ///        ~const traits::CfgTask,
-///     C::System: traits::KernelBase + traits::KernelStatic,
+///     C::System: traits::KernelStatic,
 /// {
 ///     let foo = Bind::define().init(|| {
 ///         // `BindTable::get()` will fail because some bindings might not
@@ -1835,7 +1835,7 @@ where
     fn into_runtime_binder(self) -> Self::Runtime {
         unsafe {
             // `[T; N]::map` is unusable in `const fn` [ref:const_array_map]
-            let mut out: [MaybeUninit<Binder::Runtime>; LEN] = MaybeUninit::uninit_array();
+            let mut out = MaybeUninit::uninit_array();
             let this = MaybeUninit::new(self);
             // `for` loops are unusable in `const fn` [ref:const_for]
             let mut i = 0;
@@ -1849,7 +1849,8 @@ where
                 );
                 i += 1;
             }
-            crate::utils::mem::transmute(out)
+            // Safety: All elements of `out` are initialized
+            MaybeUninit::array_assume_init(out)
         }
     }
 }

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- The new blanket-implemented `CfgStatic` trait can be used to simplify some trait bounds of configuration functions.
+
+### Fixed
+
+- The `Cfg*` traits now imply the corresponding `Kernel*` traits (e.g., `C: CfgTimer` implies `C::System: KernelTimer`), making some trait bounds in configuration functions unnecessary.
+
 ## [0.1.2] - 2022-03-30
 
 ### Changed

@@ -60,6 +60,7 @@ jobs:
 
       - name: Generate a size report
         run: |
+          deno --version
           deno run -A scripts/report-size.ts -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} -- -basepri > size-report.md
 
       - name: Publish the report as a check run

@@ -725,3 +725,51 @@ macro array_item_from_fn($(
         unsafe { mem::transmute(values) }
     };
 )*}
+
+/// A subtrait of [`raw_cfg::CfgBase`][] that implies
+/// `Self::System: `[`KernelStatic`][].
+///
+/// This trait by itself has no function, but it may help you keep your
+/// configuration functions clean by getting rid of trait bounds on
+/// `C::System`.
+///
+/// # Example
+///
+/// ```rust
+/// # #![feature(const_trait_impl)]
+/// # #![feature(const_mut_refs)]
+/// # use r3_core::kernel::traits;
+/// #
+/// const fn configure<C>(cfg: &mut C)
+/// where
+// `~const CfgBase` not implied due to [ref:const_supertraits]
+///     C: ~const traits::CfgBase + ~const traits::CfgStatic,
+/// {
+///     todo!()   
+/// }
+/// ```
+///
+/// The above is equivalent to:
+///
+/// ```rust
+/// # #![feature(const_trait_impl)]
+/// # #![feature(const_mut_refs)]
+/// # use r3_core::kernel::traits;
+/// #
+/// const fn configure<C>(cfg: &mut C)
+/// where
+///     C: ~const traits::CfgBase,
+///     C::System: traits::KernelStatic,
+/// {
+///     todo!()   
+/// }
+/// ```
+// The supertrait can't be `~const` due to [ref:const_supertraits]
+pub trait CfgStatic: raw_cfg::CfgBase<System: KernelStatic> {}
+
+impl<C> const CfgStatic for C
+where
+    C: ~const raw_cfg::CfgBase,
+    C::System: KernelStatic,
+{
+}
