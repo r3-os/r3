@@ -19,7 +19,6 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_ptr_offset_from)]
 #![feature(type_alias_impl_trait)]
-#![feature(const_intrinsic_copy)]
 #![feature(const_slice_ptr_len)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(generic_const_exprs)]
