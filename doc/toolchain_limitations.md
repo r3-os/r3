@@ -517,9 +517,11 @@ const _: () = assert!(matches!((2..4).next(), Some(2)));
 
 Implementing `const Iterator` requires you to implement all of its methods, which is impossible to do correctly.
 
-```rust,compile_fail
+```rust
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
+// FIXME: `compile-fail` temporarily removed due to
+//        [ref:const_impl_of_non_const_trait]
 
 struct MyIterator;
 
@@ -543,6 +545,36 @@ impl const Iterator for MyIterator {
         Some(42)
     }
 }
+```
+
+
+### `[tag:const_impl_of_non_const_trait]` `impl const Trait` doesn't require `#[const_trait]`
+
+A `const` implementation of a non-`#[const_trait]` trait that uses at least one default method implementation doesn't result in a compile error. Instead, an error occurs when the non-`const` default method implementations are actually called in a constant context. This behavior deviates from Rust's design principles, so it's likely a bug.
+
+```rust
+#![feature(const_trait_impl)]
+trait Tr {
+    fn foo() {}
+}
+
+// expected error: const trait implementations may not use non-const default
+// functions / note: `foo` not implemented
+impl const Tr for () {}
+```
+
+```rust
+#![feature(const_trait_impl)]
+#![feature(lint_reasons)]
+trait Tr {
+    fn foo() {}
+}
+
+impl const Tr for () {}
+
+const fn f<T: ~const Tr>() { T::foo() }
+#[expect(const_err)] // error: calling non-const function `<() as Tr>::foo`
+const _: () = f::<()>();
 ```
 
 
