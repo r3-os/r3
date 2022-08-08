@@ -627,6 +627,25 @@ const _: () = tokenlock::with_branded_token(|token| {
 ```
 
 
+### `[tag:rust_99793_tait]` False-positive "cycle detected" in `const fn` with TAIT
+
+*Upstream issue:* [rust-lang/rust#99793](https://github.com/rust-lang/rust/issues/99793) (possibly related)
+
+```rust
+#![feature(type_alias_impl_trait)]
+type Unit<T> = impl Copy;
+fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
+```
+
+```rust,compile_fail,E0391
+#![feature(type_alias_impl_trait)]
+type Unit<T> = impl Copy;
+// error[E0391]: cycle detected when computing type of
+// `main::_doctest_main_lib_rs_647_0::Unit::{opaque#0}
+const fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
+```
+
+
 ## Unsized types
 
 ### `[tag:unsized_maybe_uninit]` `MaybeUninit<T>` requires `T: Sized`
