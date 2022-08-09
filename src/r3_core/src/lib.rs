@@ -32,7 +32,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_ptr_write)]
 #![feature(core_intrinsics)]
-#![feature(untagged_unions)] // `union` with non-`Copy` fields
 #![feature(assert_matches)]
 #![feature(const_mut_refs)]
 #![feature(const_ptr_read)]
