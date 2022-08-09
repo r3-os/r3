@@ -2,12 +2,12 @@
 use core::mem::transmute;
 
 /// A heterogeneous collection to store property values.
+#[const_trait]
 pub trait Bag: private::Sealed + Copy {
     /// Insert an item and return a new `impl Bag`.
     ///
     /// For `const fn`-ness, this method can't have a provided implementation.
     #[inline]
-    #[default_method_body_is_const]
     fn insert<T: 'static>(self, head: T) -> List<T, Self> {
         assert!(self.get::<T>().is_none(), "duplicate entry");
         (head, self)

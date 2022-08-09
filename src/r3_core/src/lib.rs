@@ -19,7 +19,6 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_ptr_offset_from)]
 #![feature(type_alias_impl_trait)]
-#![feature(const_intrinsic_copy)]
 #![feature(const_slice_ptr_len)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
 #![feature(generic_const_exprs)]
@@ -28,6 +27,7 @@
 #![feature(const_nonnull_new)]
 #![feature(const_result_drop)]
 #![feature(const_slice_index)]
+#![feature(unboxed_closures)] // `impl FnOnce`
 #![feature(const_option_ext)]
 #![feature(const_trait_impl)]
 #![feature(const_ptr_write)]
@@ -49,6 +49,7 @@
 #![feature(decl_macro)]
 #![feature(never_type)] // `!`
 #![feature(const_try)]
+#![feature(fn_traits)] // `impl FnOnce`
 #![feature(let_else)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![cfg_attr(test, feature(is_sorted))]

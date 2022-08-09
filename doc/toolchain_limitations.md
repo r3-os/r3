@@ -513,13 +513,15 @@ const _: () = assert!(matches!((2..4).next(), Some(2)));
 ```
 
 
-### `[tag:iterator_const_default]` `Iterator`'s methods lack `#[default_method_body_is_const]`
+### `[tag:iterator_const_default]` `Iterator` lack `#[const_trait]`
 
 Implementing `const Iterator` requires you to implement all of its methods, which is impossible to do correctly.
 
-```rust,compile_fail
+```rust
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
+// FIXME: `compile-fail` temporarily removed due to
+//        [ref:const_impl_of_non_const_trait]
 
 struct MyIterator;
 
@@ -543,6 +545,36 @@ impl const Iterator for MyIterator {
         Some(42)
     }
 }
+```
+
+
+### `[tag:const_impl_of_non_const_trait]` `impl const Trait` doesn't require `#[const_trait]`
+
+A `const` implementation of a non-`#[const_trait]` trait that uses at least one default method implementation doesn't result in a compile error. Instead, an error occurs when the non-`const` default method implementations are actually called in a constant context. This behavior deviates from Rust's design principles, so it's likely a bug.
+
+```rust
+#![feature(const_trait_impl)]
+trait Tr {
+    fn foo() {}
+}
+
+// expected error: const trait implementations may not use non-const default
+// functions / note: `foo` not implemented
+impl const Tr for () {}
+```
+
+```rust
+#![feature(const_trait_impl)]
+#![feature(lint_reasons)]
+trait Tr {
+    fn foo() {}
+}
+
+impl const Tr for () {}
+
+const fn f<T: ~const Tr>() { T::foo() }
+#[expect(const_err)] // error: calling non-const function `<() as Tr>::foo`
+const _: () = f::<()>();
 ```
 
 
@@ -624,6 +656,25 @@ const _: () = tokenlock::with_branded_token(|token| {
     let tl = tokenlock::BrandedTokenLock::wrap(42);
     assert!(*tl.read(&token) == 42);
 });
+```
+
+
+### `[tag:rust_99793_tait]` False-positive "cycle detected" in `const fn` with TAIT
+
+*Upstream issue:* [rust-lang/rust#99793](https://github.com/rust-lang/rust/issues/99793) (possibly related)
+
+```rust
+#![feature(type_alias_impl_trait)]
+type Unit<T> = impl Copy;
+fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
+```
+
+```rust,compile_fail,E0391
+#![feature(type_alias_impl_trait)]
+type Unit<T> = impl Copy;
+// error[E0391]: cycle detected when computing type of
+// `main::_doctest_main_lib_rs_647_0::Unit::{opaque#0}
+const fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
 ```
 
 

@@ -225,13 +225,13 @@ pub struct AllocError;
 /// This trait is subject to [the kernel-side API stability guarantee][1].
 ///
 /// [1]: crate#stability
+#[const_trait]
 pub unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
     /// Behaves like `allocate`, but also ensures that the returned memory is
     /// zero-initialized.
-    #[default_method_body_is_const]
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = const_try_result!(self.allocate(layout));
         // SAFETY: `alloc` returns a valid memory block
@@ -251,7 +251,6 @@ pub unsafe trait Allocator {
     /// # Safety
     ///
     /// See [`core::alloc::Allocator::grow`]'s documentation.
-    #[default_method_body_is_const]
     unsafe fn grow(
         &self,
         ptr: NonNull<u8>,
@@ -284,7 +283,6 @@ pub unsafe trait Allocator {
     /// # Safety
     ///
     /// See [`core::alloc::Allocator::grow_zeroed`]'s documentation.
-    #[default_method_body_is_const]
     unsafe fn grow_zeroed(
         &self,
         ptr: NonNull<u8>,
@@ -316,7 +314,6 @@ pub unsafe trait Allocator {
     /// # Safety
     ///
     /// See [`core::alloc::Allocator::shrink`]'s documentation.
-    #[default_method_body_is_const]
     unsafe fn shrink(
         &self,
         ptr: NonNull<u8>,
@@ -344,7 +341,6 @@ pub unsafe trait Allocator {
     }
 
     /// Creates a “by reference” adapter for this instance of `Allocator`.
-    #[default_method_body_is_const]
     fn by_ref(&self) -> &Self
     where
         Self: Sized,

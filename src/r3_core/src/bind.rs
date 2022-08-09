@@ -1196,10 +1196,7 @@ macro_rules! impl_fn_bind {
             {
                 type Output = Output;
 
-                // This opaque type must be defined outside this trait to
-                // prevent the unintended capturing of `$BinderI`.
-                // [ref:opaque_type_extraneous_capture]
-                type BoundFn = BoundFn<T, Output, $( $RuntimeBinderI, )*>;
+                type BoundFn = BoundFn<T, $( $RuntimeBinderI, )*>;
 
                 fn bind(
                     self,
@@ -1209,32 +1206,40 @@ macro_rules! impl_fn_bind {
                     Binder::register_dependency(&binder, ctx);
 
                     let intermediate = Binder::into_runtime_binder(binder);
-                    bind_inner(self, intermediate)
+                    BoundFn {
+                        func: self,
+                        runtime_binders: intermediate,
+                    }
                 }
             }
 
-            type BoundFn<T, Output, $( $RuntimeBinderI, )*>
-            where
-                $( $RuntimeBinderI: RuntimeBinder, )*
-                T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*)
-                    -> Output + Copy + Send + 'static,
-             = impl FnOnce() -> Output + Copy + Send + 'static;
+            // This opaque type must be defined outside the above `impl` to
+            // prevent the unintended capturing of `$BinderI`.
+            // [ref:opaque_type_extraneous_capture]
+            // type BoundFn<T, Output, $( $RuntimeBinderI, )*>
+            // where
+            //     $( $RuntimeBinderI: RuntimeBinder, )*
+            //     T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*)
+            //         -> Output + Copy + Send + 'static,
+            //  = impl FnOnce() -> Output + Copy + Send + 'static;
 
-            const fn bind_inner<
-                T,
-                Output,
-                $( $RuntimeBinderI, )*
-            >(
+            // FIXME: This is supposed to be a TAIT like the one above, but
+            // [ref:rust_99793_tait] prevents that
+            #[derive(Copy, Clone)]
+            pub struct BoundFn<T, $( $RuntimeBinderI, )*> {
                 func: T,
-                runtime_binders: ( $( $RuntimeBinderI, )* ),
-            ) -> BoundFn<T, Output, $( $RuntimeBinderI, )*>
+                runtime_binders: ($( $RuntimeBinderI, )*),
+            }
+
+            impl<T, Output, $( $RuntimeBinderI, )*> FnOnce<()> for BoundFn<T, $( $RuntimeBinderI, )*>
             where
                 $( $RuntimeBinderI: RuntimeBinder, )*
-                T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*)
-                    -> Output + Copy + Send + 'static,
+                T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*) -> Output,
             {
+                type Output = Output;
+
                 #[inline]
-                move || {
+                extern "rust-call" fn call_once(self, (): ()) -> Output {
                     // Safety: `runtime_binders` was created by the corresponding
                     // type's `into_runtime_binder` method.
                     // `CfgBindRegistry::finalize` checks that the borrowing
@@ -1242,9 +1247,9 @@ macro_rules! impl_fn_bind {
                     // If the check fails, so does the compilation, and this
                     // runtime code will never be executed.
                     let ($( $fieldI, )*) = unsafe {
-                        <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(runtime_binders)
+                        <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(self.runtime_binders)
                     };
-                    func($( $fieldI, )*)
+                    (self.func)($( $fieldI, )*)
                 }
             }
         }; // const _

@@ -22,8 +22,7 @@ use r3_kernel::{KernelTraits, Port, PortToKernel, System, TaskCb, UTicks};
 use spin::Mutex as SpinMutex;
 use std::{
     cell::Cell,
-    lazy::SyncOnceCell,
-    sync::mpsc,
+    sync::{mpsc, OnceLock},
     time::{Duration, Instant},
 };
 
@@ -97,7 +96,7 @@ pub unsafe trait PortInstance:
 /// the corresponding trait methods of `Port*`.
 #[doc(hidden)]
 pub struct State {
-    thread_group: SyncOnceCell<ums::ThreadGroup<sched::SchedState>>,
+    thread_group: OnceLock<ums::ThreadGroup<sched::SchedState>>,
     timer_cmd_send: SpinMutex<Option<mpsc::Sender<TimerCmd>>>,
     origin: AtomicRef<'static, Instant>,
 }
@@ -206,7 +205,7 @@ impl TaskState {
 impl State {
     pub const fn new() -> Self {
         Self {
-            thread_group: SyncOnceCell::new(),
+            thread_group: OnceLock::new(),
             timer_cmd_send: SpinMutex::new(None),
             origin: AtomicRef::new(None),
         }
