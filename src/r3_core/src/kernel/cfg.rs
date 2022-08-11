@@ -742,8 +742,7 @@ macro array_item_from_fn($(
 /// #
 /// const fn configure<C>(cfg: &mut C)
 /// where
-// `~const CfgBase` not implied due to [ref:const_supertraits]
-///     C: ~const traits::CfgBase + ~const traits::CfgStatic,
+///     C: ~const traits::CfgStatic,
 /// {
 ///     todo!()   
 /// }
@@ -764,8 +763,7 @@ macro array_item_from_fn($(
 ///     todo!()   
 /// }
 /// ```
-// The supertrait can't be `~const` due to [ref:const_supertraits]
-pub trait CfgStatic: raw_cfg::CfgBase<System: KernelStatic> {}
+pub trait CfgStatic: ~const raw_cfg::CfgBase<System: KernelStatic> {}
 
 impl<C> const CfgStatic for C
 where

@@ -20,7 +20,7 @@ pub struct App<System: SupportedSystem> {
 impl<System: SupportedSystem> App<System> {
     pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+        C: ~const traits::CfgTask<System = System>,
     {
         StaticTask::define()
             .start(task1_body::<System, D>)

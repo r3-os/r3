@@ -158,22 +158,6 @@ const fn clone_projection<T: ~const Trait>(p: &T::Proj) -> T::Proj {
 ```
 
 
-### `[tag:const_supertraits]` Supertraits can't have `~const`
-
-*Upstream PR:* [rust-lang/rust#93429](https://github.com/rust-lang/rust/pull/93429) might resolve this
-
-```rust
-#![feature(const_trait_impl)]
-trait Trait: Clone {}
-```
-
-```rust,compile_fail
-#![feature(const_trait_impl)]
-// error: `~const` is not allowed here
-trait Trait: ~const Clone {}
-```
-
-
 ### `[tag:impl_block_const_bounds]` The trait bounds of an `impl` block can't include `~const`
 
 ```rust,compile_fail

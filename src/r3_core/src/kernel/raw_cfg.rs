@@ -81,8 +81,7 @@ pub unsafe trait CfgBase {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
-// The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgTask: CfgBase {
+pub unsafe trait CfgTask: ~const CfgBase {
     fn task_define<Properties: ~const Bag>(
         &mut self,
         descriptor: TaskDescriptor<Self::System>,
@@ -115,8 +114,7 @@ pub struct TaskDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
-// The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgEventGroup: CfgBase<System: raw::KernelEventGroup> {
+pub unsafe trait CfgEventGroup: ~const CfgBase<System: raw::KernelEventGroup> {
     fn event_group_define<Properties: ~const Bag>(
         &mut self,
         descriptor: EventGroupDescriptor<Self::System>,
@@ -147,8 +145,7 @@ pub struct EventGroupDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
-// The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgMutex: CfgBase<System: raw::KernelMutex> {
+pub unsafe trait CfgMutex: ~const CfgBase<System: raw::KernelMutex> {
     fn mutex_define<Properties: ~const Bag>(
         &mut self,
         descriptor: MutexDescriptor<Self::System>,
@@ -178,8 +175,7 @@ pub struct MutexDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
-// The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgSemaphore: CfgBase<System: raw::KernelSemaphore> {
+pub unsafe trait CfgSemaphore: ~const CfgBase<System: raw::KernelSemaphore> {
     fn semaphore_define<Properties: ~const Bag>(
         &mut self,
         descriptor: SemaphoreDescriptor<Self::System>,
@@ -211,8 +207,7 @@ pub struct SemaphoreDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
-// The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgTimer: CfgBase<System: raw::KernelTimer> {
+pub unsafe trait CfgTimer: ~const CfgBase<System: raw::KernelTimer> {
     fn timer_define<Properties: ~const Bag>(
         &mut self,
         descriptor: TimerDescriptor<Self::System>,
@@ -245,8 +240,7 @@ pub struct TimerDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
-// The supertrait can't be `~const` due to [ref:const_supertraits]
-pub unsafe trait CfgInterruptLine: CfgBase<System: raw::KernelInterruptLine> {
+pub unsafe trait CfgInterruptLine: ~const CfgBase<System: raw::KernelInterruptLine> {
     fn interrupt_line_define<Properties: ~const Bag>(
         &mut self,
         descriptor: InterruptLineDescriptor<Self::System>,

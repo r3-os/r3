@@ -701,7 +701,7 @@ mod queue {
     impl<System: SupportedSystem, T: Init + Copy + Send + 'static> Queue<System, T> {
         pub const fn new<C>(cfg: &mut Cfg<C>) -> Self
         where
-            C: ~const traits::CfgBase<System = System> + ~const traits::CfgMutex,
+            C: ~const traits::CfgMutex<System = System>,
         {
             Self {
                 st: StaticMutex::define()

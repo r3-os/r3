@@ -51,7 +51,7 @@
 // restricted to "comptime" anymore
 use core::{
     marker::Destruct,
-    ops::{Deref, DerefMut, Index, IndexMut},
+    ops::{Index, IndexMut},
 };
 
 use super::{BindBorrowType, BindUsage};
@@ -149,8 +149,8 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
     temp_vertices: &mut VertexList,
 ) where
     Callback: ~const SorterCallback,
-    SorterUseInfoList: ~const VecLike<Element = SorterUseInfo> + ~const Deref + ~const DerefMut,
-    VertexList: ~const VecLike<Element = Vertex> + ~const Deref + ~const DerefMut,
+    SorterUseInfoList: ~const VecLike<Element = SorterUseInfo>,
+    VertexList: ~const VecLike<Element = Vertex>,
 {
     // Preconditions
     let num_binds = cb.num_binds();
@@ -605,9 +605,7 @@ where
     Graph::SuccessorIter<'a>: ~const MyIterator + ~const Destruct,
     VertexRef: Copy,
     VertexRefLessThan: ~const FnMut(&VertexRef, &VertexRef) -> bool,
-    // `~const Deref[Mut]` isn't implied because of
-    // [ref:veclike_const_supertrait]
-    ReadyVertexQueue: ~const VecLike<Element = VertexRef> + ~const Deref + ~const DerefMut,
+    ReadyVertexQueue: ~const VecLike<Element = VertexRef>,
     for<'index> VertexInfoMap: ~const Index<&'index VertexRef, Output = TopologicalSortVertexInfo>
         + ~const IndexMut<&'index VertexRef>,
     OutputSink: ~const TopologicalSortOutputSink<VertexRef>,

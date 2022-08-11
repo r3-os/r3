@@ -48,9 +48,7 @@ pub trait BinaryHeap: VecLike {
 
 impl<T> const BinaryHeap for T
 where
-    // `~const Deref` isn't implied because of
-    // [ref:veclike_const_supertrait]
-    T: ~const VecLike + ~const core::ops::Deref + ~const core::ops::DerefMut,
+    T: ~const VecLike,
     T::Element: ~const Destruct,
 {
     fn heap_pop<Ctx>(&mut self, ctx: Ctx) -> Option<Self::Element>

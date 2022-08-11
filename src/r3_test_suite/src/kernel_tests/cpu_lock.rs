@@ -11,7 +11,7 @@ pub struct App<System> {
 impl<System: traits::KernelBase> App<System> {
     pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgBase<System = System> + ~const traits::CfgTask,
+        C: ~const traits::CfgTask<System = System>,
     {
         StaticTask::define()
             .start(task_body::<System, D>)

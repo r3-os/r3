@@ -81,8 +81,8 @@ const COTTAGE: Objects = r3_kernel::build!(SystemTraits, configure_app => Object
 // This is the top-level configuration function
 const fn configure_app<C>(b: &mut Cfg<C>) -> Objects
 where
-    C: ~const traits::CfgBase<System = System>
-     + ~const traits::CfgTask,
+    // `C: ~const CfgBase` is implied by `CfgTask`'s supertrait
+    C: ~const traits::CfgTask<System = System>,
 {
     b.num_task_priority_levels(4);
     let task = StaticTask::define()
@@ -110,7 +110,7 @@ Configuration functions are highly composable as they can make nested calls to o
 // Top-level configuration function
 const fn configure_app<C>(b: &mut Cfg<C>) -> Objects<C::System>
 where
-    C: ~const traits::CfgBase + ~const traits::CfgTask,
+    C: ~const traits::CfgTask,
 {
     b.num_task_priority_levels(4);
     let my_module = m::configure(b);
@@ -122,7 +122,7 @@ mod m {
 #   pub struct MyModule<System: traits::KernelBase> { task: StaticTask<System> }
     pub const fn configure<C>(b: &mut Cfg<C>) -> MyModule<C::System>
     where
-        C: ~const traits::CfgBase + ~const traits::CfgTask,
+        C: ~const traits::CfgTask,
     {
         let task = StaticTask::define()
             .start(task_body).priority(3).active(true).finish(b);

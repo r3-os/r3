@@ -100,8 +100,7 @@ macro_rules! use_systick_tickful {
             impl $Traits {
                 pub const fn configure_systick<C>(b: &mut Cfg<C>)
                 where
-                    C: ~const traits::CfgBase<System = System<Self>>
-                        + ~const traits::CfgInterruptLine,
+                    C: ~const traits::CfgInterruptLine<System = System<Self>>,
                 {
                     imp::configure(b);
                 }

@@ -39,7 +39,7 @@ pub unsafe trait SysTickTickfulInstance: KernelTraits + SysTickOptions {
 /// The configuration function.
 pub const fn configure<C, Traits: SysTickTickfulInstance>(b: &mut Cfg<C>)
 where
-    C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgInterruptLine,
+    C: ~const traits::CfgInterruptLine<System = System<Traits>>,
 {
     InterruptLine::define()
         .line(INTERRUPT_SYSTICK)

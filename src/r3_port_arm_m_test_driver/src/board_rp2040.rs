@@ -63,7 +63,7 @@ impl log::Log for Logger {
 
 pub const fn configure<C>(b: &mut Cfg<C>)
 where
-    C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
+    C: ~const traits::CfgInterruptLine,
     C::System: traits::KernelInterruptLine + traits::KernelStatic,
 {
     let (rp2040_resets, rp2040_usbctrl_regs) = bind((), || {

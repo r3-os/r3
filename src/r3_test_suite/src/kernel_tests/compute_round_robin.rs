@@ -41,9 +41,7 @@ pub struct App<System: SupportedSystem> {
 impl<System: SupportedSystem> App<System> {
     pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgBase<System = System>
-            + ~const traits::CfgTask
-            + ~const traits::CfgTimer,
+        C: ~const traits::CfgTask<System = System> + ~const traits::CfgTimer,
     {
         let task_state = Bind::define().init(|| TaskState::INIT).finish(b);
         let ref_output = Bind::define()

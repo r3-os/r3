@@ -41,9 +41,7 @@ impl<System: SupportedSystem, Options: MutexBenchmarkOptions> AppInner<System, O
     /// Used by `use_benchmark_in_kernel_benchmark!`
     pub(super) const fn new<C, B: Bencher<System, Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgBase<System = System>
-            + ~const traits::CfgTask
-            + ~const traits::CfgMutex,
+        C: ~const traits::CfgTask<System = System> + ~const traits::CfgMutex,
     {
         let task1 = StaticTask::define()
             .start(task1_body::<System, Options, B>)
