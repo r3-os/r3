@@ -486,10 +486,10 @@ use core::any::TypeId;
 assert!(TypeId::of::<()>() == TypeId::of::<()>());
 ```
 
-```rust,compile_fail,E0015
+```rust,compile_fail,E0277
 #![feature(const_type_id)]
 use core::any::TypeId;
-// error[E0015]: cannot call non-const operator in constants
+// error[E0277]: can't compare `TypeId` with `_` in const contexts
 const _: () = assert!(TypeId::of::<()>() == TypeId::of::<()>());
 ```
 
