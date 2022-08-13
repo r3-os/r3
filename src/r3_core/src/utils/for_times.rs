@@ -146,7 +146,6 @@ macro_rules! const_for_times {
     ) => {{
         use $crate::utils::for_times::{Nat, U, IncrSat};
 
-        #[inline(always)]
         const fn iter_inner<
             $(  $iter_gparam $($iter_gparam_bounds)*  ,)*
             $i: Nat
@@ -154,7 +153,6 @@ macro_rules! const_for_times {
             $($iter)*
         }
 
-        #[inline(always)]
         const fn iter_outer<
             $(  $iter_gparam $($iter_gparam_bounds)*  ,)*
             Counter: Nat,
