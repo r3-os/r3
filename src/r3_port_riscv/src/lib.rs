@@ -10,6 +10,7 @@
 #![feature(asm_const)]
 #![feature(asm_sym)]
 #![feature(doc_cfg)]
+#![feature(linkage)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(
     feature = "doc",

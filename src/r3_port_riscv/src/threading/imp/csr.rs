@@ -354,6 +354,7 @@ seq_macro::seq!(N in 0..4 {
     #[doc(hidden)]
     impl Num for NumTy<N> {
         #[export_name = r#"r3_port_riscv-${env!("CARGO_PKG_VERSION")}*/$&{N}/*"#]
+        #[linkage = "weak"] // FIXME: Find a less hacky way to prevent merging
         fn value() {}
     }
 });
