@@ -41,15 +41,6 @@ pub(crate) const fn ceil_div128(x: u128, y: u128) -> u128 {
     (x + y - 1) / y
 }
 
-/// Get the minimum of two numbers.
-pub(crate) const fn min128(x: u128, y: u128) -> u128 {
-    if x < y {
-        x
-    } else {
-        y
-    }
-}
-
 #[cfg(test)]
 mod tests {
     extern crate std;

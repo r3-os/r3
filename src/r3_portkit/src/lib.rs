@@ -5,6 +5,7 @@
 #![feature(core_panic)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
+#![feature(const_cmp)]
 #![feature(asm_sym)]
 #![cfg_attr(
     feature = "doc",

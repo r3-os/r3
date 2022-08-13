@@ -21,9 +21,7 @@ const TASKS: &[usize] = &[300, 150, 300, 750, 170];
 impl<System: SupportedSystem> App<System> {
     pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgBase<System = System>
-            + ~const traits::CfgTask
-            + ~const traits::CfgEventGroup,
+        C: ~const traits::CfgTask<System = System> + ~const traits::CfgEventGroup,
     {
         let mut i = 0;
         // `for` is unusable in `const fn` [ref:const_for]

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 - The new blanket-implemented `CfgStatic` trait can be used to simplify some trait bounds of configuration functions.
+- The `Cfg*` traits now include `~const` in their supertraits ([rust-lang/rust#93429](https://github.com/rust-lang/rust/pull/93429)), making `~const CfgBase` trait bound unnecessary if it's implied by others.
 
 ### Fixed
 

@@ -130,21 +130,11 @@ pub trait MtimeOptions {
     /// timer cycles.
     ///
     /// Defaults to `min(FREQUENCY * 60 / FREQUENCY_DENOMINATOR, 0x40000000)`.
-    const HEADROOM: u32 = min128(
-        Self::FREQUENCY as u128 * 60 / Self::FREQUENCY_DENOMINATOR as u128,
-        0x40000000,
-    ) as u32;
+    const HEADROOM: u32 =
+        (Self::FREQUENCY as u128 * 60 / Self::FREQUENCY_DENOMINATOR as u128).min(0x40000000) as u32;
 
     /// The timer's interrupt number. Defaults to [`INTERRUPT_TIMER`].
     ///
     /// [`INTERRUPT_TIMER`]: crate::INTERRUPT_TIMER
     const INTERRUPT_NUM: InterruptNum = crate::INTERRUPT_TIMER;
-}
-
-const fn min128(x: u128, y: u128) -> u128 {
-    if x < y {
-        x
-    } else {
-        y
-    }
 }

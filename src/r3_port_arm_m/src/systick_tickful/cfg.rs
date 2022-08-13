@@ -22,15 +22,9 @@ pub trait SysTickOptions {
     /// Defaults to
     /// `(FREQUENCY / FREQUENCY_DENOMINATOR / 100).max(1).min(0x1000000)` (100Hz).
     const TICK_PERIOD: u32 = {
-        // `Ord::max` is not available in `const fn` [ref:int_const_ord]
-        let x = Self::FREQUENCY / Self::FREQUENCY_DENOMINATOR / 100;
-        if x == 0 {
-            1
-        } else if x > 0x1000000 {
-            0x1000000
-        } else {
-            x as u32
-        }
+        (Self::FREQUENCY / Self::FREQUENCY_DENOMINATOR / 100)
+            .max(0)
+            .min(0x1000000) as u32
     };
 }
 
@@ -100,8 +94,7 @@ macro_rules! use_systick_tickful {
             impl $Traits {
                 pub const fn configure_systick<C>(b: &mut Cfg<C>)
                 where
-                    C: ~const traits::CfgBase<System = System<Self>>
-                        + ~const traits::CfgInterruptLine,
+                    C: ~const traits::CfgInterruptLine<System = System<Self>>,
                 {
                     imp::configure(b);
                 }

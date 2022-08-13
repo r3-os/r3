@@ -54,9 +54,7 @@ impl<System: SupportedSystem> AppInner<System> {
     /// Used by `use_benchmark_in_kernel_benchmark!`
     const fn new<C, B: Bencher<System, Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgBase<System = System>
-            + ~const traits::CfgTask
-            + ~const traits::CfgSemaphore,
+        C: ~const traits::CfgTask<System = System> + ~const traits::CfgSemaphore,
     {
         let task1 = StaticTask::define()
             .start(task1_body::<System, B>)

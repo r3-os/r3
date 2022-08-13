@@ -158,22 +158,6 @@ const fn clone_projection<T: ~const Trait>(p: &T::Proj) -> T::Proj {
 ```
 
 
-### `[tag:const_supertraits]` Supertraits can't have `~const`
-
-*Upstream PR:* [rust-lang/rust#93429](https://github.com/rust-lang/rust/pull/93429) might resolve this
-
-```rust
-#![feature(const_trait_impl)]
-trait Trait: Clone {}
-```
-
-```rust,compile_fail
-#![feature(const_trait_impl)]
-// error: `~const` is not allowed here
-trait Trait: ~const Clone {}
-```
-
-
 ### `[tag:impl_block_const_bounds]` The trait bounds of an `impl` block can't include `~const`
 
 ```rust,compile_fail
@@ -486,10 +470,10 @@ use core::any::TypeId;
 assert!(TypeId::of::<()>() == TypeId::of::<()>());
 ```
 
-```rust,compile_fail,E0015
+```rust,compile_fail,E0277
 #![feature(const_type_id)]
 use core::any::TypeId;
-// error[E0015]: cannot call non-const operator in constants
+// error[E0277]: can't compare `TypeId` with `_` in const contexts
 const _: () = assert!(TypeId::of::<()>() == TypeId::of::<()>());
 ```
 
@@ -575,21 +559,6 @@ impl const Tr for () {}
 const fn f<T: ~const Tr>() { T::foo() }
 #[expect(const_err)] // error: calling non-const function `<() as Tr>::foo`
 const _: () = f::<()>();
-```
-
-
-### `[tag:int_const_ord]` `<integer>: !const Ord`
-
-The standard library doesn't provide `const` trait implementations of `Ord` for the built-in integer types.
-
-```rust
-assert!(2i32.max(3) == 3);
-```
-
-```rust,compile_fail,E0277
-#![feature(const_trait_impl)]
-// error[E0277]: the trait bound `i32: ~const Ord` is not satisfied
-const _: () = assert!(2i32.max(3) == 3);
 ```
 
 

@@ -154,7 +154,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
     ) -> Hunk<System, T> {
         let untyped_hunk = kernel::Hunk::<System>::define()
             .len(mem::size_of::<T>())
-            .align(max(mem::align_of::<T>(), self.align))
+            .align(mem::align_of::<T>().max(self.align))
             .finish(cfg);
 
         assert!(self.len == 1, "Non-array hunk must have `len` of `1`");
@@ -195,7 +195,7 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T, InitTag: HunkIniter<T>>
 
         let untyped_hunk = kernel::Hunk::<System>::define()
             .len(mem::size_of::<T>() * self.len)
-            .align(max(mem::align_of::<T>(), self.align))
+            .align(mem::align_of::<T>().max(self.align))
             .finish(cfg);
 
         let start = untyped_hunk.offset();
@@ -346,13 +346,4 @@ unsafe impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized> stable_deref
 unsafe impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized>
     stable_deref_trait::CloneStableDeref for Hunk<System, T>
 {
-}
-
-// `Ord::max` is not available in `const fn` [ref:int_const_ord]
-const fn max(x: usize, y: usize) -> usize {
-    if x > y {
-        x
-    } else {
-        y
-    }
 }

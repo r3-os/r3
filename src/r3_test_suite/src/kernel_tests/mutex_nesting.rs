@@ -20,9 +20,7 @@ pub struct App<System: SupportedSystem> {
 impl<System: SupportedSystem> App<System> {
     pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgBase<System = System>
-            + ~const traits::CfgTask
-            + ~const traits::CfgMutex,
+        C: ~const traits::CfgTask<System = System> + ~const traits::CfgMutex,
     {
         b.num_task_priority_levels(16);
 

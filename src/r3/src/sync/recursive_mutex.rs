@@ -56,8 +56,7 @@ pub struct GenericRecursiveMutex<Cell, Mutex> {
 ///
 /// const fn configure_app<C>(cfg: &mut Cfg<C>) -> Objects
 /// where
-///     C: ~const traits::CfgBase<System = System> +
-///        ~const traits::CfgTask +
+///     C: ~const traits::CfgTask<System = System> +
 ///        ~const traits::CfgMutex,
 /// {
 ///     StaticTask::define()
@@ -310,9 +309,7 @@ where
     System: traits::KernelMutex + traits::KernelStatic,
 {
     /// Complete the definition of a mutex, returning a reference to the mutex.
-    // `CfgMutex` can't have `~const CfgBase` as a supertrait because of
-    // [ref:const_supertraits], hence we need to specify `~const CfgBase` here
-    pub const fn finish<C: ~const traits::CfgMutex<System = System> + ~const traits::CfgBase, T>(
+    pub const fn finish<C: ~const traits::CfgMutex<System = System>, T>(
         self,
         cfg: &mut Cfg<C>,
     ) -> StaticRecursiveMutex<System, T>

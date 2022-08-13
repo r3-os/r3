@@ -686,8 +686,7 @@ impl<'pool, System, T> DivideBind<'pool, System, T> {
 ///
 /// const fn configure_app<C>(cfg: &mut Cfg<C>)
 /// where
-// `~const CfgBase` not implied due to [ref:const_supertraits]
-///     C: ~const traits::CfgBase + ~const traits::CfgStatic,
+///     C: ~const traits::CfgStatic,
 /// {
 ///     let values = Bind::define().init(|| (12, 34)).finish(cfg);
 ///     let (value0, value1) = values.unzip();
@@ -818,8 +817,7 @@ impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System,
 ///
 /// const fn configure_app<C>(cfg: &mut Cfg<C>)
 /// where
-///     C: ~const traits::CfgBase +
-///        ~const traits::CfgTask,
+///     C: ~const traits::CfgTask,
 ///     C::System: traits::KernelStatic,
 /// {
 ///     let foo = Bind::define().init(|| {
@@ -1339,31 +1337,45 @@ where
 {
     type Output = NewOutput;
 
-    // This opaque type must be defined outside this trait to
-    // prevent the unintended capturing of `Binder`.
-    // [ref:opaque_type_extraneous_capture]
-    type BoundFn = MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>;
+    type BoundFn = MappedBoundFn<InnerBoundFn, Mapper>;
 
     fn bind(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Self::BoundFn {
-        map_bind_inner(self.inner.bind(binder, ctx), self.mapper)
+        MappedBoundFn {
+            inner_bound_fn: self.inner.bind(binder, ctx),
+            mapper: self.mapper,
+        }
     }
 }
 
-type MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
-where
-    InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
-    Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
-= impl FnOnce() -> NewOutput + Copy + Send + 'static;
+// // This opaque type must be defined outside this trait to
+// // prevent the unintended capturing of `Binder`.
+// // [ref:opaque_type_extraneous_capture]
+// type MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
+// where
+//     InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
+//     Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
+// = impl FnOnce() -> NewOutput + Copy + Send + 'static;
 
-const fn map_bind_inner<InnerBoundFn, Output, Mapper, NewOutput>(
+// FIXME: This is supposed to be a TAIT like the one above, but
+// [ref:rust_99793_tait] prevents that
+#[doc(hidden)]
+#[derive(Copy, Clone)]
+pub struct MappedBoundFn<InnerBoundFn, Mapper> {
     inner_bound_fn: InnerBoundFn,
     mapper: Mapper,
-) -> MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
+}
+
+impl<InnerBoundFn, Output, Mapper, NewOutput> FnOnce<()> for MappedBoundFn<InnerBoundFn, Mapper>
 where
     InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
     Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
 {
-    move || (mapper)(inner_bound_fn())
+    type Output = NewOutput;
+
+    #[inline]
+    extern "rust-call" fn call_once(self, (): ()) -> Self::Output {
+        (self.mapper)((self.inner_bound_fn)())
+    }
 }
 
 // Binder traits

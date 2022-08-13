@@ -466,8 +466,7 @@ pub mod kernel_benchmarks {
                     b: &mut r3::kernel::Cfg<C>,
                 ) -> Self
                 where
-                    C: ~const r3::kernel::traits::CfgBase<System = System> +
-                       ~const r3::kernel::traits::CfgTask,
+                    C: ~const r3::kernel::traits::CfgTask<System = System>,
                     $( C: $($tt)* )?
                 {
                     App {

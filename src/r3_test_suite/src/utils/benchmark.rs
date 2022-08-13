@@ -84,7 +84,7 @@ pub const fn configure<C, System: SupportedSystem, Options: BencherOptions<Syste
     b: &mut Cfg<C>,
 ) -> BencherCottage<System>
 where
-    C: ~const raw_cfg::CfgBase<System = System> + ~const raw_cfg::CfgTask,
+    C: ~const raw_cfg::CfgTask<System = System>,
 {
     let task = StaticTask::define()
         .start(main_task::<System, Options>)

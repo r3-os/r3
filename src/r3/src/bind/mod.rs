@@ -28,8 +28,7 @@
 /// # type Objects = ();
 /// const fn configure_app<C>(cfg: &mut Cfg<C>)
 /// where
-///     C: ~const traits::CfgBase<System = System> +
-///        ~const traits::CfgTask +
+///     C: ~const traits::CfgTask<System = System> +
 ///        ~const traits::CfgTimer,
 /// {
 ///     // Create a binding and give the timer an exclusive access
@@ -97,8 +96,7 @@
 /// # type Objects = ();
 /// const fn configure_app<C>(cfg: &mut Cfg<C>)
 /// where
-///     C: ~const traits::CfgBase<System = System> +
-///        ~const traits::CfgTask +
+///     C: ~const traits::CfgTask<System = System> +
 ///        ~const traits::CfgTimer,
 /// {
 ///     let count = bind((), || 0).finish(cfg);
@@ -119,7 +117,7 @@
 /// ```
 )]
 #![doc = include_str!("../common.md")]
-use r3_core::kernel::{cfg, raw_cfg};
+use r3_core::kernel::cfg;
 
 pub use r3_core::bind::{
     fn_bind_map, Bind, BindBorrow, BindBorrowMut, BindDefiner, BindRef, BindTable, BindTake,
@@ -196,8 +194,7 @@ pub const fn bind_uninit<'pool, T, C>(
 ) -> Bind<'pool, C::System, core::mem::MaybeUninit<T>>
 where
     T: 'static,
-    // `~const CfgBase` not implied due to [ref:const_supertraits]
-    C: ~const raw_cfg::CfgBase + ~const cfg::CfgStatic,
+    C: ~const cfg::CfgStatic,
 {
     // Safety: `MaybeUninit` is safe to leave uninitialized
     unsafe { Bind::define().uninit_unchecked().finish(cfg) }
@@ -234,8 +231,7 @@ where
 pub const fn bind_default<'pool, T, C>(cfg: &mut cfg::Cfg<'pool, C>) -> Bind<'pool, C::System, T>
 where
     T: Default + 'static,
-    // `~const CfgBase` not implied due to [ref:const_supertraits]
-    C: ~const raw_cfg::CfgBase + ~const cfg::CfgStatic,
+    C: ~const cfg::CfgStatic,
 {
     Bind::define().init(Default::default).finish(cfg)
 }
