@@ -562,21 +562,6 @@ const _: () = f::<()>();
 ```
 
 
-### `[tag:int_const_ord]` `<integer>: !const Ord`
-
-The standard library doesn't provide `const` trait implementations of `Ord` for the built-in integer types.
-
-```rust
-assert!(2i32.max(3) == 3);
-```
-
-```rust,compile_fail,E0277
-#![feature(const_trait_impl)]
-// error[E0277]: the trait bound `i32: ~const Ord` is not satisfied
-const _: () = assert!(2i32.max(3) == 3);
-```
-
-
 ### `[tag:const_assert_eq]` `assert_eq!` and similar macros are unusable in `const fn`
 
 ```rust,compile_fail,E0015

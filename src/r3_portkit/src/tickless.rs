@@ -1,10 +1,10 @@
 //! Implements the core algorithm for tickless timing.
-use core::fmt;
+use core::{cmp::min, fmt};
 use num_rational::Ratio;
 
 use crate::{
     num::{
-        ceil_div128, floor_ratio128, gcd128, min128, reduce_ratio128,
+        ceil_div128, floor_ratio128, gcd128, reduce_ratio128,
         wrapping::{Wrapping, WrappingTrait},
     },
     utils::Init,
@@ -190,7 +190,7 @@ impl TicklessCfg {
         {
             // If the period is measurable without wrap-around in both ticks,
             // the stateless algorithm is applicable.
-            let repeat = min128(
+            let repeat = min(
                 0x1_0000_0000 / hw_global_period,
                 0x1_0000_0000 / global_period,
             );
@@ -277,7 +277,7 @@ impl TicklessCfg {
             //      late_tick_count <= ref_tick_count + max_tick_count
             //    )
             //
-            let max_timeout = min128(
+            let max_timeout = min(
                 // `late_hw_tick_count <= ref_hw_tick_count + hw_max_tick_count`
                 ((hw_max_tick_count - hw_headroom_ticks) as u128 * *hw_ticks_per_micro.denom())
                     .saturating_sub(*hw_ticks_per_micro.denom() - 1),
