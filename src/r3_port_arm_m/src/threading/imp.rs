@@ -55,6 +55,7 @@ impl State {
 unsafe impl Sync for State {}
 
 impl Init for State {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         running_task_ptr: UnsafeCell::new(core::ptr::null_mut()),
     };
