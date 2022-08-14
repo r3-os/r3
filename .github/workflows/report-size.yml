@@ -13,23 +13,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # TODO: Re-enable the disabled targets after rust-lang/rust#96486
-          #       is fixed
           # MPS2+ AN505, Armv7-M + FPU + DSP
           - { ty: arm, runner_target: qemu_mps2_an505, runner_args: --arch cortex_m4f }
           # MPS2+ AN385, Armv7-M
-          # - { ty: arm, runner_target: qemu_mps2_an385, runner_args: "" }
+          - { ty: arm, runner_target: qemu_mps2_an385, runner_args: "" }
           # MPS2+ AN385, Armv6-M
-          # - { ty: arm, runner_target: qemu_mps2_an385, runner_args: --arch cortex_m0 }
+          - { ty: arm, runner_target: qemu_mps2_an385, runner_args: --arch cortex_m0 }
 
           # SiFive U, RV64GC
           - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: "" }
           # SiFive U, RV64IMAC
-          # - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a+c }
+          - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a+c }
           # SiFive U, RV64IMA
-          # - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a }
+          - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a }
           # SiFive E, RV32IMAC
-          # - { ty: riscv, runner_target: qemu_sifive_e_rv32, runner_args: "" }
+          - { ty: riscv, runner_target: qemu_sifive_e_rv32, runner_args: "" }
     steps:
       - name: Checkout
         uses: actions/checkout@v2
