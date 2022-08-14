@@ -36,6 +36,7 @@ impl State {
 unsafe impl Sync for State {}
 
 impl Init for State {
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         dispatch_pending: UnsafeCell::new(false),
         main_stack: UnsafeCell::new(0),

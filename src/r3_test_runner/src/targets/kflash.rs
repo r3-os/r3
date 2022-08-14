@@ -199,11 +199,14 @@ impl DebugProbe for KflashDebugProbe {
             let serial_m = Mutex::new(&mut self.serial);
             let isp_boot_cmds = self.isp_boot_cmds;
             retry_on_fail(|| async {
-                maix_enter_isp_mode(*serial_m.try_lock().unwrap(), isp_boot_cmds).await
+                // Holding the `LockGuard` across a suspend point is okay because
+                // `Mutex::lock` is never called for this mutex. (It's practically
+                // a thread-safe `RefCell`.)
+                #[allow(must_not_suspend)]
+                maix_enter_isp_mode(&mut serial_m.try_lock().unwrap(), isp_boot_cmds).await
             })
             .await
             .map_err(RunError::Communication)?;
-            drop(serial_m);
 
             // Program the executable image
             for (i, region) in regions.iter().enumerate() {

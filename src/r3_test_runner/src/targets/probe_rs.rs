@@ -111,7 +111,7 @@ impl DebugProbe for ProbeRsDebugProbe {
             let exe2 = exe.clone();
             let mut session = spawn_blocking(move || {
                 probe_rs::flashing::download_file(
-                    &mut *session,
+                    &mut session,
                     &exe2,
                     probe_rs::flashing::Format::Elf,
                 )?;
@@ -368,6 +368,7 @@ impl AsyncBufRead for ReadRtt {
                             let num_read_bytes = Self::read_inner(
                                 &mut session,
                                 &mut rtt,
+                                #[expect(clippy::explicit_auto_deref)] // false positive
                                 &mut *buf,
                                 halt_on_access,
                             )?;

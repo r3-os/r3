@@ -1,6 +1,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(generic_arg_infer)]
 #![feature(must_not_suspend)] // `must_not_suspend` lint
+#![feature(lint_reasons)]
 #![feature(decl_macro)] // `macro`
 #![feature(pin_macro)] // `core::pin::pin!`
 #![feature(let_else)] // `let ... = ... else { ... }`

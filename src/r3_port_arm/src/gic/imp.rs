@@ -117,7 +117,7 @@ pub fn set_interrupt_line_priority<Traits: Gic>(
 ) -> Result<(), SetInterruptLinePriorityError> {
     let distributor = Traits::gic_regs().distributor;
 
-    if line >= Traits::num_interrupt_lines() || priority < 0 || priority > 255 {
+    if line >= Traits::num_interrupt_lines() || !(0..=255).contains(&priority) {
         return Err(SetInterruptLinePriorityError::BadParam);
     }
 

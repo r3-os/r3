@@ -5,6 +5,7 @@
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
 #![feature(slice_ptr_len)]
+#![feature(lint_reasons)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
 #![feature(asm_sym)]

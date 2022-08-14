@@ -1,3 +1,5 @@
+#![expect(clippy::enum_variant_names)] // The common prefix for `RGN::Outer*` is intentional
+
 tock_registers::register_bitfields! {u32,
     pub TTBR0 [
         /// Cacheable bit. Indicates whether the translation table walk is to

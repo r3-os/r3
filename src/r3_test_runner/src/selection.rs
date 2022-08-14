@@ -68,7 +68,7 @@ fn all_test_runs(test_source: &TestSource) -> impl Iterator<Item = TestRun<'_>> 
         test_source
             .driver_kernel_tests
             .iter()
-            .map(|s| TestCase::DriverKernelTest(&**s)),
+            .map(|s| TestCase::DriverKernelTest(s)),
     );
 
     iproduct!(cases, &[false, true]).map(|(case, &cpu_lock_by_basepri)| TestRun {
