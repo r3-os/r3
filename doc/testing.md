@@ -4,7 +4,7 @@ This document explains how to use the test suite and what is needed to do so.
 
 ## Prerequisites
 
- - [rustup][], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain`
+ - [rustup][], which will automatically install the version of Nightly Rust compiler specified by `rust-toolchain.toml`
  - [QEMU](https://www.qemu.org/) 4.2 or later to test the Arm-M/-A port.
  - libusb 1.x and libudev to run `r3_test_runner` (used to test various ports).
  - [OpenOCD](http://openocd.org) to test the Arm-A port on GR-PEACH.

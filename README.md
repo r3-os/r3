@@ -118,7 +118,7 @@ Explore the `examples` directory for example projects.
 
 ## Prerequisites
 
-You need a Nightly Rust compiler. This project is heavily reliant on unstable features, so it might or might not work with a newer compiler version. See the file `rust-toolchain` to find out which compiler version this project is currently tested with.
+You need a Nightly Rust compiler. This project is heavily reliant on unstable features, so it might or might not work with a newer compiler version. See the file `rust-toolchain.toml` to find out which compiler version this project is currently tested with.
 
 You also need to install Rust's cross-compilation support for your target architecture. If it's not installed, you will see a compile error like this:
 
