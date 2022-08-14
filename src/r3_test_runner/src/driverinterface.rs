@@ -359,8 +359,8 @@ impl TestDriver {
                 })
                 .args(if verbose { None } else { Some("-q") })
                 // TODO: Use `bool::then` in other places
-                .args(build_std.then(|| "-Zbuild-std=core"))
-                .args(small_rt.then(|| "-Zbuild-std-features=panic_immediate_abort"))
+                .args(build_std.then_some("-Zbuild-std=core"))
+                .args(small_rt.then_some("-Zbuild-std-features=panic_immediate_abort"))
                 .env("R3_TEST_DRIVER_LINK_SEARCH", link_dir.path())
                 // Tell `r3_test_suite/build.rs` which test to run
                 .env(
