@@ -1,7 +1,7 @@
 name: Size report
 on:
+  pull_request:
   push:
-    branches: [🦆]
 
 jobs:
   # Report the binary size of the test suite
