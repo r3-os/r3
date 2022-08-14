@@ -207,7 +207,6 @@ impl DebugProbe for KflashDebugProbe {
             })
             .await
             .map_err(RunError::Communication)?;
-            drop(serial_m);
 
             // Program the executable image
             for (i, region) in regions.iter().enumerate() {
