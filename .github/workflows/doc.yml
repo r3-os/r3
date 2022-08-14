@@ -12,7 +12,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        # FIXME: Switch back when actions-rs/toolchain#209 is merged
+        uses: r3-os/actions-rust-toolchain@patch/pr-209
         with:
           profile: minimal
 
