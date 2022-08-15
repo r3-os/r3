@@ -77,6 +77,12 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
         return;
     }
 
+    if (!workspaceMeta.workspace.dependencies) {
+        logger.error("'.workspace.dependencies' is missing from the workspace metadata.");
+        hasError = true;
+        return;
+    }
+
     for (const crateRelPath of workspaceMeta.workspace.members) {
         const cratePath = path.join(workspacePath, crateRelPath);
         const crateMetaPath = path.join(cratePath, "Cargo.toml");
@@ -113,7 +119,16 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
 
         // Published crates must have versioned dependencies
         for (const [name, dep] of Object.entries(dependencies)) {
-            const depEx = typeof dep === "string" ? {version: dep} : dep;
+            let depEx = normalizeDep(dep);
+            if (depEx.workspace) {
+                if (!workspaceMeta.workspace.dependencies[name]) {
+                    logger.error(`${crateRelPath}: Dependency '${name}' inherits from a ` +
+                        `non-existent workspace dependency.`);
+                    hasError = true;
+                    continue;
+                }
+                depEx = normalizeDep(workspaceMeta.workspace.dependencies[name]);
+            }
             if (publish && depEx.version == null) {
                 logger.error(`${crateRelPath}: Dependency '${name}' must have a version ` +
                     `specification because ${pkg.name} is a published crate.`);
@@ -220,6 +235,7 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
 interface CargoMeta {
     workspace?: {
         members?: string[],
+        dependencies?: { [name: string]: Dep },
     },
     "package"?: {
         name: string,
@@ -254,8 +270,18 @@ type Dep = DepEx | string;
 interface DepEx {
     version?: string,
     path?: string,
+    package?: string,
     optional?: boolean,
     features?: string[],
+    workspace?: true,
+}
+
+function normalizeDep(dep: Dep): DepEx {
+    if (typeof dep === "string") {
+        return { version: dep };
+    } else {
+        return dep;
+    }
 }
 
 /**
