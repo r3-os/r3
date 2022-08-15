@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-08-11`
 
+### Fixed
+
+- Implemented a work-around for ICE caused by mentioning a reference type in inline assembly `sym` operands ([rust-lang/rust#96304](https://github.com/rust-lang/rust/issues/96304)).
+
 ## [0.2.1] - 2022-03-19
 
 ### Fixed
