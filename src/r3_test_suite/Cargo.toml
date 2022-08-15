@@ -26,7 +26,7 @@ priority_boost = []
 system_time = []
 
 [dependencies]
-r3 = { path = "../r3", features = ["sync"] }
+r3 = { workspace = true, features = ["sync"] }
 
 assert_matches = { version = "1.4.0" }
 arrayvec = { version = "0.7.1", default-features = false }

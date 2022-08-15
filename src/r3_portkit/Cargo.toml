@@ -14,8 +14,8 @@ repository.workspace = true
 doc = ["svgbobdoc/enable"]
 
 [dependencies]
-r3_core_ks = { version = "0.1.0", path = "../r3_core", package = "r3_core" }
-r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
+r3_core_ks = { workspace = true }
+r3_kernel = { workspace = true }
 
 num-rational = { version = "0.4.0", default-features = false }
 svgbobdoc = { version = "0.3.0" }

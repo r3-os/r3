@@ -11,10 +11,10 @@ repository.workspace = true
 # `cargo test --all` to fail because of this, so we put dependencies in the
 # target-specific section.
 [target."cfg(target_os = \"none\")".dependencies]
-r3_support_rp2040 = { path = "../../src/r3_support_rp2040", features = ["semver-exempt"] }
-r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
-r3_kernel = { path = "../../src/r3_kernel", features = ["system_time"] }
-r3 = { path = "../../src/r3", features = ["sync"] }
+r3_support_rp2040 = { workspace = true, features = ["semver-exempt"] }
+r3_port_arm_m = { workspace = true }
+r3_kernel = { workspace = true, features = ["system_time"] }
+r3 = { workspace = true, features = ["sync"] }
 
 rp2040-boot2 = { version = "0.2.0" }
 cortex-m-rt = { version = "0.6.12", features = ["device"] }

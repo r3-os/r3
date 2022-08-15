@@ -18,9 +18,9 @@ preload-registers = []
 doc = ["svgbobdoc/enable"]
 
 [dependencies]
-r3_core_ks = { version = "0.1.0", path = "../r3_core", package = "r3_core" }
-r3_portkit = { version = "0.2.0", path = "../r3_portkit" }
-r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
+r3_core_ks = { workspace = true }
+r3_portkit = { workspace = true }
+r3_kernel = { workspace = true }
 
 macro_find_and_replace = { version = "1.0.0" }
 tock-registers = { version = "0.7.0" }

@@ -11,10 +11,10 @@ repository.workspace = true
 # `cargo test --all` to fail because of this, so we put dependencies in the
 # target-specific section.
 [target."cfg(target_os = \"none\")".dependencies]
-r3_example_common = { path = "../common"}
-r3_port_arm_m = { path = "../../src/r3_port_arm_m" }
-r3_kernel = { path = "../../src/r3_kernel", features = ["system_time"] }
-r3 = { path = "../../src/r3", features = ["sync"] }
+r3_example_common = { path = "../common" }
+r3_port_arm_m = { workspace = true }
+r3_kernel = { workspace = true, features = ["system_time"] }
+r3 = { workspace = true, features = ["sync"] }
 
 embedded-graphics = { version = "0.7.1" }
 wio_terminal = { version = "0.4" }

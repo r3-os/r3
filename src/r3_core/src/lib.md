@@ -645,6 +645,8 @@ Kernel {
 
 # Stability
 
+<!-- [tag:core_version] -->
+
 `r3_core` defines two levels of API stability:
 
  - **The application-side API stability** applies to the API used by application code.

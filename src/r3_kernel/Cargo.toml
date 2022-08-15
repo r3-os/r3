@@ -41,7 +41,7 @@ chrono = { version = "0.4.13", optional = true, default-features = false }
 either = { version = "1.6.1", default-features = false }
 elain = { version = "0.3.0" }
 
-r3_core_ks = { version = "0.1.0", path = "../r3_core", package = "r3_core" }
+r3_core_ks = { workspace = true }
 
 [dev-dependencies]
 quickcheck_macros = "1.0.0"

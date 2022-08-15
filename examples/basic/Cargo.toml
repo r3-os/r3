@@ -8,8 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-r3_port_std = { path = "../../src/r3_port_std" }
-r3_kernel = { path = "../../src/r3_kernel", features = ["system_time"] }
-r3 = { path = "../../src/r3", features = ["sync"] }
+r3_port_std = { workspace = true }
+r3_kernel = { workspace = true, features = ["system_time"] }
+r3 = { workspace = true, features = ["sync"] }
 
 log = { version = "0.4.8" }
