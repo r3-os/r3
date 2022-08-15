@@ -30,13 +30,14 @@ impl<T: Copy> Frozen<T> {
         self.0
     }
 
+    #[macropol::macropol]
     /// Copy the referenced `[T]` to the CTFE heap. The resulting reference can
     /// be safely consumed at runtime.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use r3_core::utils::Frozen;
+    /// use ${env!("CARGO_CRATE_NAME")}::utils::Frozen;
     /// const SLICE: &[Frozen<u8>] = Frozen::leak_slice(&[1, 2, 3]);
     /// assert_eq!(SLICE[1].get(), 2);
     /// ```
