@@ -34,6 +34,13 @@ repository = "https://github.com/r3-os/r3"
 
 [workspace.dependencies]
 # Workspace packages.
+# 
+# Should be kept up to date with their respective exact versions in the source
+# tree so that packages don't accidentally get linked to an older version of
+# dependencies that lack necessary features. However, unpublished packages must
+# not have their versions specified ([tag:sync_workspace_dep_version]).
+# Although this approach is conservative, it makes the publishing process
+# tractable while ensuring the correctness of version requirements.
 #
 # `r3_core` and `r3_core_ks` point to the same package, but `r3_core_ks` allows
 # the use of the APIs only covered by the kernel-side API stability (see
@@ -55,17 +62,17 @@ repository = "https://github.com/r3-os/r3"
 # the old version of `r3_portkit` is semver-incompatible with the latest one
 # and contains substantial bugs.
 arm_semihosting = { path = "src/arm_semihosting" }
-r3 = { path = "src/r3", version = "0.2.0" }
-r3_core = { path = "src/r3_core", version = "0.1.0", package = "r3_core" }  # Application-side API
-r3_core_ks = { path = "src/r3_core", version = "0.1.0", package = "r3_core" }  # Kernel-side API
-r3_kernel = { path = "src/r3_kernel", version = "0.1.0" }
-r3_port_arm = { path = "src/r3_port_arm", version = "0.2.0" }
-r3_port_arm_m = { path = "src/r3_port_arm_m", version = "0.3.0" }
-r3_port_riscv = { path = "src/r3_port_riscv", version = "0.2.0" }
-r3_port_std = { path = "src/r3_port_std", version = "0.2.0" }
-r3_portkit = { path = "src/r3_portkit", version = "0.2.0" }
-r3_support_rp2040 = { path = "src/r3_support_rp2040", version = "0.2.0" }
-r3_support_rza1 = { path = "src/r3_support_rza1", version = "0.2.0" }
+r3 = { path = "src/r3", version = "0.2.2" }
+r3_core = { path = "src/r3_core", version = "0.1.2", package = "r3_core" }  # Application-side API
+r3_core_ks = { path = "src/r3_core", version = "0.1.2", package = "r3_core" }  # Kernel-side API
+r3_kernel = { path = "src/r3_kernel", version = "0.1.2" }
+r3_port_arm = { path = "src/r3_port_arm", version = "0.2.2" }
+r3_port_arm_m = { path = "src/r3_port_arm_m", version = "0.3.1" }
+r3_port_riscv = { path = "src/r3_port_riscv", version = "0.2.1" }
+r3_port_std = { path = "src/r3_port_std", version = "0.2.1" }
+r3_portkit = { path = "src/r3_portkit", version = "0.2.1" }
+r3_support_rp2040 = { path = "src/r3_support_rp2040", version = "0.2.2" }
+r3_support_rza1 = { path = "src/r3_support_rza1", version = "0.2.2" }
 r3_test_suite = { path = "src/r3_test_suite", default-features = false }
 
 [patch.crates-io.riscv-0p5]

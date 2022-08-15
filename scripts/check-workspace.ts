@@ -83,6 +83,12 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
         return;
     }
 
+    const workspaceDeps: [string, DepEx][] =
+        [...Object.entries(workspaceMeta.workspace.dependencies)]
+        .map(([name, dep]) => [name, normalizeDep(dep)]);
+
+    const validWorkspaceLocalDeps = new Set<string>();
+
     for (const crateRelPath of workspaceMeta.workspace.members) {
         const cratePath = path.join(workspacePath, crateRelPath);
         const crateMetaPath = path.join(cratePath, "Cargo.toml");
@@ -228,6 +234,38 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
         if (publish && !docsMetadata["all-features"]) {
             logger.error(`${crateRelPath}: package.metadata.docs.rs.all-features is ` +
                 `not set.`);
+        }
+        
+        // `workspace.dependencies` must specify the exact version for a
+        // published package and must not specfiy a version for an unpublished
+        // package [ref:sync_workspace_dep_version]
+        for (const [name, dep] of workspaceDeps) {
+            const depPackage = dep.package ?? name;
+            if (depPackage == pkg.name && dep.path === crateRelPath) {
+                validWorkspaceLocalDeps.add(name);
+                if (publish) {
+                    if (dep.version !== pkg.version) {
+                        logger.error(`'.workspace.dependencies.${name}.version' ` +
+                            `should be '${pkg.version}', but it's '${dep.version}'`);
+                        hasError = true;
+                    }
+                } else {
+                    if (dep.version) {
+                        logger.error(`'.workspace.dependencies.${name}.version' ` +
+                            `should be unset, but it's '${dep.version}'`);
+                        hasError = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // All workspace dependencies must point to workspace members. (Pointing to
+    // other packages is not allowed for now.)
+    for (const [name, dep] of workspaceDeps) {
+        if (!validWorkspaceLocalDeps.has(name)) {
+            logger.error(`'.workspace.dependencies.${name}' has no matching workspace member.`);
+            hasError = true;
         }
     }
 }
