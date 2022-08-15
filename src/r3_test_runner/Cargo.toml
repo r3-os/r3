@@ -1,9 +1,11 @@
 [package]
 name = "r3_test_runner"
 version = "0.0.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 publish = false
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 r3_test_suite = { path = "../r3_test_suite", default-features = false }

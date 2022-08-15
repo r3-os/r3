@@ -1,8 +1,11 @@
 [package]
 name = "r3_example_basic_gr_peach"
 version = "0.0.0"
-edition = "2021"
 publish = false
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 r3_support_rza1 = { path = "../../src/r3_support_rza1", features = ["semver-exempt"] }

@@ -1,8 +1,11 @@
 [package]
 name = "r3_example_smp_rp_pico"
 version = "0.0.0"
-edition = "2021"
 publish = false
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # `cortex-m-rt` and other crates don't build on a hosted target. We don't want
 # `cargo test --all` to fail because of this, so we put dependencies in the

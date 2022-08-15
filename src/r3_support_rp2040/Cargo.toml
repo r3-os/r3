@@ -1,12 +1,13 @@
 [package]
 name = "r3_support_rp2040"
 version = "0.2.2"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 description = "Supporting package for running R3-OS on RP2040"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "arm"]
-repository = "https://github.com/r3-os/r3"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 semver-exempt = [

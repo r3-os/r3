@@ -27,6 +27,11 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/r3-os/r3"
+
 [patch.crates-io.riscv-0p5]
 # We need to enable `riscv/inline-asm` to work around
 # <https://github.com/rust-embedded/riscv/issues/69>. However, some external

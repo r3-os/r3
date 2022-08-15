@@ -1,8 +1,11 @@
 [package]
 name = "r3_example_basic"
 version = "0.0.0"
-edition = "2021"
 publish = false
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 r3_port_std = { path = "../../src/r3_port_std" }
