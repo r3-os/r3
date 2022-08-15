@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-08-11`
+- Removed trait bounds in items and item documentations that have been made redundant by `~const CfgBase` supertraits of the `Cfg*` traits.
 
 ## [0.2.2] - 2022-03-30
 
