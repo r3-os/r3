@@ -10,7 +10,7 @@ The port for running [`::r3_kernel`][] in a hosted environment
 // Require `unsafe` even in `unsafe fn` - highly recommended
 #![deny(unsafe_op_in_unsafe_fn)]
 
-# extern crate r3_core as r3;
+# extern crate r3_core_ks as r3;
 use r3::kernel::{StaticTask, Cfg, traits};
 
 // Use the simulator port. This macro generates `fn main()`.

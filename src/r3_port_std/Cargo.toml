@@ -13,8 +13,8 @@ repository.workspace = true
 doc = []
 
 [dependencies]
+r3_core_ks = { version = "0.1.0", path = "../r3_core", package = "r3_core" }
 r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
-r3_core = { version = "0.1.0", path = "../r3_core" }
 
 atomic_ref = { version = "0.2.0" }
 env_logger = { version = "0.8.4" }

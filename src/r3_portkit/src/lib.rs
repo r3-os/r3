@@ -13,6 +13,8 @@
 )]
 #![no_std]
 
+extern crate r3_core_ks as r3_core;
+
 #[cfg(doc)]
 #[doc = include_str!("../CHANGELOG.md")]
 pub mod _changelog_ {}

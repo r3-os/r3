@@ -29,7 +29,7 @@ use r3_core::kernel::{
 
 /// Used by macros
 #[doc(hidden)]
-pub extern crate r3_core;
+pub extern crate r3_core_ks as r3_core;
 
 /// Used by macros
 #[doc(hidden)]
