@@ -77,6 +77,18 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
         return;
     }
 
+    if (!workspaceMeta.workspace.dependencies) {
+        logger.error("'.workspace.dependencies' is missing from the workspace metadata.");
+        hasError = true;
+        return;
+    }
+
+    const workspaceDeps: [string, DepEx][] =
+        [...Object.entries(workspaceMeta.workspace.dependencies)]
+        .map(([name, dep]) => [name, normalizeDep(dep)]);
+
+    const validWorkspaceLocalDeps = new Set<string>();
+
     for (const crateRelPath of workspaceMeta.workspace.members) {
         const cratePath = path.join(workspacePath, crateRelPath);
         const crateMetaPath = path.join(cratePath, "Cargo.toml");
@@ -90,9 +102,12 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
             hasError = true;
             continue;
         }
-
+        
         const {package: pkg, dependencies = {}, features = {}} = crateMeta;
         const {publish = true, version} = pkg;
+        
+        // JSON-fy some fields for easy deep comparison
+        const pkgRepository = pkg.repository ? JSON.stringify(pkg.repository) : null;
 
         // CC-VER-UNPUBLISHED
         if (!publish && pkg.version !== '0.0.0') {
@@ -110,7 +125,16 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
 
         // Published crates must have versioned dependencies
         for (const [name, dep] of Object.entries(dependencies)) {
-            const depEx = typeof dep === "string" ? {version: dep} : dep;
+            let depEx = normalizeDep(dep);
+            if (depEx.workspace) {
+                if (!workspaceMeta.workspace.dependencies[name]) {
+                    logger.error(`${crateRelPath}: Dependency '${name}' inherits from a ` +
+                        `non-existent workspace dependency.`);
+                    hasError = true;
+                    continue;
+                }
+                depEx = normalizeDep(workspaceMeta.workspace.dependencies[name]);
+            }
             if (publish && depEx.version == null) {
                 logger.error(`${crateRelPath}: Dependency '${name}' must have a version ` +
                     `specification because ${pkg.name} is a published crate.`);
@@ -132,10 +156,10 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
                 logger.error(`${crateRelPath}: '.package.keywords' must be set for a published crate.`);
                 hasError = true;
             }
-            if (pkg.repository == null) {
+            if (pkgRepository == null) {
                 logger.error(`${crateRelPath}: '.package.repository' must be set for a published crate.`);
                 hasError = true;
-            } else if (pkg.repository !== (expectedRepository = expectedRepository ?? pkg.repository)) {
+            } else if (pkgRepository !== (expectedRepository = expectedRepository ?? pkgRepository)) {
                 logger.error(`${crateRelPath}: '.package.repository' must be consistent across the ` +
                     `workspace. The first found value is '${expectedRepository}'.`);
                 hasError = true;
@@ -211,24 +235,57 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
             logger.error(`${crateRelPath}: package.metadata.docs.rs.all-features is ` +
                 `not set.`);
         }
+        
+        // `workspace.dependencies` must specify the exact version for a
+        // published package and must not specfiy a version for an unpublished
+        // package [ref:sync_workspace_dep_version]
+        for (const [name, dep] of workspaceDeps) {
+            const depPackage = dep.package ?? name;
+            if (depPackage == pkg.name && dep.path === crateRelPath) {
+                validWorkspaceLocalDeps.add(name);
+                if (publish) {
+                    if (dep.version !== pkg.version) {
+                        logger.error(`'.workspace.dependencies.${name}.version' ` +
+                            `should be '${pkg.version}', but it's '${dep.version}'`);
+                        hasError = true;
+                    }
+                } else {
+                    if (dep.version) {
+                        logger.error(`'.workspace.dependencies.${name}.version' ` +
+                            `should be unset, but it's '${dep.version}'`);
+                        hasError = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // All workspace dependencies must point to workspace members. (Pointing to
+    // other packages is not allowed for now.)
+    for (const [name, dep] of workspaceDeps) {
+        if (!validWorkspaceLocalDeps.has(name)) {
+            logger.error(`'.workspace.dependencies.${name}' has no matching workspace member.`);
+            hasError = true;
+        }
     }
 }
 
 interface CargoMeta {
     workspace?: {
         members?: string[],
+        dependencies?: { [name: string]: Dep },
     },
     "package"?: {
         name: string,
         version: string,
         authors: string[],
         readme?: string,
-        edition?: string,
-        license?: string,
+        edition?: Inheritable<string>,
+        license?: Inheritable<string>,
         description?: string,
         categories?: string[],
         keywords?: string[],
-        repository?: string,
+        repository?: Inheritable<string>,
         publish?: boolean,
         metadata?: {
             docs?: {
@@ -244,13 +301,25 @@ interface CargoMeta {
     "dev-dependencies"?: { [name: string]: Dep },
 }
 
+type Inheritable<T> = { workspace: true } | T;
+
 type Dep = DepEx | string;
 
 interface DepEx {
     version?: string,
     path?: string,
+    package?: string,
     optional?: boolean,
     features?: string[],
+    workspace?: true,
+}
+
+function normalizeDep(dep: Dep): DepEx {
+    if (typeof dep === "string") {
+        return { version: dep };
+    } else {
+        return dep;
+    }
 }
 
 /**

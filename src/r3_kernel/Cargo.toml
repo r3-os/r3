@@ -1,12 +1,13 @@
 [package]
 name = "r3_kernel"
 version = "0.1.2"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 description = "The R3-OS original kernel"
 categories = ["embedded", "no-std"]
 keywords = ["r3"]
-repository = "https://github.com/r3-os/r3"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 default = []
@@ -35,11 +36,12 @@ svgbobdoc = { version = "0.3.0" }
 tokenlock = { version = "0.3.4", default-features = false }
 arrayvec = { version = "0.7.1", default-features = false }
 bitflags = { version = "1.2.1" }
+macropol = { version = "0.1.2" }
 chrono = { version = "0.4.13", optional = true, default-features = false }
 either = { version = "1.6.1", default-features = false }
 elain = { version = "0.3.0" }
 
-r3_core = { version = "0.1.0", path = "../r3_core" }
+r3_core_ks = { workspace = true }
 
 [dev-dependencies]
 quickcheck_macros = "1.0.0"

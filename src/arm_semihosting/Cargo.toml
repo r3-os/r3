@@ -1,8 +1,11 @@
 [package]
 name = "arm_semihosting"
 version = "0.0.0"
-edition = "2021"
 publish = false
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 no-semihosting = []

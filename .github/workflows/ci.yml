@@ -38,6 +38,10 @@ jobs:
           # triple is provided.
           sed -E -i.bak 's/.*basic_.*//' Cargo.toml
           sed -E -i.bak 's/.*smp_rp_pico.*//' Cargo.toml
+        
+          # Make sure to remove the backup file, or else Tagref will report an
+          # error for having duplicate tag definitions
+          rm Cargo.toml.bak
 
       - name: Check cross-references with Tagref
         run: tagref

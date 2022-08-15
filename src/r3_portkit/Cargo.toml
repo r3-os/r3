@@ -1,20 +1,21 @@
 [package]
 name = "r3_portkit"
 version = "0.2.1"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 description = "Utilities for writing a port of R3"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "simulator"]
-repository = "https://github.com/r3-os/r3"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 # Used for documentation builds [ref:doc_feature]
 doc = ["svgbobdoc/enable"]
 
 [dependencies]
-r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
-r3_core = { version = "0.1.0", path = "../r3_core" }
+r3_core_ks = { workspace = true }
+r3_kernel = { workspace = true }
 
 num-rational = { version = "0.4.0", default-features = false }
 svgbobdoc = { version = "0.3.0" }

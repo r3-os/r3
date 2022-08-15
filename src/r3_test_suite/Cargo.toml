@@ -1,13 +1,14 @@
 [package]
 name = "r3_test_suite"
 version = "0.0.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 categories = ["embedded", "no-std", "development-tools::testing"]
 description = "Test suite for R3"
 keywords = ["r3"]
-repository = "https://github.com/r3-os/r3"
 publish = false
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 default = ["tests_all", "full"]
@@ -25,7 +26,7 @@ priority_boost = []
 system_time = []
 
 [dependencies]
-r3 = { path = "../r3", features = ["sync"] }
+r3 = { workspace = true, features = ["sync"] }
 
 assert_matches = { version = "1.4.0" }
 arrayvec = { version = "0.7.1", default-features = false }

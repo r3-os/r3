@@ -1,12 +1,13 @@
 [package]
 name = "r3_port_arm"
 version = "0.2.2"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 description = "Armv7-A port for the R3-OS original kernel"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "arm"]
-repository = "https://github.com/r3-os/r3"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 preload-registers = []
@@ -15,9 +16,9 @@ preload-registers = []
 doc = []
 
 [dependencies]
-r3_portkit = { version = "0.2.0", path = "../r3_portkit" }
-r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
-r3_core = { version = "0.1.0", path = "../r3_core" }
+r3_core_ks = { workspace = true }
+r3_portkit = { workspace = true }
+r3_kernel = { workspace = true }
 
 tock-registers = { version = "0.7.0" }
 memoffset = { version = "0.6.5", features = ["unstable_const"] }

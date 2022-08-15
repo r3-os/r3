@@ -1,15 +1,16 @@
 [package]
 name = "r3"
 version = "0.2.2"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 readme = "README.md"
 description = """
 R3-OS: Experimental static component-oriented RTOS for deeply embedded systems
 """
 categories = ["embedded", "no-std"]
 keywords = ["r3", "rtos"]
-repository = "https://github.com/r3-os/r3"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 default = []
@@ -32,9 +33,12 @@ stable_deref_trait = { version = "1.2.0", default-features = false }
 embed-doc-image = { version = "0.1.4", optional = true }
 svgbobdoc = { version = "0.3.0" }
 macropol = { version = "0.1.2" }
-r3_core = { version = "0.1.0", path = "../r3_core" }
+
+r3_core = { workspace = true }
 
 [dev-dependencies]
+# Don't use workspace inheritance here - versioned dev-dependencies are
+# validated at publish time, which prevents cyclic dependencies
 r3_port_std = { path = "../r3_port_std" }
 r3_kernel = { path = "../r3_kernel" }
 

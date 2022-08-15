@@ -1,9 +1,11 @@
 [package]
 name = "r3_port_arm_test_driver"
 version = "0.0.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 publish = false
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 kernel_benchmarks = ["run"]
@@ -31,10 +33,10 @@ output-semihosting = [
 ]
 
 [dependencies]
-r3_support_rza1 = { path = "../r3_support_rza1", optional = true, features = ["semver-exempt"] }
-r3_port_arm = { path = "../r3_port_arm", optional = true }
-arm_semihosting = { path = "../arm_semihosting", optional = true }
-r3 = { path = "../r3", optional = true }
+arm_semihosting = { workspace = true, optional = true }
+r3_support_rza1 = { workspace = true, optional = true, features = ["semver-exempt"] }
+r3_port_arm = { workspace = true, optional = true }
+r3 = { workspace = true, optional = true }
 
 tock-registers = { version = "0.7.0", optional = true }
 arrayvec = { version = "0.7.1", optional = true, default-features = false }
@@ -43,15 +45,14 @@ rza1 = { version = "0.2.0", optional = true, features = ["cpg", "gpio", "scif"] 
 log = { version = "0.4.8", optional = true }
 
 [dependencies.r3_kernel]
-path = "../r3_kernel"
+workspace = true
 features = [
     # enable all of the kernel optional features
     "full",
 ]
 
 [dependencies.r3_test_suite]
-path = "../r3_test_suite"
-default-features = false
+workspace = true
 features = [
     # compile the test case specified by `R3_TEST`
     "tests_selective",

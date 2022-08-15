@@ -1,12 +1,14 @@
 [package]
 name = "r3_test_runner"
 version = "0.0.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
 publish = false
 
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
 [dependencies]
-r3_test_suite = { path = "../r3_test_suite", default-features = false }
+r3_test_suite = { workspace = true }
 
 arg_enum_proc_macro = { version = "0.3.0" }
 aho-corasick = { version = "0.7.13" }
