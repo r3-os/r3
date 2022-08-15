@@ -90,9 +90,12 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
             hasError = true;
             continue;
         }
-
+        
         const {package: pkg, dependencies = {}, features = {}} = crateMeta;
         const {publish = true, version} = pkg;
+        
+        // JSON-fy some fields for easy deep comparison
+        const pkgRepository = pkg.repository ? JSON.stringify(pkg.repository) : null;
 
         // CC-VER-UNPUBLISHED
         if (!publish && pkg.version !== '0.0.0') {
@@ -132,10 +135,10 @@ async function validateWorkspace(workspacePath: string): Promise<void> {
                 logger.error(`${crateRelPath}: '.package.keywords' must be set for a published crate.`);
                 hasError = true;
             }
-            if (pkg.repository == null) {
+            if (pkgRepository == null) {
                 logger.error(`${crateRelPath}: '.package.repository' must be set for a published crate.`);
                 hasError = true;
-            } else if (pkg.repository !== (expectedRepository = expectedRepository ?? pkg.repository)) {
+            } else if (pkgRepository !== (expectedRepository = expectedRepository ?? pkgRepository)) {
                 logger.error(`${crateRelPath}: '.package.repository' must be consistent across the ` +
                     `workspace. The first found value is '${expectedRepository}'.`);
                 hasError = true;
@@ -223,12 +226,12 @@ interface CargoMeta {
         version: string,
         authors: string[],
         readme?: string,
-        edition?: string,
-        license?: string,
+        edition?: Inheritable<string>,
+        license?: Inheritable<string>,
         description?: string,
         categories?: string[],
         keywords?: string[],
-        repository?: string,
+        repository?: Inheritable<string>,
         publish?: boolean,
         metadata?: {
             docs?: {
@@ -243,6 +246,8 @@ interface CargoMeta {
     dependencies?: { [name: string]: Dep },
     "dev-dependencies"?: { [name: string]: Dep },
 }
+
+type Inheritable<T> = { workspace: true } | T;
 
 type Dep = DepEx | string;
 
