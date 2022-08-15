@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - The new blanket-implemented `CfgStatic` trait can be used to simplify some trait bounds of configuration functions.
 - The `Cfg*` traits now include `~const` in their supertraits ([rust-lang/rust#93429](https://github.com/rust-lang/rust/pull/93429)), making `~const CfgBase` trait bound unnecessary if it's implied by others.
 
+### Changed
+
+- **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-08-11`
+
 ### Fixed
 
 - The `Cfg*` traits now imply the corresponding `Kernel*` traits (e.g., `C: CfgTimer` implies `C::System: KernelTimer`), making some trait bounds in configuration functions unnecessary.

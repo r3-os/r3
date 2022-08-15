@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-08-11`
+
 ### Fixed
 
 - Fixed an unexposed soundness bug in `Timeout`'s destructor in which the destructor started unwinding instead of aborting on precondition violation. This could only be triggered by a bug in internal code, and we are not aware of any instances of such bugs. Triggering the bug also requires the `unwind` panic strategy, which is not supported by bare-metal targets.
