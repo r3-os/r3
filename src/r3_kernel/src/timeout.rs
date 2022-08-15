@@ -139,7 +139,10 @@ use crate::{
     klock::{lock_cpu, CpuLockCell, CpuLockGuard, CpuLockTokenRefMut},
     state::expect_task_context,
     task,
-    utils::binary_heap::{BinaryHeap, BinaryHeapCtx},
+    utils::{
+        binary_heap::{BinaryHeap, BinaryHeapCtx},
+        panicking::abort_on_unwind,
+    },
     KernelTraits, UTicks,
 };
 
@@ -432,22 +435,20 @@ impl<Traits: KernelTraits> Init for Timeout<Traits> {
 impl<Traits: KernelTraits> Drop for Timeout<Traits> {
     #[inline]
     fn drop(&mut self) {
-        // TODO: Other threads might be still accessing it; isn't it unsafe
-        //       to get `&mut self`? At least this should be okay for the
-        //       current compiler thanks to `PhantomPinned` according to
-        //       <https://github.com/tokio-rs/tokio/pull/3654>
-        if *self.heap_pos.get_mut() != HEAP_POS_NONE {
-            // The timeout is still in the heap. Dropping `self` now would
-            // cause use-after-free. Since we don't have CPU Lock and we aren't
-            // sure if we can get a hold of it, aborting is the only course of
-            // action we can take. The owner of `Timeout` is responsible for
-            // ensuring this does not happen.
-            //
-            // Actually, `libcore` doesn't have an equivalent of
-            // `std::process::abort`. `panic!` in `drop` will escalate to abort,
-            // I think?
-            panic!("timeout is still linked");
-        }
+        abort_on_unwind(|| {
+            // TODO: Other threads might be still accessing it; isn't it unsafe
+            //       to get `&mut self`? At least this should be okay for the
+            //       current compiler thanks to `PhantomPinned` according to
+            //       <https://github.com/tokio-rs/tokio/pull/3654>
+            if *self.heap_pos.get_mut() != HEAP_POS_NONE {
+                // The timeout is still in the heap. Dropping `self` now would
+                // cause use-after-free. Since we don't have CPU Lock and we aren't
+                // sure if we can get a hold of it, aborting is the only course of
+                // action we can take. The owner of `Timeout` is responsible for
+                // ensuring this does not happen.
+                panic!("timeout is still linked");
+            }
+        })
     }
 }
 
