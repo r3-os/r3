@@ -1,6 +1,6 @@
 [package]
 name = "r3_portkit"
-version = "0.2.1"
+version = "0.2.2"
 description = "Utilities for writing a port of R3"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "simulator"]

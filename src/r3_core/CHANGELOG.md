@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.3] - 2022-08-16
+
 ### Added
 
 - The new blanket-implemented `CfgStatic` trait can be used to simplify some trait bounds of configuration functions.
@@ -37,6 +39,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_core@0.1.2...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_core@0.1.3...HEAD
+[0.1.3]: https://github.com/r3-os/r3/compare/r3_core@0.1.2...r3@0.1.3
 [0.1.2]: https://github.com/r3-os/r3/compare/r3_core@0.1.1...r3@0.1.2
 [0.1.1]: https://github.com/r3-os/r3/compare/r3_core@0.1.0...r3@0.1.1

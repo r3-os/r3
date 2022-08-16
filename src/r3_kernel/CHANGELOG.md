@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.3] - 2022-08-16
+
 ### Changed
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-08-11`
@@ -32,6 +34,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 Initial release. Supports `r3_core ^0.1`.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_kernel@0.1.2...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_kernel@0.1.3...HEAD
+[0.1.3]: https://github.com/r3-os/r3/compare/r3_kernel@0.1.2...r3@0.1.3
 [0.1.2]: https://github.com/r3-os/r3/compare/r3_kernel@0.1.1...r3@0.1.2
 [0.1.1]: https://github.com/r3-os/r3/compare/r3_kernel@0.1.0...r3@0.1.1
