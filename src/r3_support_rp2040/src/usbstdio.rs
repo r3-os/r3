@@ -79,7 +79,8 @@ pub const fn configure<'pool, C, TOptions: Options>(
     rp2040_resets: Bind<'pool, C::System, rp2040_pac::RESETS>,
     rp2040_usbctrl_regs: Bind<'pool, C::System, rp2040_pac::USBCTRL_REGS>,
 ) where
-    C: ~const traits::CfgStatic + ~const traits::CfgInterruptLine,
+    C: ~const traits::CfgBase + ~const traits::CfgInterruptLine,
+    C::System: traits::KernelInterruptLine + traits::KernelStatic,
 {
     bind(
         (rp2040_resets.borrow_mut(), rp2040_usbctrl_regs.take()),

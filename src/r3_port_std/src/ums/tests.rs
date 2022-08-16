@@ -1,7 +1,7 @@
 use super::*;
+use once_cell::sync::OnceCell;
 use std::{
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-    sync::OnceLock,
     thread::sleep,
     time::{Duration, Instant},
 };
@@ -21,7 +21,7 @@ fn preempt() {
         counters: [AtomicUsize; 3],
         done: AtomicBool,
         cur_thread: AtomicUsize,
-        threads: OnceLock<[ThreadId; 3]>,
+        threads: OnceCell<[ThreadId; 3]>,
     }
     let st: &_ = Box::leak(Box::new(St {
         counters: [
@@ -31,7 +31,7 @@ fn preempt() {
         ],
         done: AtomicBool::new(false),
         cur_thread: AtomicUsize::new(0),
-        threads: OnceLock::new(),
+        threads: OnceCell::new(),
     }));
 
     impl Scheduler for &'static St {
@@ -144,13 +144,13 @@ fn yield_ring(count: usize) {
         counters: Vec<AtomicUsize>,
         done: AtomicBool,
         cur_thread: AtomicUsize,
-        threads: OnceLock<Vec<ThreadId>>,
+        threads: OnceCell<Vec<ThreadId>>,
     }
     let st: &_ = Box::leak(Box::new(St {
         counters: (0..count).map(|_| AtomicUsize::new(0)).collect(),
         done: AtomicBool::new(false),
         cur_thread: AtomicUsize::new(0),
-        threads: OnceLock::new(),
+        threads: OnceCell::new(),
     }));
 
     const COUNTER_THREAD_ENDED: usize = usize::MAX;
@@ -244,11 +244,11 @@ fn preempt_rapid() {
 
     struct St {
         done: AtomicBool,
-        threads: OnceLock<ThreadId>,
+        threads: OnceCell<ThreadId>,
     }
     let st: &_ = Box::leak(Box::new(St {
         done: AtomicBool::new(false),
-        threads: OnceLock::new(),
+        threads: OnceCell::new(),
     }));
 
     impl Scheduler for &'static St {
@@ -292,10 +292,10 @@ fn forward_panic() {
     init_logger();
 
     struct St {
-        threads: OnceLock<ThreadId>,
+        threads: OnceCell<ThreadId>,
     }
     let st: &_ = Box::leak(Box::new(St {
-        threads: OnceLock::new(),
+        threads: OnceCell::new(),
     }));
 
     impl Scheduler for &'static St {

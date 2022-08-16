@@ -24,7 +24,9 @@ pub struct App<System: traits::KernelBase + traits::KernelInterruptLine + traits
 impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgTask<System = System<Traits>> + ~const traits::CfgInterruptLine,
+        C: ~const traits::CfgBase<System = System<Traits>>
+            + ~const traits::CfgInterruptLine
+            + ~const traits::CfgTask,
     {
         StaticTask::define()
             .start(task_body1::<Traits, D>)

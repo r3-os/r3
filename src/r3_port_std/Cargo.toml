@@ -1,23 +1,23 @@
 [package]
 name = "r3_port_std"
 version = "0.2.1"
+edition = "2021"
+license = "MIT OR Apache-2.0"
 description = "Simulator port for the R3-OS original kernel"
 keywords = ["r3", "simulator"]
-
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
+repository = "https://github.com/r3-os/r3"
 
 [features]
 # Used for documentation builds [ref:doc_feature]
 doc = []
 
 [dependencies]
-r3_core_ks = { workspace = true }
-r3_kernel = { workspace = true }
+r3_kernel = { version = "0.1.0", path = "../r3_kernel" }
+r3_core = { version = "0.1.0", path = "../r3_core" }
 
 atomic_ref = { version = "0.2.0" }
 env_logger = { version = "0.8.4" }
+once_cell = { version = "1.4.0" }
 spin = { version = "0.9.2", default-features = false, features = ["spin_mutex"] }
 slab = { version = "0.4.5" }
 log = { version = "0.4.8" }

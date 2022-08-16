@@ -18,7 +18,7 @@ pub struct App<System> {
 impl<Traits: SupportedSystemTraits> App<System<Traits>> {
     pub const fn new<C, D: Driver<Self>>(b: &mut Cfg<C>) -> Self
     where
-        C: ~const traits::CfgInterruptLine<System = System<Traits>>,
+        C: ~const traits::CfgBase<System = System<Traits>> + ~const traits::CfgInterruptLine,
     {
         StartupHook::define()
             .start(hook_body::<Traits, D>)

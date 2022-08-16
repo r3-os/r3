@@ -1,11 +1,8 @@
 //! Runs test cases defined in `r3_test_suite`.
 #![feature(const_refs_to_cell)]
-#![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(slice_ptr_len)]
 #![feature(never_type)]
-
-extern crate r3_core_ks as r3_core;
 
 use r3_port_std::PortInstance;
 use std::sync::atomic::{AtomicBool, Ordering};

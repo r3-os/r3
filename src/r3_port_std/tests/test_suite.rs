@@ -5,8 +5,6 @@
 #![feature(slice_ptr_len)]
 #![feature(never_type)]
 
-extern crate r3_core_ks as r3_core;
-
 use r3_port_std::PortInstance;
 use std::sync::atomic::{AtomicBool, Ordering};
 

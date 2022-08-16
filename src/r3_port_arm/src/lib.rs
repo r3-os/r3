@@ -1,11 +1,9 @@
 #![feature(const_ptr_offset_from)]
 #![feature(const_refs_to_cell)]
-#![feature(generic_arg_infer)]
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
 #![feature(slice_ptr_len)]
-#![feature(lint_reasons)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
 #![feature(asm_sym)]
@@ -20,7 +18,7 @@
 
 /// Used by `use_port!`
 #[doc(hidden)]
-pub extern crate r3_core_ks as r3_core;
+pub extern crate r3_core;
 
 /// Used by `use_port!`
 #[doc(hidden)]

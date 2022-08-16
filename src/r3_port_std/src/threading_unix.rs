@@ -33,7 +33,8 @@ pub unsafe fn exit_thread() -> ! {
 /// [`std::thread::JoinHandle`] with extra functionalities.
 #[derive(Debug)]
 pub struct JoinHandle<T> {
-    _std_handle: thread::JoinHandle<T>,
+    #[allow(dead_code)]
+    std_handle: thread::JoinHandle<T>,
     thread: Thread,
 }
 
@@ -68,10 +69,7 @@ pub fn spawn(f: impl FnOnce() + Send + 'static) -> JoinHandle<()> {
     // Wait until the just-spawned thread configures its own `THREAD_DATA`.
     thread::park();
 
-    JoinHandle {
-        _std_handle: std_handle,
-        thread,
-    }
+    JoinHandle { std_handle, thread }
 }
 
 impl<T> JoinHandle<T> {

@@ -1,8 +1,8 @@
 //! Utterly inefficient cross-platform preemptive user-mode scheduling
+use once_cell::sync::OnceCell;
 use slab::Slab;
 use std::{
     panic::{catch_unwind, AssertUnwindSafe},
-    sync::OnceLock,
     sync::{mpsc, Arc},
     thread::Result,
 };
@@ -75,7 +75,7 @@ struct WorkerThread {
 }
 
 thread_local! {
-    static TLB: OnceLock<ThreadLocalBlock> = OnceLock::new();
+    static TLB: OnceCell<ThreadLocalBlock> = OnceCell::new();
 }
 
 struct ThreadLocalBlock {

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-08-11`
+- **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-03-30`
 
 ## [0.2.1] - 2022-03-19
 

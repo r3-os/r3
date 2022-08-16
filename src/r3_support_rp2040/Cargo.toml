@@ -1,13 +1,12 @@
 [package]
 name = "r3_support_rp2040"
 version = "0.2.2"
+edition = "2021"
+license = "MIT OR Apache-2.0"
 description = "Supporting package for running R3-OS on RP2040"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "arm"]
-
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
+repository = "https://github.com/r3-os/r3"
 
 [features]
 semver-exempt = [
@@ -24,9 +23,9 @@ semver-exempt = [
 doc = []
 
 [dependencies]
-r3_port_arm_m = { workspace = true }
-r3_portkit = { workspace = true }
-r3 = { workspace = true }
+r3_port_arm_m = { version = "0.3.0", path = "../r3_port_arm_m" }
+r3_portkit = { version = "0.2.0", path = "../r3_portkit" }
+r3 = { version = "0.2.0", path = "../r3" }
 
 embedded-hal = { version = "0.2.4", optional = true }
 usbd-serial = { version = "0.1.1", optional = true }
