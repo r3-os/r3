@@ -60,6 +60,7 @@ jobs:
     name: Check crate metadata
     runs-on: ubuntu-20.04
     timeout-minutes: 5
+    if: false
     steps:
       - name: Checkout
         uses: actions/checkout@v2
