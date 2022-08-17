@@ -282,11 +282,6 @@ const _: () = [1].sort_unstable_by(comparer);
 ```
 
 
-### `[tag:const_option_map]` `Option::map` is inconvenient to use in `const fn`
-
-Although it's unstably `const fn` now ([rust-lang/rust#91930](https://github.com/rust-lang/rust/issues/91930)), `[ref:const_closures]` significantly limits its usability.
-
-
 ### `[tag:const_result_expect]` `Result::expect` is not `const fn`
 
 ```rust

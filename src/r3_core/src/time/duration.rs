@@ -126,60 +126,35 @@ impl Duration {
     /// overflows.
     #[inline]
     pub const fn checked_mul(self, other: i32) -> Option<Self> {
-        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
-        if let Some(x) = self.micros.checked_mul(other) {
-            Some(Self::from_micros(x))
-        } else {
-            None
-        }
+        self.micros.checked_mul(other).map(Self::from_micros)
     }
 
     /// Divide `self` by the specified value, returning `None` if the result
     /// overflows or `other` is zero.
     #[inline]
     pub const fn checked_div(self, other: i32) -> Option<Self> {
-        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
-        if let Some(x) = self.micros.checked_div(other) {
-            Some(Self::from_micros(x))
-        } else {
-            None
-        }
+        self.micros.checked_div(other).map(Self::from_micros)
     }
 
     /// Calculate the absolute value of `self`, returning `None` if
     /// `self == MIN`.
     #[inline]
     pub const fn checked_abs(self) -> Option<Self> {
-        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
-        if let Some(x) = self.micros.checked_abs() {
-            Some(Self::from_micros(x))
-        } else {
-            None
-        }
+        self.micros.checked_abs().map(Self::from_micros)
     }
 
     /// Add the specified value to `self`, returning `None` if the result
     /// overflows.
     #[inline]
     pub const fn checked_add(self, other: Self) -> Option<Self> {
-        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
-        if let Some(x) = self.micros.checked_add(other.micros) {
-            Some(Self::from_micros(x))
-        } else {
-            None
-        }
+        self.micros.checked_add(other.micros).map(Self::from_micros)
     }
 
     /// Subtract the specified value from `self`, returning `None` if the result
     /// overflows.
     #[inline]
     pub const fn checked_sub(self, other: Self) -> Option<Self> {
-        // `Option::map` is inconvenient to use in `const fn` [ref:const_option_map]
-        if let Some(x) = self.micros.checked_sub(other.micros) {
-            Some(Self::from_micros(x))
-        } else {
-            None
-        }
+        self.micros.checked_sub(other.micros).map(Self::from_micros)
     }
 }
 
