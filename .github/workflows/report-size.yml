@@ -2,6 +2,9 @@ name: Size report
 on:
   pull_request:
   push:
+permissions:
+  contents: read
+  checks: write
 
 jobs:
   # Report the binary size of the test suite

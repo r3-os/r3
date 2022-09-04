@@ -2,6 +2,9 @@ name: CI
 on:
   pull_request:
   push:
+permissions:
+  contents: read
+  checks: write
 
 jobs:
   # Do a quick check before proceeding to full tests
