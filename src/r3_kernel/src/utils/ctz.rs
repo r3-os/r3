@@ -117,7 +117,7 @@ pub fn trailing_zeros<const BITS: usize>(x: usize) -> u32 {
 
 #[inline]
 fn first_set_bit_mask(x: usize) -> usize {
-    x & 0usize.wrapping_sub(x)
+    x & x.wrapping_neg()
 }
 
 /// Implements [`trailing_zeros`] using a [de Bruijn sequence].
