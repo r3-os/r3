@@ -58,7 +58,7 @@ impl<T: Copy> Frozen<T> {
             // Allocate a CTFE heap memory block
             let ptr = core::intrinsics::const_allocate(size, align).cast::<T>();
             assert!(
-                !ptr.guaranteed_eq(core::ptr::null_mut()),
+                !ptr.guaranteed_eq(core::ptr::null_mut()).unwrap_or(false),
                 "heap allocation failed"
             );
 

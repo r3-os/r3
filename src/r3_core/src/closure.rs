@@ -138,7 +138,7 @@ impl Closure {
             } else {
                 let env = core::intrinsics::const_allocate(size, align);
                 assert!(
-                    !env.guaranteed_eq(core::ptr::null_mut()),
+                    !env.guaranteed_eq(core::ptr::null_mut()).unwrap_or(false),
                     "heap allocation failed"
                 );
                 env.cast::<T>().write(func);
