@@ -85,7 +85,7 @@ impl<T: Copy> const Clone for Frozen<T> {
     }
 }
 
-impl<T: Copy + ~const fmt::Debug> const fmt::Debug for Frozen<T> {
+impl<T: Copy + fmt::Debug> fmt::Debug for Frozen<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.get().fmt(f)
     }
