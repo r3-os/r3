@@ -19,6 +19,7 @@ use r3_core::{
 /// This trait is unstable.
 ///
 /// [1]: crate::sync::mutex::StaticMutex
+#[const_trait]
 pub trait Source<System> {
     type Target: 'static;
 

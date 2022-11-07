@@ -61,6 +61,7 @@ use crate::utils::{
     Init,
 };
 
+#[const_trait]
 pub(super) trait SorterCallback {
     /// Push a binding to the end of the initialization order.
     fn push_bind_order(&mut self, bind_i: usize);
@@ -535,11 +536,13 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
 // `const Iterator` is currently very hard to implement
 // [ref:iterator_const_default]
 /// An [`Iterator`][] usable in `const fn`.
+#[const_trait]
 trait MyIterator {
     type Item;
     fn next(&mut self) -> Option<Self::Item>;
 }
 
+#[const_trait]
 trait GraphAccess<VertexRef> {
     type VertexIter<'a>: ~const MyIterator<Item = VertexRef> + ~const Destruct + 'a
     where
@@ -566,6 +569,7 @@ impl Init for TopologicalSortVertexInfo {
     };
 }
 
+#[const_trait]
 trait TopologicalSortOutputSink<VertexRef> {
     fn push(&mut self, v: VertexRef);
 }

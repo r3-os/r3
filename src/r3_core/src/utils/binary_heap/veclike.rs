@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use core::ops;
 
+#[const_trait]
 pub trait VecLike:
     ~const ops::Deref<Target = [<Self as VecLike>::Element]> + ~const ops::DerefMut
 {

@@ -162,6 +162,7 @@ impl ConstAllocator {
 }
 
 /// The trait for types accepted by [`ConstAllocator::with_inner`].
+#[const_trait]
 trait FnOnceConstAllocator {
     type Output;
     fn call(self, allocator: &ConstAllocator) -> Self::Output;

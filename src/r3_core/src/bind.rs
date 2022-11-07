@@ -706,6 +706,7 @@ impl<'pool, System, T> DivideBind<'pool, System, T> {
 /// This trait is covered by the application-side API stability guarantee.
 /// External implementation of this trait is not allowed.
 #[doc = include_str!("./common.md")]
+#[const_trait]
 pub trait UnzipBind {
     type Target;
     /// Destruct [`Bind`][] into individual bindings.
@@ -1072,6 +1073,7 @@ enum BindBorrowType {
 ///
 /// At any point of time, the provided [`Closure`] must never be invoked by two
 /// threads simultaneously. It can be called for multiple times, however.
+#[const_trait]
 pub unsafe trait ExecutableDefiner: Sized + private::Sealed {
     /// Use the specified function as the entry point of the executable object
     /// being defined.
@@ -1081,6 +1083,7 @@ pub unsafe trait ExecutableDefiner: Sized + private::Sealed {
 mod private {
     use super::*;
 
+    #[const_trait]
     pub trait Sealed {}
 
     impl<System: raw::KernelBase> const Sealed for kernel::task::TaskDefiner<System> {}
@@ -1118,6 +1121,7 @@ unsafe impl<System: raw::KernelTimer> const ExecutableDefiner
 /// attach an entry point with materialized [bindings][1].
 ///
 /// [1]: Bind
+#[const_trait]
 pub trait ExecutableDefinerExt {
     /// Use the specified function with dependency as the entry point of the
     /// executable object being defined.
@@ -1160,6 +1164,7 @@ impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
 ///
 /// This trait is covered by the application-side API stability guarantee with
 /// the exception of its members, which are implementation details.
+#[const_trait]
 pub trait FnBind<Binder> {
     type Output: 'static;
     type BoundFn: FnOnce() -> Self::Output + Copy + Send + 'static;
@@ -1393,6 +1398,7 @@ where
 ///
 /// [1]: Bind
 /// [2]: index.html#binders
+#[const_trait]
 pub trait Binder {
     /// The runtime representation of `Self`.
     ///
