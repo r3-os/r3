@@ -205,6 +205,20 @@ const fn identity<C: ~const Fn()>(x: C) -> C { x }
 const _: () = { identity(|| {}); };
 ```
 
+
+### `[tag:passing_non_const_trait_fn_in_const_cx]` Passing a non-`const` trait function item to a `const fn` is disallowed in a constant context
+
+*Upstream issue:* [rust-lang/rust#104155](https://github.com/rust-lang/rust/issues/104155)
+
+```rust,compile_fail,E0277
+use core::mem::forget;
+pub const fn f<T: Default>() {
+    // error[E0277]: the trait bound `T: Default` is not satisfied
+    forget(T::default);
+    forget(|| T::default());
+}
+```
+
 ### `[tag:false_unconstrained_generic_const_on_type_alias]` An unrelated generic parameter causes "unconstrained generic constant" when using a type alias including a generic constant
 
 *Upstream issue:* [rust-lang/rust#89421](https://github.com/rust-lang/rust/issues/89421) (possibly related)

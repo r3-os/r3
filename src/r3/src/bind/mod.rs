@@ -233,5 +233,7 @@ where
     T: Default + 'static,
     C: ~const cfg::CfgStatic,
 {
-    Bind::define().init(Default::default).finish(cfg)
+    // Passing a closure instead of `Default::default` due to
+    // [ref:passing_non_const_trait_fn_in_const_cx]
+    Bind::define().init(|| Default::default()).finish(cfg)
 }
