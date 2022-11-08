@@ -4,7 +4,7 @@ use super::{AllocError, Allocator, ConstAllocator};
 
 /// `Vec` that can only be used in a constant context.
 #[doc(hidden)]
-pub struct ComptimeVec<T: Destruct> {
+pub struct ComptimeVec<T: ~const Destruct> {
     ptr: NonNull<T>,
     len: usize,
     capacity: usize,
@@ -39,7 +39,7 @@ impl<T: ~const Destruct> const Drop for ComptimeVec<T> {
     }
 }
 
-impl<T> ComptimeVec<T> {
+impl<T: ~const Destruct> ComptimeVec<T> {
     pub const fn new_in(allocator: ConstAllocator) -> Self {
         Self::with_capacity_in(0, allocator)
     }
@@ -114,7 +114,7 @@ impl<T> ComptimeVec<T> {
 
     /// Return a `ComptimeVec` of the same `len` as `self` with function `f`
     /// applied to each element in order.
-    pub const fn map<F: ~const FnMut(&T) -> U + ~const Destruct, U>(
+    pub const fn map<F: ~const FnMut(&T) -> U + ~const Destruct, U: ~const Destruct>(
         &self,
         mut f: F,
     ) -> ComptimeVec<U> {
@@ -165,7 +165,7 @@ impl<T> ComptimeVec<T> {
     }
 }
 
-impl<T> const ops::Deref for ComptimeVec<T> {
+impl<T: ~const Destruct> const ops::Deref for ComptimeVec<T> {
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -173,7 +173,7 @@ impl<T> const ops::Deref for ComptimeVec<T> {
     }
 }
 
-impl<T> const ops::DerefMut for ComptimeVec<T> {
+impl<T: ~const Destruct> const ops::DerefMut for ComptimeVec<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut_slice()
     }
