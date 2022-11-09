@@ -533,21 +533,8 @@ impl const Iterator for MyIterator {
 ### `[tag:const_assert_eq]` `assert_eq!` and similar macros are unusable in `const fn`
 
 ```rust,compile_fail,E0015
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-struct A;
-impl const PartialEq for A {
-    fn eq(&self, _: &Self) -> bool { true }
-    fn ne(&self, _: &Self) -> bool { false }
-}
-impl const core::fmt::Debug for A {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        unimplemented!()
-    }
-}
-
-// error[E0015]: cannot call non-const fn `assert_failed::<A, A>` in constants
-const _: () = assert_eq!(A, A);
+// error[E0015]: cannot call non-const fn `assert_failed::<u32, u32>` in constants
+const _: () = assert_eq!(42u32, 42u32);
 ```
 
 
