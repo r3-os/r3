@@ -130,35 +130,6 @@ const A: MaybeUninit<*mut ()> = unsafe {
 ```
 
 
-### `[tag:const_trait_not_implied]` `~const` in associated type bounds are not implied in the trait's use sites
-
-Associated type bounds are usually implied in the trait's use sites (e.g., if an associated type `Trait::Proj` is bounded by `Clone`, `T: Trait` implies `T::Proj: Clone`). However, this doesn't seem to apply to `~const`.
-
-```rust
-trait Trait {
-    type Proj: Clone;
-}
-
-fn clone_projection<T: Trait>(p: &T::Proj) -> T::Proj {
-    p.clone()
-}
-```
-
-```rust,compile_fail,E0277
-#![feature(const_trait_impl)]
-
-#[const_trait]
-trait Trait {
-    type Proj: ~const Clone;
-}
-
-const fn clone_projection<T: ~const Trait>(p: &T::Proj) -> T::Proj {
-    // error[E0277]: the trait bound `<T as Trait>::Proj: ~const Clone` is not satisfied
-    p.clone()
-}
-```
-
-
 ### `[tag:impl_block_const_bounds]` The trait bounds of an `impl` block can't include `~const`
 
 ```rust,compile_fail
