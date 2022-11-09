@@ -607,7 +607,7 @@ where
     Graph::VertexIter<'a>: ~const MyIterator + ~const Destruct,
     // [ref:const_trait_not_implied] necessitates `: ~const MyIterator`
     Graph::SuccessorIter<'a>: ~const MyIterator + ~const Destruct,
-    VertexRef: Copy,
+    VertexRef: Copy + ~const Destruct,
     VertexRefLessThan: ~const FnMut(&VertexRef, &VertexRef) -> bool,
     ReadyVertexQueue: ~const VecLike<Element = VertexRef>,
     for<'index> VertexInfoMap: ~const Index<&'index VertexRef, Output = TopologicalSortVertexInfo>
