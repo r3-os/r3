@@ -499,27 +499,13 @@ const _: () = assert!(matches!((2..4).next(), Some(2)));
 
 Implementing `const Iterator` requires you to implement all of its methods, which is impossible to do correctly.
 
-```rust
+```rust,compile_fail
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
-// FIXME: `compile-fail` temporarily removed due to
-//        [ref:const_impl_of_non_const_trait]
 
 struct MyIterator;
 
-// error: const trait implementations may not use non-const default functions
-// note: `size_hint`, `count`, `last`, `advance_by`, `nth`, `step_by`, `chain`,
-// `zip`, `intersperse`, `intersperse_with`, `map`, `for_each`, `filter`,
-// `filter_map`, `enumerate`, `peekable`, `skip_while`, `take_while`,
-// `map_while`, `skip`, `take`, `scan`, `flat_map`, `flatten`, `fuse`,
-// `inspect`, `by_ref`, `collect`, `try_collect`, `partition`,
-// `partition_in_place`, `is_partitioned`, `try_fold`, `try_for_each`, `fold`,
-// `reduce`, `try_reduce`, `all`, `any`, `find`, `find_map`, `try_find`,
-// `position`, `rposition`, `max`, `min`, `max_by_key`, `max_by`, `min_by_key`,
-// `min_by`, `rev`, `unzip`, `copied`, `cloned`, `cycle`, `sum`, `product`,
-// `cmp`, `cmp_by`, `partial_cmp`, `partial_cmp_by`, `eq`, `eq_by`, `ne`, `lt`,
-// `le`, `gt`, `ge`, `is_sorted`, `is_sorted_by`, `is_sorted_by_key`,
-// `__iterator_get_unchecked` not implemented
+// error: const `impl` for trait `Iterator` which is not marked with `#[const_trait]`
 impl const Iterator for MyIterator {
     type Item = u32;
 
@@ -527,36 +513,6 @@ impl const Iterator for MyIterator {
         Some(42)
     }
 }
-```
-
-
-### `[tag:const_impl_of_non_const_trait]` `impl const Trait` doesn't require `#[const_trait]`
-
-A `const` implementation of a non-`#[const_trait]` trait that uses at least one default method implementation doesn't result in a compile error. Instead, an error occurs when the non-`const` default method implementations are actually called in a constant context. This behavior deviates from Rust's design principles, so it's likely a bug.
-
-```rust
-#![feature(const_trait_impl)]
-trait Tr {
-    fn foo() {}
-}
-
-// expected error: const trait implementations may not use non-const default
-// functions / note: `foo` not implemented
-impl const Tr for () {}
-```
-
-```rust
-#![feature(const_trait_impl)]
-#![feature(lint_reasons)]
-trait Tr {
-    fn foo() {}
-}
-
-impl const Tr for () {}
-
-const fn f<T: ~const Tr>() { T::foo() }
-#[expect(const_err)] // error: calling non-const function `<() as Tr>::foo`
-const _: () = f::<()>();
 ```
 
 
