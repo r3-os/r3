@@ -147,6 +147,7 @@ fn clone_projection<T: Trait>(p: &T::Proj) -> T::Proj {
 ```rust,compile_fail,E0277
 #![feature(const_trait_impl)]
 
+#[const_trait]
 trait Trait {
     type Proj: ~const Clone;
 }
@@ -163,6 +164,7 @@ const fn clone_projection<T: ~const Trait>(p: &T::Proj) -> T::Proj {
 ```rust,compile_fail
 #![feature(const_trait_impl)]
 struct Cfg<C>(C);
+#[const_trait]
 trait CfgBase {}
 // error: `~const` is not allowed here
 impl<C: ~const CfgBase> Cfg<C> {
@@ -175,6 +177,7 @@ A work-around is to move the trait bounds to the `const fn`s inside.
 ```rust
 #![feature(const_trait_impl)]
 struct Cfg<C>(C);
+#[const_trait]
 trait CfgBase {}
 impl<C> Cfg<C> {
     const fn num_task_priority_levels(&self, _: usize)
