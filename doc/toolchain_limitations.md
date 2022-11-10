@@ -554,25 +554,6 @@ const _: () = tokenlock::with_branded_token(|token| {
 ```
 
 
-### `[tag:rust_99793_tait]` False-positive "cycle detected" in `const fn` with TAIT
-
-*Upstream issue:* [rust-lang/rust#99793](https://github.com/rust-lang/rust/issues/99793) (possibly related)
-
-```rust
-#![feature(type_alias_impl_trait)]
-type Unit<T> = impl Copy;
-fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
-```
-
-```rust,compile_fail,E0391
-#![feature(type_alias_impl_trait)]
-type Unit<T> = impl Copy;
-// error[E0391]: cycle detected when computing type of
-// `main::_doctest_main_lib_rs_647_0::Unit::{opaque#0}
-const fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
-```
-
-
 ## Unsized types
 
 ### `[tag:unsized_maybe_uninit]` `MaybeUninit<T>` requires `T: Sized`
@@ -591,39 +572,6 @@ fn foo(_: &core::mem::MaybeUninit<[u8]>) {}
 ### `[tag:missing_interior_mutability_trait]` Missing trait for representing the lack of interior mutability
 
 *Upstream RFC:* [rust-lang/rfcs#2944](https://github.com/rust-lang/rfcs/pull/2944) (closed)
-\
-
-## Existential types
-
-### `[tag:opaque_type_extraneous_capture]` An opaque type captures unused generic type parameters
-
-It may be possible that it's an intended behavior.
-
-```rust
-#![feature(type_alias_impl_trait)]
-trait Trait {
-    type Projection: 'static + Send;
-    fn get(self) -> Self::Projection;
-}
-type Projection<U: 'static + Send> = impl 'static + Send;
-impl<T, U: 'static + Send> Trait for (T, U) {
-    type Projection = Projection<U>;
-    fn get(self) -> Self::Projection { self.1 }
-}
-```
-
-```rust,compile_fail,E0310
-#![feature(type_alias_impl_trait)]
-trait Trait {
-    type Projection: 'static + Send;
-    fn get(self) -> Self::Projection;
-}
-impl<T, U: 'static + Send> Trait for (T, U) {
-    // error[E0310]: the parameter type `T` may not live long enough
-    type Projection = impl 'static + Send;
-    fn get(self) -> Self::Projection { self.1 }
-}
-```
 
 
 ## Macros

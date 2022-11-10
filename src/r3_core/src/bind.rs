@@ -1199,7 +1199,7 @@ macro_rules! impl_fn_bind {
             {
                 type Output = Output;
 
-                type BoundFn = BoundFn<T, $( $RuntimeBinderI, )*>;
+                type BoundFn = impl FnOnce() -> Output + Copy + Send + 'static;
 
                 fn bind(
                     self,
@@ -1209,52 +1209,20 @@ macro_rules! impl_fn_bind {
                     Binder::register_dependency(&binder, ctx);
 
                     let intermediate = Binder::into_runtime_binder(binder);
-                    BoundFn {
-                        func: self,
-                        runtime_binders: intermediate,
+                    move || {
+                        // Safety: `runtime_binders` was created by the corresponding
+                        // type's `into_runtime_binder` method.
+                        // `CfgBindRegistry::finalize` checks that the borrowing
+                        // rules regarding the materialization output are observed.
+                        // If the check fails, so does the compilation, and this
+                        // runtime code will never be executed.
+                        let ($( $fieldI, )*) = unsafe {
+                            <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(intermediate)
+                        };
+                        self($( $fieldI, )*)
                     }
                 }
-            }
-
-            // This opaque type must be defined outside the above `impl` to
-            // prevent the unintended capturing of `$BinderI`.
-            // [ref:opaque_type_extraneous_capture]
-            // type BoundFn<T, Output, $( $RuntimeBinderI, )*>
-            // where
-            //     $( $RuntimeBinderI: RuntimeBinder, )*
-            //     T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*)
-            //         -> Output + Copy + Send + 'static,
-            //  = impl FnOnce() -> Output + Copy + Send + 'static;
-
-            // FIXME: This is supposed to be a TAIT like the one above, but
-            // [ref:rust_99793_tait] prevents that
-            #[derive(Copy, Clone)]
-            pub struct BoundFn<T, $( $RuntimeBinderI, )*> {
-                func: T,
-                runtime_binders: ($( $RuntimeBinderI, )*),
-            }
-
-            impl<T, Output, $( $RuntimeBinderI, )*> FnOnce<()> for BoundFn<T, $( $RuntimeBinderI, )*>
-            where
-                $( $RuntimeBinderI: RuntimeBinder, )*
-                T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*) -> Output,
-            {
-                type Output = Output;
-
-                #[inline]
-                extern "rust-call" fn call_once(self, (): ()) -> Output {
-                    // Safety: `runtime_binders` was created by the corresponding
-                    // type's `into_runtime_binder` method.
-                    // `CfgBindRegistry::finalize` checks that the borrowing
-                    // rules regarding the materialization output are observed.
-                    // If the check fails, so does the compilation, and this
-                    // runtime code will never be executed.
-                    let ($( $fieldI, )*) = unsafe {
-                        <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(self.runtime_binders)
-                    };
-                    (self.func)($( $fieldI, )*)
-                }
-            }
+            } // impl
         }; // const _
     }; // end of macro arm
 
@@ -1342,44 +1310,11 @@ where
 {
     type Output = NewOutput;
 
-    type BoundFn = MappedBoundFn<InnerBoundFn, Mapper>;
+    type BoundFn = impl FnOnce() -> NewOutput + Copy + Send + 'static;
 
     fn bind(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Self::BoundFn {
-        MappedBoundFn {
-            inner_bound_fn: self.inner.bind(binder, ctx),
-            mapper: self.mapper,
-        }
-    }
-}
-
-// // This opaque type must be defined outside this trait to
-// // prevent the unintended capturing of `Binder`.
-// // [ref:opaque_type_extraneous_capture]
-// type MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
-// where
-//     InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
-//     Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
-// = impl FnOnce() -> NewOutput + Copy + Send + 'static;
-
-// FIXME: This is supposed to be a TAIT like the one above, but
-// [ref:rust_99793_tait] prevents that
-#[doc(hidden)]
-#[derive(Copy, Clone)]
-pub struct MappedBoundFn<InnerBoundFn, Mapper> {
-    inner_bound_fn: InnerBoundFn,
-    mapper: Mapper,
-}
-
-impl<InnerBoundFn, Output, Mapper, NewOutput> FnOnce<()> for MappedBoundFn<InnerBoundFn, Mapper>
-where
-    InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
-    Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
-{
-    type Output = NewOutput;
-
-    #[inline]
-    extern "rust-call" fn call_once(self, (): ()) -> Self::Output {
-        (self.mapper)((self.inner_bound_fn)())
+        let inner_bound_fn = self.inner.bind(binder, ctx);
+        move || (self.mapper)(inner_bound_fn())
     }
 }
 
