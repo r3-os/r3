@@ -1,4 +1,3 @@
-#![feature(const_ptr_offset_from)]
 #![feature(const_refs_to_cell)]
 #![feature(generic_arg_infer)]
 #![feature(const_trait_impl)]
