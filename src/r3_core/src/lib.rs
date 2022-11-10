@@ -7,7 +7,6 @@
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(nonnull_slice_from_raw_parts)]
-#![feature(arbitrary_enum_discriminant)]
 #![feature(type_changing_struct_update)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_precise_live_drops)]
