@@ -46,7 +46,6 @@
 #![feature(never_type)] // `!`
 #![feature(const_try)]
 #![feature(fn_traits)] // `impl FnOnce`
-#![feature(let_else)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]

@@ -4,7 +4,6 @@
 #![feature(lint_reasons)]
 #![feature(decl_macro)] // `macro`
 #![feature(pin_macro)] // `core::pin::pin!`
-#![feature(let_else)] // `let ... = ... else { ... }`
 #![warn(must_not_suspend)]
 use anyhow::Context;
 use clap::Parser;
