@@ -48,7 +48,6 @@ impl ConstAllocator {
     /// #![feature(const_trait_impl)]
     /// #![feature(const_mut_refs)]
     /// #![feature(const_option)]
-    /// #![feature(let_else)]
     /// #![const_eval_limit = "500000"]
     /// use core::{alloc::Layout, ptr::NonNull};
     /// use r3_core::utils::{ConstAllocator, Allocator};
@@ -100,7 +99,6 @@ impl ConstAllocator {
     ///
     /// ```rust,compile_fail,E0080
     /// # #![feature(const_trait_impl)]
-    /// # #![feature(let_else)]
     /// # use core::alloc::Layout;
     /// # use r3_core::utils::{ConstAllocator, Allocator};
     /// # const _: () = ConstAllocator::with(doit);

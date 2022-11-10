@@ -4,7 +4,6 @@
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
 #![feature(asm_const)]
-#![feature(let_else)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![no_std]
 #![no_main]
