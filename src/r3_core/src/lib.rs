@@ -16,7 +16,6 @@
 #![feature(const_slice_first_last)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_cell_into_inner)]
-#![feature(const_ptr_offset_from)]
 #![feature(type_alias_impl_trait)]
 #![feature(const_slice_ptr_len)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
