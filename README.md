@@ -59,7 +59,6 @@ The R3 original kernel is provided as a separate package [`r3_kernel`][].
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
 #![feature(asm_const)]
-#![feature(asm_sym)]
 #![no_std]
 #![no_main]
 

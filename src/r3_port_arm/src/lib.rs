@@ -8,7 +8,6 @@
 #![feature(lint_reasons)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
-#![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::verbose_bit_mask)] // questionable
 #![cfg_attr(

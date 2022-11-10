@@ -27,7 +27,6 @@ pub use core::{arch::asm, mem};
 /// ```
 /// #![feature(naked_functions)]
 /// #![feature(asm_const)]
-/// #![feature(asm_sym)]
 /// use r3_portkit::sym::sym_static;
 /// use std::{arch::asm, cell::Cell};
 ///

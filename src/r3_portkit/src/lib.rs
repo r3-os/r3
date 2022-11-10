@@ -6,7 +6,6 @@
 #![feature(decl_macro)]
 #![feature(asm_const)]
 #![feature(const_cmp)]
-#![feature(asm_sym)]
 #![cfg_attr(
     feature = "doc",
     doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
