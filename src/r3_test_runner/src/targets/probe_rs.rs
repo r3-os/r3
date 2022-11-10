@@ -368,7 +368,6 @@ impl AsyncBufRead for ReadRtt {
                             let num_read_bytes = Self::read_inner(
                                 &mut session,
                                 &mut rtt,
-                                #[expect(clippy::explicit_auto_deref)] // false positive
                                 &mut *buf,
                                 halt_on_access,
                             )?;
