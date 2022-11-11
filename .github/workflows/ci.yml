@@ -252,11 +252,13 @@ jobs:
           # SiFive U, RV64IMA
           - { ty: riscv, runner_target: qemu_sifive_u_rv64, runner_args: --arch rv64i+m+a }
           # SiFive U, RV32GC
-          - { ty: riscv, runner_target: qemu_sifive_u_rv32, runner_args: "" }
+          # FIXME: Re-enable when rust-lang/rust#104284 is fixed
+          # - { ty: riscv, runner_target: qemu_sifive_u_rv32, runner_args: "" }
           # SiFive U, RV64GC, S-mode
           - { ty: riscv, runner_target: qemu_sifive_u_s_rv64, runner_args: "" }
           # SiFive U, RV32GC, S-mode
-          - { ty: riscv, runner_target: qemu_sifive_u_s_rv32, runner_args: "" }
+          # FIXME: Re-enable when rust-lang/rust#104284 is fixed
+          # - { ty: riscv, runner_target: qemu_sifive_u_s_rv32, runner_args: "" }
           # SiFive E, RV32IMAC
           - { ty: riscv, runner_target: qemu_sifive_e_rv32, runner_args: "" }
           # SiFive E, RV32IA
