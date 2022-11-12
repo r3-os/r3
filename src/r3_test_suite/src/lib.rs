@@ -183,6 +183,7 @@ pub mod kernel_tests {
                 ))]
                 #[cfg(not(all( $($( $cfg )*),* )))]
                 #[path = "disabled.rs"]
+                #[allow(clippy::duplicate_mod)]
                 pub mod $name_ident;
             )*
 
