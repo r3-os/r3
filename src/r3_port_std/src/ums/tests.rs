@@ -264,7 +264,11 @@ fn preempt_rapid() {
 
     {
         let mut lock = tg.lock();
-        let t0 = lock.spawn(move |_| while !st.done.load(Ordering::Relaxed) {});
+        let t0 = lock.spawn(move |_| {
+            while !st.done.load(Ordering::Relaxed) {
+                std::hint::spin_loop();
+            }
+        });
         st.threads.set(t0).unwrap();
     }
 
