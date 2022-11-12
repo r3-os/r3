@@ -17,8 +17,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install Rust
-        # FIXME: Switch back when actions-rs/toolchain#209 is merged
-        uses: r3-os/actions-rust-toolchain@patch/pr-209
+        # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
+        uses: r3-os/actions-rust-toolchain@a862b6623c178b43a3135516442a5f72fb5c1877
         with:
           profile: minimal
           components: clippy, rustfmt
@@ -90,8 +90,8 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Install Rust
-        # FIXME: Switch back when actions-rs/toolchain#209 is merged
-        uses: r3-os/actions-rust-toolchain@patch/pr-209
+        # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
+        uses: r3-os/actions-rust-toolchain@a862b6623c178b43a3135516442a5f72fb5c1877
         with:
           profile: minimal
 
@@ -132,8 +132,8 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Install Rust
-        # FIXME: Switch back when actions-rs/toolchain#209 is merged
-        uses: r3-os/actions-rust-toolchain@patch/pr-209
+        # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
+        uses: r3-os/actions-rust-toolchain@a862b6623c178b43a3135516442a5f72fb5c1877
         with:
           profile: minimal
 
@@ -193,8 +193,8 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Install Rust
-        # FIXME: Switch back when actions-rs/toolchain#209 is merged
-        uses: r3-os/actions-rust-toolchain@patch/pr-209
+        # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
+        uses: r3-os/actions-rust-toolchain@a862b6623c178b43a3135516442a5f72fb5c1877
         with:
           profile: minimal
 
@@ -271,8 +271,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install Rust
-        # FIXME: Switch back when actions-rs/toolchain#209 is merged
-        uses: r3-os/actions-rust-toolchain@patch/pr-209
+        # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
+        uses: r3-os/actions-rust-toolchain@a862b6623c178b43a3135516442a5f72fb5c1877
         with:
           profile: minimal
           components: rust-src
@@ -337,8 +337,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install Rust
-        # FIXME: Switch back when actions-rs/toolchain#209 is merged
-        uses: r3-os/actions-rust-toolchain@patch/pr-209
+        # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
+        uses: r3-os/actions-rust-toolchain@a862b6623c178b43a3135516442a5f72fb5c1877
         with:
           profile: minimal
           components: rust-src
