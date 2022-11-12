@@ -21,11 +21,8 @@ pub trait SysTickOptions {
     ///
     /// Defaults to
     /// `(FREQUENCY / FREQUENCY_DENOMINATOR / 100).max(1).min(0x1000000)` (100Hz).
-    const TICK_PERIOD: u32 = {
-        (Self::FREQUENCY / Self::FREQUENCY_DENOMINATOR / 100)
-            .max(0)
-            .min(0x1000000) as u32
-    };
+    const TICK_PERIOD: u32 =
+        (Self::FREQUENCY / Self::FREQUENCY_DENOMINATOR / 100).clamp(0, 0x1000000) as u32;
 }
 
 /// Attach the tickful implementation of [`PortTimer`] that is based on SysTick
