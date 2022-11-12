@@ -101,7 +101,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             let section_files: Vec<_> = (0..regions.len())
                 .map(|i| {
                     let name = format!("{i}.bin");
-                    tempdir.path().join(&name)
+                    tempdir.path().join(name)
                 })
                 .collect();
             for (path, (data, _)) in section_files.iter().zip(regions.iter()) {
@@ -125,7 +125,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             // (`probe-rs` doesn't support FE310-based boards at this time)
             log::debug!("Launching JLinkExe and executing '{:?}'", cmd);
             subprocess::CmdBuilder::new("JLinkExe")
-                .args(&[
+                .args([
                     "-device",
                     "FE310",
                     "-if",

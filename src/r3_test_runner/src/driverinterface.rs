@@ -184,7 +184,7 @@ impl TestDriver {
 
         // Executable path
         let exe_path = target_dir
-            .join(&target_arch_opt.target_triple)
+            .join(target_arch_opt.target_triple)
             .join("release")
             .join(crate_name);
         log::debug!("exe_path = '{}'", exe_path.display());
@@ -311,7 +311,7 @@ impl TestDriver {
 
         // Delete `exe_path`
         if exe_path.exists() {
-            if let Err(e) = std::fs::remove_file(&exe_path) {
+            if let Err(e) = std::fs::remove_file(exe_path) {
                 // Failure is non-fatal
                 log::warn!("Failed to remove '{}': {}", exe_path.display(), e);
             }
@@ -332,7 +332,7 @@ impl TestDriver {
                 .arg("build")
                 .arg("--release")
                 .arg("--target")
-                .arg(&target_arch_opt.target_triple)
+                .arg(target_arch_opt.target_triple)
                 .arg(match test_run.case {
                     selection::TestCase::KernelTest(_)
                     | selection::TestCase::DriverKernelTest(_) => "--features=kernel_tests",
