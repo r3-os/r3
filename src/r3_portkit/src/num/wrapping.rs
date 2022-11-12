@@ -133,7 +133,7 @@ impl WrappingTrait for u32 {
 impl WrappingTrait for u64 {
     #[inline]
     fn wrapping_add_assign64(&mut self, rhs: u64) -> bool {
-        let (out, overflow) = self.overflowing_add(rhs as u64);
+        let (out, overflow) = self.overflowing_add(rhs);
         *self = out;
         overflow
     }
@@ -213,7 +213,8 @@ where
 
     #[inline]
     fn wrapping_add_assign128_multi32(&mut self, rhs: u128) -> u32 {
-        let new_value = self.inner.into() as u128 + rhs;
+        let inner: u128 = self.inner.into();
+        let new_value = inner + rhs;
         self.inner = T::try_from(new_value % (MAX as u128 + 1)).ok().unwrap();
 
         let wrap_count = new_value / (MAX as u128 + 1);
