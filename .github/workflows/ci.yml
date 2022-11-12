@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust
         # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
@@ -65,7 +65,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install dependencies (Linux)
         run: sudo snap install deno
@@ -268,7 +268,7 @@ jobs:
           - { ty: riscv, runner_target: qemu_sifive_e_rv32, runner_args: --arch rv32i+a }
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust
         # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
@@ -334,7 +334,7 @@ jobs:
           - { ty: riscv, runner_target: maix, runner_args: "", bench: "bench" }
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust
         # FIXME: Switch back when actions-rs/toolchain#{209,220,222} is merged
