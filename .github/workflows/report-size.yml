@@ -66,7 +66,7 @@ jobs:
           deno run -A scripts/report-size.ts -- --target ${{ matrix.runner_target }} ${{ matrix.runner_args }} -- -basepri > size-report.md
 
       - name: Publish the report as a check run
-        uses: LouisBrunner/checks-action@v1.2.0
+        uses: LouisBrunner/checks-action@v1.5.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "Size report: ${{ matrix.runner_target }} ${{ matrix.runner_args }}"
