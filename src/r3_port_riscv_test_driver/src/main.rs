@@ -61,11 +61,7 @@ macro_rules! instantiate_test {
             #[cfg(feature = "output-uart")]
             uart::stdout_write_str("!- TEST WAS SUCCESSFUL -!");
 
-            loop {
-                // prevent the loop from being optimized out
-                // <https://github.com/rust-lang/rust/issues/28728>
-                unsafe { core::arch::asm!("") };
-            }
+            loop {}
         }
 
         fn report_fail() {
