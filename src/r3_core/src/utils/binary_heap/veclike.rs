@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
-use core::ops;
+use core::{marker::Destruct, ops};
 
+#[const_trait]
 pub trait VecLike:
     ~const ops::Deref<Target = [<Self as VecLike>::Element]> + ~const ops::DerefMut
 {
@@ -11,7 +12,7 @@ pub trait VecLike:
     fn push(&mut self, x: Self::Element);
 }
 
-impl<T, const N: usize> VecLike for ArrayVec<T, N> {
+impl<T: ~const Destruct, const N: usize> VecLike for ArrayVec<T, N> {
     type Element = T;
     fn is_empty(&self) -> bool {
         self.is_empty()
@@ -27,7 +28,7 @@ impl<T, const N: usize> VecLike for ArrayVec<T, N> {
     }
 }
 
-impl<T> const VecLike for crate::utils::ComptimeVec<T> {
+impl<T: ~const Destruct> const VecLike for crate::utils::ComptimeVec<T> {
     type Element = T;
     fn is_empty(&self) -> bool {
         (**self).is_empty()

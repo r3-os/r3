@@ -29,6 +29,7 @@ impl<T: ~const Ord + ~const PartialOrd> const BinaryHeapCtx<T> for () {
 }
 
 /// Min-heap.
+#[const_trait]
 pub trait BinaryHeap: VecLike {
     /// Remove the least item from the heap and return it.
     fn heap_pop<Ctx>(&mut self, ctx: Ctx) -> Option<Self::Element>

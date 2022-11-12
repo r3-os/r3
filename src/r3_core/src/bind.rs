@@ -706,6 +706,7 @@ impl<'pool, System, T> DivideBind<'pool, System, T> {
 /// This trait is covered by the application-side API stability guarantee.
 /// External implementation of this trait is not allowed.
 #[doc = include_str!("./common.md")]
+#[const_trait]
 pub trait UnzipBind {
     type Target;
     /// Destruct [`Bind`][] into individual bindings.
@@ -1072,6 +1073,7 @@ enum BindBorrowType {
 ///
 /// At any point of time, the provided [`Closure`] must never be invoked by two
 /// threads simultaneously. It can be called for multiple times, however.
+#[const_trait]
 pub unsafe trait ExecutableDefiner: Sized + private::Sealed {
     /// Use the specified function as the entry point of the executable object
     /// being defined.
@@ -1081,6 +1083,7 @@ pub unsafe trait ExecutableDefiner: Sized + private::Sealed {
 mod private {
     use super::*;
 
+    #[const_trait]
     pub trait Sealed {}
 
     impl<System: raw::KernelBase> const Sealed for kernel::task::TaskDefiner<System> {}
@@ -1118,6 +1121,7 @@ unsafe impl<System: raw::KernelTimer> const ExecutableDefiner
 /// attach an entry point with materialized [bindings][1].
 ///
 /// [1]: Bind
+#[const_trait]
 pub trait ExecutableDefinerExt {
     /// Use the specified function with dependency as the entry point of the
     /// executable object being defined.
@@ -1160,6 +1164,7 @@ impl<T: ~const ExecutableDefiner> const ExecutableDefinerExt for T {
 ///
 /// This trait is covered by the application-side API stability guarantee with
 /// the exception of its members, which are implementation details.
+#[const_trait]
 pub trait FnBind<Binder> {
     type Output: 'static;
     type BoundFn: FnOnce() -> Self::Output + Copy + Send + 'static;
@@ -1194,7 +1199,7 @@ macro_rules! impl_fn_bind {
             {
                 type Output = Output;
 
-                type BoundFn = BoundFn<T, $( $RuntimeBinderI, )*>;
+                type BoundFn = impl FnOnce() -> Output + Copy + Send + 'static;
 
                 fn bind(
                     self,
@@ -1204,52 +1209,20 @@ macro_rules! impl_fn_bind {
                     Binder::register_dependency(&binder, ctx);
 
                     let intermediate = Binder::into_runtime_binder(binder);
-                    BoundFn {
-                        func: self,
-                        runtime_binders: intermediate,
+                    move || {
+                        // Safety: `runtime_binders` was created by the corresponding
+                        // type's `into_runtime_binder` method.
+                        // `CfgBindRegistry::finalize` checks that the borrowing
+                        // rules regarding the materialization output are observed.
+                        // If the check fails, so does the compilation, and this
+                        // runtime code will never be executed.
+                        let ($( $fieldI, )*) = unsafe {
+                            <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(intermediate)
+                        };
+                        self($( $fieldI, )*)
                     }
                 }
-            }
-
-            // This opaque type must be defined outside the above `impl` to
-            // prevent the unintended capturing of `$BinderI`.
-            // [ref:opaque_type_extraneous_capture]
-            // type BoundFn<T, Output, $( $RuntimeBinderI, )*>
-            // where
-            //     $( $RuntimeBinderI: RuntimeBinder, )*
-            //     T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*)
-            //         -> Output + Copy + Send + 'static,
-            //  = impl FnOnce() -> Output + Copy + Send + 'static;
-
-            // FIXME: This is supposed to be a TAIT like the one above, but
-            // [ref:rust_99793_tait] prevents that
-            #[derive(Copy, Clone)]
-            pub struct BoundFn<T, $( $RuntimeBinderI, )*> {
-                func: T,
-                runtime_binders: ($( $RuntimeBinderI, )*),
-            }
-
-            impl<T, Output, $( $RuntimeBinderI, )*> FnOnce<()> for BoundFn<T, $( $RuntimeBinderI, )*>
-            where
-                $( $RuntimeBinderI: RuntimeBinder, )*
-                T: for<'call> FnOnce($( $RuntimeBinderI::Target<'call>, )*) -> Output,
-            {
-                type Output = Output;
-
-                #[inline]
-                extern "rust-call" fn call_once(self, (): ()) -> Output {
-                    // Safety: `runtime_binders` was created by the corresponding
-                    // type's `into_runtime_binder` method.
-                    // `CfgBindRegistry::finalize` checks that the borrowing
-                    // rules regarding the materialization output are observed.
-                    // If the check fails, so does the compilation, and this
-                    // runtime code will never be executed.
-                    let ($( $fieldI, )*) = unsafe {
-                        <( $( $RuntimeBinderI, )* ) as RuntimeBinder>::materialize(self.runtime_binders)
-                    };
-                    (self.func)($( $fieldI, )*)
-                }
-            }
+            } // impl
         }; // const _
     }; // end of macro arm
 
@@ -1337,44 +1310,11 @@ where
 {
     type Output = NewOutput;
 
-    type BoundFn = MappedBoundFn<InnerBoundFn, Mapper>;
+    type BoundFn = impl FnOnce() -> NewOutput + Copy + Send + 'static;
 
     fn bind(self, binder: Binder, ctx: &mut CfgBindCtx<'_>) -> Self::BoundFn {
-        MappedBoundFn {
-            inner_bound_fn: self.inner.bind(binder, ctx),
-            mapper: self.mapper,
-        }
-    }
-}
-
-// // This opaque type must be defined outside this trait to
-// // prevent the unintended capturing of `Binder`.
-// // [ref:opaque_type_extraneous_capture]
-// type MappedBoundFn<InnerBoundFn, Output, Mapper, NewOutput>
-// where
-//     InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
-//     Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
-// = impl FnOnce() -> NewOutput + Copy + Send + 'static;
-
-// FIXME: This is supposed to be a TAIT like the one above, but
-// [ref:rust_99793_tait] prevents that
-#[doc(hidden)]
-#[derive(Copy, Clone)]
-pub struct MappedBoundFn<InnerBoundFn, Mapper> {
-    inner_bound_fn: InnerBoundFn,
-    mapper: Mapper,
-}
-
-impl<InnerBoundFn, Output, Mapper, NewOutput> FnOnce<()> for MappedBoundFn<InnerBoundFn, Mapper>
-where
-    InnerBoundFn: FnOnce() -> Output + Copy + Send + 'static,
-    Mapper: FnOnce(Output) -> NewOutput + Copy + Send + 'static,
-{
-    type Output = NewOutput;
-
-    #[inline]
-    extern "rust-call" fn call_once(self, (): ()) -> Self::Output {
-        (self.mapper)((self.inner_bound_fn)())
+        let inner_bound_fn = self.inner.bind(binder, ctx);
+        move || (self.mapper)(inner_bound_fn())
     }
 }
 
@@ -1393,6 +1333,7 @@ where
 ///
 /// [1]: Bind
 /// [2]: index.html#binders
+#[const_trait]
 pub trait Binder {
     /// The runtime representation of `Self`.
     ///

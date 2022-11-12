@@ -8,7 +8,6 @@
 #![feature(decl_macro)]
 #![feature(raw_ref_op)]
 #![feature(asm_const)]
-#![feature(asm_sym)]
 #![feature(doc_cfg)]
 #![feature(linkage)]
 #![deny(unsafe_op_in_unsafe_fn)]

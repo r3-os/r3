@@ -78,6 +78,7 @@ macro_rules! define_object {
         /// [`$&Name`][] and [`$&NameRef`][].
         ///
         /// [`$&RawId`]: $&Trait::$&RawId
+        #[const_trait]
         pub unsafe trait $NameHandle {
             /// The system type this object pertains to.
             type System: $Trait;

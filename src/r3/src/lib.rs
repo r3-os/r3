@@ -1,4 +1,3 @@
-#![feature(arbitrary_enum_discriminant)]
 #![feature(type_changing_struct_update)]
 #![feature(const_precise_live_drops)]
 #![feature(type_alias_impl_trait)]

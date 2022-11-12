@@ -138,7 +138,7 @@ impl Closure {
             } else {
                 let env = core::intrinsics::const_allocate(size, align);
                 assert!(
-                    !env.guaranteed_eq(core::ptr::null_mut()),
+                    !env.guaranteed_eq(core::ptr::null_mut()).unwrap_or(false),
                     "heap allocation failed"
                 );
                 env.cast::<T>().write(func);
@@ -209,6 +209,7 @@ unsafe extern "C" fn trampoline_indirect<T: FnOnce()>(env: ClosureEnv) {
 /// // `(usize, impl FnOnce(usize))` → `Closure`
 /// const _: Closure = (42usize, |_: usize| {}).into_closure_const();
 /// ```
+#[const_trait]
 pub trait IntoClosureConst {
     /// Perform conversion to [`Closure`], potentially using a compile-time
     /// heap.

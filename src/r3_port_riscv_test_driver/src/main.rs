@@ -4,7 +4,6 @@
 #![feature(const_mut_refs)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
-#![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(feature = "run", no_std)]
 #![cfg_attr(feature = "run", no_main)]
@@ -62,11 +61,7 @@ macro_rules! instantiate_test {
             #[cfg(feature = "output-uart")]
             uart::stdout_write_str("!- TEST WAS SUCCESSFUL -!");
 
-            loop {
-                // prevent the loop from being optimized out
-                // <https://github.com/rust-lang/rust/issues/28728>
-                unsafe { core::arch::asm!("") };
-            }
+            loop {}
         }
 
         fn report_fail() {

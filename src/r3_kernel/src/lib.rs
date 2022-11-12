@@ -28,7 +28,6 @@
 #![feature(never_type)] // `!`
 #![feature(decl_macro)]
 #![feature(pin_macro)]
-#![feature(let_else)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(
@@ -366,6 +365,7 @@ impl<T: KernelTraits> fmt::Debug for KernelDebugPrinter<T> {
 /// # Safety
 ///
 /// This is only intended to be implemented by `build!`.
+#[const_trait]
 pub unsafe trait KernelCfg1: Sized + Send + Sync + 'static {
     /// The number of task priority levels.
     const NUM_TASK_PRIORITY_LEVELS: usize;

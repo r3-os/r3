@@ -54,6 +54,7 @@ use crate::{bag::Bag, closure::Closure, kernel::raw, time::Duration, utils::Phan
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
+#[const_trait]
 pub unsafe trait CfgBase {
     type System: raw::KernelBase;
     fn num_task_priority_levels(&mut self, new_value: usize);
@@ -81,6 +82,7 @@ pub unsafe trait CfgBase {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
+#[const_trait]
 pub unsafe trait CfgTask: ~const CfgBase {
     fn task_define<Properties: ~const Bag>(
         &mut self,
@@ -114,6 +116,7 @@ pub struct TaskDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
+#[const_trait]
 pub unsafe trait CfgEventGroup: ~const CfgBase<System: raw::KernelEventGroup> {
     fn event_group_define<Properties: ~const Bag>(
         &mut self,
@@ -145,6 +148,7 @@ pub struct EventGroupDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
+#[const_trait]
 pub unsafe trait CfgMutex: ~const CfgBase<System: raw::KernelMutex> {
     fn mutex_define<Properties: ~const Bag>(
         &mut self,
@@ -175,6 +179,7 @@ pub struct MutexDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
+#[const_trait]
 pub unsafe trait CfgSemaphore: ~const CfgBase<System: raw::KernelSemaphore> {
     fn semaphore_define<Properties: ~const Bag>(
         &mut self,
@@ -207,6 +212,7 @@ pub struct SemaphoreDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
+#[const_trait]
 pub unsafe trait CfgTimer: ~const CfgBase<System: raw::KernelTimer> {
     fn timer_define<Properties: ~const Bag>(
         &mut self,
@@ -240,6 +246,7 @@ pub struct TimerDescriptor<System> {
 /// [2]: crate::kernel::cfg::KernelStatic
 /// [3]: self#stability
 /// [4]: self#safety
+#[const_trait]
 pub unsafe trait CfgInterruptLine: ~const CfgBase<System: raw::KernelInterruptLine> {
     fn interrupt_line_define<Properties: ~const Bag>(
         &mut self,

@@ -81,6 +81,7 @@ impl<Left: ~const Bag, Right: ~const Bag> const Bag for Either<Left, Right> {
 mod private {
     use super::Bag;
 
+    #[const_trait]
     pub trait Sealed {}
 
     impl const Sealed for () {}

@@ -1,4 +1,3 @@
-#![feature(const_ptr_offset_from)]
 #![feature(generic_const_exprs)]
 #![feature(const_refs_to_cell)]
 #![feature(const_trait_impl)]
@@ -7,7 +6,6 @@
 #![feature(slice_ptr_len)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
-#![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(
     feature = "doc",

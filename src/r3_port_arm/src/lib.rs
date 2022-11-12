@@ -1,4 +1,3 @@
-#![feature(const_ptr_offset_from)]
 #![feature(const_refs_to_cell)]
 #![feature(generic_arg_infer)]
 #![feature(const_trait_impl)]
@@ -8,7 +7,6 @@
 #![feature(lint_reasons)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
-#![feature(asm_sym)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::verbose_bit_mask)] // questionable
 #![cfg_attr(

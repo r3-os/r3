@@ -106,7 +106,7 @@ type Alias<T> = Struct<{<T as Trait>::N}>;
 
 ### `[tag:const_for]` `for` loops are unusable in `const fn`
 
-Technically it's available under the compiler feature `const_for`, but the lack of necessary trait implementations (e.g., `[ref:range_const_iterator]`, `[ref:const_slice_iter]`) and the difficulty of implementing `const Iterator` (`[ref:iterator_const_default]`) make it mostly unusable.
+Technically it's available under the compiler feature `const_for`, but the lack of essential trait implementations (e.g., `[ref:range_const_iterator]`, `[ref:const_slice_iter]`) and above all the inability of implementing `const Iterator` (`[ref:iterator_const_default]`) make it unusable.
 
 
 ### `[tag:const_static_item_ref]` `const`s and `const fn`s can't refer to `static`s
@@ -130,39 +130,12 @@ const A: MaybeUninit<*mut ()> = unsafe {
 ```
 
 
-### `[tag:const_trait_not_implied]` `~const` in associated type bounds are not implied in the trait's use sites
-
-Associated type bounds are usually implied in the trait's use sites (e.g., if an associated type `Trait::Proj` is bounded by `Clone`, `T: Trait` implies `T::Proj: Clone`). However, this doesn't seem to apply to `~const`.
-
-```rust
-trait Trait {
-    type Proj: Clone;
-}
-
-fn clone_projection<T: Trait>(p: &T::Proj) -> T::Proj {
-    p.clone()
-}
-```
-
-```rust,compile_fail,E0277
-#![feature(const_trait_impl)]
-
-trait Trait {
-    type Proj: ~const Clone;
-}
-
-const fn clone_projection<T: ~const Trait>(p: &T::Proj) -> T::Proj {
-    // error[E0277]: the trait bound `<T as Trait>::Proj: ~const Clone` is not satisfied
-    p.clone()
-}
-```
-
-
 ### `[tag:impl_block_const_bounds]` The trait bounds of an `impl` block can't include `~const`
 
 ```rust,compile_fail
 #![feature(const_trait_impl)]
 struct Cfg<C>(C);
+#[const_trait]
 trait CfgBase {}
 // error: `~const` is not allowed here
 impl<C: ~const CfgBase> Cfg<C> {
@@ -175,6 +148,7 @@ A work-around is to move the trait bounds to the `const fn`s inside.
 ```rust
 #![feature(const_trait_impl)]
 struct Cfg<C>(C);
+#[const_trait]
 trait CfgBase {}
 impl<C> Cfg<C> {
     const fn num_task_priority_levels(&self, _: usize)
@@ -494,29 +468,13 @@ const _: () = assert!(matches!((2..4).next(), Some(2)));
 
 ### `[tag:iterator_const_default]` `Iterator` lack `#[const_trait]`
 
-Implementing `const Iterator` requires you to implement all of its methods, which is impossible to do correctly.
-
-```rust
+```rust,compile_fail
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
-// FIXME: `compile-fail` temporarily removed due to
-//        [ref:const_impl_of_non_const_trait]
 
 struct MyIterator;
 
-// error: const trait implementations may not use non-const default functions
-// note: `size_hint`, `count`, `last`, `advance_by`, `nth`, `step_by`, `chain`,
-// `zip`, `intersperse`, `intersperse_with`, `map`, `for_each`, `filter`,
-// `filter_map`, `enumerate`, `peekable`, `skip_while`, `take_while`,
-// `map_while`, `skip`, `take`, `scan`, `flat_map`, `flatten`, `fuse`,
-// `inspect`, `by_ref`, `collect`, `try_collect`, `partition`,
-// `partition_in_place`, `is_partitioned`, `try_fold`, `try_for_each`, `fold`,
-// `reduce`, `try_reduce`, `all`, `any`, `find`, `find_map`, `try_find`,
-// `position`, `rposition`, `max`, `min`, `max_by_key`, `max_by`, `min_by_key`,
-// `min_by`, `rev`, `unzip`, `copied`, `cloned`, `cycle`, `sum`, `product`,
-// `cmp`, `cmp_by`, `partial_cmp`, `partial_cmp_by`, `eq`, `eq_by`, `ne`, `lt`,
-// `le`, `gt`, `ge`, `is_sorted`, `is_sorted_by`, `is_sorted_by_key`,
-// `__iterator_get_unchecked` not implemented
+// error: const `impl` for trait `Iterator` which is not marked with `#[const_trait]`
 impl const Iterator for MyIterator {
     type Item = u32;
 
@@ -527,54 +485,11 @@ impl const Iterator for MyIterator {
 ```
 
 
-### `[tag:const_impl_of_non_const_trait]` `impl const Trait` doesn't require `#[const_trait]`
-
-A `const` implementation of a non-`#[const_trait]` trait that uses at least one default method implementation doesn't result in a compile error. Instead, an error occurs when the non-`const` default method implementations are actually called in a constant context. This behavior deviates from Rust's design principles, so it's likely a bug.
-
-```rust
-#![feature(const_trait_impl)]
-trait Tr {
-    fn foo() {}
-}
-
-// expected error: const trait implementations may not use non-const default
-// functions / note: `foo` not implemented
-impl const Tr for () {}
-```
-
-```rust
-#![feature(const_trait_impl)]
-#![feature(lint_reasons)]
-trait Tr {
-    fn foo() {}
-}
-
-impl const Tr for () {}
-
-const fn f<T: ~const Tr>() { T::foo() }
-#[expect(const_err)] // error: calling non-const function `<() as Tr>::foo`
-const _: () = f::<()>();
-```
-
-
 ### `[tag:const_assert_eq]` `assert_eq!` and similar macros are unusable in `const fn`
 
 ```rust,compile_fail,E0015
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-struct A;
-impl const PartialEq for A {
-    fn eq(&self, _: &Self) -> bool { true }
-    fn ne(&self, _: &Self) -> bool { false }
-}
-impl const core::fmt::Debug for A {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        unimplemented!()
-    }
-}
-
-// error[E0015]: cannot call non-const fn `assert_failed::<A, A>` in constants
-const _: () = assert_eq!(A, A);
+// error[E0015]: cannot call non-const fn `assert_failed::<u32, u32>` in constants
+const _: () = assert_eq!(42u32, 42u32);
 ```
 
 
@@ -623,25 +538,6 @@ const _: () = tokenlock::with_branded_token(|token| {
 ```
 
 
-### `[tag:rust_99793_tait]` False-positive "cycle detected" in `const fn` with TAIT
-
-*Upstream issue:* [rust-lang/rust#99793](https://github.com/rust-lang/rust/issues/99793) (possibly related)
-
-```rust
-#![feature(type_alias_impl_trait)]
-type Unit<T> = impl Copy;
-fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
-```
-
-```rust,compile_fail,E0391
-#![feature(type_alias_impl_trait)]
-type Unit<T> = impl Copy;
-// error[E0391]: cycle detected when computing type of
-// `main::_doctest_main_lib_rs_647_0::Unit::{opaque#0}
-const fn unit<T>(x: T) -> Unit<T> { core::mem::forget(x) }
-```
-
-
 ## Unsized types
 
 ### `[tag:unsized_maybe_uninit]` `MaybeUninit<T>` requires `T: Sized`
@@ -660,39 +556,6 @@ fn foo(_: &core::mem::MaybeUninit<[u8]>) {}
 ### `[tag:missing_interior_mutability_trait]` Missing trait for representing the lack of interior mutability
 
 *Upstream RFC:* [rust-lang/rfcs#2944](https://github.com/rust-lang/rfcs/pull/2944) (closed)
-\
-
-## Existential types
-
-### `[tag:opaque_type_extraneous_capture]` An opaque type captures unused generic type parameters
-
-It may be possible that it's an intended behavior.
-
-```rust
-#![feature(type_alias_impl_trait)]
-trait Trait {
-    type Projection: 'static + Send;
-    fn get(self) -> Self::Projection;
-}
-type Projection<U: 'static + Send> = impl 'static + Send;
-impl<T, U: 'static + Send> Trait for (T, U) {
-    type Projection = Projection<U>;
-    fn get(self) -> Self::Projection { self.1 }
-}
-```
-
-```rust,compile_fail,E0310
-#![feature(type_alias_impl_trait)]
-trait Trait {
-    type Projection: 'static + Send;
-    fn get(self) -> Self::Projection;
-}
-impl<T, U: 'static + Send> Trait for (T, U) {
-    // error[E0310]: the parameter type `T` may not live long enough
-    type Projection = impl 'static + Send;
-    fn get(self) -> Self::Projection { self.1 }
-}
-```
 
 
 ## Macros

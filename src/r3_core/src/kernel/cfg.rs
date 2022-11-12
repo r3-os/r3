@@ -763,6 +763,7 @@ macro array_item_from_fn($(
 ///     todo!()   
 /// }
 /// ```
+#[const_trait]
 pub trait CfgStatic: ~const raw_cfg::CfgBase<System: KernelStatic> {}
 
 impl<C> const CfgStatic for C

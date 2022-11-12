@@ -7,17 +7,14 @@
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(nonnull_slice_from_raw_parts)]
-#![feature(arbitrary_enum_discriminant)]
 #![feature(type_changing_struct_update)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_comparison)]
-#![feature(generic_associated_types)]
 #![feature(associated_type_bounds)]
 #![feature(const_slice_first_last)]
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(const_cell_into_inner)]
-#![feature(const_ptr_offset_from)]
 #![feature(type_alias_impl_trait)]
 #![feature(const_slice_ptr_len)]
 #![feature(exhaustive_patterns)] // `let Ok(()) = Ok::<(), !>(())`
@@ -49,7 +46,6 @@
 #![feature(never_type)] // `!`
 #![feature(const_try)]
 #![feature(fn_traits)] // `impl FnOnce`
-#![feature(let_else)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![cfg_attr(test, feature(is_sorted))]
 #![deny(unsafe_op_in_unsafe_fn)]
