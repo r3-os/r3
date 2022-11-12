@@ -283,7 +283,7 @@ jobs:
           sudo apt-get install libusb-1.0-0-dev libudev-dev ninja-build
 
       - name: Cache QEMU's built binaries
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.qemu
           key: ${{ runner.os }}-ci-qemu-arm_riscv
@@ -307,7 +307,7 @@ jobs:
           rustup target add riscv64imac-unknown-none-elf riscv64gc-unknown-none-elf
 
       - name: Cache test runner's binary
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./target/debug
           key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/r3_test_runner/**', 'src/r3_test_suite/**') }}
@@ -362,7 +362,7 @@ jobs:
           rustup target add riscv64imac-unknown-none-elf riscv64gc-unknown-none-elf
 
       - name: Cache test runner's binary
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./target/debug
           key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/r3_test_runner/**', 'src/r3_test_suite/**') }}

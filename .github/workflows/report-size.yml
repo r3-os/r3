@@ -49,7 +49,7 @@ jobs:
           .github/scripts/install-deno.sh
 
       - name: Cache test runner's binary
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./target/debug
           key: ${{ runner.os }}-ci-runner-${{ hashFiles('rust-toolchain', 'src/r3_test_runner/**', 'src/r3_test_suite/**') }}
