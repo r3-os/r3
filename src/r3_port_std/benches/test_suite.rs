@@ -101,7 +101,7 @@ macro_rules! instantiate_kernel_tests {
 r3_test_suite::get_kernel_benchmarks!(instantiate_kernel_tests!());
 
 fn main() {
-    env_logger::from_env(
+    env_logger::Builder::from_env(
         env_logger::Env::default().default_filter_or("r3_test_suite=info,test_suite=info"),
     )
     .init();
