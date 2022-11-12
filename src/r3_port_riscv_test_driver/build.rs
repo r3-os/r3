@@ -37,5 +37,5 @@ fn main() {
     }
 
     let out_generated_code_path = Path::new(&out_dir).join("gen.rs");
-    fs::write(&out_generated_code_path, &generated_code).unwrap();
+    fs::write(out_generated_code_path, &generated_code).unwrap();
 }
