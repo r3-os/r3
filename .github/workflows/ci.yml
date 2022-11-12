@@ -160,14 +160,16 @@ jobs:
           sed -E -i.bak 's/.*smp_rp_pico.*//' Cargo.toml
 
       - name: Test
-        uses: actions-rs/cargo@v1
+        # FIXME: Switch back when actions-rs/cargo#217 gets merged
+        uses: r3-os/actions-rust-cargo@fb222fe18dc90e381546d012f9e3d6f353f0f627
         with:
           command: test
           args: --workspace -- ${{ env.testflags }}
         env:
           RUST_LOG: debug
       - name: Test (-p r3_port_std --benches)
-        uses: actions-rs/cargo@v1
+        # FIXME: Switch back when actions-rs/cargo#217 gets merged
+        uses: r3-os/actions-rust-cargo@fb222fe18dc90e381546d012f9e3d6f353f0f627
         with:
           command: test
           args: -p r3_port_std --benches -- ${{ env.testflags }}
@@ -216,7 +218,8 @@ jobs:
           echo "features_param=$features" >> $GITHUB_ENV
 
       - name: Test
-        uses: actions-rs/cargo@v1
+        # FIXME: Switch back when actions-rs/cargo#217 gets merged
+        uses: r3-os/actions-rust-cargo@fb222fe18dc90e381546d012f9e3d6f353f0f627
         with:
           command: test
           args: -p r3_port_std --no-default-features ${{ env.features_param }}

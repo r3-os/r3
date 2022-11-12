@@ -27,7 +27,8 @@ jobs:
           echo "RUSTDOCFLAGS=--html-in-header `pwd`/src/r3/src/common.md" >> $GITHUB_ENV
 
       - name: Build API documentation
-        uses: actions-rs/cargo@v1
+        # FIXME: Switch back when actions-rs/cargo#217 gets merged
+        uses: r3-os/actions-rust-cargo@fb222fe18dc90e381546d012f9e3d6f353f0f627
         with:
           command: doc
           # Documentate all published packages with all features enabled [tag:doc_all_features]
