@@ -50,7 +50,8 @@ jobs:
         run: tagref
 
       - name: Clippy
-        uses: actions-rs/clippy-check@v1
+        # FIXME: Switch back when actions-rs/clippy-check#168 gets merged
+        uses: r3-os/actions-rust-clippy-check@7418fd383746dc33a54d80bdba01d3ea74e7105b
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --workspace
