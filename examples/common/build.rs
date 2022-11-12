@@ -45,7 +45,7 @@ fn main() {
     w!("];\n");
 
     let out_generated_code_path = out_dir.join("gen.rs");
-    fs::write(&out_generated_code_path, &generated_code).unwrap();
+    fs::write(out_generated_code_path, &generated_code).unwrap();
 }
 
 fn raw_to_image((width, height, raw): (u32, u32, Vec<u8>)) -> RgbaImage {

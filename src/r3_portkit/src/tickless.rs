@@ -223,12 +223,11 @@ impl TicklessCfg {
             //
             let max_timeout = (
                 // `late_tick_count <= ref_tick_count + max_tick_count`
-                (max_tick_count as u128 * *hw_ticks_per_micro.numer() + *hw_ticks_per_micro.numer()
-                    - 1)
-                .saturating_sub(
-                    *hw_ticks_per_micro.denom() - 1
-                        + hw_headroom_ticks as u128 * *hw_ticks_per_micro.denom(),
-                )
+                (max_tick_count * *hw_ticks_per_micro.numer() + *hw_ticks_per_micro.numer() - 1)
+                    .saturating_sub(
+                        *hw_ticks_per_micro.denom() - 1
+                            + hw_headroom_ticks as u128 * *hw_ticks_per_micro.denom(),
+                    )
             ) / *hw_ticks_per_micro.numer();
 
             if max_timeout == 0 {

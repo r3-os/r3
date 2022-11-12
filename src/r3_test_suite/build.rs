@@ -52,8 +52,8 @@ fn main() {
 
     let out_selective_tests_path = Path::new(&out_dir).join("selective_tests.rs");
     fs::write(
-        &out_selective_tests_path,
-        &format!(
+        out_selective_tests_path,
+        format!(
             "#[macro_export]
             #[doc(hidden)]
             macro_rules! get_selected_kernel_tests_inner {{

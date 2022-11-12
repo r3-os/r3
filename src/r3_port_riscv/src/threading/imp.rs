@@ -918,7 +918,7 @@ impl State {
             first_level[15] = preload_val(0x31);
         }
         // pc: The entry point
-        first_level[16] = MaybeUninit::new(task.attr.entry_point as usize as usize);
+        first_level[16] = MaybeUninit::new(task.attr.entry_point as usize);
 
         // Second-level state (saved and restored only when we are doing context
         // switching)

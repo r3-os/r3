@@ -155,7 +155,7 @@ impl DebugProbe for GrPeachOpenOcdDebugProbe {
                 .arg("-f")
                 .arg(&cmd_file)
                 .arg("-l")
-                .arg(&log_file)
+                .arg(log_file)
                 .spawn_and_get_child()
                 .map(move |child| {
                     Box::pin(OutputReader {

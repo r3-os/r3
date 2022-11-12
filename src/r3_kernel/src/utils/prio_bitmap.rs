@@ -198,7 +198,7 @@ impl<T: PrioBitmap, const LEN: usize> PrioBitmap for TwoLevelPrioBitmapImpl<T, L
             let group = self.second[group_i];
             let subgroup_i = group.trailing_zeros() as usize;
             debug_assert_ne!(subgroup_i, WORD_LEN);
-            subgroup_i as usize + group_i * WORD_LEN
+            subgroup_i + group_i * WORD_LEN
         })
     }
 }

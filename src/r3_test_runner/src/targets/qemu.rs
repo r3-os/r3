@@ -40,7 +40,7 @@ impl DebugProbe for QemuDebugProbe {
             .arg("-kernel")
             .arg(exe)
             .args(self.qemu_args)
-            .args(&[
+            .args([
                 "-nographic",
                 "-d",
                 "guest_errors",
