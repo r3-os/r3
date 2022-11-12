@@ -65,11 +65,11 @@ The following diagram shows a possible package configuration of an R3 applicatio
 <style type="text/css">
 .package-ecosystem-table-wrap { text-align: center; }
 .package-ecosystem-table {
-    border-collapse: separate; border-spacing: 5px !important;
+    border-collapse: separate !important; border-spacing: 5px !important;
     margin: 0.5em auto !important; width: auto !important; display: inline-block !important;
     padding-right: 0.5em;
 }
-.package-ecosystem-table td { border: 0.5px currentColor solid !important; text-align: center; vertical-align: middle }
+.package-ecosystem-table td { border: 0.5px currentColor solid !important; text-align: center; vertical-align: middle !important }
 .package-ecosystem-table td.noborder,
 .package-ecosystem-table th { border: none !important; font-weight: normal; }
 </style>
