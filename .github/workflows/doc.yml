@@ -61,12 +61,13 @@ jobs:
 
       # If we are on the main branch, deploy it to the website
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@4.1.0
+        uses: JamesIves/github-pages-deploy-action@v4.4.1
         if: github.ref == 'refs/heads/🦆'
         with:
           branch: gh-pages
           folder: output
           single-commit: true
+          force: true
 
       # Otherwise, put it on the Actions page to allow download
       - name: Archive output
