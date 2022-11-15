@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-11-10`
 
+### Fixed
+
+- Remove a broken link to the rustdoc-generated Macros section in the crate documentation
+
 ## [0.1.3] - 2022-08-16
 
 ### Added
