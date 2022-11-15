@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-11-10`
 
-## [0.3.2] - 2022-03-19
+## [0.3.2] - 2022-08-16
 
 ### Changed
 
