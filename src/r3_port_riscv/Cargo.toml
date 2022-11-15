@@ -1,6 +1,6 @@
 [package]
 name = "r3_port_riscv"
-version = "0.3.0"
+version = "0.3.1"
 description = "RISC-V port for the R3-OS original kernel"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "riscv"]

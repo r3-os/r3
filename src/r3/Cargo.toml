@@ -1,6 +1,6 @@
 [package]
 name = "r3"
-version = "0.2.3"
+version = "0.2.4"
 readme = "README.md"
 description = """
 R3-OS: Experimental static component-oriented RTOS for deeply embedded systems

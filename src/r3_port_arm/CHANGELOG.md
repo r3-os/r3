@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.3] - 2022-11-16
+
 ### Changed
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-11-10`
@@ -55,7 +57,8 @@ This release only includes changes to the documentation.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_port_arm@0.2.2...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_port_arm@0.2.3...HEAD
+[0.2.3]: https://github.com/r3-os/r3/compare/r3_port_arm@0.2.2...r3_port_arm@0.2.3
 [0.2.2]: https://github.com/r3-os/r3/compare/r3_port_arm@0.2.1...r3_port_arm@0.2.2
 [0.2.1]: https://github.com/r3-os/r3/compare/r3_port_arm@0.2.0...r3_port_arm@0.2.1
 [0.2.0]: https://github.com/r3-os/r3/compare/r3_port_arm@0.1.2...r3_port_arm@0.2.0

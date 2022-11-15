@@ -1,6 +1,6 @@
 [package]
 name = "r3_port_arm_m"
-version = "0.3.2"
+version = "0.3.3"
 description = "Cortex-M port for the R3-OS original kernel"
 categories = ["embedded", "no-std"]
 keywords = ["r3", "arm"]

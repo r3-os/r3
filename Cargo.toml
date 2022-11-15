@@ -62,15 +62,15 @@ repository = "https://github.com/r3-os/r3"
 # the old version of `r3_portkit` is semver-incompatible with the latest one
 # and contains substantial bugs.
 arm_semihosting = { path = "src/arm_semihosting" }
-r3 = { path = "src/r3", version = "0.2.3" }
-r3_core = { path = "src/r3_core", version = "0.1.3", package = "r3_core" }  # Application-side API
-r3_core_ks = { path = "src/r3_core", version = "0.1.3", package = "r3_core" }  # Kernel-side API
-r3_kernel = { path = "src/r3_kernel", version = "0.1.3" }
-r3_port_arm = { path = "src/r3_port_arm", version = "0.2.2" }
-r3_port_arm_m = { path = "src/r3_port_arm_m", version = "0.3.2" }
-r3_port_riscv = { path = "src/r3_port_riscv", version = "0.3.0" }
+r3 = { path = "src/r3", version = "0.2.4" }
+r3_core = { path = "src/r3_core", version = "0.1.4", package = "r3_core" }  # Application-side API
+r3_core_ks = { path = "src/r3_core", version = "0.1.4", package = "r3_core" }  # Kernel-side API
+r3_kernel = { path = "src/r3_kernel", version = "0.1.4" }
+r3_port_arm = { path = "src/r3_port_arm", version = "0.2.3" }
+r3_port_arm_m = { path = "src/r3_port_arm_m", version = "0.3.3" }
+r3_port_riscv = { path = "src/r3_port_riscv", version = "0.3.1" }
 r3_port_std = { path = "src/r3_port_std", version = "0.2.1" }
-r3_portkit = { path = "src/r3_portkit", version = "0.2.2" }
+r3_portkit = { path = "src/r3_portkit", version = "0.2.3" }
 r3_support_rp2040 = { path = "src/r3_support_rp2040", version = "0.2.2" }
 r3_support_rza1 = { path = "src/r3_support_rza1", version = "0.2.2" }
 r3_test_suite = { path = "src/r3_test_suite", default-features = false }
