@@ -49,7 +49,7 @@ pub(crate) struct BuildOpt {
     pub small_rt: bool,
 }
 
-#[derive(Clone, Copy, arg_enum_proc_macro::ArgEnum)]
+#[derive(Clone, Copy, clap::ValueEnum)]
 pub(crate) enum LogLevel {
     Off,
     Error,

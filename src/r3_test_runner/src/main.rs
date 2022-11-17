@@ -52,75 +52,92 @@ enum MainError {
 #[derive(Parser)]
 struct Opt {
     /// Target chip/board
-    #[clap(short = 't', long = "target", parse(try_from_str = try_parse_target),
-        possible_values(&*TARGET_POSSIBLE_VALUES))]
-    target: &'static dyn targets::Target,
+    #[arg(short = 't', long = "target", value_enum)]
+    target: OptTarget,
     /// Override target architecture
     ///
     /// See the documentation of `Arch::from_str` for full syntax.
-    #[clap(short = 'a', long = "arch", parse(try_from_str = std::str::FromStr::from_str))]
+    #[arg(short = 'a', long = "arch")]
     target_arch: Option<targets::Arch>,
     /// Print the list of supported targets and their architecture strings
-    #[clap(long = "help-targets")]
+    #[arg(long = "help-targets")]
     help_targets: bool,
     /// Use a stripped-down build of the standard library
     ///
     /// This option lowers the output binary size by building the `core`
     /// library with `panic_immediate_abort` feature at cost of disabling panic
     /// reporting.
-    #[clap(long = "small-rt")]
+    #[arg(long = "small-rt")]
     small_rt: bool,
     /// Extra command-line flags to pass to `rustc`
-    #[clap(long = "rustflags")]
+    #[arg(long = "rustflags")]
     additional_rustflags: Option<String>,
     /// If specified, only run tests containing this string in their names
     ///
     /// See the documentation of `TestFilter::from_str` for full syntax.
-    #[clap(parse(try_from_str = std::str::FromStr::from_str))]
     tests: Vec<selection::TestFilter>,
     /// Select benchmark tests
-    #[clap(short = 'b', long = "bench")]
+    #[arg(short = 'b', long = "bench")]
     bench: bool,
     /// Log level of the test program
-    #[clap(
+    #[arg(
         short = 'l',
         long = "log-level",
-        possible_values(driverinterface::LogLevel::variants()),
         ignore_case = true,
-        default_value = "info"
+        default_value = "info",
+        value_enum
     )]
     log_level: driverinterface::LogLevel,
     /// Display build progress and warnings
-    #[clap(short = 'v')]
+    #[arg(short = 'v')]
     verbose: bool,
     /// Keep going until N tests fail (0 means infinity)
-    #[clap(short = 'k', long = "keep-going", default_value = "5")]
+    #[arg(short = 'k', long = "keep-going", default_value = "5")]
     keep_going: usize,
     /// Don't execute the test driver nor attempt to connect to a target
-    #[clap(long = "norun")]
+    #[arg(long = "norun")]
     norun: bool,
     /// Execute the specified command with `{}` replaced with the current
     /// test executable path and terminated by `;`
-    #[clap(
+    #[arg(
         long = "exec",
-        multiple_values = true,
+        num_args = 1..,
         value_terminator = ";",
         allow_hyphen_values = true
     )]
     exec: Vec<String>,
 }
 
-lazy_static::lazy_static! {
-    static ref TARGET_POSSIBLE_VALUES: Vec<&'static str> =
-        targets::TARGETS.iter().map(|x|x.0).collect();
+#[derive(Clone)]
+struct OptTarget {
+    name: &'static str,
+    target: &'static dyn targets::Target,
 }
 
-fn try_parse_target(arg_target: &str) -> Result<&'static dyn targets::Target, &'static str> {
-    targets::TARGETS
-        .iter()
-        .find(|x| x.0 == arg_target)
-        .ok_or("no such target")
-        .map(|x| x.1)
+impl clap::ValueEnum for OptTarget {
+    fn value_variants<'a>() -> &'a [Self] {
+        lazy_static::lazy_static! {
+            static ref VARIANTS: Vec<OptTarget> =
+                targets::TARGETS
+                    .iter()
+                    .map(|&(name, target)| OptTarget { name, target })
+                    .collect();
+        }
+
+        &VARIANTS
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        Some(clap::builder::PossibleValue::new(self.name))
+    }
+}
+
+impl std::ops::Deref for OptTarget {
+    type Target = dyn targets::Target;
+
+    fn deref(&self) -> &Self::Target {
+        self.target
+    }
 }
 
 async fn main_inner() -> anyhow::Result<()> {
@@ -158,7 +175,7 @@ async fn main_inner() -> anyhow::Result<()> {
     // Initialize the test driver interface
     let test_driver = driverinterface::TestDriver::new(
         driver_base_path,
-        opt.target,
+        opt.target.target,
         &target_arch,
         target_arch_opt,
         opt.additional_rustflags.unwrap_or_default(),
