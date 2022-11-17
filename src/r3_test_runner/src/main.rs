@@ -128,7 +128,10 @@ impl clap::ValueEnum for OptTarget {
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
-        Some(clap::builder::PossibleValue::new(self.name))
+        Some(
+            clap::builder::PossibleValue::new(self.name)
+                .help(self.target.target_arch().to_string()),
+        )
     }
 }
 
@@ -143,15 +146,6 @@ impl std::ops::Deref for OptTarget {
 async fn main_inner() -> anyhow::Result<()> {
     // Parse arguments
     let opt = Opt::parse();
-
-    // If `--help-targets` is specified, print all targets and exit,
-    if opt.help_targets {
-        println!("Supported targets:");
-        for (name, target) in targets::TARGETS {
-            println!("  {name:30}{}", target.target_arch());
-        }
-        return Ok(());
-    }
 
     // Find where the test drivers are located in this workspace, assuming
     // `r3_test_runner` is running on the same environment as where it
