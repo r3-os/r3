@@ -48,7 +48,7 @@ enum MainError {
     BadTarget(targets::Arch),
 }
 
-/// Test runner for the Arm-M port of R3
+/// R3 test runner
 #[derive(Parser)]
 struct Opt {
     /// Target chip/board
