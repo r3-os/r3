@@ -477,11 +477,7 @@ impl<Traits: KernelTraits> WaitQueue<Traits> {
         let mut accessor = wait_queue_accessor!(&self.waits, lock.borrow_mut());
         let wait_ref = unsafe { accessor.pop_front().unwrap_unchecked() };
 
-        let wait_ref = if let Some(wait_ref) = wait_ref {
-            wait_ref
-        } else {
-            return false;
-        };
+        let Some(wait_ref) = wait_ref else { return false; };
 
         // Safety: `wait_ref` points to a valid `Wait` because `wait_ref` was
         // in `self.waits` at the beginning of this function call.
@@ -587,15 +583,16 @@ impl<Traits: KernelTraits> fmt::Debug for WaitQueue<Traits> {
 
         impl<Traits: KernelTraits> fmt::Debug for WaitQueuePrinter<'_, Traits> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                if let Ok(mut lock) = super::klock::lock_cpu() {
-                    let accessor = wait_queue_accessor!(&self.waits, lock.borrow_mut());
+                let Ok(mut lock) = super::klock::lock_cpu()
+                else {
+                    return f.write_str("< locked >")
+                };
 
-                    f.debug_list()
-                        .entries(accessor.iter().map(|x| x.unwrap().1))
-                        .finish()
-                } else {
-                    f.write_str("< locked >")
-                }
+                let accessor = wait_queue_accessor!(&self.waits, lock.borrow_mut());
+
+                f.debug_list()
+                    .entries(accessor.iter().map(|x| x.unwrap().1))
+                    .finish()
             }
         }
 
@@ -652,13 +649,13 @@ pub(super) fn reorder_wait_of_task<Traits: KernelTraits>(
     lock: CpuLockTokenRefMut<'_, Traits>,
     task_cb: &TaskCb<Traits>,
 ) {
-    if let Some(wait_ref) = task_cb.wait.current_wait.get(&*lock) {
-        // Safety: `wait_ref` must point to an existing `Wait`
-        let wait = unsafe { &*wait_ref.0.as_ptr() };
+    let Some(wait_ref) = task_cb.wait.current_wait.get(&*lock) else { return };
 
-        if let Some(wait_queue) = wait.wait_queue {
-            wait_queue.reorder_wait(lock, wait);
-        }
+    // Safety: `wait_ref` must point to an existing `Wait`
+    let wait = unsafe { &*wait_ref.0.as_ptr() };
+
+    if let Some(wait_queue) = wait.wait_queue {
+        wait_queue.reorder_wait(lock, wait);
     }
 }
 

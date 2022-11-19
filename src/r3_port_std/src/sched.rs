@@ -122,13 +122,14 @@ impl ums::Scheduler for SchedState {
     }
 
     fn thread_exited(&mut self, thread_id: ums::ThreadId) {
-        if let Some(i) = self.zombies.iter().position(|id| *id == thread_id) {
-            log::trace!("removing the zombie thread {:?}", thread_id);
-            self.zombies.swap_remove(i);
+        let Some(i) = self.zombies.iter().position(|id| *id == thread_id)
+        else {
+            log::warn!("thread_exited: unexpected thread {:?}", thread_id);
             return;
-        }
+        };
 
-        log::warn!("thread_exited: unexpected thread {:?}", thread_id);
+        log::trace!("removing the zombie thread {:?}", thread_id);
+        self.zombies.swap_remove(i);
     }
 }
 
@@ -153,9 +154,8 @@ pub fn check_preemption_by_interrupt(
         let sched_state = lock.scheduler();
 
         // Find the highest pended priority
-        let (pri, num) = if let Some(&x) = sched_state.pended_lines.iter().next() {
-            x
-        } else {
+        let Some(&(pri, num)) = sched_state.pended_lines.iter().next()
+        else {
             // No interrupt is pended
             break;
         };

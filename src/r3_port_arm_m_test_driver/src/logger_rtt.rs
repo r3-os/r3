@@ -14,16 +14,15 @@ impl log::Log for Logger {
     fn log(&self, record: &log::Record) {
         interrupt::free(move |cs| {
             let mut log_channel = LOG_CHANNEL.borrow(cs).borrow_mut();
-            if let Some(channel) = &mut *log_channel {
-                writeln!(
-                    channel,
-                    "[{level:5} {target}] {args}",
-                    level = record.level(),
-                    target = record.target(),
-                    args = record.args()
-                )
-                .unwrap();
-            }
+            let Some(channel) = &mut *log_channel else { return; };
+            writeln!(
+                channel,
+                "[{level:5} {target}] {args}",
+                level = record.level(),
+                target = record.target(),
+                args = record.args()
+            )
+            .unwrap();
         });
     }
 

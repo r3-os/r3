@@ -161,9 +161,8 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
         // Acquire CPU Lock, which will be released when the task exits
         System::acquire_cpu_lock().unwrap();
 
-        let int = if let Some(int) = D::app().int {
-            int
-        } else {
+        let Some(int) = D::app().int
+        else {
             log::warn!("No interrupt lines defined, skipping the test");
             D::success();
             return;

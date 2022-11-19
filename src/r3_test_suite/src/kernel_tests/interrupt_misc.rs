@@ -64,11 +64,7 @@ impl<System: SupportedSystem> App<System> {
 }
 
 fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
-    let int = if let Some(int) = D::app().int {
-        int
-    } else {
-        return;
-    };
+    let Some(int) = D::app().int else { return };
 
     let managed_range = System::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE;
 
@@ -100,9 +96,8 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
 }
 
 fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
-    let int = if let Some(int) = D::app().int {
-        int
-    } else {
+    let Some(int) = D::app().int
+    else {
         log::warn!("No interrupt lines defined, skipping the test");
         D::success();
         return;

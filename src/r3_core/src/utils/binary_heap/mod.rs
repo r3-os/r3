@@ -67,30 +67,32 @@ where
             return None;
         }
 
-        if let Some(mut item) = self.pop() {
-            let slice = &mut **self;
-            if i < slice.len() {
-                // Swap the last item with the item at `i`
-                core::mem::swap(&mut slice[i], &mut item);
-                ctx.on_move(&mut slice[i], i);
+        let Some(mut item) = self.pop()
+        else {
+            debug_assert!(false);
+            return None;
+        };
 
-                let should_sift_up = i > 0 && ctx.lt(&slice[i], &slice[(i - 1) / 2]);
+        let slice = &mut **self;
+        if i < slice.len() {
+            // Swap the last item with the item at `i`
+            core::mem::swap(&mut slice[i], &mut item);
+            ctx.on_move(&mut slice[i], i);
 
-                // Sift down or up the item at `i`, restoring the invariant
-                // Safety: `i` points to an element within `slice`.
-                unsafe {
-                    if should_sift_up {
-                        sift_up(slice, 0, i, ctx);
-                    } else {
-                        sift_down(slice, i, ctx);
-                    }
+            let should_sift_up = i > 0 && ctx.lt(&slice[i], &slice[(i - 1) / 2]);
+
+            // Sift down or up the item at `i`, restoring the invariant
+            // Safety: `i` points to an element within `slice`.
+            unsafe {
+                if should_sift_up {
+                    sift_up(slice, 0, i, ctx);
+                } else {
+                    sift_down(slice, i, ctx);
                 }
             }
-            Some(item)
-        } else {
-            debug_assert!(false);
-            None
         }
+
+        Some(item)
     }
 
     fn heap_push<Ctx>(&mut self, item: Self::Element, ctx: Ctx) -> usize

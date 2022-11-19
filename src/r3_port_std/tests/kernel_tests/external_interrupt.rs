@@ -58,9 +58,8 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
 }
 
 fn task_body1<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>() {
-    let int = if let Some(int) = D::app().int {
-        int
-    } else {
+    let Some(int) = D::app().int
+    else {
         log::warn!("No interrupt lines defined, skipping the test");
         D::success();
         return;

@@ -259,41 +259,39 @@ impl fmt::Display for ShellEscape<'_> {
         // These characters need to be quoted or escaped in double-quotes
         let special_chars_in_dq = b"*?[#~=%";
 
-        if let Some(utf8) = self.0.to_str() {
-            // All bytes are printable. We might need quoting or escaping some
-            // bytes.
-            let bytes = utf8.as_bytes();
-            if bytes.contains(&b'\'') {
-                // Enclose in double quotes
-                write!(f, "\"")?;
-                let mut utf8 = utf8;
-                while !utf8.is_empty() {
-                    let i = utf8
-                        .as_bytes()
-                        .iter()
-                        .position(|b| special_chars_in_dq.contains(b));
-
-                    if let Some(i) = i {
-                        write!(f, "{}", &utf8[..i])?;
-
-                        // Escape the byte at `i`
-                        write!(f, "\\{}", utf8.as_bytes()[i] as char)?;
-
-                        utf8 = &utf8[i + 1..];
-                    } else {
-                        break;
-                    }
-                }
-                write!(f, "{utf8}\"")
-            } else if bytes.iter().any(|b| special_chars.contains(b)) {
-                // Enclose in single quotes
-                write!(f, "'{utf8}'")
-            } else {
-                write!(f, "{utf8}")
-            }
-        } else {
+        let Some(utf8) = self.0.to_str()
+        else {
             // Some bytes are unprintable.
-            write!(f, "<unprintable: {:?}>", self.0)
+            return write!(f, "<unprintable: {:?}>", self.0);
+        };
+
+        // All bytes are printable. We might need quoting or escaping some
+        // bytes.
+        let bytes = utf8.as_bytes();
+        if bytes.contains(&b'\'') {
+            // Enclose in double quotes
+            write!(f, "\"")?;
+            let mut utf8 = utf8;
+            while !utf8.is_empty() {
+                let Some(i) = utf8
+                    .as_bytes()
+                    .iter()
+                    .position(|b| special_chars_in_dq.contains(b))
+                else { break };
+
+                write!(f, "{}", &utf8[..i])?;
+
+                // Escape the byte at `i`
+                write!(f, "\\{}", utf8.as_bytes()[i] as char)?;
+
+                utf8 = &utf8[i + 1..];
+            }
+            write!(f, "{utf8}\"")
+        } else if bytes.iter().any(|b| special_chars.contains(b)) {
+            // Enclose in single quotes
+            write!(f, "'{utf8}'")
+        } else {
+            write!(f, "{utf8}")
         }
     }
 }

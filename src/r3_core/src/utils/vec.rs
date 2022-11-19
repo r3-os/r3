@@ -79,14 +79,11 @@ impl<T: ~const Destruct> ComptimeVec<T> {
 
     pub const fn pop(&mut self) -> Option<T> {
         unsafe {
-            if let Some(i) = self.len.checked_sub(1) {
-                self.len = i;
-                // Safety: The `i`-th element was present, but since `len <= i`
-                // now, we can remove it
-                Some(self.ptr.as_ptr().wrapping_add(i).read())
-            } else {
-                None
-            }
+            let Some(i) = self.len.checked_sub(1) else { return None };
+            self.len = i;
+            // Safety: The `i`-th element was present, but since `len <= i`
+            // now, we can remove it
+            Some(self.ptr.as_ptr().wrapping_add(i).read())
         }
     }
 

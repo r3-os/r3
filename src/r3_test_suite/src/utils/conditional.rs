@@ -81,16 +81,15 @@ pub trait KernelTimeExt: traits::KernelBase {
     #[inline]
     #[track_caller]
     fn assert_time_ms_range(range: Range<u32>) {
-        if let Some(cap) = Self::TIME_CAPABILITY {
-            let t = Self::time_ms(cap);
-            log::trace!("time = {:?}ms (expected = {:?}ms)", t, range);
-            assert!(
-                range.contains(&t),
-                "time = {:?}ms (expected = {:?}ms)",
-                t,
-                range
-            );
-        }
+        let Some(cap) = Self::TIME_CAPABILITY else { return };
+        let t = Self::time_ms(cap);
+        log::trace!("time = {:?}ms (expected = {:?}ms)", t, range);
+        assert!(
+            range.contains(&t),
+            "time = {:?}ms (expected = {:?}ms)",
+            t,
+            range
+        );
     }
 
     #[inline]

@@ -52,9 +52,8 @@ impl<System: SupportedSystem> App<System> {
 }
 
 fn task_body1<System: SupportedSystem, D: Driver<App<System>>>() {
-    let int = if let Some(int) = D::app().int {
-        int
-    } else {
+    let Some(int) = D::app().int 
+    else {
         log::warn!("No interrupt lines defined, skipping the test");
         D::success();
         return;

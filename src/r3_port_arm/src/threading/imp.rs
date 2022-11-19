@@ -618,20 +618,20 @@ impl State {
 
     unsafe fn handle_irq<Traits: PortInstance>() {
         // Safety: We are the port, so it's okay to call this
-        if let Some(line) = unsafe { Traits::acknowledge_interrupt() } {
-            // Now that we have signaled the acknowledgement of the current
-            // exception, we can start accepting nested exceptions.
-            unsafe { asm!("cpsie i") };
+        let Some(line) = (unsafe { Traits::acknowledge_interrupt() }) else { return };
 
-            if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(line) {
-                // Safety: The first-level interrupt handler is the only code
-                //         allowed to call this
-                unsafe { handler() };
-            }
+        // Now that we have signaled the acknowledgement of the current
+        // exception, we can start accepting nested exceptions.
+        unsafe { asm!("cpsie i") };
 
-            // Safety: We are the port, so it's okay to call this
-            unsafe { Traits::end_interrupt(line) };
+        if let Some(handler) = Traits::INTERRUPT_HANDLERS.get(line) {
+            // Safety: The first-level interrupt handler is the only code
+            //         allowed to call this
+            unsafe { handler() };
         }
+
+        // Safety: We are the port, so it's okay to call this
+        unsafe { Traits::end_interrupt(line) };
     }
 }
 

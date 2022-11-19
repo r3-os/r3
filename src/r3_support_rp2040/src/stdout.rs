@@ -42,24 +42,22 @@ impl WrapSerialWrite {
 
             block!(interrupt::free(|cs| -> nb::Result<(), core::fmt::Error> {
                 let mut stdout = STDOUT.borrow(cs).borrow_mut();
-                if let Some(stdout) = &mut *stdout {
-                    loop {
-                        match s {
-                            [] => {
-                                break Ok(());
-                            }
-                            [head, tail @ ..] => {
-                                // Output the first byte. If this gets stuck,
-                                // break out of `interrupt::free`.
-                                stdout
-                                    .write(*head)
-                                    .map_err(|e| e.map(|_| core::fmt::Error))?;
-                                s = tail;
-                            }
+                let Some(stdout) = &mut *stdout else { return Ok(()) };
+
+                loop {
+                    match s {
+                        [] => {
+                            break Ok(());
+                        }
+                        [head, tail @ ..] => {
+                            // Output the first byte. If this gets stuck,
+                            // break out of `interrupt::free`.
+                            stdout
+                                .write(*head)
+                                .map_err(|e| e.map(|_| core::fmt::Error))?;
+                            s = tail;
                         }
                     }
-                } else {
-                    Ok(())
                 }
             }))?;
         }

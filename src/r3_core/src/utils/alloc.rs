@@ -402,12 +402,9 @@ where
 unsafe impl const Allocator for ConstAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = unsafe { core::intrinsics::const_allocate(layout.size(), layout.align()) };
-        if let Some(ptr) = NonNull::new(ptr) {
-            unsafe { *self.ref_count += 1 };
-            Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
-        } else {
-            Err(AllocError)
-        }
+        let Some(ptr) = NonNull::new(ptr) else { return Err(AllocError) };
+        unsafe { *self.ref_count += 1 };
+        Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
