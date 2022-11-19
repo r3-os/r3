@@ -83,8 +83,8 @@ struct SerialWrapper(fn(u8));
 impl fmt::Write for SerialWrapper {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for byte in s.as_bytes() {
-            if *byte == '\n' as u8 {
-                (self.0)('\r' as u8);
+            if *byte == b'\n' {
+                (self.0)(b'\r');
             }
 
             (self.0)(*byte);

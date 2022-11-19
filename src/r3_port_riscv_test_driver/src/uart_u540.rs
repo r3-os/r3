@@ -32,8 +32,8 @@ impl SerialWrapper {
 impl Write for SerialWrapper {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for byte in s.as_bytes() {
-            if *byte == '\n' as u8 {
-                self.write_u8('\r' as u8);
+            if *byte == b'\n' {
+                self.write_u8(b'\r');
             }
 
             self.write_u8(*byte);
