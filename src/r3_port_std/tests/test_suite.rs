@@ -2,6 +2,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
+#![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(never_type)]
 

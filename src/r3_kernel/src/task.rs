@@ -49,8 +49,7 @@ impl<Traits: KernelTraits> System<Traits> {
 
         // Calculate an `Id` from the task CB pointer
         // Safety: `task_cb` refers to an element of `Traits::task_cb_pool()`
-        let offset =
-            unsafe { (task_cb as *const TaskCb<_>).offset_from(Traits::task_cb_pool().as_ptr()) };
+        let offset = unsafe { <*const _>::offset_from(task_cb, Traits::task_cb_pool().as_ptr()) };
 
         let task = Id::new(offset as usize + 1).unwrap();
 

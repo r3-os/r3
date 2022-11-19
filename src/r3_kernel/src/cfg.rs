@@ -250,7 +250,7 @@ macro_rules! build {
 
             #[inline(always)]
             fn hunk_pool_ptr() -> *mut u8 {
-                HUNK_POOL.get() as *mut u8
+                HUNK_POOL.get().cast()
             }
 
             #[inline(always)]

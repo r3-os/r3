@@ -696,7 +696,7 @@ pub macro attach_phase1($params:expr, impl CfgPhase1<$System:ty> for $Ty:ty $(,)
 
             #[inline(always)]
             fn cfg_hunk_pool_ptr() -> *mut u8 {
-                HUNK_POOL.get() as *mut u8
+                HUNK_POOL.get().cast()
             }
         }
     };

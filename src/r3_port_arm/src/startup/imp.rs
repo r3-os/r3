@@ -259,7 +259,7 @@ impl<T: StartupOptions + EntryPoint> StartupExt for T {
             entries: [SecondLevelPageEntry::fault(); 256],
         };
 
-        let vector_table = &Self::VECTOR_TABLE as *const _ as *mut u8;
+        let vector_table = <*const _>::cast_mut(&Self::VECTOR_TABLE).cast();
 
         let attr = MemoryRegionAttributes::NORMAL_WB_WA_SHARABLE_READ_WRITE
             .with_sharable(false)

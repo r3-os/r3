@@ -552,6 +552,6 @@ impl PicobootCmd {
 
     fn as_bytes(&self) -> &[u8; 32] {
         assert_eq!(std::mem::size_of::<Self>(), 32);
-        unsafe { &*(self as *const Self as *const [u8; 32]) }
+        unsafe { &*<*const _>::cast(self) }
     }
 }

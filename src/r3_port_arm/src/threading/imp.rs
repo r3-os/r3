@@ -64,7 +64,7 @@ impl State {
     pub unsafe fn port_boot<Traits: PortInstance>(&self) -> ! {
         unsafe { self.enter_cpu_lock::<Traits>() };
 
-        unsafe { *self.running_task_ptr.get() = Traits::state().running_task_ptr() as *mut () };
+        unsafe { *self.running_task_ptr.get() = Traits::state().running_task_ptr().cast() };
 
         // Safety: We are the port, so it's okay to call this
         unsafe { <Traits as InterruptController>::init() };
@@ -378,8 +378,11 @@ impl State {
         &self,
         task: &'static TaskCb<Traits>,
     ) {
-        let stack = task.attr.stack.as_ptr();
-        let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<u32>;
+        let stack: *mut [u8] = task.attr.stack.as_ptr();
+        let mut sp = stack
+            .as_mut_ptr()
+            .wrapping_add(stack.len())
+            .cast::<MaybeUninit<u32>>();
         // TODO: Enforce minimum stack size
 
         let preload_all = cfg!(feature = "preload-registers");

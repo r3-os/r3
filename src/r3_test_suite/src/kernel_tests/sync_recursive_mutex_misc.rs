@@ -119,8 +119,8 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     assert_eq!(app.eg1.lock().unwrap().get(), 0x12345679);
     assert_eq!(app.eg2.lock().unwrap().get(), 0x87654320);
 
-    assert_eq!(unsafe { *(app.eg1.get_ptr() as *const u32) }, 0x12345679);
-    assert_eq!(unsafe { *(app.eg2.get_ptr() as *const u32) }, 0x87654320);
+    assert_eq!(unsafe { *app.eg1.get_ptr().cast::<u32>() }, 0x12345679);
+    assert_eq!(unsafe { *app.eg2.get_ptr().cast::<u32>() }, 0x87654320);
 
     D::success();
 }

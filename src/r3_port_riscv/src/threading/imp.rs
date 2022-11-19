@@ -864,8 +864,11 @@ impl State {
         &self,
         task: &'static TaskCb<Traits>,
     ) {
-        let stack = task.attr.stack.as_ptr();
-        let mut sp = (stack as *mut u8).wrapping_add(stack.len()) as *mut MaybeUninit<usize>;
+        let stack: *mut [u8] = task.attr.stack.as_ptr();
+        let mut sp = stack
+            .as_mut_ptr()
+            .wrapping_add(stack.len())
+            .cast::<MaybeUninit<usize>>();
         // TODO: Enforce minimum stack size
 
         let preload_all = cfg!(feature = "preload-registers");

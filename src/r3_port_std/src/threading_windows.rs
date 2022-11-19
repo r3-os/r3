@@ -1,5 +1,6 @@
 use std::{
     mem::MaybeUninit,
+    ptr::addr_of,
     sync::{
         atomic::{AtomicIsize, Ordering},
         mpsc, Arc,
@@ -90,10 +91,10 @@ pub fn park() {
         while token_count < 0 {
             unsafe {
                 synchapi::WaitOnAddress(
-                    token_count_cell.as_mut_ptr().cast(), // location to watch
-                    (&token_count) as *const _ as *mut _, // undesired value
-                    std::mem::size_of::<isize>(),         // value size
-                    INFINITE,                             // timeout
+                    token_count_cell.as_mut_ptr().cast(),    // location to watch
+                    addr_of!(token_count).cast_mut().cast(), // undesired value
+                    std::mem::size_of::<isize>(),            // value size
+                    INFINITE,                                // timeout
                 );
             }
             token_count = token_count_cell.load(Ordering::Relaxed);
@@ -255,10 +256,10 @@ mod mutex {
             {
                 unsafe {
                     synchapi::WaitOnAddress(
-                        self.locked.as_mut_ptr().cast(),  // location to watch
-                        (&true) as *const bool as *mut _, // undesired value
-                        std::mem::size_of::<bool>(),      // value size
-                        INFINITE,                         // timeout
+                        self.locked.as_mut_ptr().cast(),   // location to watch
+                        [true].as_ptr().cast_mut().cast(), // undesired value
+                        std::mem::size_of::<bool>(),       // value size
+                        INFINITE,                          // timeout
                     );
                 }
             }

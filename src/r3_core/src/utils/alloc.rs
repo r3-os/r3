@@ -151,7 +151,7 @@ impl ConstAllocator {
         }
 
         let mut ref_count = RefCountGuard(1);
-        let ref_count = (&mut ref_count.0) as *mut _;
+        let ref_count = &mut ref_count.0;
 
         let this = Self { ref_count };
 

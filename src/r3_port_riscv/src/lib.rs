@@ -3,6 +3,7 @@
 #![feature(const_trait_impl)]
 #![feature(naked_functions)]
 #![feature(const_mut_refs)]
+#![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(const_option)]
 #![feature(decl_macro)]

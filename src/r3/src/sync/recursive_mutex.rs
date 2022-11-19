@@ -475,7 +475,7 @@ where
     #[inline]
     pub fn get_ptr(&self) -> *mut T {
         // Safety: Not really unsafe because we aren't borrowing anything
-        unsafe { core::ptr::addr_of!((*self.cell.as_ptr()).data) as *mut T }
+        unsafe { core::ptr::addr_of!((*self.cell.as_ptr()).data).cast_mut() }
     }
 }
 

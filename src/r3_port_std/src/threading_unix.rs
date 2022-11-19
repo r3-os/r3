@@ -6,7 +6,7 @@ use std::{
     cell::Cell,
     mem::MaybeUninit,
     os::raw::c_int,
-    ptr::{null_mut, NonNull},
+    ptr::{addr_of_mut, null_mut, NonNull},
     sync::{
         atomic::{AtomicBool, AtomicIsize, AtomicPtr, Ordering},
         Arc, Once,
@@ -51,7 +51,7 @@ pub fn spawn(f: impl FnOnce() + Send + 'static) -> JoinHandle<()> {
         data2.set_self();
 
         // Move `data2` into `THREAD_DATA`
-        THREAD_DATA.store(Arc::into_raw(data2) as _, Ordering::Relaxed);
+        THREAD_DATA.store(Arc::into_raw(data2).cast_mut(), Ordering::Relaxed);
 
         catch_longjmp(move |jmp_buf| {
             EXIT_JMP_BUF.with(|c| c.set(Some(jmp_buf)));
@@ -174,7 +174,7 @@ pub fn current() -> Thread {
         // `ThreadData` now.
         let data = Arc::new(ThreadData::new());
         let data2 = Arc::clone(&data);
-        THREAD_DATA.store(Arc::into_raw(data2) as _, Ordering::Relaxed);
+        THREAD_DATA.store(Arc::into_raw(data2).cast_mut(), Ordering::Relaxed);
 
         // Set up a destructor for `THREAD_DATA`
         THREAD_DATA_DTOR.with(|_| {});
@@ -201,7 +201,7 @@ fn park_inner(data: &ThreadData) {
         match isize_ok_or_errno(unsafe {
             libc::recv(
                 data.park_sock_token_source(),
-                (&mut 0u8) as *mut _ as _,
+                [0u8].as_mut_ptr().cast(),
                 1,
                 0,
             )
@@ -237,7 +237,7 @@ impl Thread {
         // asynchronously, but the unboundedness of the stream allows us to
         // realize the required semantics.
         isize_ok_or_errno(unsafe {
-            libc::send(data.park_sock_token_sink(), &0u8 as *const _ as _, 1, 0)
+            libc::send(data.park_sock_token_sink(), [0u8].as_ptr().cast(), 1, 0)
         })
         .unwrap();
     }
@@ -470,10 +470,10 @@ fn catch_longjmp<F: FnOnce(JmpBuf)>(cb: F) {
 
     catch_longjmp_inner(
         |ctx, jmp_buf| unsafe {
-            let ctx = (ctx as *mut F).read();
+            let ctx = ctx.cast::<F>().read();
             ctx(jmp_buf);
         },
-        (&mut cb) as *mut _ as *mut (),
+        addr_of_mut!(cb).cast(),
     );
 }
 

@@ -161,7 +161,7 @@ impl<T: ~const Destruct> ComptimeVec<T> {
         // Safety: The memory layout of `[MaybeUninit<T>; LEN]` is identical to
         // `[T; LEN]`. We initialized all elements in `storage[0..LEN]`, so it's
         // safe to reinterpret that range as `[T; LEN]`.
-        unsafe { *(self.ptr.as_ptr() as *const [T; LEN]) }
+        unsafe { *self.ptr.as_ptr().cast() }
     }
 }
 
