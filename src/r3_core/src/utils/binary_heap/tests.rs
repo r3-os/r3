@@ -16,20 +16,17 @@ fn interpret(bytecode: &[u8], max_len: usize) -> impl Iterator<Item = Cmd> + '_ 
     let mut i = 0;
     let mut len = 0;
     std::iter::from_fn(move || {
-        if let Some(instr) = bytecode.get(i..i + 5) {
-            i += 5;
+        let instr = bytecode.get(i..i + 5)?;
+        i += 5;
 
-            let value = u32::from_le_bytes([instr[1], instr[2], instr[3], instr[4]]) as usize;
+        let value = u32::from_le_bytes([instr[1], instr[2], instr[3], instr[4]]) as usize;
 
-            if (instr[0] % 2 == 0 && len != max_len) || len == 0 {
-                len += 1;
-                Some(Cmd::Insert(value))
-            } else {
-                len -= 1;
-                Some(Cmd::Remove(value % (len + 1)))
-            }
+        if (instr[0] % 2 == 0 && len != max_len) || len == 0 {
+            len += 1;
+            Some(Cmd::Insert(value))
         } else {
-            None
+            len -= 1;
+            Some(Cmd::Remove(value % (len + 1)))
         }
     })
 }
