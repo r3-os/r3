@@ -17,7 +17,8 @@
 //! The Pico must first be placed into BOOTSEL mode so that the test runner can
 //! load a program.
 use anyhow::{anyhow, Context, Result};
-use std::future::Future;
+use bytemuck::{Pod, Zeroable};
+use std::{future::Future, mem::size_of};
 use tokio::{
     io::{AsyncWriteExt, BufStream},
     task::spawn_blocking,
@@ -243,7 +244,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
 
         let hdr = PicobootCmd::new_write(*region_addr as u32, region_data.len() as u32);
         let (result, device_handle_tmp) =
-            write_bulk_all(device_handle, out_endpoint_i, hdr.as_bytes()).await;
+            write_bulk_all(device_handle, out_endpoint_i, bytemuck::bytes_of(&hdr)).await;
         device_handle = device_handle_tmp;
         let num_bytes_written = result.with_context(|| "Failed to issue a 'write' command.")?;
         if num_bytes_written != 32 {
@@ -274,7 +275,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
     );
 
     let hdr = PicobootCmd::new_reboot(loadable_code.entry as u32, 0x2004_2000, 100);
-    let (result, _) = write_bulk_all(device_handle, out_endpoint_i, hdr.as_bytes()).await;
+    let (result, _) = write_bulk_all(device_handle, out_endpoint_i, bytemuck::bytes_of(&hdr)).await;
     let num_bytes_written = result.with_context(|| "Failed to issue a 'reboot' command.")?;
     if num_bytes_written != 32 {
         anyhow::bail!("Short write ({} < 32)", num_bytes_written);
@@ -465,7 +466,7 @@ fn open_picoboot() -> Result<PicobootInterface> {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Pod, Zeroable)]
 struct PicobootCmd {
     _magic: u32,
     _token: u32,
@@ -473,18 +474,12 @@ struct PicobootCmd {
     _cmd_size: u8,
     _reserved: u16,
     _transfer_length: u32,
-    _args: PicobootCmdArgs,
+    /// One of `PicobootCmdArgs*`
+    _args: [u8; 16],
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
-union PicobootCmdArgs {
-    _reboot: PicobootCmdArgsReboot,
-    _addr_size: PicobootCmdArgsAddrSize,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Pod, Zeroable)]
 struct PicobootCmdArgsAddrSize {
     _addr: u32,
     _size: u32,
@@ -492,13 +487,17 @@ struct PicobootCmdArgsAddrSize {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Pod, Zeroable)]
 struct PicobootCmdArgsReboot {
     _pc: u32,
     _sp: u32,
     _delay_ms: u32,
     _pad: [u8; 4],
 }
+
+const _: () = assert!(size_of::<PicobootCmd>() == 32);
+const _: () = assert!(size_of::<PicobootCmdArgsAddrSize>() == 16);
+const _: () = assert!(size_of::<PicobootCmdArgsReboot>() == 16);
 
 impl PicobootCmd {
     /// Writes a contiguous memory range of memory (Flash or RAM) on the RP2040.
@@ -510,13 +509,11 @@ impl PicobootCmd {
             _cmd_size: 0x08,
             _reserved: 0,
             _transfer_length: size,
-            _args: PicobootCmdArgs {
-                _addr_size: PicobootCmdArgsAddrSize {
-                    _addr: addr,
-                    _size: size,
-                    _pad: [0; _],
-                },
-            },
+            _args: bytemuck::cast(PicobootCmdArgsAddrSize {
+                _addr: addr,
+                _size: size,
+                _pad: [0; _],
+            }),
         }
     }
 
@@ -529,14 +526,12 @@ impl PicobootCmd {
             _cmd_size: 0x0c,
             _reserved: 0,
             _transfer_length: 0,
-            _args: PicobootCmdArgs {
-                _reboot: PicobootCmdArgsReboot {
-                    _pc: pc,
-                    _sp: sp,
-                    _delay_ms: delay_ms,
-                    _pad: [0; _],
-                },
-            },
+            _args: bytemuck::cast(PicobootCmdArgsReboot {
+                _pc: pc,
+                _sp: sp,
+                _delay_ms: delay_ms,
+                _pad: [0; _],
+            }),
         }
     }
 
@@ -548,10 +543,5 @@ impl PicobootCmd {
             "a big endian host system is not supported, sorry!"
         );
         value
-    }
-
-    fn as_bytes(&self) -> &[u8; 32] {
-        assert_eq!(std::mem::size_of::<Self>(), 32);
-        unsafe { &*<*const _>::cast(self) }
     }
 }

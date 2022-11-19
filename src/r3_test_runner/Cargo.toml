@@ -22,6 +22,7 @@ serde_json = { version = "1.0.57" }
 serialport = { version = "4.0.0" }
 itertools = { version = "0.10.0" }
 thiserror = { version = "1.0.20" }
+bytemuck = { version = "1.12.3", features = ["derive"] }
 probe-rs = { version = "0.12.0" }
 tempdir = { version = "0.3.7" }
 anyhow = { version = "1.0.32" }
