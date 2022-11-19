@@ -473,7 +473,7 @@ impl Arch {
                 d: true,
             } => Some(BuildOpt::from_target_triple("riscv64gc-unknown-none-elf")),
 
-            Self::Riscv {
+            &Self::Riscv {
                 xlen,
                 e,
                 m,
@@ -487,12 +487,12 @@ impl Arch {
                     Xlen::_64 => "riscv64imac-unknown-none-elf",
                 })
                 .with_target_features(&[
-                    if *e { Some("+e") } else { None },
-                    if *m { None } else { Some("-m") },
-                    if *a { None } else { Some("-a") },
-                    if *c { None } else { Some("-c") },
-                    if *f { Some("+f") } else { None },
-                    if *d { Some("+d") } else { None },
+                    e.then_some("+e"),
+                    (!m).then_some("-m"),
+                    (!a).then_some("-a"),
+                    (!c).then_some("-c"),
+                    f.then_some("+f"),
+                    d.then_some("+d"),
                 ]),
             ),
         }

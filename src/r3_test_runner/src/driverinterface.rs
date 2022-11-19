@@ -344,11 +344,11 @@ impl TestDriver {
                         .iter()
                         .map(|f| format!("--features={f}")),
                 )
-                .args(if test_run.cpu_lock_by_basepri {
-                    Some("--features=cpu-lock-by-basepri")
-                } else {
-                    None
-                })
+                .args(
+                    test_run
+                        .cpu_lock_by_basepri
+                        .then_some("--features=cpu-lock-by-basepri"),
+                )
                 .arg(match log_level {
                     LogLevel::Off => "--features=log/max_level_off",
                     LogLevel::Error => "--features=log/max_level_error",
@@ -357,8 +357,7 @@ impl TestDriver {
                     LogLevel::Debug => "--features=log/max_level_debug",
                     LogLevel::Trace => "--features=log/max_level_trace",
                 })
-                .args(if verbose { None } else { Some("-q") })
-                // TODO: Use `bool::then` in other places
+                .args((!verbose).then_some("-q"))
                 .args(build_std.then_some("-Zbuild-std=core"))
                 .args(small_rt.then_some("-Zbuild-std-features=panic_immediate_abort"))
                 .env("R3_TEST_DRIVER_LINK_SEARCH", link_dir.path())
