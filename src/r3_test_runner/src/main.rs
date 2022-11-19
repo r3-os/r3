@@ -5,10 +5,9 @@
 #![feature(decl_macro)] // `macro`
 #![feature(pin_macro)] // `core::pin::pin!`
 #![warn(must_not_suspend)]
-use anyhow::Context;
+use anyhow::{bail, Context};
 use clap::Parser;
 use std::{env, path::Path};
-use thiserror::Error;
 
 mod driverinterface;
 mod selection;
@@ -29,23 +28,6 @@ async fn main() {
         log::error!("Command failed.\n{:?}", e);
         std::process::exit(1);
     }
-}
-
-// TODO: Top-level error enum is useless; replace it with `anyhow`
-#[derive(Error, Debug)]
-enum MainError {
-    #[error("Could not initialize the test driver interface.")]
-    TestDriver(#[source] driverinterface::TestDriverNewError),
-    #[error("Could not connect to the target.")]
-    ConnectTarget(#[source] anyhow::Error),
-    #[error("Could not build the test '{0}'.")]
-    BuildTest(String, #[source] driverinterface::TestDriverRunError),
-    #[error("Could not run the test '{0}'.")]
-    RunTest(String, #[source] driverinterface::TestDriverRunError),
-    #[error("Test failed.")]
-    TestFail,
-    #[error("The target architecture '{0}' is invalid or unsupported.")]
-    BadTarget(targets::Arch),
 }
 
 /// R3 test runner
@@ -161,9 +143,9 @@ async fn main_inner() -> anyhow::Result<()> {
     let target_arch = opt.target_arch.unwrap_or_else(|| opt.target.target_arch());
     log::debug!("target_arch = {}", target_arch);
 
-    let target_arch_opt = target_arch
-        .build_opt()
-        .ok_or(MainError::BadTarget(target_arch))?;
+    let target_arch_opt = target_arch.build_opt().with_context(|| {
+        format!("The target architecture '{target_arch}' is invalid or unsupported.")
+    })?;
     log::debug!("target_arch_opt = {:?}", target_arch_opt);
 
     // Initialize the test driver interface
@@ -175,7 +157,7 @@ async fn main_inner() -> anyhow::Result<()> {
         opt.additional_rustflags.unwrap_or_default(),
     )
     .await
-    .map_err(MainError::TestDriver)?;
+    .context("Could not initialize the test driver interface.")?;
 
     // Select tests
     let test_source = selection::TestSource {
@@ -215,7 +197,7 @@ async fn main_inner() -> anyhow::Result<()> {
             opt.target
                 .connect()
                 .await
-                .map_err(MainError::ConnectTarget)?,
+                .context("Could not connect to the target.")?,
         )
     };
 
@@ -243,7 +225,7 @@ async fn main_inner() -> anyhow::Result<()> {
                 },
             )
             .await
-            .map_err(|e| MainError::BuildTest(full_test_name.clone(), e))?;
+            .with_context(|| format!("Could not build the test '{full_test_name}'."))?;
 
         // Run the specified program
         let mut test_result = if opt.exec.is_empty() {
@@ -278,7 +260,7 @@ async fn main_inner() -> anyhow::Result<()> {
                 test_result = test_driver
                     .run(test_run, &mut **debug_probe)
                     .await
-                    .map_err(|e| MainError::RunTest(full_test_name, e))?;
+                    .with_context(|| format!("Could not run the test '{full_test_name}'."))?;
             }
         }
 
@@ -316,7 +298,7 @@ async fn main_inner() -> anyhow::Result<()> {
             }
         }
 
-        return Err(MainError::TestFail.into());
+        bail!("Test failed.");
     }
 
     assert!(tests_skipped_to_fail_fast.is_empty());
