@@ -3,7 +3,16 @@
 //! **This module is exempt from [the API stability guarantee][1]** unless
 //! specified otherwise. It's exposed mostly because it's needed by macros.
 //!
+//! # Re-exports
+//!
+//! - [`Zeroable`], [`ZeroableInOption`]: Re-exported from [`bytemuck`]` ^1`.
+//!   `Zeroable` is a marker trait used in [`HunkDefiner::zeroed`][2] and
+//!   suchlike. It can be derived for struct types.
+//!   These re-exports are subject to the application-side API stability
+//!   guarantee.
+//!
 //! [1]: crate#stability
+//! [2]: crate::hunk::HunkDefiner::zeroed
 use core::marker::PhantomData;
 
 /// Conditional type
@@ -70,6 +79,8 @@ pub use aligned_storage::*;
 pub use init::*;
 pub use rawcell::*;
 pub use zeroinit::*;
+
+pub use bytemuck::{Zeroable, ZeroableInOption};
 
 /// A phantom type that is invariant over `T`.
 pub type PhantomInvariant<T> = core::marker::PhantomData<fn(T) -> T>;

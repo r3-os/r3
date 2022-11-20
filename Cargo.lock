@@ -1769,6 +1769,7 @@ version = "0.1.4"
 dependencies = [
  "arrayvec",
  "bitflags",
+ "bytemuck",
  "chrono",
  "either",
  "elain",
