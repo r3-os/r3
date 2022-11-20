@@ -9,7 +9,7 @@ use core::{
 
 use crate::{
     kernel::{self, cfg, hunk, raw, raw_cfg, Cfg, StartupHook},
-    utils::{Init, ZeroInit},
+    utils::{Init, Zeroable},
 };
 
 /// The priority of the [startup hooks] used to initialize [typed hunks]. It has
@@ -123,9 +123,9 @@ impl<System: raw::KernelBase + cfg::KernelStatic, T: ?Sized, InitTag>
     /// Zero-initialize the hunk.
     pub const fn zeroed(self) -> HunkDefiner<System, T, ZeroInitTag>
     where
-        T: ZeroInit,
+        T: Zeroable,
     {
-        // Safety: `T: ZeroInit`, so it's zero-initializable
+        // Safety: `T: Zeroable`, so it's zero-initializable
         unsafe { self.zeroed_unchecked() }
     }
 

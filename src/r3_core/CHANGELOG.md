@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `HunkDefiner::zeroed` now requires `T: Zeroable` instead of `T: ZeroInit`.
+
 ### Added
 
 - `r3_core::utils::{Zeroable,ZeroableInOption}` (re-exported from `bytemuck ^1`)
