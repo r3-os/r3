@@ -1,12 +1,12 @@
 use core::{fmt, ops};
 
-use crate::utils::{Init, ZeroInit};
+use crate::utils::{Init, Zeroable};
 
 /// Represents a signed time span used by the API surface of R3-OS.
 ///
 /// `Duration` is backed by `i32` and can represent the range
 /// [-35′47.483648″, +35′47.483647″] with microsecond precision.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Zeroable)]
 #[repr(transparent)]
 pub struct Duration {
     micros: i32,
@@ -15,10 +15,6 @@ pub struct Duration {
 impl Init for Duration {
     const INIT: Self = Self::ZERO;
 }
-
-// Safety: `Duration` is `repr(transparent)` and the only inner field is `i32`,
-//         which is `ZeroInit`
-unsafe impl ZeroInit for Duration {}
 
 impl Default for Duration {
     fn default() -> Self {

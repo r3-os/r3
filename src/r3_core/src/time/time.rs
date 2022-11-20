@@ -2,7 +2,7 @@ use core::{fmt, ops};
 
 use crate::{
     time::Duration,
-    utils::{Init, ZeroInit},
+    utils::{Init, Zeroable},
 };
 
 /// Represents a timestamp used by the API surface of R3-OS.
@@ -13,7 +13,7 @@ use crate::{
 ///
 /// `Time` is backed by `u64` and can represent up to 213,503,982 days with
 /// microsecond precision.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Zeroable)]
 #[repr(transparent)]
 pub struct Time {
     micros: u64,
@@ -22,10 +22,6 @@ pub struct Time {
 impl Init for Time {
     const INIT: Self = Self::ZERO;
 }
-
-// Safety: `Time` is `repr(transparent)` and the only inner field is `u64`,
-//         which is `ZeroInit`
-unsafe impl ZeroInit for Time {}
 
 impl Default for Time {
     fn default() -> Self {

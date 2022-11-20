@@ -172,7 +172,7 @@ use crate::{
     closure::Closure,
     hunk::Hunk,
     kernel::{self, cfg, prelude::*, raw, raw_cfg, StartupHook},
-    utils::{refcell::RefCell, ComptimeVec, ConstAllocator, Init, PhantomInvariant, ZeroInit},
+    utils::{refcell::RefCell, ComptimeVec, ConstAllocator, Init, PhantomInvariant, Zeroable},
 };
 
 mod sorter;
@@ -213,8 +213,10 @@ impl<T> BindData<T> {
     }
 }
 
+// FIXME: Derive this when <https://github.com/Lokathor/bytemuck/pull/148> is
+//        merged
 // Safety: Zero-initialization is valid for `MaybeUninit`
-unsafe impl<T> ZeroInit for BindData<T> {}
+unsafe impl<T> Zeroable for BindData<T> {}
 
 // Main configuration interface
 // ----------------------------------------------------------------------------
@@ -466,8 +468,8 @@ impl<System>
     }
 
     /// Zero-initialize the binding contents.
-    pub const fn zeroed<T: ZeroInit>(self) -> BindDefiner<System, (), FnBindNever<T>> {
-        // Safety: `T: ZeroInit` means it's safe to zero-initialize
+    pub const fn zeroed<T: Zeroable>(self) -> BindDefiner<System, (), FnBindNever<T>> {
+        // Safety: `T: Zeroable` means it's safe to zero-initialize
         unsafe { self.zeroed_unchecked() }
     }
 

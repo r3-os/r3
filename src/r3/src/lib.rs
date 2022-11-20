@@ -62,7 +62,7 @@ pub use r3_core::{bag, hunk, kernel, time};
 ///
 /// [1]: r3_core#stability
 pub mod utils {
-    pub use r3_core::utils::{Init, ZeroInit};
+    pub use r3_core::utils::{Init, Zeroable, ZeroableInOption};
 }
 
 /// The prelude module.
