@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- **Breaking:** `HunkDefiner::zeroed` now requires `T: Zeroable` instead of `T: ZeroInit`.
+- **Breaking:** `{Bind,Hunk}Definer::zeroed` now requires `T: Zeroable` instead of `T: ZeroInit`.
 
 ### Added
 
