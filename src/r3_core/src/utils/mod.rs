@@ -74,11 +74,9 @@ mod init;
 pub mod mem;
 mod rawcell;
 pub(crate) mod refcell;
-mod zeroinit;
 pub use aligned_storage::*;
 pub use init::*;
 pub use rawcell::*;
-pub use zeroinit::*;
 
 pub use bytemuck::{Zeroable, ZeroableInOption};
 

@@ -56,7 +56,7 @@ mod rawcell;
 mod vec;
 pub use self::{aligned_storage::*, freeze::*, int::*, prio_bitmap::*, rawcell::*, vec::*};
 use r3_core::utils::{AllocError, Allocator, ConstAllocator};
-pub use r3_core::utils::{Init, ZeroInit, Zeroable};
+pub use r3_core::utils::{Init, Zeroable};
 pub(crate) mod panicking;
 
 /// A "type function" producing a type.

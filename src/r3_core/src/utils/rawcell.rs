@@ -1,6 +1,6 @@
 use core::cell::UnsafeCell;
 
-use crate::utils::{Init, ZeroInit, Zeroable};
+use crate::utils::{Init, Zeroable};
 
 /// Like `UnsafeCell`, but implements `Sync`.
 #[derive(Debug)]
@@ -28,7 +28,6 @@ impl<T: ?Sized> RawCell<T> {
 impl<T: Init> Init for RawCell<T> {
     const INIT: Self = RawCell::new(T::INIT);
 }
-unsafe impl<T: ZeroInit> ZeroInit for RawCell<T> {}
 // FIXME: Derive this when <https://github.com/Lokathor/bytemuck/pull/148> is
 //        merged
 unsafe impl<T: Zeroable> Zeroable for RawCell<T> {}

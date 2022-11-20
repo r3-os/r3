@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `r3_core::utils::{Zeroable,ZeroableInOption}` (re-exported from `bytemuck ^1`)
 - Implement `Zeroable` on `r3_core::time::{Duration, Time}`
 
+### Removed
+
+- **Breaking:** `r3_core::utils::ZeroInit` (superseded by `Zeroable`)
+
 ## [0.1.4] - 2022-11-16
 
 ### Changed
