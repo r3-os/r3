@@ -2075,7 +2075,6 @@ dependencies = [
  "futures-core",
  "goblin",
  "itertools",
- "lazy_static",
  "log",
  "probe-rs",
  "probe-rs-rtt",

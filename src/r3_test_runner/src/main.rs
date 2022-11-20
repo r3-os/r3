@@ -3,6 +3,7 @@
 #![feature(must_not_suspend)] // `must_not_suspend` lint
 #![feature(lint_reasons)]
 #![feature(decl_macro)] // `macro`
+#![feature(once_cell)]
 #![feature(pin_macro)] // `core::pin::pin!`
 #![warn(must_not_suspend)]
 use anyhow::{bail, Context};
@@ -98,13 +99,13 @@ struct OptTarget {
 
 impl clap::ValueEnum for OptTarget {
     fn value_variants<'a>() -> &'a [Self] {
-        lazy_static::lazy_static! {
-            static ref VARIANTS: Vec<OptTarget> =
-                targets::TARGETS
-                    .iter()
-                    .map(|&(name, target)| OptTarget { name, target })
-                    .collect();
-        }
+        use std::sync::LazyLock;
+        static VARIANTS: LazyLock<Vec<OptTarget>> = LazyLock::new(|| {
+            targets::TARGETS
+                .iter()
+                .map(|&(name, target)| OptTarget { name, target })
+                .collect()
+        });
 
         &VARIANTS
     }
