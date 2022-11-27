@@ -347,7 +347,7 @@ impl TestDriver {
                 .args(
                     test_run
                         .cpu_lock_by_basepri
-                        .then_some("--features=cpu-lock-by-basepri"),
+                        .then_some("--features=cpu_lock_by_basepri"),
                 )
                 .arg(match log_level {
                     LogLevel::Off => "--features=log/max_level_off",

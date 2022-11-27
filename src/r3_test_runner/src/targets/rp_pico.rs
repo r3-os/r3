@@ -37,7 +37,7 @@ impl Target for RaspberryPiPico {
     }
 
     fn cargo_features(&self) -> Vec<String> {
-        vec!["board-rp_pico".to_owned()]
+        vec!["board_rp_pico".to_owned()]
     }
 
     fn linker_scripts(&self) -> LinkerScripts {

@@ -7,11 +7,11 @@
 #![cfg_attr(feature = "run", no_std)]
 #![cfg_attr(feature = "run", no_main)]
 
-#[cfg(feature = "board-rp_pico")]
+#[cfg(feature = "board_rp_pico")]
 mod board_rp2040;
-#[cfg(feature = "output-rtt")]
+#[cfg(feature = "output_rtt")]
 mod logger_rtt;
-#[cfg(feature = "output-semihosting")]
+#[cfg(feature = "output_semihosting")]
 mod logger_semihosting;
 
 #[allow(unused_macros)]
@@ -30,27 +30,27 @@ macro_rules! instantiate_test {
         use $path as test_case;
 
         // Install a global panic handler
-        #[cfg(feature = "output-rtt")]
+        #[cfg(feature = "output_rtt")]
         use panic_rtt_target as _;
-        #[cfg(feature = "output-semihosting")]
+        #[cfg(feature = "output_semihosting")]
         use panic_semihosting as _;
-        // `board-rp_pico`: provided by `crate::board_rp2040`
+        // `board_rp_pico`: provided by `crate::board_rp2040`
 
         fn report_success() {
             // The test runner will catch this
-            #[cfg(feature = "output-rtt")]
+            #[cfg(feature = "output_rtt")]
             rtt_target::rprintln!("!- TEST WAS SUCCESSFUL -!");
 
-            #[cfg(feature = "output-semihosting")]
+            #[cfg(feature = "output_semihosting")]
             cortex_m_semihosting::hprintln!("!- TEST WAS SUCCESSFUL -!");
 
-            #[cfg(feature = "board-rp_pico")]
+            #[cfg(feature = "board_rp_pico")]
             r3_support_rp2040::sprintln!(
                 "{BEGIN_MAIN}!- TEST WAS SUCCESSFUL -!",
                 BEGIN_MAIN = crate::board_rp2040::mux::BEGIN_MAIN,
             );
 
-            #[cfg(feature = "board-rp_pico")]
+            #[cfg(feature = "board_rp_pico")]
             board_rp2040::enter_poll_loop();
 
             loop {}
@@ -71,17 +71,17 @@ macro_rules! instantiate_test {
             // collection.
             const USE_WFI: bool = false;
 
-            #[cfg(feature = "cpu-lock-by-basepri")]
+            #[cfg(feature = "cpu_lock_by_basepri")]
             const CPU_LOCK_PRIORITY_MASK: u8 = 0x20;
         }
 
         impl port::SysTickOptions for SystemTraits {
-            #[cfg(feature = "board-rp_pico")]
+            #[cfg(feature = "board_rp_pico")]
             const FREQUENCY: u64 = board_rp2040::SYSTICK_FREQUENCY;
 
             // STM32F401
             // SysTick = AHB/8, AHB = HSI (internal 16-MHz RC oscillator)
-            #[cfg(not(feature = "board-rp_pico"))]
+            #[cfg(not(feature = "board_rp_pico"))]
             const FREQUENCY: u64 = 2_000_000;
         }
 
@@ -96,12 +96,12 @@ macro_rules! instantiate_test {
                 report_success();
             }
 
-            #[cfg(not(feature = "board-rp_pico"))]
+            #[cfg(not(feature = "board_rp_pico"))]
             fn performance_time() -> u32 {
                 cortex_m::peripheral::DWT::get_cycle_count()
             }
 
-            #[cfg(feature = "board-rp_pico")]
+            #[cfg(feature = "board_rp_pico")]
             fn performance_time() -> u32 {
                 board_rp2040::performance_time()
             }
@@ -131,7 +131,7 @@ macro_rules! instantiate_test {
             const INTERRUPT_LINES: &'static [InterruptNum] = &[16, 17, 18, 19];
             const INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0x20, 0x60];
 
-            #[cfg(feature = "cpu-lock-by-basepri")]
+            #[cfg(feature = "cpu_lock_by_basepri")]
             const UNMANAGED_INTERRUPT_PRIORITIES: &'static [InterruptPriority] = &[0x00];
         }
 
@@ -141,7 +141,7 @@ macro_rules! instantiate_test {
         const fn configure_app(b: &mut r3_kernel::Cfg<SystemTraits>) -> test_case::App<System> {
             // Configure DWT for performance measurement
             #[cfg(feature = "kernel_benchmarks")]
-            #[cfg(not(feature = "board-rp_pico"))]
+            #[cfg(not(feature = "board_rp_pico"))]
             StartupHook::<System>::define().start(|| {
                 unsafe {
                     let mut peripherals = cortex_m::peripheral::Peripherals::steal();
@@ -154,7 +154,7 @@ macro_rules! instantiate_test {
             // Initialize RTT (Real-Time Transfer) with two up channels and set
             // the first one as the print channel for the printing macros, and
             // the second one as log output
-            #[cfg(feature = "output-rtt")]
+            #[cfg(feature = "output_rtt")]
             StartupHook::define().start(|| {
                 let channels = rtt_target::rtt_init! {
                     up: {
@@ -176,14 +176,14 @@ macro_rules! instantiate_test {
             }).finish(b);
 
             // Redirect the log output to stderr
-            #[cfg(feature = "output-semihosting")]
+            #[cfg(feature = "output_semihosting")]
             StartupHook::define().start(|| {
                 logger_semihosting::init();
             }).finish(b);
 
             // Create a USB serial device and redirect the log output and the
             // main message to it
-            #[cfg(feature = "board-rp_pico")]
+            #[cfg(feature = "board_rp_pico")]
             board_rp2040::configure(b);
 
             SystemTraits::configure_systick(b);

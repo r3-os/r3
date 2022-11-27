@@ -27,7 +27,7 @@ impl Target for NucleoF401re {
     }
 
     fn cargo_features(&self) -> Vec<String> {
-        vec!["output-rtt".to_owned()]
+        vec!["output_rtt".to_owned()]
     }
 
     fn linker_scripts(&self) -> LinkerScripts {

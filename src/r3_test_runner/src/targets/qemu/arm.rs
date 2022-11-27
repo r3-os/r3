@@ -12,7 +12,7 @@ impl Target for QemuMps2An385 {
     }
 
     fn cargo_features(&self) -> Vec<String> {
-        vec!["output-semihosting".to_owned()]
+        vec!["output_semihosting".to_owned()]
     }
 
     fn linker_scripts(&self) -> LinkerScripts {
@@ -54,7 +54,7 @@ impl Target for QemuMps2An505 {
     }
 
     fn cargo_features(&self) -> Vec<String> {
-        vec!["output-semihosting".to_owned()]
+        vec!["output_semihosting".to_owned()]
     }
 
     fn linker_scripts(&self) -> LinkerScripts {
