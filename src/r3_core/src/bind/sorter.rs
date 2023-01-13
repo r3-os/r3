@@ -587,7 +587,6 @@ trait TopologicalSortOutputSink<VertexRef> {
 /// ¹ Kahn, Arthur B. (1962), "Topological sorting of large networks",
 /// *Communications of the ACM*, **5** (11): 558–562, doi:10.1145/368996.369025
 const fn topological_sort<
-    'a,
     Graph,
     VertexRef,
     VertexRefLessThan,
@@ -595,7 +594,7 @@ const fn topological_sort<
     VertexInfoMap,
     OutputSink,
 >(
-    graph: &'a Graph,
+    graph: &Graph,
     vertex_ord_lt: &mut VertexRefLessThan,
     out_vertices: &mut OutputSink,
     temp_ready_vertex_queue: &mut ReadyVertexQueue,

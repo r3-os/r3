@@ -37,7 +37,7 @@ impl SeqTracker {
         // Note: Some targets don't support CAS atomics
         let got = self.counter.load(Ordering::Relaxed);
         log::debug!("{} (expected: {}) → {}", got, old, new);
-        assert_eq!(got, old, "expected {}, got {}", old, got);
+        assert_eq!(got, old, "expected {old}, got {got}");
         self.counter.store(new, Ordering::Relaxed);
     }
 }

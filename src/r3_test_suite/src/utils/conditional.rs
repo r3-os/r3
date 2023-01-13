@@ -86,9 +86,7 @@ pub trait KernelTimeExt: traits::KernelBase {
         log::trace!("time = {:?}ms (expected = {:?}ms)", t, range);
         assert!(
             range.contains(&t),
-            "time = {:?}ms (expected = {:?}ms)",
-            t,
-            range
+            "time = {t:?}ms (expected = {range:?}ms)"
         );
     }
 

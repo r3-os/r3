@@ -40,8 +40,8 @@ unsafe fn clear_bit16(reg: *mut u16, bit: u8) {
 
 #[inline]
 fn panic_if_pin_is_invalid((n, m): Pin) {
-    assert!(n >= 1 && n < 12, "1 <= {} < 12", n);
-    assert!(m < 16, "0 <= {} < 16", m);
+    assert!((1..12).contains(&n), "1 <= {n} < 12");
+    assert!(m < 16, "0 <= {m} < 16");
 }
 
 impl GpioExt for rza1::gpio::RegisterBlock {

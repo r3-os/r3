@@ -43,9 +43,8 @@ fn main() {
             kernel_benchmark_list.push(TestMeta("kernel_benchmarks", name));
         } else {
             panic!(
-                "Unrecognized test type: `{}`
+                "Unrecognized test type: `{selected_test}`
                 Test names should start with a prefix like `kernel_tests::`.",
-                selected_test
             );
         }
     }
@@ -84,9 +83,8 @@ fn main() {
 fn expect_valid_test_name(name: &str) {
     if name.contains(|c: char| !c.is_alphanumeric() && c != '_') || name.is_empty() {
         panic!(
-            "Invalid test name: `{}`
+            "Invalid test name: `{name}`
             Test names should match /[a-zA-Z0-9_]+/",
-            name
         )
     }
 }

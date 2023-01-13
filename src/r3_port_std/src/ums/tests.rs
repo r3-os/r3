@@ -105,9 +105,7 @@ fn preempt() {
                 .zip(new_counters.iter())
                 .enumerate()
                 .all(|(i, (old, new))| (thread_i == i) == (old != new)),
-            "old_counters = {:?}, new_counters = {:?}",
-            old_counters,
-            new_counters,
+            "old_counters = {old_counters:?}, new_counters = {new_counters:?}",
         );
     };
 
@@ -226,8 +224,7 @@ fn yield_ring(count: usize) {
 
     assert!(
         new_counters.iter().all(|&c| c != 0),
-        "new_counters = {:?}",
-        new_counters,
+        "new_counters = {new_counters:?}",
     );
 
     st.done.store(true, Ordering::Relaxed);
