@@ -26,14 +26,13 @@ fn main() {
             generated_code,
             r#"
             instantiate_test!({{
-                path: crate::driver_kernel_tests::{0},
+                path: crate::driver_kernel_tests::{name},
             }},);
             "#,
-            name,
         )
         .unwrap();
     } else if !selected_test.is_empty() {
-        panic!("unknown test type: {:?}", selected_test);
+        panic!("unknown test type: {selected_test:?}");
     }
 
     let out_generated_code_path = Path::new(&out_dir).join("gen.rs");
