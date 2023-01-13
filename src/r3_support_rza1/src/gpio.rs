@@ -40,7 +40,7 @@ unsafe fn clear_bit16(reg: *mut u16, bit: u8) {
 
 #[inline]
 fn panic_if_pin_is_invalid((n, m): Pin) {
-    assert!(n >= 1 && n < 12, "1 <= {n} < 12");
+    assert!((1..12).contains(&n), "1 <= {n} < 12");
     assert!(m < 16, "0 <= {m} < 16");
 }
 
