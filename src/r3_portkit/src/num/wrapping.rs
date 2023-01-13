@@ -234,7 +234,7 @@ mod tests {
 
     use super::*;
     use quickcheck_macros::quickcheck;
-    use std::{prelude::v1::*, vec};
+    use std::prelude::v1::*;
 
     /// The naïve implementation of `WrappingTrait`.
     #[derive(Debug, Copy, Clone)]
@@ -273,7 +273,7 @@ mod tests {
 
                 const MAX: u128 = $max;
 
-                fn do_test_add_assign64(values: impl IntoIterator<Item = u64>) {
+                fn do_test_add_assign64(values: &mut dyn Iterator<Item = u64>) {
                     let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
                     let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
                     log::trace!("do_test_add_assign64 (MAX = {})", MAX);
@@ -293,28 +293,29 @@ mod tests {
 
                 #[test]
                 fn add_assign64_zero() {
-                    do_test_add_assign64(vec![0, 0, 0,0, 0]);
+                    do_test_add_assign64(&mut [0, 0, 0,0, 0].into_iter());
                 }
 
                 #[test]
                 fn add_assign64_mixed() {
                     let max = MAX as u64;
-                    do_test_add_assign64(vec![0, 1u64.min(max), max, max / 2, max / 10, 0, 4u64.min(max)]);
+                    do_test_add_assign64(
+                        &mut [0, 1u64.min(max), max, max / 2, max / 10, 0, 4u64.min(max)].into_iter());
                 }
 
                 #[test]
                 fn add_assign64_max() {
-                    do_test_add_assign64(vec![MAX as u64; 5]);
+                    do_test_add_assign64(&mut [MAX as u64; 5].into_iter());
                 }
 
                 #[test]
                 fn add_assign64_half() {
-                    do_test_add_assign64(vec![MAX as u64 / 2; 5]);
+                    do_test_add_assign64(&mut [MAX as u64 / 2; 5].into_iter());
                 }
 
                 #[quickcheck]
                 fn add_assign64_quickcheck(cmds: Vec<u32>) {
-                    do_test_add_assign64(cmds.iter().map(|&cmd| {
+                    do_test_add_assign64(&mut cmds.iter().map(|&cmd| {
                         let max = MAX as u64;
                         match cmd % 4 {
                             0 => max / 2,
@@ -326,7 +327,7 @@ mod tests {
                     }));
                 }
 
-                fn do_test_add_assign128_multi32(values: impl IntoIterator<Item = u128>) {
+                fn do_test_add_assign128_multi32(values: &mut dyn Iterator<Item = u128>) {
                     let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
                     let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
                     log::trace!("do_test_add_assign128_multi32 (MAX = {})", MAX);
@@ -346,44 +347,45 @@ mod tests {
 
                 #[test]
                 fn add_assign128_multi32_zero() {
-                    do_test_add_assign128_multi32(vec![0; 5]);
+                    do_test_add_assign128_multi32(&mut [0; 5].into_iter());
                 }
 
                 #[test]
                 fn add_assign128_multi32_mixed() {
-                    do_test_add_assign128_multi32(vec![0, 1u128.min(MAX), MAX, MAX / 2, MAX / 10, 0, 4u128.min(MAX)]);
+                    do_test_add_assign128_multi32(
+                        &mut [0, 1u128.min(MAX), MAX, MAX / 2, MAX / 10, 0, 4u128.min(MAX)].into_iter());
                 }
 
                 #[test]
                 fn add_assign128_multi32_max() {
-                    do_test_add_assign128_multi32(vec![MAX; 5]);
+                    do_test_add_assign128_multi32(&mut [MAX; 5].into_iter());
                 }
 
                 #[test]
                 fn add_assign128_multi32_max_p1() {
-                    do_test_add_assign128_multi32(vec![MAX + 1; 5]);
+                    do_test_add_assign128_multi32(&mut [MAX + 1; 5].into_iter());
                 }
 
                 #[test]
                 fn add_assign128_multi32_half() {
-                    do_test_add_assign128_multi32(vec![MAX / 2; 5]);
+                    do_test_add_assign128_multi32(&mut [MAX / 2; 5].into_iter());
                 }
 
                 #[test]
                 fn add_assign128_multi32_extreme() {
-                    do_test_add_assign128_multi32(vec![MAX, (MAX + 1) * 0xffff_ffff]);
+                    do_test_add_assign128_multi32(&mut [MAX, (MAX + 1) * 0xffff_ffff].into_iter());
                 }
 
                 #[test]
                 #[should_panic]
                 fn add_assign128_multi32_result_overflow() {
                     // `NaiveWrapping` is guaranteed to panic on overflow
-                    do_test_add_assign128_multi32(vec![MAX, (MAX + 1) * 0xffff_ffff + 1]);
+                    do_test_add_assign128_multi32(&mut [MAX, (MAX + 1) * 0xffff_ffff + 1].into_iter());
                 }
 
                 #[quickcheck]
                 fn add_assign128_multi32_quickcheck(cmds: Vec<u32>) {
-                    do_test_add_assign128_multi32(cmds.iter().map(|&cmd| {
+                    do_test_add_assign128_multi32(&mut cmds.iter().map(|&cmd| {
                         match cmd % 8 {
                             0 => MAX / 2,
                             1 => MAX / 2 + 1,
