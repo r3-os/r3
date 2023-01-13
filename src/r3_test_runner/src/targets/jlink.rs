@@ -117,7 +117,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             for (path, (_, offset)) in section_files.iter().zip(regions.iter()) {
                 writeln!(cmd, "loadbin \"{}\" 0x{:08x}", path.display(), offset).unwrap();
             }
-            writeln!(cmd, "setpc 0x{:x}", entry).unwrap();
+            writeln!(cmd, "setpc 0x{entry:x}").unwrap();
             writeln!(cmd, "g").unwrap();
             writeln!(cmd, "q").unwrap();
 
