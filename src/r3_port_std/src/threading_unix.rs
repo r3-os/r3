@@ -216,8 +216,8 @@ fn park_inner(data: &ThreadData) {
                 // Interrupted while waiting. Try again.
                 continue;
             }
-            Ok(i) => panic!("unexpected return value: {}", i),
-            Err(e) => panic!("failed to evict park token: {}", e),
+            Ok(i) => panic!("unexpected return value: {i}"),
+            Err(e) => panic!("failed to evict park token: {e}"),
         }
 
         break;
