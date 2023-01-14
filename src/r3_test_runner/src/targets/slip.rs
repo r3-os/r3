@@ -54,7 +54,7 @@ impl FrameExtractorState {
                     Ok(Some(FrameExtractorAction::StartFrame))
                 }
                 _ => {
-                    log::trace!("Ignoring 0x{:?} outside a frame", b);
+                    log::trace!("Ignoring 0x{b:?} outside a frame");
                     Ok(None)
                 }
             },

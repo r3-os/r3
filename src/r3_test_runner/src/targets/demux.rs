@@ -118,7 +118,7 @@ impl AsyncBufRead for Demux<'_> {
                             Pin::new(&mut this.inner).consume(num_bytes);
                         }
                         Err(e) => {
-                            log::trace!("Ignoring error while outputting to stdout: {:?}", e);
+                            log::trace!("Ignoring error while outputting to stdout: {e:?}");
                             // Ignore any I/O errors caused by stdout
                             Pin::new(&mut this.inner).consume(payload_len);
                         }

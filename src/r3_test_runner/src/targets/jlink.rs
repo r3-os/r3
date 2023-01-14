@@ -115,7 +115,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
             let mut cmd = String::new();
             writeln!(cmd, "r").unwrap();
             for (path, (_, offset)) in section_files.iter().zip(regions.iter()) {
-                writeln!(cmd, "loadbin \"{}\" 0x{:08x}", path.display(), offset).unwrap();
+                writeln!(cmd, "loadbin \"{}\" 0x{offset:08x}", path.display()).unwrap();
             }
             writeln!(cmd, "setpc 0x{entry:x}").unwrap();
             writeln!(cmd, "g").unwrap();
@@ -123,7 +123,7 @@ impl DebugProbe for Fe310JLinkDebugProbe {
 
             // Flash the program and reset the chip
             // (`probe-rs` doesn't support FE310-based boards at this time)
-            log::debug!("Launching JLinkExe and executing '{:?}'", cmd);
+            log::debug!("Launching JLinkExe and executing '{cmd:?}'");
             subprocess::CmdBuilder::new("JLinkExe")
                 .args([
                     "-device",
