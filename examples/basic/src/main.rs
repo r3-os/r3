@@ -39,7 +39,7 @@ const fn configure_app(b: &mut r3_kernel::Cfg<'_, SystemTraits>) -> Objects {
 }
 
 fn task1_body() {
-    log::trace!("COTTAGE = {:#?}", COTTAGE);
+    log::trace!("COTTAGE = {COTTAGE:#?}");
     log::trace!("KENREL = {:#?}", System::debug());
 
     COTTAGE.task2.activate().unwrap();
