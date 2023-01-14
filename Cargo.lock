@@ -986,13 +986,13 @@ dependencies = [
 
 [[package]]
 name = "inline_dyn"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "929271c05bf5679f7c76df53efabf88661b445e337314e2205841ed0b5661d73"
+checksum = "33e25197db3b9f7d832e40814cc8a561e6ad8075eba423c6b433f1533b906144"
 dependencies = [
  "cfg-if 1.0.0",
+ "elain",
  "static_assertions",
- "typenum",
 ]
 
 [[package]]
