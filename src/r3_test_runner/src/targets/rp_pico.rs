@@ -233,7 +233,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
     log::debug!("Transfering the image");
     for (region_data, region_addr) in loadable_code.regions.iter() {
         log::debug!(
-            " ... 0x{region_addr:08x}..=0x{:08x}",
+            " ... {region_addr:#08x}..={:#08x}",
             region_addr + region_data.len() as u64 - 1
         );
 
@@ -261,7 +261,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
     }
 
     log::debug!(
-        "Rebooting RP2040 to start execution at 0x{:08x}",
+        "Rebooting RP2040 to start execution at {:#08x}",
         loadable_code.entry
     );
 

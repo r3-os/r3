@@ -169,7 +169,7 @@ pub async fn attach_rtt(
                 .await
                 .unwrap();
             if let Some(x) = addr {
-                log::debug!("Found the RTT header at 0x{x:x}");
+                log::debug!("Found the RTT header at {x:#x}");
                 probe_rs_rtt::ScanRegion::Exact(x as u32)
             } else {
                 probe_rs_rtt::ScanRegion::Ram

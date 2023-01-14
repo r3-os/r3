@@ -213,7 +213,7 @@ impl DebugProbe for KflashDebugProbe {
                 log::debug!("Programming the region {} of {}", i + 1, regions.len());
                 if region.1 < 0x80000000 {
                     log::debug!(
-                        "Starting address (0x{:x}) is out of range, ignoreing",
+                        "Starting address ({:#x}) is out of range, ignoreing",
                         region.1
                     );
                     continue;
@@ -222,7 +222,7 @@ impl DebugProbe for KflashDebugProbe {
             }
 
             // Boot the program
-            log::debug!("Booting from 0x{entry:08x}");
+            log::debug!("Booting from {entry:#08x}");
             boot(&mut self.serial, entry as u32).await?;
 
             // Now, pass the channel to the caller
@@ -371,7 +371,7 @@ async fn flash_dataframe(
         let chunk_addr = address + (i * CHUNK_LEN) as u32;
 
         log::debug!(
-            "Programming the range {:?}/{:?} at 0x{chunk_addr:x} ({}%)",
+            "Programming the range {:?}/{:?} at {chunk_addr:#x} ({}%)",
             (i * CHUNK_LEN)..(i * CHUNK_LEN + chunk.len()),
             data.len(),
             i * CHUNK_LEN * 100 / data.len(),
