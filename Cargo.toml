@@ -115,9 +115,5 @@ version = "0.6.2"
 git = "https://github.com/Gilnaa/memoffset.git"
 rev = "2a74b62c26724ff9c67e4e3ad05378a1af53f195"
 
-[patch.crates-io.funty]
-git = "https://github.com/ferrilab/funty.git"
-rev = "7ef0d890fbcd8b3def1635ac1a877fc298488446"
-
 [profile.release]
 debug = true
