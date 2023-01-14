@@ -276,12 +276,11 @@ mod tests {
                 fn do_test_add_assign64(values: &mut dyn Iterator<Item = u64>) {
                     let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
                     let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
-                    log::trace!("do_test_add_assign64 (MAX = {})", MAX);
+                    log::trace!("do_test_add_assign64 (MAX = {MAX})");
                     for value in values {
                         log::trace!(
-                            " - ({} + {}) % (MAX + 1) = {} % (MAX + 1) = {}",
+                            " - ({} + {value}) % (MAX + 1) = {} % (MAX + 1) = {}",
                             counter_expected.inner,
-                            value,
                             (counter_expected.inner + value as u128),
                             (counter_expected.inner + value as u128) % (MAX + 1),
                         );
@@ -330,12 +329,11 @@ mod tests {
                 fn do_test_add_assign128_multi32(values: &mut dyn Iterator<Item = u128>) {
                     let mut counter_got: Wrapping<{MAX as u64}> = Init::INIT;
                     let mut counter_expected: NaiveWrapping<{MAX as u64}> = Init::INIT;
-                    log::trace!("do_test_add_assign128_multi32 (MAX = {})", MAX);
+                    log::trace!("do_test_add_assign128_multi32 (MAX = {MAX})");
                     for value in values {
                         log::trace!(
-                            " - ({} + {}) % (MAX + 1) = {} % (MAX + 1) = {}",
+                            " - ({} + {value}) % (MAX + 1) = {} % (MAX + 1) = {}",
                             counter_expected.inner,
-                            value,
                             (counter_expected.inner + value),
                             (counter_expected.inner + value) % (MAX + 1),
                         );
