@@ -51,7 +51,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
 
     for i in 0.. {
         let now = System::time().unwrap();
-        log::trace!("[{}] time = {:?}", i, now);
+        log::trace!("[{i}] time = {now:?}");
 
         if now.as_secs() >= 2 {
             break;
@@ -69,7 +69,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
 
         let now2 = Time::from_micros(now.as_micros().wrapping_add(delay.as_micros() as _));
         let now2_got = System::time().unwrap();
-        log::trace!("[{}] time = {:?} (expected = {:?})", i, now2_got, now2);
+        log::trace!("[{i}] time = {now2_got:?} (expected = {now2:?})");
 
         // `now2 <= now2_got < now2 + timing_error`
         let delta = now2_got.duration_since(now2);

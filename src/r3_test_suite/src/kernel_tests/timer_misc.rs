@@ -113,7 +113,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     if let Some(cap) = System::TIME_CAPABILITY {
         let now = Time::from_millis(100);
         let now_got = System::time(cap).unwrap();
-        log::trace!("time = {:?} (expected {:?})", now_got, now);
+        log::trace!("time = {now_got:?} (expected {now:?})");
         assert!(now_got.as_micros() >= now.as_micros());
         assert!(now_got.as_micros() <= now.as_micros() + 100_000);
     }
@@ -125,7 +125,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     if let Some(cap) = System::TIME_CAPABILITY {
         let now = Time::from_millis(200);
         let now_got = System::time(cap).unwrap();
-        log::trace!("time = {:?} (expected {:?})", now_got, now);
+        log::trace!("time = {now_got:?} (expected {now:?})");
         assert!(now_got.as_micros() >= now.as_micros());
         assert!(now_got.as_micros() <= now.as_micros() + 100_000);
     }

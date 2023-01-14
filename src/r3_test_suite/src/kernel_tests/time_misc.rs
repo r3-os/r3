@@ -59,7 +59,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
 fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let now = if let Some(cap) = System::TIME_CAPABILITY {
         let now = System::time(cap).unwrap();
-        log::trace!("time = {:?}", now);
+        log::trace!("time = {now:?}");
         Some((cap, now))
     } else {
         None
@@ -72,13 +72,13 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
 
         // Now change the time
         let now2 = Time::from_millis(114514);
-        log::trace!("changing system time to {:?}", now2);
+        log::trace!("changing system time to {now2:?}");
         System::set_time(now2).unwrap();
 
         // Because we just changed the time to `now2`, the current time should be
         // still very close to `now2`
         let now2_got = System::time(cap).unwrap();
-        log::trace!("time = {:?}", now2_got);
+        log::trace!("time = {now2_got:?}");
         assert_eq!(now2_got.duration_since(now2).unwrap().as_secs(), 0);
     }
 
@@ -105,16 +105,16 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     let now4_got = if let Some(cap) = System::TIME_CAPABILITY {
         // System time should wrap around
         let now3 = Time::from_micros(0xfffffffffffe0000);
-        log::trace!("changing system time to {:?}", now3);
+        log::trace!("changing system time to {now3:?}");
         System::set_time(now3).unwrap();
 
         let d = Duration::from_micros(0x40000);
-        log::trace!("sleeping for {:?}", d);
+        log::trace!("sleeping for {d:?}");
         System::sleep(d).unwrap();
 
         let now4 = now3 + d;
         let now4_got = System::time(cap).unwrap();
-        log::trace!("time = {:?} (expected >= {:?})", now4_got, now4);
+        log::trace!("time = {now4_got:?} (expected >= {now4:?})");
         assert!(now4_got.as_micros() >= now4.as_micros());
 
         Some((cap, now4_got))
@@ -128,7 +128,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
     if let Some((cap, now4_got)) = now4_got {
         let now5 = now4_got;
         let now5_got = System::time(cap).unwrap();
-        log::trace!("time = {:?} (expected {:?})", now5_got, now5);
+        log::trace!("time = {now5_got:?} (expected {now5:?})");
         assert!(now5_got.as_micros() >= now5.as_micros());
         assert!(now5_got.as_micros() <= now5.as_micros() + 100_000);
     }

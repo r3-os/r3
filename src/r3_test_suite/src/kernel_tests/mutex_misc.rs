@@ -210,12 +210,12 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
         let mut free = (1u32 << N) - 1; // 0b1111
         let mut locked: ArrayVec<usize, N> = ArrayVec::new();
         for i in (0..100).rev() {
-            log::trace!("  locked = {:?}", locked);
+            log::trace!("  locked = {locked:?}");
 
             // All held mutexes but the last one should be prevented from being
             // unlocked
             for &[i, _] in locked.array_windows::<2>() {
-                log::trace!("  making sure m[{}] is unlockable at this point", i);
+                log::trace!("  making sure m[{i}] is unlockable at this point");
                 assert_eq!(
                     app.m[i].unlock(),
                     Err(r3::kernel::UnlockMutexError::BadObjectState)
@@ -237,12 +237,12 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
             } else {
                 rng.next() as usize % app.m.len()
             };
-            log::trace!("  new_level = {}", new_level);
+            log::trace!("  new_level = {new_level}");
 
             while new_level < locked.len() {
                 // Unlock the last held mutex
                 let i = locked.pop().unwrap();
-                log::trace!("  unlocking m[{:?}]", i);
+                log::trace!("  unlocking m[{i}]");
                 app.m[i].unlock().unwrap();
                 free |= 1 << i;
             }
@@ -258,7 +258,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
                 // Choose the method to use
                 let method = (rng.next() & 0xff) % 3;
 
-                log::trace!("  locking m[{:?}] using method {:?})", i, method);
+                log::trace!("  locking m[{i}] using method {method:?})");
                 let m = app.m[i];
                 match method {
                     0 => m.lock().unwrap(),
@@ -286,11 +286,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
     let cur_task: LocalTask<System> = LocalTask::current().unwrap();
     for pri in 0..=3 {
         let exceeds_ceiling = pri < 1;
-        log::trace!(
-            "set_priority({}) exceeds_ceiling = {:?}",
-            pri,
-            exceeds_ceiling
-        );
+        log::trace!("set_priority({pri}) exceeds_ceiling = {exceeds_ceiling}");
         cur_task.set_priority(pri).unwrap();
 
         assert_eq!(cur_task.priority().unwrap(), pri);
@@ -322,11 +318,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
             // restricted according to the locking protocol's precondition.
             for pri2 in 0..=3 {
                 let exceeds_ceiling = pri2 < 1;
-                log::trace!(
-                    "  set_priority({}) exceeds_ceiling = {:?}",
-                    pri2,
-                    exceeds_ceiling
-                );
+                log::trace!("  set_priority({pri2}) exceeds_ceiling = {exceeds_ceiling}");
                 if exceeds_ceiling {
                     assert_eq!(
                         cur_task.set_priority(pri2),
@@ -360,11 +352,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
     // restricted according to the locking protocol's precondition.
     for pri in (0..=3).rev() {
         let exceeds_ceiling = pri < 1;
-        log::trace!(
-            "task3.set_priority({}) exceeds_ceiling = {:?}",
-            pri,
-            exceeds_ceiling
-        );
+        log::trace!("task3.set_priority({pri}) exceeds_ceiling = {exceeds_ceiling}");
         if exceeds_ceiling {
             assert_eq!(
                 app.task3.set_priority(pri),
