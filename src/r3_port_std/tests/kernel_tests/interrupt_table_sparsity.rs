@@ -56,7 +56,7 @@ impl<Traits: SupportedSystemTraits> App<System<Traits>> {
 
 fn hook_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>() {
     let handlers = <Traits as KernelCfg2>::INTERRUPT_HANDLERS;
-    log::debug!("INTERRUPT_HANDLERS = {:#?}", handlers);
+    log::debug!("INTERRUPT_HANDLERS = {handlers:#?}");
     assert_eq!(handlers.storage.len(), 8);
     assert_eq!(handlers.get(0), None);
     assert_eq!(handlers.get(1), None);

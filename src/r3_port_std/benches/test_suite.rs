@@ -107,7 +107,7 @@ fn main() {
     .init();
 
     for (name, entry) in KERNEL_BENCHMARKS {
-        log::info!("--- kernel benchmark '{}' ---", name);
+        log::info!("--- kernel benchmark '{name}' ---");
         entry();
     }
 }

@@ -69,7 +69,7 @@ fn task_body1<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>() {
     log::debug!("spawning an external thread");
     spawn(move || {
         sleep(Duration::from_millis(100));
-        log::debug!("pending {:?}", int);
+        log::debug!("pending {int:?}");
         r3_port_std::pend_interrupt_line::<Traits>(int.num()).unwrap();
     });
 
