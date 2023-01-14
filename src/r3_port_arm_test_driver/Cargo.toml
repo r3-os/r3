@@ -38,7 +38,7 @@ r3_support_rza1 = { workspace = true, optional = true, features = ["semver-exemp
 r3_port_arm = { workspace = true, optional = true }
 r3 = { workspace = true, optional = true }
 
-tock-registers = { version = "0.7.0", optional = true }
+tock-registers = { version = "0.8.0", optional = true }
 arrayvec = { version = "0.7.1", optional = true, default-features = false }
 macropol = { version = "0.1.2" }
 rza1 = { version = "0.2.0", optional = true, features = ["cpg", "gpio", "scif"] }

@@ -23,7 +23,7 @@ r3_portkit = { workspace = true }
 r3_kernel = { workspace = true }
 
 macro_find_and_replace = { version = "1.0.0" }
-tock-registers = { version = "0.7.0" }
+tock-registers = { version = "0.8.0" }
 unstringify = { version = "0.1.4" }
 seq-macro = { version = "0.3.0" }
 svgbobdoc = { version = "0.3.0" }
