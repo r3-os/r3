@@ -280,10 +280,10 @@ mod tests {
         let mut subject = T::INIT;
         let mut reference = BTreePrioBitmap::new();
 
-        log::info!("size = {}", size);
+        log::info!("size = {size}");
 
         for cmd in interpret(&bytecode, size) {
-            log::trace!("    {:?}", cmd);
+            log::trace!("    {cmd:?}");
             match cmd {
                 Cmd::Insert(bit) => {
                     subject.set(bit);
