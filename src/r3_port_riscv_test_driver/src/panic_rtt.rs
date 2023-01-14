@@ -11,7 +11,7 @@ fn panic(info: &PanicInfo) -> ! {
     if let Some(mut channel) = unsafe { UpChannel::conjure(0) } {
         channel.set_mode(ChannelMode::BlockIfFull);
 
-        writeln!(channel, "{}", info).ok();
+        writeln!(channel, "{info}").ok();
     }
 
     loop {}

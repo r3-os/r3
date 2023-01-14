@@ -261,8 +261,7 @@ unsafe fn do_test<System: traits::KernelBase>() {
         let expected = unsafe { &*ST2.as_ptr() };
         assert_eq!(
             *got, *expected,
-            "reached an incorrect final state after executing '{}'",
-            code
+            "reached an incorrect final state after executing '{code}'",
         );
     }
 
