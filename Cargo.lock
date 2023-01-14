@@ -2374,9 +2374,9 @@ dependencies = [
 
 [[package]]
 name = "rp2040-pac"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13a6106d5db01c7171a39c1f7696780912db9b42fe7ac722db60069c8904ea7c"
+checksum = "9192cafbb40d717c9e0ddf767aaf9c69fee1b4e48d22ed853b57b11f6d9f3d7e"
 dependencies = [
  "cortex-m 0.7.7",
  "vcell",
