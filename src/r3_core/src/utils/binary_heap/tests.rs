@@ -46,28 +46,28 @@ fn test_inner<T: BinaryHeap + Default + super::VecLike<Element = usize> + std::f
     let mut subject = T::default();
     let mut reference = Vec::new();
 
-    log::debug!("max_len = {}, bytecode len = {}", max_len, bytecode.len());
+    log::debug!("max_len = {max_len}, bytecode len = {}", bytecode.len());
 
     for cmd in interpret(&bytecode, max_len) {
-        log::trace!("    {:?}", cmd);
+        log::trace!("    {cmd:?}");
         match cmd {
             Cmd::Insert(value) => {
                 let i = subject.heap_push(value, Ctx);
-                log::trace!("     → {}", i);
+                log::trace!("     → {i}");
 
                 let i = reference.binary_search(&value).unwrap_or_else(|x| x);
                 reference.insert(i, value);
             }
             Cmd::Remove(i) => {
                 let out_subject = subject.heap_remove(i, Ctx).unwrap();
-                log::trace!("     → {}", out_subject);
+                log::trace!("     → {out_subject}");
 
                 let i_ref = reference.binary_search(&out_subject).unwrap();
                 reference.remove(i_ref);
             }
         }
-        log::trace!("[sorted: {:?}]", reference);
-        log::trace!("[subject: {:?}]", subject);
+        log::trace!("[sorted: {reference:?}]");
+        log::trace!("[subject: {subject:?}]");
         if subject.len() > 0 {
             assert_eq!(subject[0], reference[0]);
         }
@@ -120,7 +120,7 @@ impl BinaryHeapCtx<El> for TrackingCtx<'_> {
 
     fn on_move(&mut self, e: &mut El, new_index: usize) {
         self.el_position[e.id] = Some(new_index);
-        log::trace!("         on_move{:?}", (e, new_index));
+        log::trace!("         on_move({e:?}, {new_index})");
     }
 }
 
@@ -135,13 +135,13 @@ fn position_tracking(bytecode: Vec<u8>) {
     log::debug!("bytecode len = {}", bytecode.len());
 
     for cmd in interpret(&bytecode, usize::MAX) {
-        log::trace!("    {:?}", cmd);
+        log::trace!("    {cmd:?}");
         match cmd {
             Cmd::Insert(value) => {
                 let id = el_position.len();
                 el_position.push(None);
                 let i = subject.heap_push(El { value, id }, TrackingCtx { el_position });
-                log::trace!("     → {}", i);
+                log::trace!("     → {i}");
 
                 // `on_move` should have reported the position for the
                 // newly-inserted element
@@ -149,15 +149,15 @@ fn position_tracking(bytecode: Vec<u8>) {
             }
             Cmd::Remove(i) => {
                 let out_subject = subject.heap_remove(i, TrackingCtx { el_position }).unwrap();
-                log::trace!("     → {:?}", out_subject);
+                log::trace!("     → {out_subject:?}");
 
                 // For a removed element, we must modify `el_position` manually
                 el_position[out_subject.id] = None;
             }
         }
 
-        log::trace!("[subject: {:?}]", subject);
-        log::trace!("[el_position: {:?}]", el_position);
+        log::trace!("[subject: {subject:?}]");
+        log::trace!("[el_position: {el_position:?}]");
 
         // Check if `el_position` correctly represents
         // the current state of `subject`

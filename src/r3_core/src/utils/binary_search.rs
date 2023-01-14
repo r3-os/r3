@@ -45,7 +45,7 @@ mod tests {
     fn lower_bound(mut values: Vec<u32>, arbitrary_value: u32) {
         values.sort();
 
-        log::debug!("values = {:?}", values);
+        log::debug!("values = {values:?}");
 
         for (i, &e) in values.iter().enumerate() {
             let mut expected = i;
@@ -54,12 +54,7 @@ mod tests {
             }
 
             let got = lower_bound!(values.len(), |i| values[i] < e);
-            log::debug!(
-                "  lower_bound(values[{}]) = {} (expected {})",
-                i,
-                got,
-                expected
-            );
+            log::debug!("  lower_bound(values[{i}]) = {got} (expected {expected})");
 
             assert_eq!(got, expected);
         }
@@ -70,29 +65,24 @@ mod tests {
             }
             let mid = win[0] + (win[1] - win[0]) / 2;
             let got = lower_bound!(values.len(), |i| values[i] < mid);
-            log::debug!(
-                "  lower_bound(mean(values[{}] + values[{} + 1])) = {}",
-                i,
-                i,
-                got
-            );
+            log::debug!("  lower_bound(mean(values[{i}] + values[{i} + 1])) = {got}");
             assert_eq!(got, i + 1);
         }
 
         if values.is_empty() {
             let got = lower_bound!(values.len(), |i| values[i] < arbitrary_value);
-            log::debug!("  lower_bound({}) = {}", arbitrary_value, got);
+            log::debug!("  lower_bound({arbitrary_value}) = {got}");
             assert_eq!(got, 0);
         } else {
             if *values.first().unwrap() > 0 {
                 #[allow(unused_comparisons)]
                 let got = lower_bound!(values.len(), |i| values[i] < 0);
-                log::debug!("  lower_bound(0) = {}", got);
+                log::debug!("  lower_bound(0) = {got}");
                 assert_eq!(got, 0);
             }
             if *values.last().unwrap() < u32::MAX {
                 let got = lower_bound!(values.len(), |i| values[i] < u32::MAX);
-                log::debug!("  lower_bound({}) = {}", u32::MAX, got);
+                log::debug!("  lower_bound({}) = {got}", u32::MAX);
                 assert_eq!(got, values.len());
             }
         }
