@@ -33,7 +33,7 @@ log = { version = "0.4.8" }
 crc = { version = "3.0.0" }
 
 [dependencies.goblin]
-version = "0.5.0"
+version = "0.6.0"
 default-features = false
 # FIXME: <https://github.com/m4b/goblin/issues/212> `elf64` isn't actually used
 features = ["std", "elf32", "elf64", "endian_fd"]
