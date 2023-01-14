@@ -173,7 +173,7 @@ impl<'a, Sched: Scheduler> ThreadGroupLockGuard<'a, Sched> {
         // Save the `JoinHandle` representing the spawned thread
         self.guard.threads[ptr].join_handle = Some(join_handle);
 
-        log::trace!("created {:?}", thread_id);
+        log::trace!("created {thread_id:?}");
 
         thread_id
     }
@@ -307,7 +307,7 @@ fn finalize_thread(
     thread_id: ThreadId,
     result: Result<()>,
 ) {
-    log::trace!("{:?} exited with result {:?}", thread_id, result);
+    log::trace!("{thread_id:?} exited with result {result:?}");
 
     // Delete the current thread
     let mut state_guard = thread_group.lock().unwrap();
