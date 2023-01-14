@@ -166,7 +166,7 @@ fn map_usb_error_to_nb_error(e: usb_device::UsbError) -> nb::Error<core::convert
         | usb_device::UsbError::EndpointOverflow
         | usb_device::UsbError::Unsupported
         | usb_device::UsbError::InvalidEndpoint
-        | usb_device::UsbError::EndpointMemoryOverflow => unreachable!("{:?}", e),
+        | usb_device::UsbError::EndpointMemoryOverflow => unreachable!("{e:?}"),
         // I think the following ones are protocol errors? I'm not sure
         // if they can be returned by `write` and `flush`.
         //
@@ -174,7 +174,7 @@ fn map_usb_error_to_nb_error(e: usb_device::UsbError) -> nb::Error<core::convert
         // without meticulously documenting how and when each of them will be
         // returned.
         usb_device::UsbError::ParseError | usb_device::UsbError::InvalidState => {
-            panic!("{:?} is probably unexpected, but I'm not sure", e)
+            panic!("{e:?} is probably unexpected, but I'm not sure")
         }
     }
 }
