@@ -18,5 +18,5 @@ r3 = { workspace = true, features = ["sync"] }
 
 rp2040-boot2 = { version = "0.2.0" }
 cortex-m-rt = { version = "0.6.12", features = ["device"] }
-rp2040-pac = { version = "0.3.0" }
+rp2040-pac = { version = "0.4.0" }
 cortex-m = { version = "0.7.3", features = ["inline-asm"] }

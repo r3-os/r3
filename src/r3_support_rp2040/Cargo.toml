@@ -30,8 +30,8 @@ r3 = { workspace = true }
 
 embedded-hal = { version = "0.2.4", optional = true }
 usbd-serial = { version = "0.1.1", optional = true }
-inline_dyn = { version = "0.1.1", optional = true }
-rp2040-pac = { version = "0.3.0" }
+inline_dyn = { version = "0.2.0", optional = true }
+rp2040-pac = { version = "0.4.0" }
 usb-device = { version = "0.2.7", optional = true }
 cortex-m = { version = "0.7.3", optional = true }
 vcell = { version = "0.1.2", optional = true }

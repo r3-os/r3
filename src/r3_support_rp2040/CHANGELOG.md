@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+- **Breaking (semver-exempt):** Upgrade `rp2040-pac ^0.3` to `^0.4`
+
 ### Changed
 
 - **Breaking (semver-exempt):** Change the target compiler version to `nightly-2022-08-11`

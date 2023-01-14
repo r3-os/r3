@@ -161,7 +161,9 @@ impl DebugProbe for Fe310JLinkDebugProbe {
 
             let selector: probe_rs::config::TargetSelector = "riscv".try_into().unwrap();
             let session = Arc::new(AsyncMutex::new(
-                probe.attach(selector).map_err(RunError::Attach)?,
+                probe
+                    .attach(selector, probe_rs::Permissions::new())
+                    .map_err(RunError::Attach)?,
             ));
 
             // Open the RTT channels

@@ -20,7 +20,7 @@ r3_core_ks = { workspace = true }
 r3_portkit = { workspace = true }
 r3_kernel = { workspace = true }
 
-tock-registers = { version = "0.7.0" }
+tock-registers = { version = "0.8.0" }
 memoffset = { version = "0.6.5", features = ["unstable_const"] }
 macropol = { version = "0.1.2" }
 r0 = { version = "1.0.0" }

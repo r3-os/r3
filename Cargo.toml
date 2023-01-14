@@ -95,6 +95,7 @@ branch = "refresh/0.6"
 [patch.crates-io.riscv-0p7]
 # Ditto.
 git = "https://github.com/rust-embedded/riscv.git"
+rev = "cd31989ba11d5d64e1addd8aab98bfb00dd927d5"
 package = "riscv"
 
 [patch.crates-io.riscv-rt]

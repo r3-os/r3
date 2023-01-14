@@ -88,7 +88,9 @@ impl ProbeRsDebugProbe {
         let probe = probe_rs::Probe::open(probe_sel).map_err(OpenError::OpenProbe)?;
 
         let session = Arc::new(AsyncMutex::new(
-            probe.attach(target_sel).map_err(OpenError::Attach)?,
+            probe
+                .attach(target_sel, probe_rs::Permissions::new())
+                .map_err(OpenError::Attach)?,
         ));
 
         Ok(Self { session })

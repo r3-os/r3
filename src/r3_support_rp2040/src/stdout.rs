@@ -13,7 +13,7 @@ use nb::block;
 
 pub fn set_stdout(writer: impl SerialWrite) {
     interrupt::free(|cs| {
-        *STDOUT.borrow(cs).borrow_mut() = Some(inline_dyn![SerialWrite; writer].ok().unwrap());
+        *STDOUT.borrow(cs).borrow_mut() = Some(inline_dyn![SerialWrite; writer]);
     });
 }
 
@@ -26,7 +26,7 @@ impl<T> SerialWrite for T where
 {
 }
 
-type InlineDynWrite = InlineDyn<'static, dyn SerialWrite>;
+type InlineDynWrite = InlineDyn<dyn SerialWrite>;
 
 static STDOUT: interrupt::Mutex<RefCell<Option<InlineDynWrite>>> =
     interrupt::Mutex::new(RefCell::new(None));
