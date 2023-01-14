@@ -2282,7 +2282,7 @@ dependencies = [
 [[package]]
 name = "riscv"
 version = "0.7.0"
-source = "git+https://github.com/rust-embedded/riscv.git#cd31989ba11d5d64e1addd8aab98bfb00dd927d5"
+source = "git+https://github.com/rust-embedded/riscv.git?rev=cd31989ba11d5d64e1addd8aab98bfb00dd927d5#cd31989ba11d5d64e1addd8aab98bfb00dd927d5"
 dependencies = [
  "bare-metal 1.0.0",
  "bit_field",
