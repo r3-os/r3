@@ -75,8 +75,7 @@ impl Target for RaspberryPiPico {
                 (Ok(serial), Err(e)) => {
                     log::debug!(
                         "Connected to a test driver serial interface. Connecting to \
-                        a PICOBOOT USB interface failed with the following error: {}",
-                        e
+                        a PICOBOOT USB interface failed with the following error: {e}",
                     );
                     Some(BufStream::new(serial))
                 }
@@ -84,8 +83,7 @@ impl Target for RaspberryPiPico {
                     log::debug!(
                         "Connected to a PICOBOOT USB interface. Connecting to \
                         a test driver serial interface failed with the following \
-                        error: {}",
-                        e
+                        error: {e}",
                     );
                     None
                 }
@@ -94,10 +92,8 @@ impl Target for RaspberryPiPico {
                     nor a PICOBOOT USB interface. Please put your Pico into \
                     BOOTSEL mode before executing this command.\n\
                     \n\
-                    Serial interface error: {}\n\n\
-                    PICOBOOT interface error: {}",
-                    e1,
-                    e2,
+                    Serial interface error: {e1}\n\n\
+                    PICOBOOT interface error: {e2}",
                 ),
                 (Ok(_), Ok(_)) => anyhow::bail!(
                     "Connected to both of a test driver serial \
@@ -189,7 +185,7 @@ fn open_serial() -> Result<SerialStream> {
     let port = ports
         .iter()
         .find(|port_info| {
-            log::trace!(" ...{:?}", port_info);
+            log::trace!(" ...{port_info:?}");
 
             use serialport::{SerialPortInfo, SerialPortType, UsbPortInfo};
             matches!(
@@ -208,7 +204,7 @@ fn open_serial() -> Result<SerialStream> {
             port_info.port_name.starts_with("/dev/tty.usbmodem")
         })
         .ok_or_else(|| anyhow!("Could not locate the test driver serial port."))?;
-    log::debug!("Test driver serial port = {:?}", port);
+    log::debug!("Test driver serial port = {port:?}");
 
     // Open the serial port
     tokio_serial::new(&port.port_name, 115200)
@@ -237,8 +233,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
     log::debug!("Transfering the image");
     for (region_data, region_addr) in loadable_code.regions.iter() {
         log::debug!(
-            " ... 0x{:08x}..=0x{:08x}",
-            region_addr,
+            " ... {region_addr:#08x}..={:#08x}",
             region_addr + region_data.len() as u64 - 1
         );
 
@@ -248,7 +243,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
         device_handle = device_handle_tmp;
         let num_bytes_written = result.with_context(|| "Failed to issue a 'write' command.")?;
         if num_bytes_written != 32 {
-            anyhow::bail!("Short write ({} < 32)", num_bytes_written);
+            anyhow::bail!("Short write ({num_bytes_written} < 32)");
         }
 
         let (result, device_handle_tmp) =
@@ -257,11 +252,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
         let num_bytes_written =
             result.with_context(|| "Failed to transmit the 'write' command's payload.")?;
         if num_bytes_written != region_data.len() {
-            anyhow::bail!(
-                "Short write ({} < {})",
-                num_bytes_written,
-                region_data.len()
-            );
+            anyhow::bail!("Short write ({num_bytes_written} < {})", region_data.len());
         }
 
         let (result, device_handle_tmp) = read_bulk_empty(device_handle, in_endpoint_i).await;
@@ -270,7 +261,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
     }
 
     log::debug!(
-        "Rebooting RP2040 to start execution at 0x{:08x}",
+        "Rebooting RP2040 to start execution at {:#08x}",
         loadable_code.entry
     );
 
@@ -278,7 +269,7 @@ async fn program_and_run_by_picoboot(exe: &std::path::Path) -> Result<()> {
     let (result, _) = write_bulk_all(device_handle, out_endpoint_i, bytemuck::bytes_of(&hdr)).await;
     let num_bytes_written = result.with_context(|| "Failed to issue a 'reboot' command.")?;
     if num_bytes_written != 32 {
-        anyhow::bail!("Short write ({} < 32)", num_bytes_written);
+        anyhow::bail!("Short write ({num_bytes_written} < 32)");
     }
 
     Ok(())
@@ -298,7 +289,7 @@ async fn write_bulk_all(
         let mut buf = &buf[..];
         let mut num_bytes_written = 0;
 
-        log::trace!("write_bulk_all({})", endpoint);
+        log::trace!("write_bulk_all({endpoint})");
 
         while !buf.is_empty() {
             match device_handle.write_bulk(endpoint, buf, DEFAULE_TIMEOUT) {
@@ -322,7 +313,7 @@ async fn read_bulk_empty(
     endpoint: u8,
 ) -> (rusb::Result<()>, rusb::DeviceHandle<rusb::GlobalContext>) {
     spawn_blocking(move || {
-        log::trace!("read_bulk_empty({})", endpoint);
+        log::trace!("read_bulk_empty({endpoint})");
 
         let result = match device_handle.read_bulk(endpoint, &mut [], DEFAULE_TIMEOUT) {
             Ok(0) => Ok(()),
@@ -350,14 +341,12 @@ fn open_picoboot() -> Result<PicobootInterface> {
     let device = devices
         .iter()
         .find(|device| {
-            log::trace!(" ...{:?}", device);
+            log::trace!(" ...{device:?}");
             let descriptor = match device.device_descriptor() {
                 Ok(x) => x,
                 Err(e) => {
                     log::warn!(
-                        "Could not get the device descriptor of '{:?}'; ignoring. Cause: {}",
-                        device,
-                        e
+                        "Could not get the device descriptor of '{device:?}'; ignoring. Cause: {e}",
                     );
                     return false;
                 }
@@ -367,7 +356,7 @@ fn open_picoboot() -> Result<PicobootInterface> {
         })
         .ok_or_else(|| anyhow!("Could not locate the RP2040 bootrom device."))?;
 
-    log::debug!("Found the RP2040 bootrom device: {:?}", device);
+    log::debug!("Found the RP2040 bootrom device: {device:?}");
 
     // Locate the USB PICOBOOT interface
     log::debug!("Looking for the USB PICOBOOT interface");
@@ -383,7 +372,7 @@ fn open_picoboot() -> Result<PicobootInterface> {
                 .descriptors()
                 .next()
                 .filter(|interface_descriptor| {
-                    log::trace!(" ...{:?}", interface_descriptor);
+                    log::trace!(" ...{interface_descriptor:?}");
                     (
                         interface_descriptor.class_code(),
                         interface_descriptor.sub_class_code(),
@@ -394,44 +383,39 @@ fn open_picoboot() -> Result<PicobootInterface> {
         .next()
         // Fail if no eligible interface was found
         .ok_or_else(|| {
-            anyhow!(
-                "Could not locate the RP2040 PICOBOOT interface from the device '{:?}'.",
-                device
-            )
+            anyhow!("Could not locate the RP2040 PICOBOOT interface from the device '{device:?}'.",)
         })?;
     let interface_i = interface.interface_number();
-    log::debug!("PICOBOOT interface number = {}", interface_i);
+    log::debug!("PICOBOOT interface number = {interface_i}");
 
     // Locate the endpoints
     log::debug!("Looking for the USB PICOBOOT endpoints");
     let out_endpoint_i = interface
         .endpoint_descriptors()
         .find(|endpoint_descriptor| {
-            log::trace!(" ...{:?}", endpoint_descriptor);
+            log::trace!(" ...{endpoint_descriptor:?}");
             endpoint_descriptor.direction() == rusb::Direction::Out
         })
         .ok_or_else(|| {
             anyhow!(
-                "Could not locate the RP2040 PICOBOOT BULK OUT endpoint from the device '{:?}'.",
-                device
+                "Could not locate the RP2040 PICOBOOT BULK OUT endpoint from the device '{device:?}'.",
             )
         })?
         .address();
-    log::debug!("PICOBOOT BULK OUT endpoint = {}", out_endpoint_i);
+    log::debug!("PICOBOOT BULK OUT endpoint = {out_endpoint_i}");
     let in_endpoint_i = interface
         .endpoint_descriptors()
         .find(|endpoint_descriptor| {
-            log::trace!(" ...{:?}", endpoint_descriptor);
+            log::trace!(" ...{endpoint_descriptor:?}");
             endpoint_descriptor.direction() == rusb::Direction::In
         })
         .ok_or_else(|| {
             anyhow!(
-                "Could not locate the RP2040 PICOBOOT BULK IN endpoint from the device '{:?}'.",
-                device
+                "Could not locate the RP2040 PICOBOOT BULK IN endpoint from the device '{device:?}'.",
             )
         })?
         .address();
-    log::debug!("PICOBOOT BULK IN endpoint = {}", in_endpoint_i);
+    log::debug!("PICOBOOT BULK IN endpoint = {in_endpoint_i}");
 
     // Open the device
     let mut device_handle = device

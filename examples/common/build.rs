@@ -40,7 +40,7 @@ fn main() {
     w!("pub static ANIMATION_FRAMES_565: &[fn() -> \
     	ImageRaw<'static, Rgb565, LittleEndian>] = &[\n");
     for i in 0..frames.len() {
-        w!("    animation_{}_565,\n", i);
+        w!("    animation_{i}_565,\n");
     }
     w!("];\n");
 
@@ -69,14 +69,8 @@ fn write_image(out: &mut impl Write, dir: &Path, name: &str, image: &RgbaImage) 
             .collect::<Vec<u8>>(),
     )
     .unwrap();
-    w!(
-        "pub fn {}() -> ImageRaw<'static, Rgb565, LittleEndian> {{\n",
-        name565
-    );
-    w!(
-        "    static IMAGE: &[u8] = include_bytes!(\"{}\");\n",
-        name565
-    );
+    w!("pub fn {name565}() -> ImageRaw<'static, Rgb565, LittleEndian> {{\n");
+    w!("    static IMAGE: &[u8] = include_bytes!(\"{name565}\");\n");
     w!("    ImageRaw::new(IMAGE, {})\n", image.width());
     w!("}}\n");
 }

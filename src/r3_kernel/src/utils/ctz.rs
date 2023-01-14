@@ -298,8 +298,7 @@ mod tests {
 
                     assert_eq!(
                         expected, got,
-                        "func({}) = {}, expected = {}",
-                        in_value, got, expected,
+                        "func({in_value}) = {got}, expected = {expected}",
                     );
                 }
 
@@ -323,8 +322,7 @@ mod tests {
 
                         assert_eq!(
                             expected, got,
-                            "func({}) = {}, expected = {}",
-                            in_value, got, expected,
+                            "func({in_value}) = {got}, expected = {expected}",
                         );
                     }
                 }

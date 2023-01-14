@@ -26,7 +26,7 @@ async fn main() {
     .init();
 
     if let Err(e) = main_inner().await {
-        log::error!("Command failed.\n{:?}", e);
+        log::error!("Command failed.\n{e:?}");
         std::process::exit(1);
     }
 }
@@ -135,19 +135,19 @@ async fn main_inner() -> anyhow::Result<()> {
     // was built.
     let driver_base_path = {
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        log::debug!("CARGO_MANIFEST_DIR = {}", manifest_dir);
+        log::debug!("CARGO_MANIFEST_DIR = {manifest_dir}");
         Path::new(manifest_dir)
             .parent()
             .expect("Couldn't get the parent of `CARGO_MANIFEST_DIR`")
     };
 
     let target_arch = opt.target_arch.unwrap_or_else(|| opt.target.target_arch());
-    log::debug!("target_arch = {}", target_arch);
+    log::debug!("target_arch = {target_arch}");
 
     let target_arch_opt = target_arch.build_opt().with_context(|| {
         format!("The target architecture '{target_arch}' is invalid or unsupported.")
     })?;
-    log::debug!("target_arch_opt = {:?}", target_arch_opt);
+    log::debug!("target_arch_opt = {target_arch_opt:?}");
 
     // Initialize the test driver interface
     let test_driver = driverinterface::TestDriver::new(
@@ -213,7 +213,7 @@ async fn main_inner() -> anyhow::Result<()> {
         }
 
         let full_test_name = test_run.case.to_string();
-        log::info!(" - {}", test_run);
+        log::info!(" - {test_run}");
 
         // Build the test driver
         test_driver
@@ -267,11 +267,11 @@ async fn main_inner() -> anyhow::Result<()> {
 
         match test_result {
             Ok(()) => {
-                log::info!("Test run '{}' was successful", test_run);
+                log::info!("Test run '{test_run}' was successful");
             }
             Err(msg) => {
                 // Test did run, but the result was failure.
-                log::error!("Test run '{}' failed: {}", test_run, msg);
+                log::error!("Test run '{test_run}' failed: {msg}");
                 failed_tests.push(test_run.to_string());
                 continue;
             }
@@ -289,13 +289,13 @@ async fn main_inner() -> anyhow::Result<()> {
         log::error!("Failed tests:");
 
         for test_run_name in failed_tests {
-            log::error!(" - {}", test_run_name);
+            log::error!(" - {test_run_name}");
         }
 
         if !tests_skipped_to_fail_fast.is_empty() {
             log::warn!("Skipped tests:");
             for test_run_name in tests_skipped_to_fail_fast {
-                log::warn!(" - {}", test_run_name);
+                log::warn!(" - {test_run_name}");
             }
         }
 

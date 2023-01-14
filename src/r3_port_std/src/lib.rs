@@ -169,7 +169,7 @@ impl TaskState {
     }
 
     unsafe fn exit_and_dispatch<Traits: PortInstance>(&self, state: &'static State) -> ! {
-        log::trace!("exit_and_dispatch({:p}) enter", self);
+        log::trace!("exit_and_dispatch({self:p}) enter");
         self.assert_current_thread();
 
         let mut lock = state.thread_group.get().unwrap().lock();
@@ -196,7 +196,7 @@ impl TaskState {
         // Invoke the dispatcher
         unsafe { state.yield_cpu::<Traits>() };
 
-        log::trace!("exit_and_dispatch({:p}) calling exit_thread", self);
+        log::trace!("exit_and_dispatch({self:p}) calling exit_thread");
         unsafe { ums::exit_thread() };
     }
 }
@@ -260,7 +260,7 @@ impl State {
                 <Traits as PortToKernel>::boot();
             }
         });
-        log::trace!("startup thread = {:?}", thread_id);
+        log::trace!("startup thread = {thread_id:?}");
         lock.scheduler().task_thread = Some(thread_id);
         lock.scheduler().recycle_thread(thread_id);
         lock.preempt();
@@ -346,7 +346,7 @@ impl State {
         //         there's no data race
         let running_task = unsafe { *Traits::state().running_task_ptr() };
         lock.scheduler().task_thread = if let Some(task) = running_task {
-            log::trace!("dispatching task {:p}", task);
+            log::trace!("dispatching task {task:p}");
 
             let mut tsm = task.port_task_state.tsm.lock();
 
@@ -357,7 +357,7 @@ impl State {
                         THREAD_ROLE.with(|role| role.set(ThreadRole::Task));
                         assert!(!self.is_cpu_lock_active::<Traits>());
 
-                        log::debug!("task {:p} is now running", task);
+                        log::debug!("task {task:p} is now running");
 
                         // Safety: The port can call this
                         unsafe {
@@ -373,7 +373,7 @@ impl State {
                         }
                     });
 
-                    log::trace!("spawned thread {:?} for the task {:p}", thread, task);
+                    log::trace!("spawned thread {thread:?} for the task {task:p}");
 
                     *tsm = Tsm::Running(thread);
                     Some(thread)
@@ -435,7 +435,7 @@ impl State {
         &self,
         task: &'static TaskCb<Traits>,
     ) {
-        log::trace!("initialize_task_state {:p}", task);
+        log::trace!("initialize_task_state {task:p}");
         expect_worker_thread::<Traits>();
         assert!(self.is_cpu_lock_active::<Traits>());
 
@@ -495,7 +495,7 @@ impl State {
         num: InterruptNum,
         priority: InterruptPriority,
     ) -> Result<(), SetInterruptLinePriorityError> {
-        log::trace!("set_interrupt_line_priority{:?}", (num, priority));
+        log::trace!("set_interrupt_line_priority({num}, {priority})");
         assert!(matches!(
             expect_worker_thread::<Traits>(),
             ThreadRole::Boot | ThreadRole::Task
@@ -518,7 +518,7 @@ impl State {
         &'static self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
-        log::trace!("enable_interrupt_line{:?}", (num,));
+        log::trace!("enable_interrupt_line({num})");
         expect_worker_thread::<Traits>();
 
         let mut lock = self.thread_group.get().unwrap().lock();
@@ -538,7 +538,7 @@ impl State {
         &self,
         num: InterruptNum,
     ) -> Result<(), EnableInterruptLineError> {
-        log::trace!("disable_interrupt_line{:?}", (num,));
+        log::trace!("disable_interrupt_line({num})");
         expect_worker_thread::<Traits>();
 
         (self.thread_group.get().unwrap().lock())
@@ -551,7 +551,7 @@ impl State {
         &'static self,
         num: InterruptNum,
     ) -> Result<(), PendInterruptLineError> {
-        log::trace!("pend_interrupt_line{:?}", (num,));
+        log::trace!("pend_interrupt_line({num})");
         expect_worker_thread::<Traits>();
 
         let mut lock = self.thread_group.get().unwrap().lock();
@@ -571,7 +571,7 @@ impl State {
         &self,
         num: InterruptNum,
     ) -> Result<(), ClearInterruptLineError> {
-        log::trace!("clear_interrupt_line{:?}", (num,));
+        log::trace!("clear_interrupt_line({num})");
         expect_worker_thread::<Traits>();
 
         (self.thread_group.get().unwrap().lock())
@@ -647,7 +647,7 @@ impl State {
 
     pub fn pend_tick_after<Traits: PortInstance>(&self, tick_count_delta: UTicks) {
         expect_worker_thread::<Traits>();
-        log::trace!("pend_tick_after({:?})", tick_count_delta);
+        log::trace!("pend_tick_after({tick_count_delta:?})");
 
         // Calculate when `timer_tick` should be called
         let now = Instant::now() + Duration::from_micros(tick_count_delta.into());
@@ -713,7 +713,7 @@ pub fn shutdown<Traits: PortInstance>() {
 pub fn pend_interrupt_line<Traits: PortInstance>(
     num: InterruptNum,
 ) -> Result<(), PendInterruptLineError> {
-    log::trace!("external-pend_interrupt_line{:?}", (num,));
+    log::trace!("external-pend_interrupt_line({num})");
 
     assert_eq!(
         THREAD_ROLE.with(|r| r.get()),

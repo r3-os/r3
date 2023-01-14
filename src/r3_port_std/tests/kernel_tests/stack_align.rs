@@ -38,7 +38,7 @@ fn task_body<Traits: SupportedSystemTraits, D: Driver<App<System<Traits>>>>() {
         let stack = task_cb.attr.stack.as_ptr();
         let start = stack.as_mut_ptr();
         let end = start.wrapping_add(stack.len());
-        log::trace!("stack = {:?}..{:?}", start, end);
+        log::trace!("stack = {start:?}..{end:?}");
 
         assert_eq!(start as usize % expected_alignment, 0);
         assert_eq!(end as usize % expected_alignment, 0);

@@ -112,8 +112,8 @@ impl TestDriver {
 
         // Locate the test driver's crate
         let crate_path = driver_base_path.join(crate_name);
-        log::debug!("driver.crate_name = {:?}", crate_name);
-        log::debug!("driver.crate_path = {:?}", crate_path);
+        log::debug!("driver.crate_name = {crate_name:?}");
+        log::debug!("driver.crate_path = {crate_path:?}");
 
         async move {
             if !crate_path.is_dir() {
@@ -158,7 +158,7 @@ impl TestDriver {
                 return Err(TestDriverNewError::DriverMetadata(e));
             }
         };
-        log::trace!("driver.meta = {:?}", meta);
+        log::trace!("driver.meta = {meta:?}");
 
         // Find the target directory
         let target_dir = {
@@ -191,7 +191,7 @@ impl TestDriver {
 
         // Put generated linker scripts in a directory
         let linker_scripts = target.linker_scripts();
-        log::debug!("linker_scripts = {:?}", linker_scripts);
+        log::debug!("linker_scripts = {linker_scripts:?}");
         let link_dir =
             tempdir::TempDir::new("r3_test_runner").map_err(TestDriverNewError::TempDirError)?;
 
@@ -263,7 +263,7 @@ impl TestDriver {
             Ok(output_bytes) => {
                 // Check the output
                 let output_str = String::from_utf8_lossy(&output_bytes);
-                log::debug!("Output (lossy UTF-8) = {:?}", output_str);
+                log::debug!("Output (lossy UTF-8) = {output_str:?}");
 
                 if output_str.contains("!- TEST WAS SUCCESSFUL -!") {
                     Ok(())
@@ -313,7 +313,7 @@ impl TestDriver {
         if exe_path.exists() {
             if let Err(e) = std::fs::remove_file(exe_path) {
                 // Failure is non-fatal
-                log::warn!("Failed to remove '{}': {}", exe_path.display(), e);
+                log::warn!("Failed to remove '{}': {e}", exe_path.display());
             }
         }
 
@@ -428,7 +428,7 @@ async fn debug_probe_program_and_get_output_until<P: AsRef<[u8]>>(
 
         let num_bytes = tokio::select! {
             read_result = read_fut => {
-                log::trace!("... `read` resolved to {:?}", read_result);
+                log::trace!("... `read` resolved to {read_result:?}");
                 read_result.unwrap_or(0)
             },
             _ = timeout_fut => {
@@ -489,7 +489,7 @@ async fn read_to_end_timeout(
 
         let num_bytes = tokio::select! {
             read_result = read_fut => {
-                log::trace!("... `read` resolved to {:?}", read_result);
+                log::trace!("... `read` resolved to {read_result:?}");
                 read_result.unwrap_or(0)
             },
             _ = &mut timeout_fut => {

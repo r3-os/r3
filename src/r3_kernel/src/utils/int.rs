@@ -280,9 +280,9 @@ mod tests {
 
                     let got_set_bits: Vec<u32> = i.one_digits().collect();
 
-                    log::trace!("i = 0x{:x}", i);
-                    log::trace!("    got = {:?}", got_set_bits);
-                    log::trace!("    expected = {:?}", set_bits);
+                    log::trace!("i = {i:#x}");
+                    log::trace!("    got = {got_set_bits:?}");
+                    log::trace!("    expected = {set_bits:?}");
 
                     got_set_bits == set_bits
                 }

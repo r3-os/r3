@@ -296,7 +296,7 @@ mod tests {
         let mut state = KernelState::INIT;
         state.run(&mut out);
 
-        log::trace!("out = {:#?}", out);
+        log::trace!("out = {out:#?}");
 
         for sample in out.samples.iter() {
             for &value in sample.iter() {

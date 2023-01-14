@@ -32,7 +32,7 @@ enum FrameExtractorAction {
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum FrameExtractorProtocolError {
-    #[error("Expected SLIP escape, got 0x{0:x}")]
+    #[error("Expected SLIP escape, got {0:#02x}")]
     InvalidEscape(u8),
 }
 
@@ -54,7 +54,7 @@ impl FrameExtractorState {
                     Ok(Some(FrameExtractorAction::StartFrame))
                 }
                 _ => {
-                    log::trace!("Ignoring 0x{:?} outside a frame", b);
+                    log::trace!("Ignoring {b:#02x} outside a frame");
                     Ok(None)
                 }
             },

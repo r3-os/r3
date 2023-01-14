@@ -103,7 +103,7 @@ impl<System: SupportedSystem> App<System> {
 }
 
 fn hook<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
-    log::trace!("hook({})", i);
+    log::trace!("hook({i})");
     D::app().seq.expect_and_replace(i, i + 1);
 
     if i == 18 {

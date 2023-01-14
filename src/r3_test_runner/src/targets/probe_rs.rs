@@ -169,17 +169,14 @@ pub async fn attach_rtt(
                 .await
                 .unwrap();
             if let Some(x) = addr {
-                log::debug!("Found the RTT header at 0x{:x}", x);
+                log::debug!("Found the RTT header at {x:#x}");
                 probe_rs_rtt::ScanRegion::Exact(x as u32)
             } else {
                 probe_rs_rtt::ScanRegion::Ram
             }
         }
         Err(e) => {
-            log::warn!(
-                "Couldn't read the executable to find the RTT header: {:?}",
-                e
-            );
+            log::warn!("Couldn't read the executable to find the RTT header: {e:?}");
             probe_rs_rtt::ScanRegion::Ram
         }
     };
@@ -233,10 +230,7 @@ fn find_rtt_symbol(elf_bytes: &[u8]) -> Option<u64> {
     let elf = match goblin::elf::Elf::parse(elf_bytes) {
         Ok(elf) => elf,
         Err(e) => {
-            log::warn!(
-                "Couldn't parse the executable to find the RTT header: {:?}",
-                e
-            );
+            log::warn!("Couldn't parse the executable to find the RTT header: {e:?}");
             return None;
         }
     };
@@ -267,7 +261,7 @@ impl<'a, 'probe> CoreHaltGuard<'a, 'probe> {
 impl Drop for CoreHaltGuard<'_, '_> {
     fn drop(&mut self) {
         if let Err(e) = self.core.run() {
-            log::warn!("Failed to restart the core (ignored): {:?}", e);
+            log::warn!("Failed to restart the core (ignored): {e:?}");
         }
     }
 }

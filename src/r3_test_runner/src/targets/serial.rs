@@ -12,11 +12,11 @@ pub fn choose_serial() -> Result<String, ChooseSerialError> {
         }
     };
     if let Some(p) = var {
-        log::info!("Using the serial port {:?} (manually selected)", p);
+        log::info!("Using the serial port {p:?} (manually selected)");
         Ok(p)
     } else {
         let ports = tokio_serial::available_ports()?;
-        log::trace!("Available ports: {:?}", ports);
+        log::trace!("Available ports: {ports:?}");
         if ports.is_empty() {
             return Err(ChooseSerialError::NoPortsAvailable);
         } else if ports.len() > 1 {
@@ -26,7 +26,7 @@ pub fn choose_serial() -> Result<String, ChooseSerialError> {
         }
 
         let p = ports.into_iter().next().unwrap().port_name;
-        log::info!("Using the serial port {:?} (automatically selected)", p);
+        log::info!("Using the serial port {p:?} (automatically selected)");
         Ok(p)
     }
 }

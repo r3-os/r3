@@ -124,11 +124,11 @@ impl ums::Scheduler for SchedState {
     fn thread_exited(&mut self, thread_id: ums::ThreadId) {
         let Some(i) = self.zombies.iter().position(|id| *id == thread_id)
         else {
-            log::warn!("thread_exited: unexpected thread {:?}", thread_id);
+            log::warn!("thread_exited: unexpected thread {thread_id:?}");
             return;
         };
 
-        log::trace!("removing the zombie thread {:?}", thread_id);
+        log::trace!("removing the zombie thread {thread_id:?}");
         self.zombies.swap_remove(i);
     }
 }
@@ -162,10 +162,7 @@ pub fn check_preemption_by_interrupt(
 
         // Masking by CPU Lock
         if sched_state.cpu_lock && is_interrupt_priority_managed(pri) {
-            log::trace!(
-                "not handling an interrupt with priority {} because of CPU Lock",
-                pri
-            );
+            log::trace!("not handling an interrupt with priority {pri} because of CPU Lock");
             break;
         }
 
@@ -173,10 +170,8 @@ pub fn check_preemption_by_interrupt(
         if let Some(&(existing_pri, _)) = sched_state.active_int_handlers.last() {
             if existing_pri < pri {
                 log::trace!(
-                    "not handling an interrupt with priority {} because of \
-                        an active interrupt handler with priority {}",
-                    pri,
-                    existing_pri,
+                    "not handling an interrupt with priority {pri} because of \
+                    an active interrupt handler with priority {existing_pri}",
                 );
                 break;
             }
@@ -204,11 +199,7 @@ pub fn check_preemption_by_interrupt(
             // Make this interrupt handler inactive
             let (_, popped_thread_id) = lock.scheduler().active_int_handlers.pop().unwrap();
             assert_eq!(thread_id, popped_thread_id);
-            log::trace!(
-                "an interrupt handler for an interrupt {} (priority = {}) exited",
-                num,
-                pri
-            );
+            log::trace!("an interrupt handler for an interrupt {num} (priority = {pri}) exited");
 
             // Make sure this thread will run to completion
             lock.scheduler().zombies.push(thread_id);
@@ -216,12 +207,7 @@ pub fn check_preemption_by_interrupt(
             let _ = check_preemption_by_interrupt(thread_group, &mut lock);
         });
 
-        log::trace!(
-            "handling an interrupt {} (priority = {}) with thread {:?}",
-            num,
-            pri,
-            thread_id
-        );
+        log::trace!("handling an interrupt {num} (priority = {pri}) with thread {thread_id:?}");
 
         lock.scheduler().active_int_handlers.push((pri, thread_id));
 

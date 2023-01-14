@@ -71,13 +71,13 @@ where
         match f().await {
             Ok(x) => return Ok(x),
             Err(e) => {
-                log::warn!("Attempt failed: {:?}", e);
+                log::warn!("Attempt failed: {e:?}");
                 count -= 1;
                 if count == 0 {
                     log::warn!("Retry limit reached");
                     return Err(e);
                 } else {
-                    log::warn!("Retrying... (remaining count = {:?})", count);
+                    log::warn!("Retrying... (remaining count = {count:?})");
                 }
             }
         }
@@ -95,18 +95,14 @@ where
         match f().await {
             Ok(x) => return Ok(x),
             Err(e) => {
-                log::warn!("Attempt failed: {:?}", e);
+                log::warn!("Attempt failed: {e:?}");
                 count -= 1;
                 if count == 0 {
                     log::warn!("Retry limit reached");
                     return Err(e);
                 } else {
                     let delay = (16 >> count).max(1);
-                    log::warn!(
-                        "Retrying in {} seconds... (remaining count = {:?})",
-                        delay,
-                        count
-                    );
+                    log::warn!("Retrying in {delay} seconds... (remaining count = {count:?})");
 
                     sleep(Duration::from_secs(delay)).await;
                 }

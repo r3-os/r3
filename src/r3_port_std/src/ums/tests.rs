@@ -216,9 +216,7 @@ fn yield_ring(count: usize) {
     let sum: usize = new_counters.iter().sum();
 
     log::info!(
-        "new_counters = {:?}, sum = {:?} ({:?} ns/iter)",
-        new_counters,
-        sum,
+        "new_counters = {new_counters:?}, sum = {sum:?} ({:?} ns/iter)",
         duration / sum as u64
     );
 

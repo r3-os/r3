@@ -67,7 +67,7 @@ define_object! {
 ///         Err(LockMutexError::Abandoned) => {
 ///             app.mutex.mark_consistent().unwrap();
 ///         }
-///         Err(e) => panic!("failed to lock the mutex: {:?}", e),
+///         Err(e) => panic!("failed to lock the mutex: {e:?}"),
 ///     }
 ///     app.mutex.unlock().unwrap();
 /// }

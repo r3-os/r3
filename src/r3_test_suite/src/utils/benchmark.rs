@@ -185,9 +185,8 @@ fn main_task<System: SupportedSystem, Options: BencherOptions<System>>() {
             let mean = FixedPoint2(sum * 100 / samples.len() as u32);
 
             log::warn!(
-                "{}... mean = {}, med = {} [{}]",
+                "{}... mean = {mean}, med = {} [{}]",
                 interval.name,
-                mean,
                 percentiles[2],
                 Options::PERFORMANCE_TIME_UNIT,
             );

@@ -64,7 +64,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
 
 fn task2_body<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
     D::app().seq.expect_and_replace(i, i + 1);
-    log::trace!("*Rabbit noise {}*", i);
+    log::trace!("*Rabbit noise {i}*");
     if i == 4 {
         D::success();
     }

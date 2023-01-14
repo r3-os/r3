@@ -163,21 +163,21 @@ fn worker_body<System: SupportedSystem, D: Driver<App<System>>>(
 
     while !state.stop.load(Ordering::Relaxed) {
         i += 1;
-        log::trace!("[{}] Iteration {}: starting", worker_id, i);
+        log::trace!("[{worker_id}] Iteration {i}: starting");
         task_state.output = Init::INIT;
 
         // Run the computation
         task_state.kernel_state.run(&mut task_state.output);
 
         // Validate the output
-        log::trace!("[{}] Iteration {}: validating", worker_id, i);
+        log::trace!("[{worker_id}] Iteration {i}: validating");
         let valid = task_state.output == *ref_output;
         if !valid {
             stop::<System, D>();
             panic!("Output validation failed");
         }
 
-        log::trace!("[{}] Iteration {}: complete", worker_id, i);
+        log::trace!("[{worker_id}] Iteration {i}: complete");
 
         // Note: Some targets don't support CAS atomics. Non-atomic load/store
         //       suffices because `run_count` is only written by this task.
@@ -192,7 +192,7 @@ fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(sched_state: &mut
 
     // Switch the running task
     let new_task = (sched_state.cur_task + 1) % NUM_TASKS;
-    log::trace!("scheduing tasks[{}]", new_task);
+    log::trace!("scheduing tasks[{new_task}]");
     tasks[sched_state.cur_task].set_priority(3).unwrap();
     tasks[new_task].set_priority(2).unwrap();
     sched_state.cur_task = new_task;
@@ -209,7 +209,7 @@ fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(sched_state: &mut
     }
 
     if sched_state.time % 20 == 0 {
-        log::debug!("run_count = {:?}", run_count);
+        log::debug!("run_count = {run_count:?}");
     }
 
     let min_run_count: usize = *run_count.iter().min().unwrap();

@@ -79,7 +79,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
     int.disable().unwrap();
     match int.is_pending() {
         Ok(false) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
-        value => panic!("{:?}", value),
+        value => panic!("{value:?}"),
     }
 
     // Before doing the next test, make sure `clear` is supported
@@ -89,7 +89,7 @@ fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
         int.pend().unwrap();
         match int.is_pending() {
             Ok(true) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
-            value => panic!("{:?}", value),
+            value => panic!("{value:?}"),
         }
         int.clear().unwrap();
     }
@@ -149,7 +149,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
         int.pend().unwrap();
         match int.is_pending() {
             Ok(true) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
-            value => panic!("{:?}", value),
+            value => panic!("{value:?}"),
         }
         int.clear().unwrap();
         unsafe { System::release_cpu_lock() }.unwrap();
@@ -160,7 +160,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
         int.pend().unwrap();
         match int.is_pending() {
             Ok(true) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
-            value => panic!("{:?}", value),
+            value => panic!("{value:?}"),
         }
         int.clear().unwrap();
         int.enable().unwrap();
@@ -168,7 +168,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
 
     match int.is_pending() {
         Ok(false) | Err(kernel::QueryInterruptLineError::NotSupported) => {}
-        value => panic!("{:?}", value),
+        value => panic!("{value:?}"),
     }
 
     if let &[pri, ..] = D::INTERRUPT_PRIORITIES {

@@ -848,10 +848,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cortex_m_rt::exception]
 fn DefaultHandler(x: i16) -> ! {
-    panic!("unhandled exception {}", x);
+    panic!("unhandled exception {x}");
 }
 
 #[cortex_m_rt::exception]
 fn HardFault(fr: &cortex_m_rt::ExceptionFrame) -> ! {
-    panic!("hard fault: {:?}", fr);
+    panic!("hard fault: {fr:?}");
 }

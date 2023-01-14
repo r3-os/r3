@@ -213,7 +213,7 @@ impl DebugProbe for KflashDebugProbe {
                 log::debug!("Programming the region {} of {}", i + 1, regions.len());
                 if region.1 < 0x80000000 {
                     log::debug!(
-                        "Starting address (0x{:x}) is out of range, ignoreing",
+                        "Starting address ({:#x}) is out of range, ignoreing",
                         region.1
                     );
                     continue;
@@ -222,7 +222,7 @@ impl DebugProbe for KflashDebugProbe {
             }
 
             // Boot the program
-            log::debug!("Booting from 0x{:08x}", entry);
+            log::debug!("Booting from {entry:#08x}");
             boot(&mut self.serial, entry as u32).await?;
 
             // Now, pass the channel to the caller
@@ -310,7 +310,7 @@ async fn maix_enter_isp_mode(
     let serial_inner = serial.get_mut();
     log::debug!("Trying to put the chip into ISP mode");
     for cmd in cmds {
-        log::trace!("Performing the command {:?}", cmd);
+        log::trace!("Performing the command {cmd:?}");
         match cmd {
             BootCmd::Dtr(b) => {
                 serial_inner
@@ -348,8 +348,7 @@ async fn maix_enter_isp_mode(
     match tokio::time::timeout(COMM_TIMEOUT, slip::read_frame(serial)).await {
         Ok(Ok(frame)) => {
             log::trace!(
-                "Received a packet: {:?} The chip probably successfully entered ISP mode",
-                frame
+                "Received a packet: {frame:?} The chip probably successfully entered ISP mode",
             );
         }
         Ok(Err(e)) => return Err(e.into()),
@@ -372,10 +371,9 @@ async fn flash_dataframe(
         let chunk_addr = address + (i * CHUNK_LEN) as u32;
 
         log::debug!(
-            "Programming the range {:?}/{:?} at 0x{:x} ({}%)",
+            "Programming the range {:?}/{:?} at {chunk_addr:#x} ({}%)",
             (i * CHUNK_LEN)..(i * CHUNK_LEN + chunk.len()),
             data.len(),
-            chunk_addr,
             i * CHUNK_LEN * 100 / data.len(),
         );
 
@@ -416,7 +414,7 @@ async fn flash_dataframe(
                 }
             }
 
-            log::trace!("Got {:?}. Retrying...", reason);
+            log::trace!("Got {reason:?}. Retrying...");
         }
 
         if let Some(error) = error {
@@ -502,7 +500,7 @@ async fn read_to_end_and_discard(
     let mut buf = [0u8; 256];
     loop {
         let num_bytes = reader.read(&mut buf).await?;
-        log::trace!("Discarding {} byte(s)", num_bytes);
+        log::trace!("Discarding {num_bytes} byte(s)");
     }
 }
 

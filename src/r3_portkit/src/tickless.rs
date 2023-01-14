@@ -961,10 +961,10 @@ mod tests {
 
                 let _ = env_logger::builder().is_test(true).try_init();
 
-                log::info!("CFG = {:?}", CFG);
-                log::info!("MAX_TIMEOUT = {:?}", MAX_TIMEOUT);
-                log::info!("HW_PERIOD = {:?}", HW_PERIOD);
-                log::info!("PERIOD = {:?}", PERIOD);
+                log::info!("CFG = {CFG:?}");
+                log::info!("MAX_TIMEOUT = {MAX_TIMEOUT:?}");
+                log::info!("HW_PERIOD = {HW_PERIOD:?}");
+                log::info!("PERIOD = {PERIOD:?}");
 
                 if $resettable {
                     hw_tick_count = 0x1234567;
@@ -978,17 +978,17 @@ mod tests {
                 }
 
                 let tick_count = state.tick_count(&CFG, hw_tick_count);
-                log::trace!("    HW = {}, OS = {}", hw_tick_count, tick_count);
+                log::trace!("    HW = {hw_tick_count}, OS = {tick_count}");
                 assert_eq!(tick_count, 0);
 
                 for op in ops {
-                    log::debug!("  {:?}", op);
+                    log::debug!("  {op:?}");
 
                     let mut state2 = state;
                     let start_tick_count = state.mark_reference(&CFG, hw_tick_count);
 
-                    log::trace!("    HW = {}, OS = {}", hw_tick_count, start_tick_count);
-                    log::trace!("    state = {:?}", state);
+                    log::trace!("    HW = {hw_tick_count}, OS = {start_tick_count}");
+                    log::trace!("    state = {state:?}");
 
                     assert_eq!(state.tick_count(&CFG, hw_tick_count), start_tick_count);
 
@@ -997,7 +997,7 @@ mod tests {
                         hw_tick_count
                     } else {
                         let end_tick_count = add_mod(start_tick_count, op.timeout, PERIOD);
-                        log::trace!("    Want to wait until OS = {}", end_tick_count);
+                        log::trace!("    Want to wait until OS = {end_tick_count}");
                         state.tick_count_to_hw_tick_count(&CFG, end_tick_count)
                     };
                     let len_hw_tick_count = sub_mod(end_hw_tick_count, hw_tick_count, HW_PERIOD);
@@ -1015,16 +1015,14 @@ mod tests {
                     }
 
                     log::trace!(
-                        "    Should wait for {} HW ticks (end HW = {})",
-                        len_hw_tick_count,
-                        end_hw_tick_count
+                        "    Should wait for {len_hw_tick_count} HW ticks (end HW = {end_hw_tick_count})"
                     );
 
                     // Extend the timeout by an interrupt latency
                     let late_len_hw_tick_count = len_hw_tick_count + op.latency;
                     assert!(late_len_hw_tick_count <= CFG.hw_max_tick_count());
 
-                    log::trace!("    Will wait for {} HW ticks", late_len_hw_tick_count);
+                    log::trace!("    Will wait for {late_len_hw_tick_count} HW ticks");
 
                     // OS tick count should increase monotonically (this
                     // property is assumed, not checked here) while we are
@@ -1036,19 +1034,14 @@ mod tests {
                         vec![len_hw_tick_count.saturating_sub(1), len_hw_tick_count],
                     );
                     for hw_elapsed in sample_points {
-                        log::trace!("    - HW = {} + {}", hw_tick_count, hw_elapsed);
+                        log::trace!("    - HW = {hw_tick_count} + {hw_elapsed}");
 
                         let hw_tick_count = add_mod(hw_tick_count, hw_elapsed, HW_PERIOD);
                         let tick_count = state.tick_count(&CFG, hw_tick_count);
                         elapsed += sub_mod(tick_count, last_tick_count, PERIOD);
                         last_tick_count = tick_count;
 
-                        log::trace!(
-                            "      OS = {} ({} + {})",
-                            tick_count,
-                            start_tick_count,
-                            elapsed
-                        );
+                        log::trace!("      OS = {tick_count} ({start_tick_count} + {elapsed})");
 
                         // The OS tick count shouldn't increase more than
                         // `CFG.max_tick_count()` between timer interrupts or

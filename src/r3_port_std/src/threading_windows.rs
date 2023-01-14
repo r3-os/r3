@@ -207,7 +207,7 @@ impl<T: ?Sized> IsNull for *mut T {
 /// Panic with an error code returned by `GetLastError`.
 #[cold]
 fn panic_last_error() -> ! {
-    panic!("Win32 error 0x{:08x}", unsafe {
+    panic!("Win32 error {:#08x}", unsafe {
         errhandlingapi::GetLastError()
     });
 }

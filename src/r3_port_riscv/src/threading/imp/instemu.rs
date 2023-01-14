@@ -168,7 +168,7 @@ unsafe fn panic_on_unhandled_exception(fl_state: *mut usize, mcause: usize) -> !
     // Read the original PC from the first-level state
     let pc = unsafe { *fl_state.offset(16) };
 
-    panic!("unhandled exception {} at 0x{:08x}", mcause, pc);
+    panic!("unhandled exception {mcause} at {pc:#08x}");
 }
 
 #[cfg(not(feature = "emulate-lr-sc"))]

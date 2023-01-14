@@ -246,12 +246,8 @@ fn judge_task_body<System: SupportedSystem, D: Driver<App<System>>>() {
 
     let Wrapping(local_counter_sum) = local_counters.iter().cloned().map(Wrapping).sum();
 
-    log::debug!("counter = {}", counter);
-    log::debug!(
-        "local_counters = {:?} (sum = {})",
-        local_counters,
-        local_counter_sum
-    );
+    log::debug!("counter = {counter}");
+    log::debug!("local_counters = {local_counters:?} (sum = {local_counter_sum})");
 
     assert_eq!(counter, local_counter_sum);
 
@@ -271,7 +267,7 @@ fn timer_body<System: SupportedSystem, D: Driver<App<System>>>(sched_state: &mut
 
     // Switch the running task
     let new_task = (sched_state.cur_task + 1) % NUM_TASKS;
-    log::trace!("scheduing tasks[{}]", new_task);
+    log::trace!("scheduing tasks[{new_task}]");
     tasks[sched_state.cur_task].set_priority(2).unwrap();
     tasks[new_task].set_priority(1).unwrap();
     sched_state.cur_task = new_task;

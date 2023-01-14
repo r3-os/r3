@@ -117,7 +117,7 @@ fn task_body<System: SupportedSystem, D: Driver<App<System>>>() {
 }
 
 fn isr<System: SupportedSystem, D: Driver<App<System>>>(i: usize) {
-    log::trace!("isr({})", i);
+    log::trace!("isr({i})");
     D::app().seq.expect_and_replace(i, i + 1);
 
     if i == 10 {
