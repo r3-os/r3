@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-<img src="https://img.shields.io/github/workflow/status/r3-os/r3/CI/%F0%9F%A6%86?style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <a href="https://crates.io/crates/r3"><img src="https://img.shields.io/crates/v/r3?style=for-the-badge"></a> <a href="https://r3-os.github.io/r3/doc/r3/index.html"><img src="https://r3-os.github.io/r3/doc/badge.svg"></a>
+<img src="https://img.shields.io/github/actions/workflow/status/r3-os/r3/ci.yml?branch=%F0%9F%A6%86&style=for-the-badge"> <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?style=for-the-badge"> <a href="https://crates.io/crates/r3"><img src="https://img.shields.io/crates/v/r3?style=for-the-badge"></a> <a href="https://r3-os.github.io/r3/doc/r3/index.html"><img src="https://r3-os.github.io/r3/doc/badge.svg"></a>
 </p>
 
 <p align="center">
