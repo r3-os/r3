@@ -106,7 +106,7 @@ type Alias<T> = Struct<{<T as Trait>::N}>;
 
 ### `[tag:const_for]` `for` loops are unusable in `const fn`
 
-Technically it's available under the compiler feature `const_for`, but the lack of essential trait implementations (e.g., `[ref:range_const_iterator]`, `[ref:const_slice_iter]`) and above all the inability of implementing `const Iterator` (`[ref:iterator_const_default]`) make it unusable.
+Technically it's available under the compiler feature `const_for`, but the lack of essential trait implementations (e.g., `[ref:range_const_iterator]`, `[ref:const_slice_iter]`) makes it unusable in many cases.
 
 
 ### `[tag:const_static_item_ref]` `const`s and `const fn`s can't refer to `static`s
@@ -446,25 +446,6 @@ assert!(matches!((2..4).next(), Some(2)));
 // error[E0277]: the trait bound `std::ops::Range<i32>: ~const Iterator` is not
 // satisfied
 const _: () = assert!(matches!((2..4).next(), Some(2)));
-```
-
-
-### `[tag:iterator_const_default]` `Iterator` lack `#[const_trait]`
-
-```rust,compile_fail
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-
-struct MyIterator;
-
-// error: const `impl` for trait `Iterator` which is not marked with `#[const_trait]`
-impl const Iterator for MyIterator {
-    type Item = u32;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(42)
-    }
-}
 ```
 
 
