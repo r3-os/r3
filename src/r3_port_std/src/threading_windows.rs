@@ -91,7 +91,7 @@ pub fn park() {
         while token_count < 0 {
             unsafe {
                 synchapi::WaitOnAddress(
-                    token_count_cell.as_mut_ptr().cast(),    // location to watch
+                    token_count_cell.as_ptr().cast(),        // location to watch
                     addr_of!(token_count).cast_mut().cast(), // undesired value
                     std::mem::size_of::<isize>(),            // value size
                     INFINITE,                                // timeout
@@ -116,7 +116,7 @@ impl Thread {
         let _guard = self.data.remote_op_mutex.lock().unwrap();
         let token_count_cell = &self.data.token_count;
         if token_count_cell.fetch_add(1, Ordering::Relaxed) == -1 {
-            unsafe { synchapi::WakeByAddressAll(token_count_cell.as_mut_ptr().cast()) };
+            unsafe { synchapi::WakeByAddressAll(token_count_cell.as_ptr().cast()) };
             unsafe { processthreadsapi::ResumeThread(self.data.hthread) };
         }
     }
@@ -256,7 +256,7 @@ mod mutex {
             {
                 unsafe {
                     synchapi::WaitOnAddress(
-                        self.locked.as_mut_ptr().cast(),   // location to watch
+                        self.locked.as_ptr().cast(),       // location to watch
                         [true].as_ptr().cast_mut().cast(), // undesired value
                         std::mem::size_of::<bool>(),       // value size
                         INFINITE,                          // timeout
@@ -283,7 +283,7 @@ mod mutex {
         #[inline]
         fn drop(&mut self) {
             self.locked.store(false, Ordering::Release);
-            unsafe { synchapi::WakeByAddressSingle(self.locked.as_mut_ptr().cast()) };
+            unsafe { synchapi::WakeByAddressSingle(self.locked.as_ptr().cast()) };
         }
     }
 
