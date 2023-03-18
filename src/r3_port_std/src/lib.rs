@@ -1,5 +1,4 @@
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
-#![feature(atomic_mut_ptr)]
 #![feature(thread_local)]
 #![feature(deadline_api)]
 #![feature(once_cell)]

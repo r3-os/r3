@@ -318,7 +318,7 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
         End,
     }
 
-    impl const MyIterator for VertexIter<'_> {
+    impl const Iterator for VertexIter<'_> {
         type Item = Vertex;
 
         fn next(&mut self) -> Option<Self::Item> {
@@ -369,7 +369,7 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
         End,
     }
 
-    impl<Callback> const MyIterator for SuccessorIter<'_, Callback>
+    impl<Callback> const Iterator for SuccessorIter<'_, Callback>
     where
         Callback: ~const SorterCallback,
     {
@@ -533,23 +533,14 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
 // Helper traits
 // --------------------------------------------------------------------------
 
-// `const Iterator` is currently very hard to implement
-// [ref:iterator_const_default]
-/// An [`Iterator`][] usable in `const fn`.
-#[const_trait]
-trait MyIterator {
-    type Item;
-    fn next(&mut self) -> Option<Self::Item>;
-}
-
 #[const_trait]
 trait GraphAccess<VertexRef> {
-    type VertexIter<'a>: ~const MyIterator<Item = VertexRef> + ~const Destruct + 'a
+    type VertexIter<'a>: ~const Iterator<Item = VertexRef> + ~const Destruct + 'a
     where
         Self: 'a;
     fn vertices(&self) -> Self::VertexIter<'_>;
 
-    type SuccessorIter<'a>: ~const MyIterator<Item = VertexRef> + ~const Destruct + 'a
+    type SuccessorIter<'a>: ~const Iterator<Item = VertexRef> + ~const Destruct + 'a
     where
         Self: 'a;
     fn successors(&self, v: &VertexRef) -> Self::SuccessorIter<'_>;

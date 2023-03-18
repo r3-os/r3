@@ -4,7 +4,6 @@
 #![feature(lint_reasons)]
 #![feature(decl_macro)] // `macro`
 #![feature(once_cell)]
-#![feature(pin_macro)] // `core::pin::pin!`
 #![warn(must_not_suspend)]
 use anyhow::{bail, Context};
 use clap::Parser;

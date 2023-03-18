@@ -1,5 +1,5 @@
 //! A heterogeneous collection to store property values.
-use core::mem::transmute;
+use core::{any::TypeId, mem::transmute};
 
 /// A heterogeneous collection to store property values.
 #[const_trait]
@@ -87,41 +87,4 @@ mod private {
     impl const Sealed for () {}
     impl<Head: 'static, Tail: ~const Bag> const Sealed for super::List<Head, Tail> {}
     impl<Left: ~const Bag, Right: ~const Bag> const Sealed for super::Either<Left, Right> {}
-}
-
-// `TypeId` doesn't implement `const PartialEq` [ref:type_id_partial_eq]
-/// A wrapper of [`core::any::TypeId`] that is usable in a constant context.
-struct TypeId {
-    inner: core::any::TypeId,
-}
-
-impl TypeId {
-    #[inline]
-    const fn of<T: 'static>() -> Self {
-        Self {
-            inner: core::any::TypeId::of::<T>(),
-        }
-    }
-
-    #[inline]
-    const fn eq(&self, other: &Self) -> bool {
-        // This relies on the implementation details of `TypeId`, but I think
-        // we're are okay judging by the fact that WebRender is doing the same
-        // <https://github.com/rust-lang/rust/pull/75923#issuecomment-683090745>
-        unsafe {
-            type TypeIdBytes = [u8; core::mem::size_of::<core::any::TypeId>()];
-            let x: TypeIdBytes = transmute(self.inner);
-            let y: TypeIdBytes = transmute(other.inner);
-            // Can't just do `x == y` due to [ref:array_const_partial_eq].
-            // A non-idiomatic loop must be used due to [ref:const_for].
-            let mut i = 0;
-            while i < x.len() {
-                if x[i] != y[i] {
-                    return false;
-                }
-                i += 1;
-            }
-            true
-        }
-    }
 }

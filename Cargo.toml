@@ -1,3 +1,5 @@
+cargo-features = ["profile-rustflags"]
+
 [workspace]
 members = [
     "examples/basic",
@@ -117,3 +119,8 @@ rev = "2a74b62c26724ff9c67e4e3ad05378a1af53f195"
 
 [profile.release]
 debug = true
+
+# FIXME: Work-around for undefined symbol errors that occur with the
+# combination of `-Zbuild-std`, `opt-level = "s"`, and `lto = true`
+# <https://github.com/rust-lang/rust/issues/108853>
+rustflags = ["-Zshare-generics=off"]
