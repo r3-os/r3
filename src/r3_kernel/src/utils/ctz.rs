@@ -314,7 +314,7 @@ mod tests {
                         } else {
                             let low = i & 31;
                             let high = i >> 5;
-                            low | (high << (bits - 5))
+                            low | high.checked_shl((bits - 5) as u32).unwrap()
                         } as usize;
 
                         let got = $func(in_value);
