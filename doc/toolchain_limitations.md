@@ -430,23 +430,6 @@ const _: () = assert!(PartialEq::eq(&(A..A), &(A..A)));
 ```
 
 
-### `[tag:type_id_partial_eq]` `TypeId: !const PartialEq`
-
-The standard library doesn't provide a `const` trait implementation of `PartialEq` for `core::any::TypeId`.
-
-```rust
-use core::any::TypeId;
-assert!(TypeId::of::<()>() == TypeId::of::<()>());
-```
-
-```rust,compile_fail,E0277
-#![feature(const_type_id)]
-use core::any::TypeId;
-// error[E0277]: can't compare `TypeId` with `_` in const contexts
-const _: () = assert!(TypeId::of::<()>() == TypeId::of::<()>());
-```
-
-
 ### `[tag:range_const_iterator]` `Range<T>: !~const Iterator`
 
 The standard library doesn't provide a `const` trait implementation of `Range<T>: Iterator`.
