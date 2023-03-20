@@ -295,16 +295,13 @@ impl<T: StartupOptions + EntryPoint> StartupExt for T {
 
         // Create section entries based on `MEMORY_MAP`
         let mmap = Self::MEMORY_MAP;
-        // `for` is unusable in `const fn` [ref:const_for]
-        let mut i = 0;
-        while i < mmap.len() {
+        // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        for i in 0..mmap.len() {
             let section = &mmap[i];
             let start_i = section.virtual_start / 0x100000;
             let end_i = start_i + section.len / 0x100000;
 
-            // `for` is unusable in `const fn` [ref:const_for]
-            let mut k = start_i;
-            while k < end_i {
+            for k in start_i..end_i {
                 if occupied[k] {
                     panic!("region overlap; some address ranges are specified more than once");
                 }
@@ -313,10 +310,7 @@ impl<T: StartupOptions + EntryPoint> StartupExt for T {
                     section.attr,
                 );
                 occupied[k] = true;
-                k += 1;
             }
-
-            i += 1;
         }
 
         table
@@ -325,14 +319,12 @@ impl<T: StartupOptions + EntryPoint> StartupExt for T {
 
 const fn memory_map_maps_va<T: StartupOptions>(va: usize) -> bool {
     let mmap = T::MEMORY_MAP;
-    // `for` is unusable in `const fn` [ref:const_for]
-    let mut i = 0;
-    while i < mmap.len() {
+    // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+    for i in 0..mmap.len() {
         let section = &mmap[i];
         if va >= section.virtual_start && va <= section.virtual_start + (section.len - 1) {
             return true;
         }
-        i += 1;
     }
     false
 }
