@@ -7,6 +7,7 @@
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(nonnull_slice_from_raw_parts)]
+#![feature(const_intoiterator_identity)]
 #![feature(type_changing_struct_update)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_precise_live_drops)]
@@ -41,9 +42,11 @@
 #![feature(cell_update)]
 #![feature(const_deref)]
 #![feature(const_heap)]
+#![feature(const_iter)]
 #![feature(const_swap)]
 #![feature(decl_macro)]
 #![feature(never_type)] // `!`
+#![feature(const_for)]
 #![feature(const_try)]
 #![feature(fn_traits)] // `impl FnOnce`
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`

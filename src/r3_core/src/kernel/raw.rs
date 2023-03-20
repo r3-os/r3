@@ -268,10 +268,9 @@ impl QueueOrder {
             QueueOrder::TaskPriority => QueueOrderKind::TaskPriority,
         };
 
-        // `for` is unusable in `const fn` [ref:const_for]
-        let mut i = 0;
+        // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
         let values = System::RAW_SUPPORTED_QUEUE_ORDERS;
-        while i < values.len() {
+        for i in 0..values.len() {
             // `#[derive(PartialEq)]` doesn't derive `const PartialEq`
             // [ref:derive_const_partial_eq]
             if let Some(value) = values[i] {
@@ -279,7 +278,6 @@ impl QueueOrder {
                     return true;
                 }
             }
-            i += 1;
         }
         false
     }
@@ -537,10 +535,9 @@ impl MutexProtocol {
             MutexProtocol::Ceiling(_) => MutexProtocolKind::Ceiling,
         };
 
-        // `for` is unusable in `const fn` [ref:const_for]
-        let mut i = 0;
+        // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
         let values = System::RAW_SUPPORTED_MUTEX_PROTOCOLS;
-        while i < values.len() {
+        for i in 0..values.len() {
             // `#[derive(PartialEq)]` doesn't derive `const PartialEq`
             // [ref:derive_const_partial_eq]
             if let Some(value) = values[i] {
@@ -548,7 +545,6 @@ impl MutexProtocol {
                     return true;
                 }
             }
-            i += 1;
         }
         false
     }

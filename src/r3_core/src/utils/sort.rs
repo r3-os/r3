@@ -42,7 +42,7 @@ where
     }
 
     // Build the heap in linear time.
-    // `for` is unusable in `const fn` [ref:const_for]
+    // `Iterator::rev` is unusable in `const fn` [ref:const_rev_iter]
     let mut i = v.len() / 2;
     while i > 0 {
         i -= 1;
