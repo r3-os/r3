@@ -15,22 +15,19 @@ pub type InterruptHandlerTable = [InterruptHandler; NUM_INTERRUPTS];
 /// Used by `use_port!`
 pub const fn make_interrupt_handler_table<Traits: KernelTraits>() -> InterruptHandlerTable {
     let mut table = [InterruptHandler { undefined: 0 }; NUM_INTERRUPTS];
-    let mut i = 0;
 
-    // `for` is unusable in `const fn` [ref:const_for]
-    while i < table.len() {
+    // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
+    // `core::array::from_fn` is not `const fn` [ref:const_array_from_fn]
+    for i in 0..table.len() {
         table[i] = if let Some(x) = Traits::INTERRUPT_HANDLERS.get(i + 16) {
             InterruptHandler { defined: x }
         } else {
             InterruptHandler { undefined: 0 }
         };
-        i += 1;
     }
 
     // Disallow registering in range `0..16` except for SysTick
-    i = 0;
-    // `for` is unusable in `const fn` [ref:const_for]
-    while i < 16 {
+    for i in 0..16 {
         if i != INTERRUPT_SYSTICK {
             // TODO: This check trips even if no handler is registered at `i`
             #[cfg(any())]
@@ -40,7 +37,6 @@ pub const fn make_interrupt_handler_table<Traits: KernelTraits>() -> InterruptHa
                 disallowed except for SysTick"
             );
         }
-        i += 1;
     }
 
     table

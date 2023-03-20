@@ -1,3 +1,4 @@
+#![feature(const_intoiterator_identity)]
 #![feature(generic_const_exprs)]
 #![feature(const_refs_to_cell)]
 #![feature(const_trait_impl)]
@@ -5,8 +6,10 @@
 #![feature(const_mut_refs)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
+#![feature(const_iter)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
+#![feature(const_for)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(
     feature = "doc",
