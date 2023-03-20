@@ -2,6 +2,7 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_array_assume_init)]
+#![feature(const_intoiterator_identity)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_transmute_copy)]
@@ -12,7 +13,9 @@
 #![feature(array_windows)]
 #![feature(const_option)]
 #![feature(cell_update)]
+#![feature(const_iter)]
 #![feature(decl_macro)]
+#![feature(const_for)]
 #![feature(is_sorted)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::eq_op)] // we want to test `PartialEq` implementations

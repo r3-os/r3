@@ -41,11 +41,10 @@ impl<System: SupportedSystem> AppInner<System> {
         let timers = {
             let mut timers = MaybeUninit::uninit_array();
 
-            let mut i = 0;
-            // `for` is unusable in `const fn` [ref:const_for]
-            while i < timers.len() {
+            // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
+            // `core::array::from_fn` is not `const fn` [ref:const_array_from_fn]
+            for i in 0..timers.len() {
                 timers[i] = MaybeUninit::new(StaticTimer::define().start(|| {}).finish(b));
-                i += 1;
             }
 
             unsafe { MaybeUninit::array_assume_init(timers) }
