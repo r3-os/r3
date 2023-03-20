@@ -209,11 +209,10 @@ fn ctz_array_lut<const LEN: usize>(x: usize) -> u32 {
     impl<const LEN: usize> LutTrait for Lut<LEN> {
         const LUT: &'static [u8] = &{
             let mut array = [0u8; LEN];
-            // `for` is unusable in `const fn` [ref:const_for]
-            let mut i = 0;
-            while i < array.len() {
+            // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
+            // `core::array::from_fn` is not `const fn` [ref:const_array_from_fn]
+            for i in 0..array.len() {
                 array[i] = i.trailing_zeros() as u8;
-                i += 1;
             }
             array
         };

@@ -3,6 +3,7 @@
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(maybe_uninit_array_assume_init)]
+#![feature(const_intoiterator_identity)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_comparison)]
@@ -24,9 +25,11 @@
 #![feature(const_option)]
 #![feature(const_deref)]
 #![feature(const_heap)]
+#![feature(const_iter)]
 #![feature(const_swap)]
 #![feature(never_type)] // `!`
 #![feature(decl_macro)]
+#![feature(const_for)]
 #![feature(doc_cfg)] // `#[doc(cfg(...))]`
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(
