@@ -884,7 +884,7 @@ checksum = "0d6b4de4a8eb6c46a8c77e1d3be942cb9a8bf073c22374578e5ba4b08ed0ff68"
 dependencies = [
  "log",
  "plain",
- "scroll 0.11.0",
+ "scroll",
 ]
 
 [[package]]
@@ -1119,6 +1119,12 @@ dependencies = [
  "riscv-rt 0.6.2",
  "vcell",
 ]
+
+[[package]]
+name = "kmp"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "131bddab59a64213cc1e9f0c5be010d7eb485951358ab7e52017888dec482028"
 
 [[package]]
 name = "lazy_static"
@@ -1652,9 +1658,9 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "probe-rs"
-version = "0.14.2"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "717926460dbc3ff7bc366fd0502433a064eea2a2aa189dbb4abd5396de3716a8"
+checksum = "9351c210d7bbd8d2b026c42fffdfbbd222fbcea95361dc072cf5826805e3ee84"
 dependencies = [
  "anyhow",
  "base64 0.21.0",
@@ -1667,12 +1673,13 @@ dependencies = [
  "ihex",
  "jaylink",
  "jep106",
+ "kmp",
  "num-traits",
  "object",
  "once_cell",
  "probe-rs-target",
  "rusb",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_yaml",
  "static_assertions",
@@ -1682,23 +1689,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "probe-rs-rtt"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6768fd3c3fdc2661e2542d443bfa2ed7f48d27159e36409e65b9db955c1c60fd"
-dependencies = [
- "probe-rs",
- "scroll 0.10.2",
- "serde",
- "thiserror",
- "tracing",
-]
-
-[[package]]
 name = "probe-rs-target"
-version = "0.14.2"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f01903e24b4187015ab2c3214e009b67de6658b4fc86c8ab9876808060f7a953"
+checksum = "4979fee73fbea5f36e885a0eb8e482a82d2b6cc6911e566ebb6aa85f2b6fa926"
 dependencies = [
  "base64 0.21.0",
  "jep106",
@@ -2114,7 +2108,6 @@ dependencies = [
  "itertools",
  "log",
  "probe-rs",
- "probe-rs-rtt",
  "r3_test_suite",
  "rusb",
  "serde",
@@ -2493,12 +2486,6 @@ dependencies = [
  "once_cell",
  "thiserror",
 ]
-
-[[package]]
-name = "scroll"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
 
 [[package]]
 name = "scroll"
