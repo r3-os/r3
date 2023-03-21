@@ -27,7 +27,7 @@ anyhow = { version = "1.0.32" }
 serde = { version = "1.0.114" }
 clap = { version = "4.0.0", features = ["derive"] }
 rusb = { version = "0.9" }
-toml = { version = "0.5.6" }
+toml = { version = "0.7.0" }
 log = { version = "0.4.8" }
 crc = { version = "3.0.0" }
 

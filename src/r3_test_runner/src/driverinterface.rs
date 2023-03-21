@@ -146,9 +146,9 @@ impl TestDriver {
         // Load the driver metadata
         let meta_path = crate_path.join("TestDriver.toml");
         log::debug!("Loading driver metadata from '{}'", meta_path.display());
-        let meta: Meta = match tokio::fs::read(meta_path).await {
+        let meta: Meta = match tokio::fs::read_to_string(meta_path).await {
             Ok(data) => {
-                toml::de::from_slice(&data).map_err(TestDriverNewError::DriverMetadataParse)?
+                toml::de::from_str(&data).map_err(TestDriverNewError::DriverMetadataParse)?
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 log::debug!("`TestDriver.toml` wasn't found; using the default metadata");
