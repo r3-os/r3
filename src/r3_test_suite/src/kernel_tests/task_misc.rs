@@ -20,7 +20,7 @@ impl<System: SupportedSystem> App<System> {
         C: ~const traits::CfgTask<System = System>,
     {
         StartupHook::define()
-            .start(startup_hook::<System, D>)
+            .start(startup_hook::<System>)
             .finish(b);
 
         let task1 = StaticTask::define()
@@ -28,10 +28,7 @@ impl<System: SupportedSystem> App<System> {
             .priority(2)
             .active(true)
             .finish(b);
-        let task2 = StaticTask::define()
-            .start(task2_body::<System, D>)
-            .priority(1)
-            .finish(b);
+        let task2 = StaticTask::define().start(task2_body).priority(1).finish(b);
         let task3 = StaticTask::define()
             .start(task3_body::<System, D>)
             .priority(1)
@@ -45,7 +42,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
+fn startup_hook<System: SupportedSystem>() {
     assert_eq!(
         LocalTask::<System>::current(),
         Err(r3::kernel::GetCurrentTaskError::BadContext)
@@ -164,7 +161,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>, System = System>>(
     app.task3.activate().unwrap();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
+fn task2_body() {
     unreachable!();
 }
 

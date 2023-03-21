@@ -22,7 +22,7 @@ impl<System: SupportedSystem> App<System> {
         C: ~const traits::CfgTask<System = System>,
     {
         StartupHook::define()
-            .start(startup_hook::<System, D>)
+            .start(startup_hook::<System>)
             .finish(b);
         StaticTask::define()
             .start(task_body::<System, D>)
@@ -36,7 +36,7 @@ impl<System: SupportedSystem> App<System> {
     }
 }
 
-fn startup_hook<System: SupportedSystem, D: Driver<App<System>>>() {
+fn startup_hook<System: SupportedSystem>() {
     // Not a task context
     if let Some(cap) = System::TIME_CAPABILITY {
         assert_eq!(System::time(cap), Err(r3::kernel::TimeError::BadContext));
