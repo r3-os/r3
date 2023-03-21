@@ -46,16 +46,13 @@ pub const fn sincos(theta: f64) -> (f64, f64) {
     let mut x = 1.0;
     let mut y = 0.0;
 
-    // `for` is unusable in `const fn` [ref:const_for]
-    let mut i = 0;
-    while i < 32 {
+    for i in 0..32 {
         if (theta_i & (1u32 << i)) != 0 {
             let (x2, y2) = (x, y);
             let (sin, cos) = TABLE[i];
             x = x2 * cos - y2 * sin;
             y = x2 * sin + y2 * cos;
         }
-        i += 1;
     }
 
     if neg {

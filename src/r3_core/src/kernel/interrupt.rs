@@ -433,28 +433,22 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: raw::KernelInt
     interrupt_lines: &ComptimeVec<CfgInterruptLineInfo>,
     interrupt_handlers: &ComptimeVec<CfgInterruptHandler>,
 ) {
-    // `for` is unusable in `const fn` [ref:const_for]
-    let mut i = 0;
-    while i < interrupt_handlers.len() {
+    // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+    for i in 0..interrupt_handlers.len() {
         let handler = &interrupt_handlers[i];
-        i += 1;
         if handler.unmanaged {
             continue;
         }
 
-        let is_line_assumed_managed = {
+        let is_line_assumed_managed = 'a: {
             let lines = System::RAW_MANAGED_INTERRUPT_LINES;
-            let mut i = 0;
-            loop {
-                if i < lines.len() {
-                    if lines[i] == handler.line {
-                        break true;
-                    }
-                    i += 1;
-                } else {
-                    break false;
+            // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+            for i in 0..lines.len() {
+                if lines[i] == handler.line {
+                    break 'a true;
                 }
             }
+            false
         };
 
         let managed_line_i = vec_position!(interrupt_lines, |line| line.num == handler.line
@@ -663,12 +657,10 @@ pub const unsafe fn new_interrupt_handler_table<
     assert!(NumLines::N == NUM_LINES);
     assert!(Handlers::NumHandlers::N == NUM_HANDLERS);
 
-    // `for` is unusable in `const fn` [ref:const_for]
-    let mut i = 0;
-    while i < NUM_HANDLERS {
+    // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+    for i in 0..NUM_HANDLERS {
         let handler = Handlers::HANDLERS[i];
         assert!(handler.line < NUM_LINES);
-        i += 1;
     }
 
     const_array_from_fn! {
@@ -702,14 +694,12 @@ pub const unsafe fn new_interrupt_handler_table<
 
 #[doc(hidden)]
 pub const fn num_required_interrupt_line_slots(handlers: &[CfgInterruptHandler]) -> usize {
-    // `for` is unusable in `const fn` [ref:const_for]
-    let mut i = 0;
+    // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
     let mut out = 0;
-    while i < handlers.len() {
+    for i in 0..handlers.len() {
         if handlers[i].line + 1 > out {
             out = handlers[i].line + 1;
         }
-        i += 1;
     }
     out
 }

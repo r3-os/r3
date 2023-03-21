@@ -38,11 +38,9 @@ impl<T: Init, const LEN: usize> Init for [T; LEN] {
         // `<[T; LEN]>::from_fn` is not `const fn` [ref:const_array_from_fn]
         let mut array = mem::MaybeUninit::uninit_array();
 
-        // `for` is unusable in `const fn` [ref:const_for]
-        let mut i = 0;
-        while i < LEN {
+        // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        for i in 0..LEN {
             array[i] = mem::MaybeUninit::new(T::INIT);
-            i += 1;
         }
 
         // Safety: `array`'s elements are fully initialized

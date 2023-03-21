@@ -106,7 +106,7 @@ type Alias<T> = Struct<{<T as Trait>::N}>;
 
 ### `[tag:const_for]` `for` loops are unusable in `const fn`
 
-Technically it's available under the compiler feature `const_for`, but the lack of essential trait implementations (e.g., `[ref:range_const_iterator]`, `[ref:const_slice_iter]`) makes it unusable in many cases.
+Technically it's available under the compiler feature `const_for`, but the lack of essential trait implementations (e.g., `[ref:const_slice_iter]`, `[ref:const_rev_iter]`) makes it unusable in many cases.
 
 
 ### `[tag:const_static_item_ref]` `const`s and `const fn`s can't refer to `static`s
@@ -296,6 +296,23 @@ const _: () = { b"".iter(); };
 ```
 
 
+### `[tag:const_rev_iter]` `Rev` is not `const Iterator`
+
+```rust
+for _ in (0..4).rev() {}
+```
+
+```rust,compile_fail,E0277
+#![feature(const_intoiterator_identity)]
+#![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
+#![feature(const_for)]
+// error[E0277]: the trait bound `Rev<std::ops::Range<i32>>: ~const Iterator`
+// is not satisfied
+const _: () = for _ in (0..4).rev() {};
+```
+
+
 ### `[tag:const_uninit_array]` `MaybeUninit::uninit_array` is unstable
 
 ```rust,compile_fail,E0658
@@ -427,25 +444,6 @@ impl const PartialEq for A {
 // error[E0277]: can't compare `std::ops::Range<A>` with `std::ops::Range<A>` in
 // const contexts
 const _: () = assert!(PartialEq::eq(&(A..A), &(A..A)));
-```
-
-
-### `[tag:range_const_iterator]` `Range<T>: !~const Iterator`
-
-The standard library doesn't provide a `const` trait implementation of `Range<T>: Iterator`.
-
-```rust
-assert!(matches!((2..4).next(), Some(2)));
-```
-
-```rust,compile_fail,E0277
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-// `assert!` is used here due to [ref:const_assert_eq]
-// `matches!` is used here due to [ref:option_const_partial_eq]
-// error[E0277]: the trait bound `std::ops::Range<i32>: ~const Iterator` is not
-// satisfied
-const _: () = assert!(matches!((2..4).next(), Some(2)));
 ```
 
 

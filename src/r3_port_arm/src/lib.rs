@@ -1,3 +1,4 @@
+#![feature(const_intoiterator_identity)]
 #![feature(const_refs_to_cell)]
 #![feature(generic_arg_infer)]
 #![feature(const_trait_impl)]
@@ -6,8 +7,10 @@
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(lint_reasons)]
+#![feature(const_iter)]
 #![feature(decl_macro)]
 #![feature(asm_const)]
+#![feature(const_for)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::verbose_bit_mask)] // questionable
 #![cfg_attr(

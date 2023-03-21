@@ -160,75 +160,66 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
     assert!(temp_uses.is_empty());
     assert!(temp_vertices.is_empty());
 
-    {
-        // `for` loops are unusable in `const fn` [ref:const_for]
-        let mut bind_i = 0;
-        while bind_i < num_binds {
-            let bind_users = cb.bind_users(bind_i);
+    for bind_i in 0..num_binds {
+        let bind_users = cb.bind_users(bind_i);
 
-            let mut num_indefinite_shared = 0;
-            let mut num_indefinite_exclusive = 0;
+        let mut num_indefinite_shared = 0;
+        let mut num_indefinite_exclusive = 0;
 
-            // `for` loops are unusable in `const fn` [ref:const_for]
-            let mut i = 0;
-            while i < bind_users.len() {
-                // Reject impossible combinations that should be caught earlier
-                match bind_users[i] {
-                    (BindUsage::Bind(_), BindBorrowType::Borrow)
-                    | (BindUsage::Bind(_), BindBorrowType::BorrowMut)
-                    | (BindUsage::Bind(_), BindBorrowType::Take)
-                    | (BindUsage::Bind(_), BindBorrowType::TakeRef)
-                    | (BindUsage::Bind(_), BindBorrowType::TakeMut)
-                    | (BindUsage::Executable, BindBorrowType::Take)
-                    | (BindUsage::Executable, BindBorrowType::TakeRef)
-                    | (BindUsage::Executable, BindBorrowType::TakeMut) => {}
-                    // [ref:borrow_is_indefinite_for_executable]
-                    (BindUsage::Executable, BindBorrowType::Borrow)
-                    | (BindUsage::Executable, BindBorrowType::BorrowMut) => {
-                        unreachable!()
-                    }
+        // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        for i in 0..bind_users.len() {
+            // Reject impossible combinations that should be caught earlier
+            match bind_users[i] {
+                (BindUsage::Bind(_), BindBorrowType::Borrow)
+                | (BindUsage::Bind(_), BindBorrowType::BorrowMut)
+                | (BindUsage::Bind(_), BindBorrowType::Take)
+                | (BindUsage::Bind(_), BindBorrowType::TakeRef)
+                | (BindUsage::Bind(_), BindBorrowType::TakeMut)
+                | (BindUsage::Executable, BindBorrowType::Take)
+                | (BindUsage::Executable, BindBorrowType::TakeRef)
+                | (BindUsage::Executable, BindBorrowType::TakeMut) => {}
+                // [ref:borrow_is_indefinite_for_executable]
+                (BindUsage::Executable, BindBorrowType::Borrow)
+                | (BindUsage::Executable, BindBorrowType::BorrowMut) => {
+                    unreachable!()
                 }
-
-                // Count indefinite borrows
-                match bind_users[i].1 {
-                    BindBorrowType::Borrow | BindBorrowType::BorrowMut => {}
-                    BindBorrowType::TakeRef => {
-                        num_indefinite_shared += 1;
-                    }
-                    BindBorrowType::Take | BindBorrowType::TakeMut => {
-                        num_indefinite_exclusive += 1;
-                    }
-                }
-
-                // Collect dependencies in the reverse direction
-                if let (BindUsage::Bind(user_bind_i), borrow_type) = bind_users[i] {
-                    let use_i = temp_uses.len();
-                    let other_bind_first_use_i = &mut temp_binds1[user_bind_i].first_use_i;
-                    temp_uses.push(SorterUseInfo {
-                        bind_i,
-                        borrow_type,
-                        next_use_i: *other_bind_first_use_i,
-                    });
-                    *other_bind_first_use_i = Some(use_i);
-                }
-
-                i += 1;
             }
 
-            temp_binds1[bind_i].borrowed_indefinitely =
-                match (num_indefinite_shared, num_indefinite_exclusive) {
-                    (0, 0) => None,
-                    (_, 0) => Some(false),
-                    (0, 1) => Some(true),
-                    _ => {
-                        // [ref:bind_conflicting_take]
-                        cb.report_error(SorterError::ConflictingIndefiniteBorrow { bind_i });
-                        Some(false)
-                    }
-                };
+            // Count indefinite borrows
+            match bind_users[i].1 {
+                BindBorrowType::Borrow | BindBorrowType::BorrowMut => {}
+                BindBorrowType::TakeRef => {
+                    num_indefinite_shared += 1;
+                }
+                BindBorrowType::Take | BindBorrowType::TakeMut => {
+                    num_indefinite_exclusive += 1;
+                }
+            }
 
-            bind_i += 1;
+            // Collect dependencies in the reverse direction
+            if let (BindUsage::Bind(user_bind_i), borrow_type) = bind_users[i] {
+                let use_i = temp_uses.len();
+                let other_bind_first_use_i = &mut temp_binds1[user_bind_i].first_use_i;
+                temp_uses.push(SorterUseInfo {
+                    bind_i,
+                    borrow_type,
+                    next_use_i: *other_bind_first_use_i,
+                });
+                *other_bind_first_use_i = Some(use_i);
+            }
         }
+
+        temp_binds1[bind_i].borrowed_indefinitely =
+            match (num_indefinite_shared, num_indefinite_exclusive) {
+                (0, 0) => None,
+                (_, 0) => Some(false),
+                (0, 1) => Some(true),
+                _ => {
+                    // [ref:bind_conflicting_take]
+                    cb.report_error(SorterError::ConflictingIndefiniteBorrow { bind_i });
+                    Some(false)
+                }
+            };
     }
 
     // Helper types needed for topological sorting. `Vertex` is defined outside

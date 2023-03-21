@@ -790,11 +790,8 @@ impl<'pool, const LEN: usize, System, T> const UnzipBind for Bind<'pool, System,
             let mut out =
                 ComptimeVec::new_in(self.bind_registry.borrow().binds.allocator().clone());
 
-            // `for` loops are unusable in `const fn` [ref:const_for]
-            let mut i = 0;
-            while i < LEN {
+            for i in 0..LEN {
                 out.push(divide.slice(hunk.transmute::<BindData<T>>().wrapping_offset(i as isize)));
-                i += 1;
             }
 
             out.to_array()
@@ -988,10 +985,8 @@ impl CfgBindRegistry {
         // Because of [ref:bind_finalization_immediate_panic], reaching here
         // means the operation was successful
 
-        // `for` loops are barely useful in `const fn` at the moment
-        // [ref:const_for]
-        let mut i = 0;
-        while i < callback.bind_init_order.len() {
+        // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        for i in 0..callback.bind_init_order.len() {
             let bind_i = callback.bind_init_order[i];
 
             if let Some(initializer) = self.binds[bind_i].initializer {
@@ -1000,8 +995,6 @@ impl CfgBindRegistry {
                     .priority(INIT_HOOK_PRIORITY)
                     .finish(cfg);
             }
-
-            i += 1;
         }
     }
 }
@@ -1784,11 +1777,9 @@ where
     type Runtime = [Binder::Runtime; LEN];
 
     fn register_dependency(&self, ctx: &mut CfgBindCtx<'_>) {
-        // `for` loops are unusable in `const fn` [ref:const_for]
-        let mut i = 0;
-        while i < LEN {
+        // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        for i in 0..LEN {
             self[i].register_dependency(ctx);
-            i += 1;
         }
     }
 
@@ -1797,9 +1788,8 @@ where
             // `[T; N]::map` is unusable in `const fn` [ref:const_array_map]
             let mut out = MaybeUninit::uninit_array();
             let this = MaybeUninit::new(self);
-            // `for` loops are unusable in `const fn` [ref:const_for]
-            let mut i = 0;
-            while i < LEN {
+            // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
+            for i in 0..LEN {
                 out[i] = MaybeUninit::new(
                     this.as_ptr()
                         .cast::<Binder>()
@@ -1807,7 +1797,6 @@ where
                         .read()
                         .into_runtime_binder(),
                 );
-                i += 1;
             }
             // Safety: All elements of `out` are initialized
             MaybeUninit::array_assume_init(out)

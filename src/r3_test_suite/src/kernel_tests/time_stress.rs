@@ -23,15 +23,12 @@ impl<System: SupportedSystem> App<System> {
     where
         C: ~const traits::CfgTask<System = System> + ~const traits::CfgEventGroup,
     {
-        let mut i = 0;
-        // `for` is unusable in `const fn` [ref:const_for]
-        while i < TASKS.len() {
+        for i in 0..TASKS.len() {
             StaticTask::define()
                 .start((i, task_body::<System, D>))
                 .priority(0)
                 .active(true)
                 .finish(b);
-            i += 1;
         }
 
         StaticTask::define()

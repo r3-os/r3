@@ -143,9 +143,9 @@ impl<System: SupportedSystem> App<System> {
 
         let mut tasks = [None; NUM_TASKS];
 
-        // `for` is unusable in `const fn` [ref:const_for]
-        let mut i = 0;
-        while i < NUM_TASKS {
+        // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
+        // `core::array::from_fn` is not `const fn` [ref:const_array_from_fn]
+        for i in 0..NUM_TASKS {
             tasks[i] = Some(
                 StaticTask::define()
                     .active(true)
@@ -153,7 +153,6 @@ impl<System: SupportedSystem> App<System> {
                     .priority(2)
                     .finish(b),
             );
-            i += 1;
         }
 
         // `<[_; 2]>::map` is unusable in `const fn` [ref:const_array_map]
