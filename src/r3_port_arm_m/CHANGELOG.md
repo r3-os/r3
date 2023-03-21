@@ -64,7 +64,8 @@ This release only includes changes to the documentation.
 
 Initial release.
 
-[Unreleased]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.3.2...HEAD
+[Unreleased]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.3.3...HEAD
+[0.3.3]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.3.2...r3_port_arm_m@0.3.3
 [0.3.2]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.3.1...r3_port_arm_m@0.3.2
 [0.3.1]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.3.0...r3_port_arm_m@0.3.1
 [0.3.0]: https://github.com/r3-os/r3/compare/r3_port_arm_m@0.2.1...r3_port_arm_m@0.3.0
