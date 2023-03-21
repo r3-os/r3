@@ -148,6 +148,9 @@ impl KflashDebugProbe {
 
         // Pu the device into ISP mode. Fail-fast if this was unsuccessful.
         let serial_m = Mutex::new(serial);
+        // FIXME: `redundant_async_block` false positive (the suggestion would
+        // shorten the lock guard's lifetime)
+        #[expect(clippy::redundant_async_block)]
         retry_on_fail(|| async {
             // Holding the `LockGuard` across a suspend point is okay because
             // `Mutex::lock` is never called for this mutex. (It's practically
@@ -198,6 +201,9 @@ impl DebugProbe for KflashDebugProbe {
             // Put the device into ISP mode.
             let serial_m = Mutex::new(&mut self.serial);
             let isp_boot_cmds = self.isp_boot_cmds;
+            // FIXME: `redundant_async_block` false positive (the suggestion
+            // would shorten the lock guard's lifetime)
+            #[expect(clippy::redundant_async_block)]
             retry_on_fail(|| async {
                 // Holding the `LockGuard` across a suspend point is okay because
                 // `Mutex::lock` is never called for this mutex. (It's practically
