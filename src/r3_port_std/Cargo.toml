@@ -33,7 +33,7 @@ features = ["tests_all"]
 
 [target."cfg(unix)".dependencies]
 libc = "0.2.71"
-errno = "0.2.5"
+errno = "0.3.0"
 
 [target."cfg(windows)".dependencies]
 winapi = { version = "0.3.8", features = ["processthreadsapi", "synchapi", "errhandlingapi", "handleapi"] }
