@@ -39,6 +39,9 @@ impl<T: Init, const LEN: usize> Init for [T; LEN] {
         let mut array = mem::MaybeUninit::uninit_array();
 
         // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        // FIXME: `needless_range_loop` false positive
+        // <https://github.com/rust-lang/rust-clippy/issues/10524>
+        #[expect(clippy::needless_range_loop)]
         for i in 0..LEN {
             array[i] = mem::MaybeUninit::new(T::INIT);
         }

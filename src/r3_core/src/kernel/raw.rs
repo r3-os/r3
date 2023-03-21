@@ -270,6 +270,9 @@ impl QueueOrder {
 
         // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
         let values = System::RAW_SUPPORTED_QUEUE_ORDERS;
+        // FIXME: `needless_range_loop` false positive
+        // <https://github.com/rust-lang/rust-clippy/issues/10524>
+        #[expect(clippy::needless_range_loop)]
         for i in 0..values.len() {
             // `#[derive(PartialEq)]` doesn't derive `const PartialEq`
             // [ref:derive_const_partial_eq]
@@ -537,6 +540,9 @@ impl MutexProtocol {
 
         // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
         let values = System::RAW_SUPPORTED_MUTEX_PROTOCOLS;
+        // FIXME: `needless_range_loop` false positive
+        // <https://github.com/rust-lang/rust-clippy/issues/10524>
+        #[expect(clippy::needless_range_loop)]
         for i in 0..values.len() {
             // `#[derive(PartialEq)]` doesn't derive `const PartialEq`
             // [ref:derive_const_partial_eq]

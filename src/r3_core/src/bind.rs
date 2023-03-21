@@ -1778,6 +1778,9 @@ where
 
     fn register_dependency(&self, ctx: &mut CfgBindCtx<'_>) {
         // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        // FIXME: `needless_range_loop` false positive
+        // <https://github.com/rust-lang/rust-clippy/issues/10524>
+        #[expect(clippy::needless_range_loop)]
         for i in 0..LEN {
             self[i].register_dependency(ctx);
         }
@@ -1789,6 +1792,9 @@ where
             let mut out = MaybeUninit::uninit_array();
             let this = MaybeUninit::new(self);
             // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
+            // FIXME: `needless_range_loop` false positive
+            // <https://github.com/rust-lang/rust-clippy/issues/10524>
+            #[expect(clippy::needless_range_loop)]
             for i in 0..LEN {
                 out[i] = MaybeUninit::new(
                     this.as_ptr()

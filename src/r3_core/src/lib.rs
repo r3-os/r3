@@ -39,6 +39,7 @@
 #![feature(set_ptr_value)] // `<*const T>::set_ptr_value`
 #![feature(slice_ptr_len)]
 #![feature(const_option)]
+#![feature(lint_reasons)]
 #![feature(cell_update)]
 #![feature(const_deref)]
 #![feature(const_heap)]

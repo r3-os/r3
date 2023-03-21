@@ -167,6 +167,9 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
         let mut num_indefinite_exclusive = 0;
 
         // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        // FIXME: `needless_range_loop` false positive
+        // <https://github.com/rust-lang/rust-clippy/issues/10524>
+        #[expect(clippy::needless_range_loop)]
         for i in 0..bind_users.len() {
             // Reject impossible combinations that should be caught earlier
             match bind_users[i] {
