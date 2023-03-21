@@ -145,6 +145,9 @@ impl<System: SupportedSystem> App<System> {
 
         // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
         // `core::array::from_fn` is not `const fn` [ref:const_array_from_fn]
+        // FIXME: `needless_range_loop` false positive
+        // <https://github.com/rust-lang/rust-clippy/issues/10524>
+        #[expect(clippy::needless_range_loop)]
         for i in 0..NUM_TASKS {
             tasks[i] = Some(
                 StaticTask::define()

@@ -28,7 +28,7 @@ impl<Traits: KernelTraits> System<Traits> {
     unsafe fn semaphore_cb(
         this: SemaphoreId,
     ) -> Result<&'static SemaphoreCb<Traits>, NoAccessError> {
-        Traits::get_semaphore_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
+        Traits::get_semaphore_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id() })
     }
 }
 

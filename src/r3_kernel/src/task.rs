@@ -35,7 +35,7 @@ impl<Traits: KernelTraits> System<Traits> {
     /// See [`crate::bad_id`].
     #[inline]
     unsafe fn task_cb(this: TaskId) -> Result<&'static TaskCb<Traits>, NoAccessError> {
-        Traits::get_task_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
+        Traits::get_task_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id() })
     }
 
     #[cfg_attr(not(feature = "inline_syscall"), inline(never))]

@@ -46,6 +46,10 @@ pub const fn sincos(theta: f64) -> (f64, f64) {
     let mut x = 1.0;
     let mut y = 0.0;
 
+    // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+    // FIXME: `needless_range_loop` false positive
+    // <https://github.com/rust-lang/rust-clippy/issues/10524>
+    #[expect(clippy::needless_range_loop)]
     for i in 0..32 {
         if (theta_i & (1u32 << i)) != 0 {
             let (x2, y2) = (x, y);

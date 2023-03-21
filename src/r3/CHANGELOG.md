@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Remove unused lifetime parameters from `r3::sync::{recursive_,}mutex::Definer::wrap_hunk_unchedked`
+
 ## [0.2.4] - 2022-11-16
 
 ### Changed

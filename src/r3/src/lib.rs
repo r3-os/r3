@@ -3,6 +3,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
+#![feature(lint_reasons)]
 #![feature(cell_update)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]

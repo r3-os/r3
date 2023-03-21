@@ -443,6 +443,9 @@ pub(super) const fn panic_if_unmanaged_safety_is_violated<System: raw::KernelInt
         let is_line_assumed_managed = 'a: {
             let lines = System::RAW_MANAGED_INTERRUPT_LINES;
             // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+            // FIXME: `needless_range_loop` false positive
+            // <https://github.com/rust-lang/rust-clippy/issues/10524>
+            #[expect(clippy::needless_range_loop)]
             for i in 0..lines.len() {
                 if lines[i] == handler.line {
                     break 'a true;
@@ -696,6 +699,9 @@ pub const unsafe fn new_interrupt_handler_table<
 pub const fn num_required_interrupt_line_slots(handlers: &[CfgInterruptHandler]) -> usize {
     // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
     let mut out = 0;
+    // FIXME: `needless_range_loop` false positive
+    // <https://github.com/rust-lang/rust-clippy/issues/10524>
+    #[expect(clippy::needless_range_loop)]
     for i in 0..handlers.len() {
         if handlers[i].line + 1 > out {
             out = handlers[i].line + 1;

@@ -172,7 +172,7 @@ fn ctz3_lut(x: usize) -> u32 {
 /// `x` must be in range `1..8`.
 #[inline]
 // This code groups digits irregularly to express a specific meaning
-#[allow(clippy::inconsistent_digit_grouping)]
+#[expect(clippy::unusual_byte_groupings)]
 fn ctz3_lut_nonzero(x: usize) -> u32 {
     debug_assert!(x < 8);
     debug_assert!(x != 0);
@@ -211,6 +211,9 @@ fn ctz_array_lut<const LEN: usize>(x: usize) -> u32 {
             let mut array = [0u8; LEN];
             // `[T]::iter_mut` is unusable in `const fn` [ref:const_slice_iter]
             // `core::array::from_fn` is not `const fn` [ref:const_array_from_fn]
+            // FIXME: `needless_range_loop` false positive
+            // <https://github.com/rust-lang/rust-clippy/issues/10524>
+            #[expect(clippy::needless_range_loop)]
             for i in 0..array.len() {
                 array[i] = i.trailing_zeros() as u8;
             }

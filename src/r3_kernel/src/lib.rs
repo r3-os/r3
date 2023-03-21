@@ -23,6 +23,7 @@
 #![feature(const_ptr_read)]
 #![feature(const_convert)]
 #![feature(const_option)]
+#![feature(lint_reasons)]
 #![feature(const_deref)]
 #![feature(const_heap)]
 #![feature(const_iter)]
@@ -972,7 +973,7 @@ impl<Traits: KernelCfg2> State<Traits> {
 ///
 /// [object safety]: r3_core#object-safety
 #[inline]
-unsafe fn bad_id<Traits: KernelCfg2>() -> error::NoAccessError {
+unsafe fn bad_id() -> error::NoAccessError {
     // TODO: Support returning `NoAccess`
     let _ = error::NoAccessError::NoAccess;
     if cfg!(debug_assertion) {

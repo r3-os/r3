@@ -28,8 +28,7 @@ impl<Traits: KernelTraits> System<Traits> {
     unsafe fn event_group_cb(
         this: EventGroupId,
     ) -> Result<&'static EventGroupCb<Traits>, NoAccessError> {
-        Traits::get_event_group_cb(this.get() - 1)
-            .ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
+        Traits::get_event_group_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id() })
     }
 }
 

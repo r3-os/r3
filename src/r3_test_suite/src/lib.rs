@@ -12,6 +12,7 @@
 #![feature(assert_matches)]
 #![feature(array_windows)]
 #![feature(const_option)]
+#![feature(lint_reasons)]
 #![feature(cell_update)]
 #![feature(const_iter)]
 #![feature(decl_macro)]

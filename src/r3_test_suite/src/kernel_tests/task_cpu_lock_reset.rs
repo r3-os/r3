@@ -21,7 +21,7 @@ impl<System: SupportedSystem> App<System> {
             .active(true)
             .finish(b);
         let task2 = StaticTask::define()
-            .start(task2_body::<System, D>)
+            .start(task2_body::<System>)
             .priority(1)
             .finish(b);
 
@@ -36,7 +36,7 @@ fn task1_body<System: SupportedSystem, D: Driver<App<System>>>() {
     D::success();
 }
 
-fn task2_body<System: SupportedSystem, D: Driver<App<System>>>() {
+fn task2_body<System: SupportedSystem>() {
     // Acquire CPU Lock This should succeed in both runs because
     // it's automatically released on each run.
     System::acquire_cpu_lock().unwrap();

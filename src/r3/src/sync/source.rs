@@ -353,6 +353,7 @@ macro_rules! impl_source_setter {
             )?
             ///
             /// [Take]: crate::bind::Bind::take_mut
+            #[expect(clippy::needless_lifetimes)] // `'pool`
             pub const fn take_bind<'pool>(
                 self,
                 bind: __pr::Bind<'pool, System, AutoWrapped<T>>,
@@ -387,7 +388,7 @@ macro_rules! impl_source_setter {
             /// `UnsafeCell`'s contents based on the assumption that no accesses
             /// are made through other means, and that `T` is initialized by
             /// the time the boot phase completes.
-            pub const unsafe fn wrap_hunk_unchecked<'pool>(
+            pub const unsafe fn wrap_hunk_unchecked(
                 self,
                 hunk: __pr::Hunk<System, __pr::UnsafeCell<__pr::MaybeUninit<AutoWrapped<T>>>>,
             ) -> Definer!(__pr::HunkSource<System, AutoWrapped<T>>)

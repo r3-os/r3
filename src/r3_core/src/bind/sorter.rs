@@ -167,6 +167,9 @@ pub(super) const fn sort_bindings<Callback, SorterUseInfoList, VertexList>(
         let mut num_indefinite_exclusive = 0;
 
         // `[T]::iter` is unusable in `const fn` [ref:const_slice_iter]
+        // FIXME: `needless_range_loop` false positive
+        // <https://github.com/rust-lang/rust-clippy/issues/10524>
+        #[expect(clippy::needless_range_loop)]
         for i in 0..bind_users.len() {
             // Reject impossible combinations that should be caught earlier
             match bind_users[i] {
@@ -610,33 +613,22 @@ where
 
     // Calculate `TopologicalSortVertexInfo::num_predecessors`
     let mut num_vertices_remaining = 0;
-    {
-        let mut it_vertices = graph.vertices();
-        while let Some(v) = it_vertices.next() {
-            temp_vertex_info[&v] = TopologicalSortVertexInfo {
-                num_predecessors: 0,
-            };
-            num_vertices_remaining += 1;
-        }
+    for v in graph.vertices() {
+        temp_vertex_info[&v] = TopologicalSortVertexInfo {
+            num_predecessors: 0,
+        };
+        num_vertices_remaining += 1;
     }
-    {
-        let mut it_vertices = graph.vertices();
-        while let Some(v) = it_vertices.next() {
-            let mut it_successors = graph.successors(&v);
-            while let Some(successor) = it_successors.next() {
-                temp_vertex_info[&successor].num_predecessors += 1;
-            }
+    for v in graph.vertices() {
+        for successor in graph.successors(&v) {
+            temp_vertex_info[&successor].num_predecessors += 1;
         }
     }
 
     // Push predecessor-less vertices to `temp_ready_vertex_queue`
-    {
-        let mut it_vertices = graph.vertices();
-        while let Some(v) = it_vertices.next() {
-            if temp_vertex_info[&v].num_predecessors == 0 {
-                temp_ready_vertex_queue
-                    .heap_push(v, ReadyVertexQueueBinaryHeapCtx { vertex_ord_lt });
-            }
+    for v in graph.vertices() {
+        if temp_vertex_info[&v].num_predecessors == 0 {
+            temp_ready_vertex_queue.heap_push(v, ReadyVertexQueueBinaryHeapCtx { vertex_ord_lt });
         }
     }
 
@@ -645,8 +637,7 @@ where
     {
         // Remove `v` from the graph, and push the now-predecessor-less
         // vertices to `temp_ready_vertex_queue`
-        let mut it_successors = graph.successors(&v);
-        while let Some(successor) = it_successors.next() {
+        for successor in graph.successors(&v) {
             temp_vertex_info[&successor].num_predecessors -= 1;
             if temp_vertex_info[&successor].num_predecessors == 0 {
                 temp_ready_vertex_queue
