@@ -23,6 +23,7 @@
 #![feature(const_ptr_read)]
 #![feature(const_convert)]
 #![feature(const_option)]
+#![feature(lint_reasons)]
 #![feature(const_deref)]
 #![feature(const_heap)]
 #![feature(const_iter)]
