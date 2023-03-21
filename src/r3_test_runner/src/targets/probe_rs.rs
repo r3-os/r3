@@ -142,7 +142,7 @@ const RTT_ATTACH_TIMEOUT: Duration = Duration::from_millis(500);
 #[derive(thiserror::Error, Debug)]
 pub enum AttachRttError {
     #[error("Error while attaching to the RTT channel")]
-    AttachRtt(#[source] probe_rs_rtt::Error),
+    AttachRtt(#[source] probe_rs::rtt::Error),
     #[error("Error while halting or resuming the core to access the RTT channel")]
     HaltCore(#[source] probe_rs::Error),
     #[error("Timeout while trying to attach to the RTT channel.")]
@@ -172,14 +172,14 @@ pub async fn attach_rtt(
                 .unwrap();
             if let Some(x) = addr {
                 log::debug!("Found the RTT header at {x:#x}");
-                probe_rs_rtt::ScanRegion::Exact(x as u32)
+                probe_rs::rtt::ScanRegion::Exact(x as u32)
             } else {
-                probe_rs_rtt::ScanRegion::Ram
+                probe_rs::rtt::ScanRegion::Ram
             }
         }
         Err(e) => {
             log::warn!("Couldn't read the executable to find the RTT header: {e:?}");
-            probe_rs_rtt::ScanRegion::Ram
+            probe_rs::rtt::ScanRegion::Ram
         }
     };
 
@@ -201,9 +201,9 @@ pub async fn attach_rtt(
                     &mut core
                 };
 
-                match probe_rs_rtt::Rtt::attach_region(core, &memory_map, &rtt_scan_region) {
+                match probe_rs::rtt::Rtt::attach_region(core, &memory_map, &rtt_scan_region) {
                     Ok(rtt) => Some(rtt),
-                    Err(probe_rs_rtt::Error::ControlBlockNotFound) => None,
+                    Err(probe_rs::rtt::Error::ControlBlockNotFound) => None,
                     Err(e) => return Err(AttachRttError::AttachRtt(e)),
                 }
             };
@@ -279,7 +279,7 @@ enum ReadRttSt {
     Idle {
         buf: ReadRttBuf,
         session: AsyncMutexGuard<probe_rs::Session>,
-        rtt: Box<probe_rs_rtt::Rtt>,
+        rtt: Box<probe_rs::rtt::Rtt>,
         pos: usize,
         len: usize,
     },
@@ -291,7 +291,7 @@ enum ReadRttSt {
                 ReadRttBuf,
                 AsyncMutexGuard<probe_rs::Session>,
                 usize,
-                Box<probe_rs_rtt::Rtt>,
+                Box<probe_rs::rtt::Rtt>,
             )>,
         >,
     },
@@ -300,7 +300,7 @@ enum ReadRttSt {
     PollDelay {
         buf: ReadRttBuf,
         session: AsyncMutexGuard<probe_rs::Session>,
-        rtt: Box<probe_rs_rtt::Rtt>,
+        rtt: Box<probe_rs::rtt::Rtt>,
         delay: Pin<Box<Sleep>>,
     },
 
@@ -312,7 +312,7 @@ type ReadRttBuf = Box<[u8; 1024]>;
 impl ReadRtt {
     fn new(
         session: AsyncMutexGuard<probe_rs::Session>,
-        rtt: probe_rs_rtt::Rtt,
+        rtt: probe_rs::rtt::Rtt,
         options: RttOptions,
     ) -> Self {
         Self {
@@ -440,7 +440,7 @@ impl AsyncBufRead for ReadRtt {
 impl ReadRtt {
     fn read_inner(
         session: &mut probe_rs::Session,
-        rtt: &mut probe_rs_rtt::Rtt,
+        rtt: &mut probe_rs::rtt::Rtt,
         buf: &mut [u8],
         halt_on_access: bool,
     ) -> tokio::io::Result<usize> {
