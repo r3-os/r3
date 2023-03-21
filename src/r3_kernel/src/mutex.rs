@@ -26,7 +26,7 @@ impl<Traits: KernelTraits> System<Traits> {
     /// See [`crate::bad_id`].
     #[inline]
     unsafe fn mutex_cb(this: MutexId) -> Result<&'static MutexCb<Traits>, NoAccessError> {
-        Traits::get_mutex_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
+        Traits::get_mutex_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id() })
     }
 }
 

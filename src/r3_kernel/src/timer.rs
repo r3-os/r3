@@ -25,7 +25,7 @@ impl<Traits: KernelTraits> System<Traits> {
     /// See [`crate::bad_id`].
     #[inline]
     unsafe fn timer_cb(this: TimerId) -> Result<&'static TimerCb<Traits>, NoAccessError> {
-        Traits::get_timer_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id::<Traits>() })
+        Traits::get_timer_cb(this.get() - 1).ok_or_else(|| unsafe { crate::bad_id() })
     }
 }
 
