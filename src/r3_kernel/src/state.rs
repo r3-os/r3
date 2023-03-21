@@ -61,6 +61,7 @@ pub(super) fn unboost_priority<Traits: KernelTraits>() -> Result<(), BoostPriori
 
 /// Implements `Kernel::unboost_priority`.
 #[cfg(not(feature = "priority_boost"))]
+#[expect(clippy::extra_unused_type_parameters)]
 pub(super) fn unboost_priority<Traits: KernelTraits>() -> Result<(), BoostPriorityError> {
     // Priority Boost is disabled statically, so this function will always
     // return `BadContext`
