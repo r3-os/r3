@@ -353,6 +353,7 @@ macro_rules! impl_source_setter {
             )?
             ///
             /// [Take]: crate::bind::Bind::take_mut
+            #[expect(clippy::needless_lifetimes)] // `'pool`
             pub const fn take_bind<'pool>(
                 self,
                 bind: __pr::Bind<'pool, System, AutoWrapped<T>>,
