@@ -29,7 +29,7 @@ svgbobdoc = { version = "0.3.0" }
 tokenlock = { version = "0.3.4", default-features = false }
 arrayvec = { version = "0.7.1", default-features = false }
 bytemuck = { version = "1.12.3", features = ["derive"] }
-bitflags = { version = "1.2.1" }
+bitflags = { version = "2.0.2" }
 macropol = { version = "0.1.2" }
 either = { version = "1.6.1", default-features = false }
 elain = { version = "0.3.0" }

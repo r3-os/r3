@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - **Breaking:** `{Bind,Hunk}Definer::zeroed` now requires `T: Zeroable` instead of `T: ZeroInit`.
+- **Breaking:** Upgrade `bitflags` to [`^2`](https://github.com/bitflags/bitflags/releases/tag/2.0.0), changing `EventGroupWaitFlags` in subtle ways:
+    - It no longer exposes the `bits` field. Use the `bits` method to get a raw value.
+    - The unsafe `from_bits_unchecked` method has been superseded by the safe `from_bits_retain` method.
 
 ### Added
 
