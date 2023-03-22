@@ -388,6 +388,7 @@ bitflags::bitflags! {
     /// Options for [`EventGroup::wait`][1].
     ///
     /// [1]: crate::kernel::event_group::EventGroupMethods::wait
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct EventGroupWaitFlags: u8 {
         /// Wait for all of the specified bits to be set.
         const ALL = 1 << 0;
