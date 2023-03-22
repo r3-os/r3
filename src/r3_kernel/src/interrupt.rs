@@ -92,6 +92,7 @@ impl Init for InterruptLineInit {
 bitflags::bitflags! {
     /// Flags for [`InterruptLineInit`].
     #[doc(hidden)]
+    #[derive(Debug, Clone, Copy)]
     pub struct InterruptLineInitFlags: u32 {
         const ENABLE = 1 << 0;
         const SET_PRIORITY = 1 << 1;
