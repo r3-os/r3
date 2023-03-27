@@ -8,7 +8,7 @@ import * as log from "https://deno.land/std@0.181.0/log/mod.ts";
 import { BufReader } from "https://deno.land/std@0.181.0/io/mod.ts";
 import { Buffer } from "node:buffer";
 import AsciiTable from "https://deno.land/x/ascii_table@v0.1.0/mod.ts";
-import elfy from "https://esm.sh/elfy@1.0.0";
+import elfy from "npm:elfy@1.0.0";
 
 const ENV_TEST_NAME = "R3_TEST"; // should be synched with `r3_test_runner`!
 
