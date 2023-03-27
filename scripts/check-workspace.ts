@@ -6,11 +6,11 @@
 // [Deno]: https://deno.land/
 //
 // Usage: deno run --allow-read scripts/check-workspace.ts
-import { parse as parseFlags } from "https://deno.land/std@0.143.0/flags/mod.ts";
-import { parse as parseToml } from "https://deno.land/std@0.143.0/encoding/toml.ts";
-import * as path from "https://deno.land/std@0.143.0/path/mod.ts";
-import * as log from "https://deno.land/std@0.143.0/log/mod.ts";
-import { exists } from "https://deno.land/std@0.143.0/fs/exists.ts";
+import { parse as parseFlags } from "https://deno.land/std@0.181.0/flags/mod.ts";
+import { parse as parseToml } from "https://deno.land/std@0.181.0/encoding/toml.ts";
+import * as path from "https://deno.land/std@0.181.0/path/mod.ts";
+import * as log from "https://deno.land/std@0.181.0/log/mod.ts";
+import { exists } from "https://deno.land/std@0.181.0/fs/exists.ts";
 
 const parsedArgs = parseFlags(Deno.args, {
     "alias": {
