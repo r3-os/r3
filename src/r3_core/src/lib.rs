@@ -1,6 +1,5 @@
 #![feature(const_maybe_uninit_array_assume_init)]
 #![feature(const_fn_floating_point_arithmetic)]
-#![feature(const_nonnull_slice_from_raw_parts)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_slice_from_raw_parts_mut)]
