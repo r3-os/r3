@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["U_MAX"],"struct":["B0","B1","IncrSatOp","Overflow","U0","UInt"],"trait":["Nat","NatFn"],"type":["IncrSat","U","WrappingU"]};

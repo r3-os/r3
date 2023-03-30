@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["INIT_HOOK_PRIORITY"],"struct":["DefaultInitTag","Hunk","HunkDefiner","ZeroInitTag"],"trait":["HunkIniter"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["INIT_HOOK_PRIORITY"],"fn":["bind","bind_default","bind_uninit","fn_bind_map"],"struct":["Bind","BindBorrow","BindBorrowMut","BindDefiner","BindRef","BindTable","BindTake","BindTakeMut","BindTakeRef","FnBindMap"],"trait":["Binder","ExecutableDefiner","ExecutableDefinerExt","FnBind","UnzipBind"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Timer","TimerDefiner","TimerRef"],"trait":["TimerHandle","TimerMethods"],"type":["StaticTimer"]};

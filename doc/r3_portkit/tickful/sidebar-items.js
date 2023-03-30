@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CfgError"],"struct":["TickfulCfg","TickfulOptions","TickfulStateCore"],"trait":["TickfulStateTrait"],"type":["TickfulState"]};

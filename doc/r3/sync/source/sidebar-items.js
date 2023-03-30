@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["DefaultSource","HunkSource","NewBindSource","TakeBindSource"],"trait":["Source"]};

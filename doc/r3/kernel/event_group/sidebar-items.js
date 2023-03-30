@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["EventGroup","EventGroupDefiner","EventGroupRef","EventGroupWaitFlags"],"trait":["EventGroupHandle","EventGroupMethods"],"type":["EventGroupBits","StaticEventGroup"]};

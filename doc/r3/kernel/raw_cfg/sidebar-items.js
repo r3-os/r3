@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["EventGroupDescriptor","InterruptLineDescriptor","MutexDescriptor","SemaphoreDescriptor","TaskDescriptor","TimerDescriptor"],"trait":["CfgBase","CfgEventGroup","CfgInterruptLine","CfgMutex","CfgSemaphore","CfgTask","CfgTimer"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["sprint","sprintln"],"mod":["_changelog_","clock","serial","stdout","usbstdio"]};

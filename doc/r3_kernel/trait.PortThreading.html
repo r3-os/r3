@@ -1,0 +1,434 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Implemented by a port. This trait contains items related to low-level operations for controlling CPU states and context switching."><title>PortThreading in r3_kernel - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="r3_kernel" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../r3_kernel/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../r3_kernel/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">PortThreading</a></h2><div class="sidebar-elems"><section><h3><a href="#required-associated-types">Required Associated Types</a></h3><ul class="block"><li><a href="#associatedtype.PortTaskState">PortTaskState</a></li></ul><h3><a href="#required-associated-consts">Required Associated Constants</a></h3><ul class="block"><li><a href="#associatedconstant.PORT_TASK_STATE_INIT">PORT_TASK_STATE_INIT</a></li></ul><h3><a href="#provided-associated-consts">Provided Associated Constants</a></h3><ul class="block"><li><a href="#associatedconstant.STACK_ALIGN">STACK_ALIGN</a></li><li><a href="#associatedconstant.STACK_DEFAULT_SIZE">STACK_DEFAULT_SIZE</a></li></ul><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.dispatch_first_task">dispatch_first_task</a></li><li><a href="#tymethod.enter_cpu_lock">enter_cpu_lock</a></li><li><a href="#tymethod.exit_and_dispatch">exit_and_dispatch</a></li><li><a href="#tymethod.initialize_task_state">initialize_task_state</a></li><li><a href="#tymethod.is_cpu_lock_active">is_cpu_lock_active</a></li><li><a href="#tymethod.is_interrupt_context">is_interrupt_context</a></li><li><a href="#tymethod.is_scheduler_active">is_scheduler_active</a></li><li><a href="#tymethod.is_task_context">is_task_context</a></li><li><a href="#tymethod.leave_cpu_lock">leave_cpu_lock</a></li><li><a href="#tymethod.yield_cpu">yield_cpu</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.try_enter_cpu_lock">try_enter_cpu_lock</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In r3_kernel</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="index.html">r3_kernel</a>::<wbr><a class="trait" href="#">PortThreading</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/r3_kernel/lib.rs.html#401-522">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub unsafe trait PortThreading: <a class="trait" href="trait.KernelCfg1.html" title="trait r3_kernel::KernelCfg1">KernelCfg1</a> + <a class="trait" href="../r3_core/kernel/cfg/trait.KernelStatic.html" title="trait r3_core::kernel::cfg::KernelStatic">KernelStatic</a>&lt;<a class="struct" href="struct.System.html" title="struct r3_kernel::System">System</a>&lt;Self&gt;&gt; {
+    type <a href="#associatedtype.PortTaskState" class="associatedtype">PortTaskState</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + <a class="trait" href="utils/trait.Init.html" title="trait r3_kernel::utils::Init">Init</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> + 'static;
+
+    const <a href="#associatedconstant.PORT_TASK_STATE_INIT" class="constant">PORT_TASK_STATE_INIT</a>: Self::<a class="associatedtype" href="trait.PortThreading.html#associatedtype.PortTaskState" title="type r3_kernel::PortThreading::PortTaskState">PortTaskState</a>;
+    const <a href="#associatedconstant.STACK_DEFAULT_SIZE" class="constant">STACK_DEFAULT_SIZE</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a> = 1_024usize;
+    const <a href="#associatedconstant.STACK_ALIGN" class="constant">STACK_ALIGN</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a> = 8usize;
+
+    // Required methods
+    unsafe fn <a href="#tymethod.dispatch_first_task" class="fn">dispatch_first_task</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.never.html">!</a>;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.yield_cpu" class="fn">yield_cpu</a>();
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.exit_and_dispatch" class="fn">exit_and_dispatch</a>(task: &amp;'static <a class="struct" href="struct.TaskCb.html" title="struct r3_kernel::TaskCb">TaskCb</a>&lt;Self&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.never.html">!</a>;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.enter_cpu_lock" class="fn">enter_cpu_lock</a>();
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.leave_cpu_lock" class="fn">leave_cpu_lock</a>();
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.initialize_task_state" class="fn">initialize_task_state</a>(task: &amp;'static <a class="struct" href="struct.TaskCb.html" title="struct r3_kernel::TaskCb">TaskCb</a>&lt;Self&gt;);
+<span class="item-spacer"></span>    fn <a href="#tymethod.is_cpu_lock_active" class="fn">is_cpu_lock_active</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.is_task_context" class="fn">is_task_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.is_interrupt_context" class="fn">is_interrupt_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.is_scheduler_active" class="fn">is_scheduler_active</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+
+    // Provided method
+    unsafe fn <a href="#method.try_enter_cpu_lock" class="fn">try_enter_cpu_lock</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a> { ... }
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Implemented by a port. This trait contains items related to low-level
+operations for controlling CPU states and context switching.</p>
+<h2 id="safety"><a href="#safety">Safety</a></h2>
+<p>Implementing a port is inherently unsafe because it’s responsible for
+initializing the execution environment and providing a dispatcher
+implementation.</p>
+<p>These methods are only meant to be called by the kernel.</p>
+<style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script></div></details><h2 id="required-associated-types" class="small-section-header">Required Associated Types<a href="#required-associated-types" class="anchor">§</a></h2><div class="methods"><section id="associatedtype.PortTaskState" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#402">source</a><h4 class="code-header">type <a href="#associatedtype.PortTaskState" class="associatedtype">PortTaskState</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + <a class="trait" href="utils/trait.Init.html" title="trait r3_kernel::utils::Init">Init</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> + 'static</h4></section></div><h2 id="required-associated-consts" class="small-section-header">Required Associated Constants<a href="#required-associated-consts" class="anchor">§</a></h2><div class="methods"><details class="toggle" open><summary><section id="associatedconstant.PORT_TASK_STATE_INIT" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#406">source</a><h4 class="code-header">const <a href="#associatedconstant.PORT_TASK_STATE_INIT" class="constant">PORT_TASK_STATE_INIT</a>: Self::<a class="associatedtype" href="trait.PortThreading.html#associatedtype.PortTaskState" title="type r3_kernel::PortThreading::PortTaskState">PortTaskState</a></h4></section></summary><div class="docblock"><p>The initial value of <a href="struct.TaskCb.html#structfield.port_task_state" title="field r3_kernel::TaskCb::port_task_state"><code>TaskCb::port_task_state</code></a> for all tasks.</p>
+</div></details></div><h2 id="provided-associated-consts" class="small-section-header">Provided Associated Constants<a href="#provided-associated-consts" class="anchor">§</a></h2><div class="methods"><details class="toggle" open><summary><section id="associatedconstant.STACK_DEFAULT_SIZE" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#409">source</a><h4 class="code-header">const <a href="#associatedconstant.STACK_DEFAULT_SIZE" class="constant">STACK_DEFAULT_SIZE</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a> = 1_024usize</h4></section></summary><div class="docblock"><p>The default stack size for tasks.</p>
+</div></details><details class="toggle" open><summary><section id="associatedconstant.STACK_ALIGN" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#420">source</a><h4 class="code-header">const <a href="#associatedconstant.STACK_ALIGN" class="constant">STACK_ALIGN</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a> = 8usize</h4></section></summary><div class="docblock"><p>The alignment requirement for task stack regions.</p>
+<p>Both ends of stack regions are aligned by <code>STACK_ALIGN</code>. It’s
+automatically enforced by the kernel configurator for automatically
+allocated stack regions (this applies to tasks created without
+<a href="../r3_core/kernel/task/struct.StackHunk.html" title="struct r3_core::kernel::task::StackHunk"><code>StackHunk</code></a>). The kernel configurator does not check the alignemnt
+for manually-allocated stack regions.</p>
+</div></details></div><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.dispatch_first_task" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#430">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.dispatch_first_task" class="fn">dispatch_first_task</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.never.html">!</a></h4></section></summary><div class="docblock"><p>Transfer the control to the dispatcher, discarding the current
+(startup) context. <code>*state.</code><a href="struct.State.html#method.running_task_ptr" title="method r3_kernel::State::running_task_ptr"><code>running_task_ptr</code></a><code>()</code> is <code>None</code> at this
+point. The dispatcher should call <a href="trait.PortToKernel.html#tymethod.choose_running_task" title="associated function r3_kernel::PortToKernel::choose_running_task"><code>PortToKernel::choose_running_task</code></a>
+to find the next task to run and transfer the control to that task.</p>
+<p>Precondition: CPU Lock active, a boot context</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.yield_cpu" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#452">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.yield_cpu" class="fn">yield_cpu</a>()</h4></section></summary><div class="docblock"><p>Yield the processor.</p>
+<p>In a task context, this method immediately transfers the control to
+a dispatcher. The dispatcher should call
+<a href="trait.PortToKernel.html#tymethod.choose_running_task" title="associated function r3_kernel::PortToKernel::choose_running_task"><code>PortToKernel::choose_running_task</code></a> to find the next task to run and
+transfer the control to that task.</p>
+<p>In an interrupt context, the effect of this method will be deferred
+until the processor completes the execution of all active interrupt
+handler threads.</p>
+<p>Precondition: CPU Lock inactive</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Port Implementation Note:</strong> One way to handle the interrupt context
+case is to set a flag variable and check it in the epilogue of a
+first-level interrupt handler. Another way is to raise a low-priority
+interrupt (such as PendSV in Arm-M) and implement dispatching in the
+handler.</p>
+</blockquote>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.exit_and_dispatch" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#461">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.exit_and_dispatch" class="fn">exit_and_dispatch</a>(task: &amp;'static <a class="struct" href="struct.TaskCb.html" title="struct r3_kernel::TaskCb">TaskCb</a>&lt;Self&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.never.html">!</a></h4></section></summary><div class="docblock"><p>Destroy the state of the previously running task (<code>task</code>, which has
+already been removed from <code>*state.</code><a href="struct.State.html#method.running_task_ptr" title="method r3_kernel::State::running_task_ptr"><code>running_task_ptr</code></a><code>()</code>) and proceed
+to the dispatcher.</p>
+<p>Precondition: CPU Lock active</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.enter_cpu_lock" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#466">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.enter_cpu_lock" class="fn">enter_cpu_lock</a>()</h4></section></summary><div class="docblock"><p>Disable all kernel-managed interrupts (this state is called <em>CPU Lock</em>).</p>
+<p>Precondition: CPU Lock inactive</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.leave_cpu_lock" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#472">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.leave_cpu_lock" class="fn">leave_cpu_lock</a>()</h4></section></summary><div class="docblock"><p>Re-enable kernel-managed interrupts previously disabled by
+<code>enter_cpu_lock</code>, thus deactivating the CPU Lock state.</p>
+<p>Precondition: CPU Lock active</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.initialize_task_state" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#502">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.initialize_task_state" class="fn">initialize_task_state</a>(task: &amp;'static <a class="struct" href="struct.TaskCb.html" title="struct r3_kernel::TaskCb">TaskCb</a>&lt;Self&gt;)</h4></section></summary><div class="docblock"><p>Prepare the task for activation. More specifically, set the current
+program counter to <a href="struct.TaskAttr.html#structfield.entry_point" title="field r3_kernel::TaskAttr::entry_point"><code>TaskAttr::entry_point</code></a> and the current stack
+pointer to either end of <a href="struct.TaskAttr.html#structfield.stack" title="field r3_kernel::TaskAttr::stack"><code>TaskAttr::stack</code></a>, ensuring the task will
+start execution from <code>entry_point</code> next time the task receives the
+control.</p>
+<p>Do not call this for a running task. Calling this for a dormant task is
+always safe. For tasks in other states, whether this method is safe is
+dependent on how the programming language the task code is written in
+is implemented. In particular, this is unsafe for Rust task code because
+it might violate the requirement of <a href="https://doc.rust-lang.org/nightly/core/pin/struct.Pin.html" title="struct core::pin::Pin"><code>Pin</code></a> if there’s a <code>Pin</code> pointing
+to something on the task’s stack.</p>
+<p>Precondition: CPU Lock active</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.is_cpu_lock_active" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#505">source</a><h4 class="code-header">fn <a href="#tymethod.is_cpu_lock_active" class="fn">is_cpu_lock_active</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Return a flag indicating whether a CPU Lock state is active.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.is_task_context" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#511">source</a><h4 class="code-header">fn <a href="#tymethod.is_task_context" class="fn">is_task_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Return a flag indicating whether the current context is
+<a href="../r3_core/index.html#contexts" title="mod r3_core">a task context</a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.is_interrupt_context" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#517">source</a><h4 class="code-header">fn <a href="#tymethod.is_interrupt_context" class="fn">is_interrupt_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Return a flag indicating whether the current context is
+<a href="../r3_core/index.html#contexts" title="mod r3_core">an interrupt context</a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.is_scheduler_active" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#521">source</a><h4 class="code-header">fn <a href="#tymethod.is_scheduler_active" class="fn">is_scheduler_active</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Return a flag indicating whether <a href="trait.PortThreading.html#tymethod.dispatch_first_task"><code>Self::dispatch_first_task</code></a> was
+called.</p>
+</div></details></div><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.try_enter_cpu_lock" class="method"><a class="srclink rightside" href="../src/r3_kernel/lib.rs.html#476-484">source</a><h4 class="code-header">unsafe fn <a href="#method.try_enter_cpu_lock" class="fn">try_enter_cpu_lock</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Activate CPU Lock. Return <code>true</code> iff CPU Lock was inactive before the
+call.</p>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../implementors/r3_kernel/trait.PortThreading.js" async></script></section></div></main></body></html>

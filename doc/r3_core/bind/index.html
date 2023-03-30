@@ -1,0 +1,472 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Bindings (`Bind`), a static storage with runtime initialization and configuration-time borrow checking."><title>r3_core::bind - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="r3_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="../../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">Module bind</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#constants">Constants</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">r3_core</a>::<wbr><a class="mod" href="#">bind</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/r3_core/bind.rs.html#1-1824">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Bindings (<a href="struct.Bind.html" title="struct r3_core::bind::Bind"><code>Bind</code></a>), a static storage with <a href="struct.BindDefiner.html#method.init" title="method r3_core::bind::BindDefiner::init">runtime initialization</a> and
+<a href="../index.html#static-configuration" title="mod r3_core">configuration-time</a> borrow checking.</p>
+<p>Bindings are essentially fancy global variables defined in a kernel
+configuration. They are defined by <a href="struct.Bind.html#method.define" title="associated function r3_core::bind::Bind::define"><code>Bind::define</code></a> and initialized by
+provided closures at runtime. They can be consumed or borrowed by the entry
+points of <a href="trait.ExecutableDefiner.html" title="trait r3_core::bind::ExecutableDefiner">executable kernel objects</a> or the initializers of another
+bindings, with a dependency graph explicitly defined by the passing of
+<a href="#binders"><em>binders</em></a>.</p>
+<p>The configuration system tracks the usage of bindings and employs static checks
+to ensure that the borrowing rules are followed by the users of the bindings. It
+aborts the compilation if the rules may be violated.</p>
+<p>Bindings use hunks (<a href="../kernel/hunk/struct.Hunk.html" title="struct r3_core::kernel::hunk::Hunk"><code>Hunk</code></a>) as a storage for their contents. Bindings are
+initialized in <a href="../kernel/hook/struct.StartupHook.html" title="struct r3_core::kernel::hook::StartupHook">startup hooks</a>, where <a href="../index.html#system-states" title="mod r3_core">CPU Lock</a> is active, <!--
+[ref:startup_hook_cpu_lock_active] --> and therefore most kernel services
+are unavailable.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Relation to Other Specifications:</strong> <a href="https://rtic.rs/1/book/en/by-example/resources.html"><em>Resources</em></a> in <a href="https://rtic.rs/1/book/en/">RTIC 1</a> serve
+the similar need with a quite different design.
+In R3, bindings are defined in modular, encapsulated configuration functions
+and associated to various kernel objects. The configuration system takes all
+definitions and figures out the correct initialization order.
+In RTIC, all resources are defined in one place and initialized by an
+application-provided <code>#[init]</code> function.</p>
+</blockquote>
+<h2 id="binders"><a href="#binders">Binders</a></h2>
+<p>A <em>binder</em> (<a href="trait.Binder.html" title="trait r3_core::bind::Binder"><code>Binder</code></a>) represents a specific borrow mode of a binding. A
+configuration function creates a binding by calling one of <a href="struct.Bind.html" title="struct r3_core::bind::Bind"><code>Bind</code></a>’s methods
+and uses it in the definition of another object where the binding is intended to
+be consumed, i.e., borrowed or moved out by its entry point or initializer. The
+type a binder produces is called its <em>materialized</em> form.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>r3::{bind::bind, kernel::StaticTimer, prelude::<span class="kw-2">*</span>};
+
+<span class="kw">let </span>count = bind((), || <span class="number">0</span>).finish(cfg);
+<span class="comment">//               ^^  ^^
+//            .--&#39;    &#39;--------,
+//       no binders  no materialized values
+
+</span>StaticTimer::define()
+    <span class="comment">// n.b. `(x,)` is a one-element tuple
+    </span>.start_with_bind((count.borrow_mut(),), |count: <span class="kw-2">&amp;mut </span>i32| {
+        <span class="comment">//            ^^^^^^^^^^^^^^^^^^            ^^^^^^^^
+        //                    |                         |
+        //         BindBorrowMut&lt;&#39;_, _, i32&gt;      &amp;&#39;call mut i32
+        //                  gives...          for some lifetime &#39;call
+    </span>})
+    .finish(b);</code></pre></div>
+<p>The only way for safe code to make a binding available to runtime code in a
+meaningful way is to include a binder in a dependency list (e.g., the <code>binder</code>
+parameter of <a href="trait.ExecutableDefinerExt.html#tymethod.start_with_bind" title="method r3_core::bind::ExecutableDefinerExt::start_with_bind"><code>ExecutableDefinerExt::start_with_bind</code></a>) as shown above or to
+call <a href="struct.Bind.html#method.as_ref" title="method r3_core::bind::Bind::as_ref"><code>Bind::as_ref</code></a> to create a <a href="struct.BindRef.html" title="struct r3_core::bind::BindRef"><code>BindRef</code></a>, which is directly consumable
+in runtime code. Most binders can’t escape from a configuration function.</p>
+<p>The following table lists all provided binders:</p>
+<div><table><thead><tr><th><code>Bind::</code></th><th>Type</th><th>Confers</th><th style="text-align: center">On binding</th><th style="text-align: center">On executable</th></tr></thead><tbody>
+<tr><td><a href="struct.Bind.html#method.borrow" title="method r3_core::bind::Bind::borrow"><code>borrow</code></a></td><td><a href="struct.BindBorrow.html" title="struct r3_core::bind::BindBorrow"><code>BindBorrow</code></a></td><td><code>&amp;'call T</code></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td><a href="struct.Bind.html#method.borrow_mut" title="method r3_core::bind::Bind::borrow_mut"><code>borrow_mut</code></a></td><td><a href="struct.BindBorrowMut.html" title="struct r3_core::bind::BindBorrowMut"><code>BindBorrowMut</code></a></td><td><code>&amp;'call mut T</code></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td><a href="struct.Bind.html#method.take_ref" title="method r3_core::bind::Bind::take_ref"><code>take_ref</code></a></td><td><a href="struct.BindTakeRef.html" title="struct r3_core::bind::BindTakeRef"><code>BindTakeRef</code></a></td><td><code>&amp;'static T</code></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td><a href="struct.Bind.html#method.take_mut" title="method r3_core::bind::Bind::take_mut"><code>take_mut</code></a></td><td><a href="struct.BindTakeMut.html" title="struct r3_core::bind::BindTakeMut"><code>BindTakeMut</code></a></td><td><code>&amp;'static mut T</code></td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td><a href="struct.Bind.html#method.take" title="method r3_core::bind::Bind::take"><code>take</code></a></td><td><a href="struct.BindTake.html" title="struct r3_core::bind::BindTake"><code>BindTake</code></a></td><td><code>T</code></td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td><a href="struct.Bind.html#method.as_ref" title="method r3_core::bind::Bind::as_ref"><code>as_ref</code></a></td><td><a href="struct.BindRef.html" title="struct r3_core::bind::BindRef"><code>BindRef</code></a></td><td><code>&amp;'static T</code></td><td style="text-align: center"></td><td style="text-align: center">✓</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>
+<p>The <strong><code>Bind::</code></strong> column shows the methods to create the binders.</p>
+</li>
+<li>
+<p>The <strong>Type</strong> column shows the types representing the binders.</p>
+</li>
+<li>
+<p>The <strong>Confers</strong> column shows the respective materialized forms of the binders.
+The lifetime <code>'call</code> represents the call duration of the consuming function.</p>
+<ul>
+<li>For <code>&amp;'call T</code> and <code>&amp;'call mut T</code>, the caller has the freedom of choosing
+an arbitrary lifetime, so the consuming function must be generic over any
+lifetimes. In function and closure parameters, reference types without
+explicit lifetimes are automatically made generic in this way owing to <a href="https://doc.rust-lang.org/1.58.1/reference/lifetime-elision.html#lifetime-elision-in-functions">the
+lifetime elision rules</a>.</li>
+</ul>
+</li>
+<li>
+<p>The <strong>On binding</strong> column shows which types of binders can be consumed by
+another binding’s initializer via <a href="struct.BindDefiner.html#method.init_with_bind" title="method r3_core::bind::BindDefiner::init_with_bind"><code>BindDefiner::init_with_bind</code></a>.</p>
+</li>
+<li>
+<p>The <strong>On executable</strong> column shows which types of binders can be consumed
+by <a href="trait.ExecutableDefiner.html" title="trait r3_core::bind::ExecutableDefiner">executable objects</a>, viz., <a href="../kernel/task/type.StaticTask.html" title="type r3_core::kernel::task::StaticTask">tasks</a>, <a href="../kernel/interrupt/struct.StaticInterruptHandler.html" title="struct r3_core::kernel::interrupt::StaticInterruptHandler">interrupt handlers</a>, and
+<a href="../kernel/timer/type.StaticTimer.html" title="type r3_core::kernel::timer::StaticTimer">timers</a>, via <a href="trait.ExecutableDefinerExt.html#tymethod.start_with_bind" title="method r3_core::bind::ExecutableDefinerExt::start_with_bind"><code>ExecutableDefinerExt::start_with_bind</code></a>.</p>
+<ul>
+<li>An executable object may execute its entry point for multiple times
+throughout its lifetime. For this reason, an executable object is not
+allowed to consume <code>BindTake</code> (which moves out the value) or <code>BindTakeMut</code>
+(which mutably borrows the value indefinitely).</li>
+</ul>
+</li>
+</ul>
+<h2 id="initialization-order"><a href="#initialization-order">Initialization Order</a></h2>
+<p>The configuration system determines the initialization order of the defined
+bindings by <a href="https://en.wikipedia.org/wiki/Topological_sorting">topological sorting</a> with a preference toward the definition
+order. The specific algorithm is not a part of the stability guarantee.</p>
+<h2 id="planned-features"><a href="#planned-features">Planned Features</a></h2>
+<p>The following features are planned and may be implemented in the future:</p>
+<ul>
+<li>
+<p>Reusing the storage of a binding whose lifetime has ended by having its
+contents moved out by <a href="struct.BindTake.html" title="struct r3_core::bind::BindTake"><code>BindTake</code></a> or completing its last borrow.</p>
+<!-- [tag:bind_storage_reuse] -->
+</li>
+<li>
+<p>Pruning unused bindings, unless they are marked as <a href="struct.BindDefiner.html#method.unpure" title="method r3_core::bind::BindDefiner::unpure"><code>unpure</code></a>.</p>
+<!-- [ref:unpure_binding] -->
+</li>
+<li>
+<p>Phantom edges to enforce ordering between bindings.</p>
+</li>
+<li>
+<p>Pinning.</p>
+</li>
+</ul>
+<style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script></div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Bind.html" title="struct r3_core::bind::Bind">Bind</a></div><div class="desc docblock-short">A defined binding.</div></li><li><div class="item-name"><a class="struct" href="struct.BindBorrow.html" title="struct r3_core::bind::BindBorrow">BindBorrow</a></div><div class="desc docblock-short">A <a href="index.html#binders">binder</a> that gives <code>&amp;T</code> to a bound function.</div></li><li><div class="item-name"><a class="struct" href="struct.BindBorrowMut.html" title="struct r3_core::bind::BindBorrowMut">BindBorrowMut</a></div><div class="desc docblock-short">A <a href="index.html#binders">binder</a> that gives <code>&amp;mut T</code> to a bound function.</div></li><li><div class="item-name"><a class="struct" href="struct.BindDefiner.html" title="struct r3_core::bind::BindDefiner">BindDefiner</a></div><div class="desc docblock-short">The definer (static builder) for <a href="struct.Bind.html" title="struct r3_core::bind::Bind"><code>Bind</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.BindRef.html" title="struct r3_core::bind::BindRef">BindRef</a></div><div class="desc docblock-short">A reference to a <a href="struct.Bind.html" title="struct r3_core::bind::Bind">binding</a>. Doubles as a <a href="struct.Bind.html" title="struct r3_core::bind::Bind">binder</a>.</div></li><li><div class="item-name"><a class="struct" href="struct.BindTable.html" title="struct r3_core::bind::BindTable">BindTable</a></div><div class="desc docblock-short">Represents a permission to dereference <a href="struct.BindRef.html" title="struct r3_core::bind::BindRef"><code>BindRef</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.BindTake.html" title="struct r3_core::bind::BindTake">BindTake</a></div><div class="desc docblock-short">A <a href="index.html#binders">binder</a> that gives <code>T</code> to a bound function.</div></li><li><div class="item-name"><a class="struct" href="struct.BindTakeMut.html" title="struct r3_core::bind::BindTakeMut">BindTakeMut</a></div><div class="desc docblock-short">A <a href="index.html#binders">binder</a> that gives <code>&amp;'static mut T</code> to a bound function.</div></li><li><div class="item-name"><a class="struct" href="struct.BindTakeRef.html" title="struct r3_core::bind::BindTakeRef">BindTakeRef</a></div><div class="desc docblock-short">A <a href="index.html#binders">binder</a> that gives <code>&amp;'static T</code> to a bound function.</div></li><li><div class="item-name"><a class="struct" href="struct.FnBindMap.html" title="struct r3_core::bind::FnBindMap">FnBindMap</a></div><div class="desc docblock-short">Applies a function to a <a href="trait.FnBind.html" title="trait r3_core::bind::FnBind"><code>FnBind</code></a>’s output.</div></li><li><div class="item-name"><a class="struct" href="struct.RuntimeBindBorrow.html" title="struct r3_core::bind::RuntimeBindBorrow">RuntimeBindBorrow</a></div><div class="desc docblock-short">Unstable. The runtime representation of <a href="struct.BindBorrow.html" title="struct r3_core::bind::BindBorrow"><code>BindBorrow</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.RuntimeBindBorrowMut.html" title="struct r3_core::bind::RuntimeBindBorrowMut">RuntimeBindBorrowMut</a></div><div class="desc docblock-short">Unstable. The runtime representation of <a href="struct.BindBorrowMut.html" title="struct r3_core::bind::BindBorrowMut"><code>BindBorrowMut</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.RuntimeBindTake.html" title="struct r3_core::bind::RuntimeBindTake">RuntimeBindTake</a></div><div class="desc docblock-short">Unstable. The runtime representation of <a href="struct.BindTake.html" title="struct r3_core::bind::BindTake"><code>BindTake</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.RuntimeBindTakeMut.html" title="struct r3_core::bind::RuntimeBindTakeMut">RuntimeBindTakeMut</a></div><div class="desc docblock-short">Unstable. The runtime representation of <a href="struct.BindTakeMut.html" title="struct r3_core::bind::BindTakeMut"><code>BindTakeMut</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.RuntimeBindTakeRef.html" title="struct r3_core::bind::RuntimeBindTakeRef">RuntimeBindTakeRef</a></div><div class="desc docblock-short">Unstable. The runtime representation of <a href="struct.BindTakeRef.html" title="struct r3_core::bind::BindTakeRef"><code>BindTakeRef</code></a>.</div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.GetBindTableError.html" title="enum r3_core::bind::GetBindTableError">GetBindTableError</a></div><div class="desc docblock-short">Error type for <a href="struct.BindTable.html#method.get" title="associated function r3_core::bind::BindTable::get"><code>BindTable::get</code></a>.</div></li></ul><h2 id="constants" class="small-section-header"><a href="#constants">Constants</a></h2><ul class="item-table"><li><div class="item-name"><a class="constant" href="constant.INIT_HOOK_PRIORITY.html" title="constant r3_core::bind::INIT_HOOK_PRIORITY">INIT_HOOK_PRIORITY</a></div><div class="desc docblock-short">The priority of the <a href="../kernel/hook/struct.StartupHook.html" title="struct r3_core::kernel::hook::StartupHook">startup hooks</a> used to initialize <a href="struct.Bind.html" title="struct r3_core::bind::Bind">bindings</a>.</div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Binder.html" title="trait r3_core::bind::Binder">Binder</a></div><div class="desc docblock-short">Represents a <em>binder</em>, which represents a specific way to access the
+contents of a <a href="struct.Bind.html" title="struct r3_core::bind::Bind">binding</a> from a runtime function.</div></li><li><div class="item-name"><a class="trait" href="trait.ExecutableDefiner.html" title="trait r3_core::bind::ExecutableDefiner">ExecutableDefiner</a></div><div class="desc docblock-short">A trait for definer objects (static builders) for kernel objects that can
+spawn a thread that executes after the execution of all startup hooks is
+complete.</div></li><li><div class="item-name"><a class="trait" href="trait.ExecutableDefinerExt.html" title="trait r3_core::bind::ExecutableDefinerExt">ExecutableDefinerExt</a></div><div class="desc docblock-short">An extension trait for <a href="trait.ExecutableDefiner.html" title="trait r3_core::bind::ExecutableDefiner"><code>ExecutableDefiner</code></a>. Provides a method to
+attach an entry point with materialized <a href="struct.Bind.html" title="struct r3_core::bind::Bind">bindings</a>.</div></li><li><div class="item-name"><a class="trait" href="trait.FnBind.html" title="trait r3_core::bind::FnBind">FnBind</a></div><div class="desc docblock-short">A trait for closures that can receive <a href="struct.Bind.html" title="struct r3_core::bind::Bind">bindings</a> materialized through
+specific <a href="trait.Binder.html" title="trait r3_core::bind::Binder">binders</a> (<code>Binder</code>).</div></li><li><div class="item-name"><a class="trait" href="trait.RuntimeBinder.html" title="trait r3_core::bind::RuntimeBinder">RuntimeBinder</a></div><div class="desc docblock-short">Unstable. The runtime representation of <a href="trait.Binder.html" title="trait r3_core::bind::Binder"><code>Binder</code></a>.</div></li><li><div class="item-name"><a class="trait" href="trait.UnzipBind.html" title="trait r3_core::bind::UnzipBind">UnzipBind</a></div><div class="desc docblock-short">An extension trait for destructing <a href="struct.Bind.html" title="struct r3_core::bind::Bind"><code>Bind</code></a><code>&lt;_, (T0, T1, ...)&gt;</code> into
+individual bindings <code>(Bind&lt;_, T0&gt;, Bind&lt;_, T1&gt;, ...)</code>.</div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.fn_bind_map.html" title="fn r3_core::bind::fn_bind_map">fn_bind_map</a></div><div class="desc docblock-short">Apply a function to an <code>impl </code><a href="trait.FnBind.html" title="trait r3_core::bind::FnBind"><code>FnBind</code></a><code>&lt;_&gt;</code>’s output.</div></li></ul></section></div></main></body></html>

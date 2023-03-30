@@ -1,0 +1,268 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Provides access to the minimal API exposed by a kernel."><title>KernelBase in r3::kernel::raw - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="r3" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../../r3/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../../r3/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">KernelBase</a></h2><div class="sidebar-elems"><section><h3><a href="#required-associated-types">Required Associated Types</a></h3><ul class="block"><li><a href="#associatedtype.RawDebugPrinter">RawDebugPrinter</a></li><li><a href="#associatedtype.RawTaskId">RawTaskId</a></li></ul><h3><a href="#provided-associated-consts">Provided Associated Constants</a></h3><ul class="block"><li><a href="#associatedconstant.RAW_SUPPORTED_QUEUE_ORDERS">RAW_SUPPORTED_QUEUE_ORDERS</a></li></ul><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.raw_acquire_cpu_lock">raw_acquire_cpu_lock</a></li><li><a href="#tymethod.raw_debug">raw_debug</a></li><li><a href="#tymethod.raw_exit_task">raw_exit_task</a></li><li><a href="#tymethod.raw_has_cpu_lock">raw_has_cpu_lock</a></li><li><a href="#tymethod.raw_is_boot_complete">raw_is_boot_complete</a></li><li><a href="#tymethod.raw_is_interrupt_context">raw_is_interrupt_context</a></li><li><a href="#tymethod.raw_is_priority_boost_active">raw_is_priority_boost_active</a></li><li><a href="#tymethod.raw_is_task_context">raw_is_task_context</a></li><li><a href="#tymethod.raw_park">raw_park</a></li><li><a href="#tymethod.raw_park_timeout">raw_park_timeout</a></li><li><a href="#tymethod.raw_release_cpu_lock">raw_release_cpu_lock</a></li><li><a href="#tymethod.raw_set_time">raw_set_time</a></li><li><a href="#tymethod.raw_sleep">raw_sleep</a></li><li><a href="#tymethod.raw_task_activate">raw_task_activate</a></li><li><a href="#tymethod.raw_task_current">raw_task_current</a></li><li><a href="#tymethod.raw_task_effective_priority">raw_task_effective_priority</a></li><li><a href="#tymethod.raw_task_interrupt">raw_task_interrupt</a></li><li><a href="#tymethod.raw_task_priority">raw_task_priority</a></li><li><a href="#tymethod.raw_task_unpark_exact">raw_task_unpark_exact</a></li><li><a href="#tymethod.raw_unboost_priority">raw_unboost_priority</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In r3::kernel::raw</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../../index.html">r3</a>::<wbr><a href="../index.html">kernel</a>::<wbr><a href="index.html">raw</a>::<wbr><a class="trait" href="#">KernelBase</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../../src/r3_core/kernel/raw.rs.html#30">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub unsafe trait KernelBase: <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a> + 'static {
+    type <a href="#associatedtype.RawDebugPrinter" class="associatedtype">RawDebugPrinter</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>;
+    type <a href="#associatedtype.RawTaskId" class="associatedtype">RawTaskId</a>: <a class="trait" href="../trait.Id.html" title="trait r3::kernel::Id">Id</a>;
+
+    const <a href="#associatedconstant.RAW_SUPPORTED_QUEUE_ORDERS" class="constant">RAW_SUPPORTED_QUEUE_ORDERS</a>: &amp;'static [<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="enum.QueueOrderKind.html" title="enum r3::kernel::raw::QueueOrderKind">QueueOrderKind</a>&gt;] = &amp;[];
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 20 methods</span></summary>
+    // Required methods
+    fn <a href="#tymethod.raw_debug" class="fn">raw_debug</a>() -&gt; Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawDebugPrinter" title="type r3::kernel::traits::KernelBase::RawDebugPrinter">RawDebugPrinter</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_acquire_cpu_lock" class="fn">raw_acquire_cpu_lock</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.CpuLockError.html" title="enum r3::kernel::CpuLockError">CpuLockError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_release_cpu_lock" class="fn">raw_release_cpu_lock</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.CpuLockError.html" title="enum r3::kernel::CpuLockError">CpuLockError</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_has_cpu_lock" class="fn">raw_has_cpu_lock</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_unboost_priority" class="fn">raw_unboost_priority</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.BoostPriorityError.html" title="enum r3::kernel::BoostPriorityError">BoostPriorityError</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_is_priority_boost_active" class="fn">raw_is_priority_boost_active</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_is_task_context" class="fn">raw_is_task_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_is_interrupt_context" class="fn">raw_is_interrupt_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_is_boot_complete" class="fn">raw_is_boot_complete</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_set_time" class="fn">raw_set_time</a>(time: <a class="struct" href="../../time/struct.Time.html" title="struct r3::time::Time">Time</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.TimeError.html" title="enum r3::kernel::TimeError">TimeError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_exit_task" class="fn">raw_exit_task</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.never.html">!</a>, <a class="enum" href="../enum.ExitTaskError.html" title="enum r3::kernel::ExitTaskError">ExitTaskError</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_park" class="fn">raw_park</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.ParkError.html" title="enum r3::kernel::ParkError">ParkError</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_park_timeout" class="fn">raw_park_timeout</a>(timeout: <a class="struct" href="../../time/struct.Duration.html" title="struct r3::time::Duration">Duration</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.ParkTimeoutError.html" title="enum r3::kernel::ParkTimeoutError">ParkTimeoutError</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_sleep" class="fn">raw_sleep</a>(duration: <a class="struct" href="../../time/struct.Duration.html" title="struct r3::time::Duration">Duration</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.SleepError.html" title="enum r3::kernel::SleepError">SleepError</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.raw_task_current" class="fn">raw_task_current</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>, <a class="enum" href="../enum.GetCurrentTaskError.html" title="enum r3::kernel::GetCurrentTaskError">GetCurrentTaskError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_task_activate" class="fn">raw_task_activate</a>(
+        this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.ActivateTaskError.html" title="enum r3::kernel::ActivateTaskError">ActivateTaskError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_task_interrupt" class="fn">raw_task_interrupt</a>(
+        this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.InterruptTaskError.html" title="enum r3::kernel::InterruptTaskError">InterruptTaskError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_task_unpark_exact" class="fn">raw_task_unpark_exact</a>(
+        this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.UnparkExactError.html" title="enum r3::kernel::UnparkExactError">UnparkExactError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_task_priority" class="fn">raw_task_priority</a>(
+        this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a>, <a class="enum" href="../enum.GetTaskPriorityError.html" title="enum r3::kernel::GetTaskPriorityError">GetTaskPriorityError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.raw_task_effective_priority" class="fn">raw_task_effective_priority</a>(
+        this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a>, <a class="enum" href="../enum.GetTaskPriorityError.html" title="enum r3::kernel::GetTaskPriorityError">GetTaskPriorityError</a>&gt;;
+</details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Provides access to the minimal API exposed by a kernel.</p>
+<h2 id="safety"><a href="#safety">Safety</a></h2>
+<p>See the <a href="index.html#safety" title="mod r3::kernel::raw">Safety</a> section of the module documentation.</p>
+</div></details><h2 id="required-associated-types" class="small-section-header">Required Associated Types<a href="#required-associated-types" class="anchor">§</a></h2><div class="methods"><section id="associatedtype.RawDebugPrinter" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#31">source</a><h4 class="code-header">type <a href="#associatedtype.RawDebugPrinter" class="associatedtype">RawDebugPrinter</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a></h4></section><details class="toggle" open><summary><section id="associatedtype.RawTaskId" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#34">source</a><h4 class="code-header">type <a href="#associatedtype.RawTaskId" class="associatedtype">RawTaskId</a>: <a class="trait" href="../trait.Id.html" title="trait r3::kernel::Id">Id</a></h4></section></summary><div class="docblock"><p>The type to identify tasks.</p>
+</div></details></div><h2 id="provided-associated-consts" class="small-section-header">Provided Associated Constants<a href="#provided-associated-consts" class="anchor">§</a></h2><div class="methods"><details class="toggle" open><summary><section id="associatedconstant.RAW_SUPPORTED_QUEUE_ORDERS" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#42">source</a><h4 class="code-header">const <a href="#associatedconstant.RAW_SUPPORTED_QUEUE_ORDERS" class="constant">RAW_SUPPORTED_QUEUE_ORDERS</a>: &amp;'static [<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="enum.QueueOrderKind.html" title="enum r3::kernel::raw::QueueOrderKind">QueueOrderKind</a>&gt;] = &amp;[]</h4></section></summary><div class="docblock"><p>Used by <a href="../enum.QueueOrder.html#method.is_supported" title="method r3::kernel::QueueOrder::is_supported"><code>QueueOrder::is_supported</code></a>.</p>
+<p><code>None</code> elements don’t match any values of <code>QueueOrder</code>. This might be
+useful for conditionally enabling some of them.</p>
+<p>The default value is an empty slice.</p>
+</div></details></div><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.raw_debug" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#47">source</a><h4 class="code-header">fn <a href="#tymethod.raw_debug" class="fn">raw_debug</a>() -&gt; Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawDebugPrinter" title="type r3::kernel::traits::KernelBase::RawDebugPrinter">RawDebugPrinter</a></h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.debug" title="associated function r3::kernel::Kernel::debug"><code>Kernel::debug</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_acquire_cpu_lock" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#52">source</a><h4 class="code-header">fn <a href="#tymethod.raw_acquire_cpu_lock" class="fn">raw_acquire_cpu_lock</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.CpuLockError.html" title="enum r3::kernel::CpuLockError">CpuLockError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.acquire_cpu_lock" title="associated function r3::kernel::Kernel::acquire_cpu_lock"><code>Kernel::acquire_cpu_lock</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_release_cpu_lock" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#62">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_release_cpu_lock" class="fn">raw_release_cpu_lock</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.CpuLockError.html" title="enum r3::kernel::CpuLockError">CpuLockError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.release_cpu_lock" title="associated function r3::kernel::Kernel::release_cpu_lock"><code>Kernel::release_cpu_lock</code></a>.</p>
+<h5 id="safety-1"><a href="#safety-1">Safety</a></h5>
+<p>See the <a href="../trait.Kernel.html#tymethod.release_cpu_lock" title="associated function r3::kernel::Kernel::release_cpu_lock">Safety</a> section of <code>Kernel::release_cpu_lock</code>’s
+documentation.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_has_cpu_lock" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#65">source</a><h4 class="code-header">fn <a href="#tymethod.raw_has_cpu_lock" class="fn">raw_has_cpu_lock</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Return a flag indicating whether CPU Lock is currently active.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_unboost_priority" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#75">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_unboost_priority" class="fn">raw_unboost_priority</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.BoostPriorityError.html" title="enum r3::kernel::BoostPriorityError">BoostPriorityError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.unboost_priority" title="associated function r3::kernel::Kernel::unboost_priority"><code>Kernel::unboost_priority</code></a>.</p>
+<h5 id="safety-2"><a href="#safety-2">Safety</a></h5>
+<p>See the <a href="../trait.Kernel.html#tymethod.unboost_priority" title="associated function r3::kernel::Kernel::unboost_priority">Safety</a> section of <code>Kernel::unboost_priority</code>’s
+documentation.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_is_priority_boost_active" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#80">source</a><h4 class="code-header">fn <a href="#tymethod.raw_is_priority_boost_active" class="fn">raw_is_priority_boost_active</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.is_priority_boost_active" title="associated function r3::kernel::Kernel::is_priority_boost_active"><code>Kernel::is_priority_boost_active</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_is_task_context" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#85">source</a><h4 class="code-header">fn <a href="#tymethod.raw_is_task_context" class="fn">raw_is_task_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.is_task_context" title="associated function r3::kernel::Kernel::is_task_context"><code>Kernel::is_task_context</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_is_interrupt_context" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#90">source</a><h4 class="code-header">fn <a href="#tymethod.raw_is_interrupt_context" class="fn">raw_is_interrupt_context</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.is_interrupt_context" title="associated function r3::kernel::Kernel::is_interrupt_context"><code>Kernel::is_interrupt_context</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_is_boot_complete" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#95">source</a><h4 class="code-header">fn <a href="#tymethod.raw_is_boot_complete" class="fn">raw_is_boot_complete</a>() -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.is_boot_complete" title="associated function r3::kernel::Kernel::is_boot_complete"><code>Kernel::is_boot_complete</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_set_time" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#100">source</a><h4 class="code-header">fn <a href="#tymethod.raw_set_time" class="fn">raw_set_time</a>(time: <a class="struct" href="../../time/struct.Time.html" title="struct r3::time::Time">Time</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.TimeError.html" title="enum r3::kernel::TimeError">TimeError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.set_time" title="associated function r3::kernel::Kernel::set_time"><code>Kernel::set_time</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_exit_task" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#112">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_exit_task" class="fn">raw_exit_task</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.never.html">!</a>, <a class="enum" href="../enum.ExitTaskError.html" title="enum r3::kernel::ExitTaskError">ExitTaskError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.exit_task" title="associated function r3::kernel::Kernel::exit_task"><code>Kernel::exit_task</code></a>.</p>
+<h5 id="safety-3"><a href="#safety-3">Safety</a></h5>
+<p>See the <a href="../trait.Kernel.html#tymethod.exit_task" title="associated function r3::kernel::Kernel::exit_task">Safety</a> section of <code>Kernel::exit_task</code>’s
+documentation.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_park" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#117">source</a><h4 class="code-header">fn <a href="#tymethod.raw_park" class="fn">raw_park</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.ParkError.html" title="enum r3::kernel::ParkError">ParkError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.park" title="associated function r3::kernel::Kernel::park"><code>Kernel::park</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_park_timeout" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#122">source</a><h4 class="code-header">fn <a href="#tymethod.raw_park_timeout" class="fn">raw_park_timeout</a>(timeout: <a class="struct" href="../../time/struct.Duration.html" title="struct r3::time::Duration">Duration</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.ParkTimeoutError.html" title="enum r3::kernel::ParkTimeoutError">ParkTimeoutError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.park_timeout" title="associated function r3::kernel::Kernel::park_timeout"><code>Kernel::park_timeout</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_sleep" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#127">source</a><h4 class="code-header">fn <a href="#tymethod.raw_sleep" class="fn">raw_sleep</a>(duration: <a class="struct" href="../../time/struct.Duration.html" title="struct r3::time::Duration">Duration</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.SleepError.html" title="enum r3::kernel::SleepError">SleepError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../trait.Kernel.html#tymethod.sleep" title="associated function r3::kernel::Kernel::sleep"><code>Kernel::sleep</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_task_current" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#130">source</a><h4 class="code-header">fn <a href="#tymethod.raw_task_current" class="fn">raw_task_current</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>, <a class="enum" href="../enum.GetCurrentTaskError.html" title="enum r3::kernel::GetCurrentTaskError">GetCurrentTaskError</a>&gt;</h4></section></summary><div class="docblock"><p>Get the current task.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_task_activate" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#139">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_task_activate" class="fn">raw_task_activate</a>(
+    this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.ActivateTaskError.html" title="enum r3::kernel::ActivateTaskError">ActivateTaskError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../traits/trait.TaskMethods.html#method.activate" title="method r3::kernel::traits::TaskMethods::activate"><code>Task::activate</code></a>.</p>
+<h5 id="safety-4"><a href="#safety-4">Safety</a></h5>
+<p>See the <a href="index.html#safety" title="mod r3::kernel::raw">Safety</a> section of the module documentation.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_task_interrupt" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#148">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_task_interrupt" class="fn">raw_task_interrupt</a>(
+    this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.InterruptTaskError.html" title="enum r3::kernel::InterruptTaskError">InterruptTaskError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../traits/trait.TaskMethods.html#method.interrupt" title="method r3::kernel::traits::TaskMethods::interrupt"><code>Task::interrupt</code></a>.</p>
+<h5 id="safety-5"><a href="#safety-5">Safety</a></h5>
+<p>See the <a href="index.html#safety" title="mod r3::kernel::raw">Safety</a> section of the module documentation.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_task_unpark_exact" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#157">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_task_unpark_exact" class="fn">raw_task_unpark_exact</a>(
+    this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.UnparkExactError.html" title="enum r3::kernel::UnparkExactError">UnparkExactError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../traits/trait.TaskMethods.html#method.unpark_exact" title="method r3::kernel::traits::TaskMethods::unpark_exact"><code>Task::unpark_exact</code></a>.</p>
+<h5 id="safety-6"><a href="#safety-6">Safety</a></h5>
+<p>See the <a href="index.html#safety" title="mod r3::kernel::raw">Safety</a> section of the module documentation.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_task_priority" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#166">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_task_priority" class="fn">raw_task_priority</a>(
+    this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a>, <a class="enum" href="../enum.GetTaskPriorityError.html" title="enum r3::kernel::GetTaskPriorityError">GetTaskPriorityError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../traits/trait.TaskMethods.html#method.priority" title="method r3::kernel::traits::TaskMethods::priority"><code>Task::priority</code></a>.</p>
+<h5 id="safety-7"><a href="#safety-7">Safety</a></h5>
+<p>See the <a href="index.html#safety" title="mod r3::kernel::raw">Safety</a> section of the module documentation.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.raw_task_effective_priority" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/raw.rs.html#175-177">source</a><h4 class="code-header">unsafe fn <a href="#tymethod.raw_task_effective_priority" class="fn">raw_task_effective_priority</a>(
+    this: Self::<a class="associatedtype" href="../traits/trait.KernelBase.html#associatedtype.RawTaskId" title="type r3::kernel::traits::KernelBase::RawTaskId">RawTaskId</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.usize.html">usize</a>, <a class="enum" href="../enum.GetTaskPriorityError.html" title="enum r3::kernel::GetTaskPriorityError">GetTaskPriorityError</a>&gt;</h4></section></summary><div class="docblock"><p>Implements <a href="../traits/trait.TaskMethods.html#method.effective_priority" title="method r3::kernel::traits::TaskMethods::effective_priority"><code>Task::effective_priority</code></a>.</p>
+<h5 id="safety-8"><a href="#safety-8">Safety</a></h5>
+<p>See the <a href="index.html#safety" title="mod r3::kernel::raw">Safety</a> section of the module documentation.</p>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../../implementors/r3_core/kernel/raw/trait.KernelBase.js" async></script></section></div></main></body></html>

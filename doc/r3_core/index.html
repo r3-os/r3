@@ -1,0 +1,817 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The core API definition for R3-OS."><title>r3_core - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="r3_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">Crate r3_core</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.1.4</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">r3_core</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/r3_core/lib.rs.html#1-99">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The core API definition for <a href="../r3/index.html">R3-OS</a>.</p>
+<p>The core API represents the low-level interface between kernel and application code. It includes <a href="kernel/raw/index.html" title="mod r3_core::kernel::raw"><code>raw</code></a> and <a href="kernel/raw_cfg/index.html" title="mod r3_core::kernel::raw_cfg"><code>raw_cfg</code></a> traits implemented by kernel implementations as well as common data types, such as <a href="time/struct.Time.html" title="struct r3_core::time::Time"><code>Time</code></a>. Because breaking changes in the core API would result in ecosystem split, it’s designed to be more stable than the façade API (<a href="../r3/index.html"><code>r3</code></a>).</p>
+<!-- Intra-doc links can't refer to downstream crates [ref:downstream_intra_doc_link] -->
+<!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
+<div class="admonition-follows"></div>
+<blockquote class="disabled-feature-warning"><p><span></span><code></code></p></blockquote>
+<div class="toc-header"></div>
+<ul>
+<li><a href="#note-to-application-developers">Note to Application Developers</a></li>
+<li><a href="#defining-a-system">Defining a System</a>
+<ul>
+<li><a href="#system-type">System Type</a></li>
+<li><a href="#static-configuration">Static Configuration</a></li>
+</ul>
+</li>
+<li><a href="#object-handles">Object Handles</a>
+<ul>
+<li><a href="#object-safety">Object Safety</a></li>
+<li><a href="#creation">Creation</a></li>
+</ul>
+</li>
+<li><a href="#system-states">System States</a></li>
+<li><a href="#threads">Threads</a></li>
+<li><a href="#contexts">Contexts</a></li>
+<li><a href="#interrupt-handling-framework">Interrupt Handling Framework</a></li>
+<li><a href="#kernel-timing">Kernel Timing</a></li>
+<li><a href="#introspection">Introspection</a></li>
+<li><a href="#stability">Stability</a></li>
+<li><a href="#cargo-features">Cargo Features</a></li>
+<li><a href="#modules">Modules</a>  <!-- this section is generated by rustdoc --></li>
+</ul>
+<h2 id="note-to-application-developers"><a href="#note-to-application-developers">Note to Application Developers</a></h2>
+<p>The implementation code heavily relies on constant propagation, dead code elimination, and “zero-cost” abstractions. Without optimization, it might exhibit massive code bloat and excessive stack consumption. To change the optimization level for debug builds, add the following lines to your Cargo workspace’s <code>Cargo.toml</code>:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[profile.dev]
+opt-level = 2
+</code></pre></div><h2 id="defining-a-system"><a href="#defining-a-system">Defining a System</a></h2><h3 id="system-type"><a href="#system-type">System Type</a></h3>
+<p>R3-OS utilizes Rust’s trait system to allow system designers to construct a system in a modular way. An R3 application is built around a marker type called a <strong>system type</strong>. It implements various traits, whose implementations are provided by a kernel implementation, such as <a href="../r3_kernel/index.html"><code>r3_kernel</code></a>, to provide a basic kernel API and encapsulate the kernel’s configuration, such as resource allocation for kernel objects. The application and higher-level wrappers interact with the kernel through these trait implementations.</p>
+<p><span class="center"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3MzYiIGhlaWdodD0iNzIwIiBzdHlsZT0idHJhbnNmb3JtOnRyYW5zbGF0ZSgwLjVweCwwLjVweCkiPgogICAgPHN0eWxlPgogICAgICAgIGxpbmUsIHBhdGgsIGNpcmNsZSwgcmVjdCwgcG9seWdvbntzdHJva2U6YmxhY2s7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLW9wYWNpdHk6MTtmaWxsLW9wYWNpdHk6MTtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46bWl0ZXI7fXRleHR7Zm9udC1mYW1pbHk6J1NvdXJjZSBDb2RlIFBybycsJ0FuZGFsZSBNb25vJywnU2Vnb2UgVUkgTW9ubycsJ0RlamF2dSBTYW5zIE1vbm8nLCdDb25zb2xhcycsbW9ub3NwYWNlO2ZvbnQtc2l6ZToxM3B4O31yZWN0LmJhY2tkcm9we3N0cm9rZTpub25lO2ZpbGw6d2hpdGU7fS5icm9rZW57c3Ryb2tlLWRhc2hhcnJheTo4O30uZmlsbGVke2ZpbGw6YmxhY2s7fS5iZ19maWxsZWR7ZmlsbDp3aGl0ZTt9Lm5vZmlsbHtmaWxsOndoaXRlO30uZW5kX21hcmtlZF9hcnJvd3ttYXJrZXItZW5kOnVybCgjYXJyb3cpO30uc3RhcnRfbWFya2VkX2Fycm93e21hcmtlci1zdGFydDp1cmwoI2Fycm93KTt9LmVuZF9tYXJrZWRfZGlhbW9uZHttYXJrZXItZW5kOnVybCgjZGlhbW9uZCk7fS5zdGFydF9tYXJrZWRfZGlhbW9uZHttYXJrZXItc3RhcnQ6dXJsKCNkaWFtb25kKTt9LmVuZF9tYXJrZWRfY2lyY2xle21hcmtlci1lbmQ6dXJsKCNjaXJjbGUpO30uc3RhcnRfbWFya2VkX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNjaXJjbGUpO30uZW5kX21hcmtlZF9vcGVuX2NpcmNsZXttYXJrZXItZW5kOnVybCgjb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX29wZW5fY2lyY2xle21hcmtlci1zdGFydDp1cmwoI29wZW5fY2lyY2xlKTt9LmVuZF9tYXJrZWRfYmlnX29wZW5fY2lyY2xle21hcmtlci1lbmQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX2JpZ19vcGVuX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30KICAgICAgICA8IS0tc2VwYXJhdG9yLS0+CiAgICAgICAgCiAgICA8L3N0eWxlPgogICAgPGRlZnM+CiAgICAgICAgPG1hcmtlciBpZD0iYXJyb3ciIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCAwLDQgNCwyIDAsMCI+PC9wb2x5Z29uPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9ImRpYW1vbmQiIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMiAyLDAgNCwyIDIsNCAwLDIiPjwvcG9seWdvbj4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJjaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjIiIGNsYXNzPSJmaWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9Im9wZW5fY2lyY2xlIiB2aWV3Qm94PSIwIDAgOCA4IiByZWZYPSI0IiByZWZZPSI0IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgICAgICAgIDxjaXJjbGUgY3g9IjQiIGN5PSI0IiByPSIyIiBjbGFzcz0iYmdfZmlsbGVkIj48L2NpcmNsZT4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJiaWdfb3Blbl9jaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjMiIGNsYXNzPSJiZ19maWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgPC9kZWZzPgogICAgPHJlY3QgY2xhc3M9ImJhY2tkcm9wIiB4PSIwIiB5PSIwIiB3aWR0aD0iNzM2IiBoZWlnaHQ9IjczNiI+PC9yZWN0PgogICAgPHJlY3QgeD0iMTU2IiB5PSI0MCIgd2lkdGg9Ijg4IiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMTcwIiB5PSI2MCIgIHRleHRMZW5ndGg9IjMyIj55b3VyPC90ZXh0PgogICAgPGxpbmUgeDE9IjIwMCIgeTE9IjY0IiB4Mj0iMjA4IiB5Mj0iNjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMjEwIiB5PSI2MCIgIHRleHRMZW5ndGg9IjI0Ij5pc3I8L3RleHQ+CiAgICA8cmVjdCB4PSIyNjgiIHk9IjQwIiB3aWR0aD0iMTY4IiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMjgyIiB5PSI2MCIgIHRleHRMZW5ndGg9IjMyIj55b3VyPC90ZXh0PgogICAgPGxpbmUgeDE9IjMxMiIgeTE9IjY0IiB4Mj0iMzIwIiB5Mj0iNjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMzIyIiB5PSI2MCIgIHRleHRMZW5ndGg9IjQwIj50aW1lcjwvdGV4dD4KICAgIDxsaW5lIHgxPSIzNjAiIHkxPSI2NCIgeDI9IjM2OCIgeTI9IjY0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjM3MCIgeT0iNjAiICB0ZXh0TGVuZ3RoPSI1NiI+aGFuZGxlcjwvdGV4dD4KICAgIDxyZWN0IHg9IjQ1MiIgeT0iNDAiIHdpZHRoPSI5NiIgaGVpZ2h0PSIzMiIgY2xhc3M9InNvbGlkIG5vZmlsbCIgcng9IjQiPjwvcmVjdD4KICAgIDx0ZXh0IHg9IjQ2NiIgeT0iNjAiICB0ZXh0TGVuZ3RoPSIzMiI+eW91cjwvdGV4dD4KICAgIDxsaW5lIHgxPSI0OTYiIHkxPSI2NCIgeDI9IjUwNCIgeTI9IjY0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjUwNiIgeT0iNjAiICB0ZXh0TGVuZ3RoPSIzMiI+dGFzazwvdGV4dD4KICAgIDxyZWN0IHg9IjMzMiIgeT0iMTY4IiB3aWR0aD0iMjU2IiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMzQ2IiB5PSIxODgiICB0ZXh0TGVuZ3RoPSI0OCI+c3RydWN0PC90ZXh0PgogICAgPHRleHQgeD0iNDAyIiB5PSIxODgiICB0ZXh0TGVuZ3RoPSIxNTIiPnN5bmM6Ok11dGV4Jmx0O1N5c3RlbSw8L3RleHQ+CiAgICA8dGV4dCB4PSI1NjIiIHk9IjE4OCIgIHRleHRMZW5ndGg9IjE2Ij5UJmd0OzwvdGV4dD4KICAgIDxyZWN0IHg9IjI4NCIgeT0iMjk2IiB3aWR0aD0iMTg0IiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMjk4IiB5PSIzMTYiICB0ZXh0TGVuZ3RoPSI0OCI+c3RydWN0PC90ZXh0PgogICAgPHRleHQgeD0iMzU0IiB5PSIzMTYiICB0ZXh0TGVuZ3RoPSIxMDQiPk11dGV4Jmx0O1N5c3RlbSZndDs8L3RleHQ+CiAgICA8cmVjdCB4PSI0OTIiIHk9IjI5NiIgd2lkdGg9IjE3NiIgaGVpZ2h0PSIzMiIgY2xhc3M9InNvbGlkIG5vZmlsbCIgcng9IjQiPjwvcmVjdD4KICAgIDx0ZXh0IHg9IjUwNiIgeT0iMzE2IiAgdGV4dExlbmd0aD0iNDgiPnN0cnVjdDwvdGV4dD4KICAgIDx0ZXh0IHg9IjU2MiIgeT0iMzE2IiAgdGV4dExlbmd0aD0iOTYiPkh1bmsmbHQ7U3lzdGVtJmd0OzwvdGV4dD4KICAgIDxyZWN0IHg9IjEyNCIgeT0iNDI0IiB3aWR0aD0iMTUyIiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMTM4IiB5PSI0NDQiICB0ZXh0TGVuZ3RoPSI0MCI+dHJhaXQ8L3RleHQ+CiAgICA8dGV4dCB4PSIxODYiIHk9IjQ0NCIgIHRleHRMZW5ndGg9IjgwIj5LZXJuZWxCYXNlPC90ZXh0PgogICAgPHJlY3QgeD0iMzAwIiB5PSI0MjQiIHdpZHRoPSIxNjAiIGhlaWdodD0iMzIiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSIzMTQiIHk9IjQ0NCIgIHRleHRMZW5ndGg9IjQwIj50cmFpdDwvdGV4dD4KICAgIDx0ZXh0IHg9IjM2MiIgeT0iNDQ0IiAgdGV4dExlbmd0aD0iODgiPktlcm5lbE11dGV4PC90ZXh0PgogICAgPHJlY3QgeD0iNDg0IiB5PSI0MjQiIHdpZHRoPSIxNjgiIGhlaWdodD0iMzIiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSI0OTgiIHk9IjQ0NCIgIHRleHRMZW5ndGg9IjQwIj50cmFpdDwvdGV4dD4KICAgIDx0ZXh0IHg9IjU0NiIgeT0iNDQ0IiAgdGV4dExlbmd0aD0iOTYiPktlcm5lbFN0YXRpYzwvdGV4dD4KICAgIDxyZWN0IHg9IjQ4NCIgeT0iNTM2IiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iNDk4IiB5PSI1NTYiICB0ZXh0TGVuZ3RoPSIzMiI+aW1wbDwvdGV4dD4KICAgIDx0ZXh0IHg9IjUzOCIgeT0iNTU2IiAgdGV4dExlbmd0aD0iOTYiPktlcm5lbFN0YXRpYzwvdGV4dD4KICAgIDxyZWN0IHg9IjEzMiIgeT0iNjgwIiB3aWR0aD0iMTQ0IiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMTQ2IiB5PSI3MDAiICB0ZXh0TGVuZ3RoPSIzMiI+aW1wbDwvdGV4dD4KICAgIDx0ZXh0IHg9IjE4NiIgeT0iNzAwIiAgdGV4dExlbmd0aD0iODAiPktlcm5lbEJhc2U8L3RleHQ+CiAgICA8cmVjdCB4PSIzMDAiIHk9IjY4MCIgd2lkdGg9IjE1MiIgaGVpZ2h0PSIzMiIgY2xhc3M9InNvbGlkIG5vZmlsbCIgcng9IjQiPjwvcmVjdD4KICAgIDx0ZXh0IHg9IjMxNCIgeT0iNzAwIiAgdGV4dExlbmd0aD0iMzIiPmltcGw8L3RleHQ+CiAgICA8dGV4dCB4PSIzNTQiIHk9IjcwMCIgIHRleHRMZW5ndGg9Ijg4Ij5LZXJuZWxNdXRleDwvdGV4dD4KICAgIDx0ZXh0IHg9IjIiIHk9IjEyIiAgdGV4dExlbmd0aD0iODgiPkFwcGxpY2F0aW9uPC90ZXh0PgogICAgPHRleHQgeD0iOTgiIHk9IjEyIiAgdGV4dExlbmd0aD0iMjQiPmFuZDwvdGV4dD4KICAgIDx0ZXh0IHg9IjEzMCIgeT0iMTIiICB0ZXh0TGVuZ3RoPSI1NiI+bGlicmFyeTwvdGV4dD4KICAgIDx0ZXh0IHg9IjE5NCIgeT0iMTIiICB0ZXh0TGVuZ3RoPSIzMiI+Y29kZTwvdGV4dD4KICAgIDxsaW5lIHgxPSIwIiB5MT0iMTA0IiB4Mj0iNzI4IiB5Mj0iMTA0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjIiIHk9IjEyNCIgIHRleHRMZW5ndGg9IjQ4Ij5GYWNhZGU8L3RleHQ+CiAgICA8dGV4dCB4PSI1OCIgeT0iMTI0IiAgdGV4dExlbmd0aD0iMjQiPkFQSTwvdGV4dD4KICAgIDxsaW5lIHgxPSIwIiB5MT0iMjMyIiB4Mj0iNzI4IiB5Mj0iMjMyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjIiIHk9IjI1MiIgIHRleHRMZW5ndGg9IjMyIj5Db3JlPC90ZXh0PgogICAgPHRleHQgeD0iNDIiIHk9IjI1MiIgIHRleHRMZW5ndGg9IjI0Ij5BUEk8L3RleHQ+CiAgICA8dGV4dCB4PSIxNTQiIHk9IjMwMCIgIHRleHRMZW5ndGg9IjQwIj50cmFpdDwvdGV4dD4KICAgIDx0ZXh0IHg9IjIwMiIgeT0iMzAwIiAgdGV4dExlbmd0aD0iNDgiPktlcm5lbDwvdGV4dD4KICAgIDx0ZXh0IHg9IjE1NCIgeT0iMzMyIiAgdGV4dExlbmd0aD0iMzIiPmltcGw8L3RleHQ+CiAgICA8dGV4dCB4PSIxOTQiIHk9IjMzMiIgIHRleHRMZW5ndGg9IjQ4Ij5LZXJuZWw8L3RleHQ+CiAgICA8dGV4dCB4PSIyIiB5PSI2MDQiICB0ZXh0TGVuZ3RoPSIzMiI+Q29yZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjQyIiB5PSI2MDQiICB0ZXh0TGVuZ3RoPSIyNCI+QVBJPC90ZXh0PgogICAgPHRleHQgeD0iMiIgeT0iNjIwIiAgdGV4dExlbmd0aD0iMTEyIj5JbXBsZW1lbnRhdGlvbjwvdGV4dD4KICAgIDxsaW5lIHgxPSIwIiB5MT0iNjMyIiB4Mj0iNzI4IiB5Mj0iNjMyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIwIiB5MT0iMzc2IiB4Mj0iOCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMTYiIHkxPSIzNzYiIHgyPSIyNCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMzIiIHkxPSIzNzYiIHgyPSI0MCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDgiIHkxPSIzNzYiIHgyPSI1NiIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNjQiIHkxPSIzNzYiIHgyPSI3MiIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iODAiIHkxPSIzNzYiIHgyPSI4OCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iOTYiIHkxPSIzNzYiIHgyPSIxMDQiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjExMiIgeTE9IjM3NiIgeDI9IjEyMCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMTI4IiB5MT0iMzc2IiB4Mj0iMTM2IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIxNDQiIHkxPSIzNzYiIHgyPSIxNTIiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjE2MCIgeTE9IjM3NiIgeDI9IjE2OCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMTc2IiB5MT0iMzc2IiB4Mj0iMTg0IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIyMDgiIHkxPSIzNzYiIHgyPSIyMTYiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjIyNCIgeTE9IjM3NiIgeDI9IjIzMiIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMjQwIiB5MT0iMzc2IiB4Mj0iMjQ4IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIyNTYiIHkxPSIzNzYiIHgyPSIyNjQiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjI3MiIgeTE9IjM3NiIgeDI9IjI4MCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMjg4IiB5MT0iMzc2IiB4Mj0iMjk2IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIzMDQiIHkxPSIzNzYiIHgyPSIzMTIiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjMyMCIgeTE9IjM3NiIgeDI9IjMyOCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMzM2IiB5MT0iMzc2IiB4Mj0iMzQ0IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIzNTIiIHkxPSIzNzYiIHgyPSIzNjAiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjM4NCIgeTE9IjM3NiIgeDI9IjM5MiIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDAwIiB5MT0iMzc2IiB4Mj0iNDA4IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI0MTYiIHkxPSIzNzYiIHgyPSI0MjQiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQzMiIgeTE9IjM3NiIgeDI9IjQ0MCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDQ4IiB5MT0iMzc2IiB4Mj0iNDU2IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI0NjQiIHkxPSIzNzYiIHgyPSI0NzIiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQ4MCIgeTE9IjM3NiIgeDI9IjQ4OCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDk2IiB5MT0iMzc2IiB4Mj0iNTA0IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI1MTIiIHkxPSIzNzYiIHgyPSI1MjAiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjUyOCIgeTE9IjM3NiIgeDI9IjUzNiIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNTQ0IiB5MT0iMzc2IiB4Mj0iNTUyIiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI1NzYiIHkxPSIzNzYiIHgyPSI1ODQiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjU5MiIgeTE9IjM3NiIgeDI9IjYwMCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNjA4IiB5MT0iMzc2IiB4Mj0iNjE2IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI2MjQiIHkxPSIzNzYiIHgyPSI2MzIiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjY0MCIgeTE9IjM3NiIgeDI9IjY0OCIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNjU2IiB5MT0iMzc2IiB4Mj0iNjY0IiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI2NzIiIHkxPSIzNzYiIHgyPSI2ODAiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjY4OCIgeTE9IjM3NiIgeDI9IjY5NiIgeTI9IjM3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNzA0IiB5MT0iMzc2IiB4Mj0iNzEyIiB5Mj0iMzc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI3MjAiIHkxPSIzNzYiIHgyPSI3MjgiIHkyPSIzNzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMiIgeT0iNDI4IiAgdGV4dExlbmd0aD0iNDgiPlN5c3RlbTwvdGV4dD4KICAgIDx0ZXh0IHg9IjU4IiB5PSI0MjgiICB0ZXh0TGVuZ3RoPSIzMiI+dHlwZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjIiIHk9IjQ0NCIgIHRleHRMZW5ndGg9IjcyIj5pbnRlcmZhY2U8L3RleHQ+CiAgICA8dGV4dCB4PSI2NzQiIHk9IjQ0NCIgIHRleHRMZW5ndGg9IjgiPi48L3RleHQ+CiAgICA8dGV4dCB4PSI2OTAiIHk9IjQ0NCIgIHRleHRMZW5ndGg9IjgiPi48L3RleHQ+CiAgICA8dGV4dCB4PSI3MDYiIHk9IjQ0NCIgIHRleHRMZW5ndGg9IjgiPi48L3RleHQ+CiAgICA8bGluZSB4MT0iMCIgeTE9IjQ4OCIgeDI9IjgiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjE2IiB5MT0iNDg4IiB4Mj0iMjQiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjMyIiB5MT0iNDg4IiB4Mj0iNDAiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQ4IiB5MT0iNDg4IiB4Mj0iNTYiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjY0IiB5MT0iNDg4IiB4Mj0iNzIiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjgwIiB5MT0iNDg4IiB4Mj0iODgiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9Ijk2IiB5MT0iNDg4IiB4Mj0iMTA0IiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIxMTIiIHkxPSI0ODgiIHgyPSIxMjAiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjEyOCIgeTE9IjQ4OCIgeDI9IjEzNiIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMTQ0IiB5MT0iNDg4IiB4Mj0iMTUyIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIxNjAiIHkxPSI0ODgiIHgyPSIxNjgiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjE3NiIgeTE9IjQ4OCIgeDI9IjE4NCIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMjA4IiB5MT0iNDg4IiB4Mj0iMjE2IiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIyMjQiIHkxPSI0ODgiIHgyPSIyMzIiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjI0MCIgeTE9IjQ4OCIgeDI9IjI0OCIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMjU2IiB5MT0iNDg4IiB4Mj0iMjY0IiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIyNzIiIHkxPSI0ODgiIHgyPSIyODAiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjI4OCIgeTE9IjQ4OCIgeDI9IjI5NiIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMzA0IiB5MT0iNDg4IiB4Mj0iMzEyIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIzMjAiIHkxPSI0ODgiIHgyPSIzMjgiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjMzNiIgeTE9IjQ4OCIgeDI9IjM0NCIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMzUyIiB5MT0iNDg4IiB4Mj0iMzYwIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIzODQiIHkxPSI0ODgiIHgyPSIzOTIiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQwMCIgeTE9IjQ4OCIgeDI9IjQwOCIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDE2IiB5MT0iNDg4IiB4Mj0iNDI0IiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI0MzIiIHkxPSI0ODgiIHgyPSI0NDAiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQ0OCIgeTE9IjQ4OCIgeDI9IjQ1NiIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDY0IiB5MT0iNDg4IiB4Mj0iNDcyIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI0ODAiIHkxPSI0ODgiIHgyPSI0ODgiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQ5NiIgeTE9IjQ4OCIgeDI9IjUwNCIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNTEyIiB5MT0iNDg4IiB4Mj0iNTIwIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI1MjgiIHkxPSI0ODgiIHgyPSI1MzYiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjU0NCIgeTE9IjQ4OCIgeDI9IjU1MiIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNTc2IiB5MT0iNDg4IiB4Mj0iNTg0IiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI1OTIiIHkxPSI0ODgiIHgyPSI2MDAiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjYwOCIgeTE9IjQ4OCIgeDI9IjYxNiIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNjI0IiB5MT0iNDg4IiB4Mj0iNjMyIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI2NDAiIHkxPSI0ODgiIHgyPSI2NDgiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjY1NiIgeTE9IjQ4OCIgeDI9IjY2NCIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNjcyIiB5MT0iNDg4IiB4Mj0iNjgwIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI2ODgiIHkxPSI0ODgiIHgyPSI2OTYiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjcwNCIgeTE9IjQ4OCIgeDI9IjcxMiIgeTI9IjQ4OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNzIwIiB5MT0iNDg4IiB4Mj0iNzI4IiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjIiIHk9IjY2OCIgIHRleHRMZW5ndGg9IjQ4Ij5TeXN0ZW08L3RleHQ+CiAgICA8dGV4dCB4PSI1OCIgeT0iNjY4IiAgdGV4dExlbmd0aD0iMzIiPnR5cGU8L3RleHQ+CiAgICA8dGV4dCB4PSIyIiB5PSI2ODQiICB0ZXh0TGVuZ3RoPSIxMTIiPmltcGxlbWVudGF0aW9uPC90ZXh0PgogICAgPHRleHQgeD0iMiIgeT0iMTcyIiAgdGV4dExlbmd0aD0iNDAiPnIzOjoqPC90ZXh0PgogICAgPHRleHQgeD0iMiIgeT0iMzE2IiAgdGV4dExlbmd0aD0iMTIwIj5yM19jb3JlOjprZXJuZWw8L3RleHQ+CiAgICA8dGV4dCB4PSIyIiB5PSI1NDAiICB0ZXh0TGVuZ3RoPSIxMjAiPnIzOjprZXJuZWw6OmNmZzwvdGV4dD4KICAgIDx0ZXh0IHg9IjEwIiB5PSI1NTYiICB0ZXh0TGVuZ3RoPSIxMjgiPjo6YXR0YWNoX3N0YXRpYyE8L3RleHQ+CiAgICA8dGV4dCB4PSIyIiB5PSI3MDAiICB0ZXh0TGVuZ3RoPSIxMDQiPihjaG9zZW4gYnkgYW48L3RleHQ+CiAgICA8dGV4dCB4PSIyIiB5PSI3MTYiICB0ZXh0TGVuZ3RoPSI5NiI+YXBwbGljYXRpb24pPC90ZXh0PgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjE5NiIgeTE9IjgwIiB4Mj0iMTk2IiB5Mj0iMjYwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjE5MiwyNjAgMjAwLDI2MCAxOTYsMjcyIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICAgICAgPGxpbmUgeDE9IjM0OCIgeTE9IjgwIiB4Mj0iMzQ4IiB5Mj0iMTIwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTk2IiB5MT0iMTIwIiB4Mj0iNDgwIiB5Mj0iMTIwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iNDg0IiB5MT0iODAiIHgyPSI0ODQiIHkyPSIxMTYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwYXRoIGQ9Ik0gNDg0LDExNiBBIDQsNCAwLDAsMSA0ODAsMTIwIiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iNTE2IiB5MT0iODAiIHgyPSI1MTYiIHkyPSIxNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iNTEyLDE0OCA1MjAsMTQ4IDUxNiwxNjAiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSI0NTIiIHkxPSIyMDgiIHgyPSI0NTIiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwYXRoIGQ9Ik0gMzc2LDI0OCBBIDQsNCAwLDAsMCAzNzIsMjUyIiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICAgICAgPGxpbmUgeDE9IjM3MiIgeTE9IjI1MiIgeDI9IjM3MiIgeTI9IjI3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjM3NiIgeTE9IjI0OCIgeDI9IjU4NCIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBhdGggZD0iTSA1ODQsMjQ4IEEgNCw0IDAsMCwxIDU4OCwyNTIiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iNTg4IiB5MT0iMjUyIiB4Mj0iNTg4IiB5Mj0iMjc2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjM2OCwyNzYgMzc2LDI3NiAzNzIsMjg4IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSI1ODQsMjc2IDU5MiwyNzYgNTg4LDI4OCIgY2xhc3M9ImZpbGxlZCI+PC9wb2x5Z29uPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPHBhdGggZD0iTSAxNDQsMjgwIEEgNCw0IDAsMCwwIDE0MCwyODQiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iMjg0IiB4Mj0iMTQwIiB5Mj0iMzQwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQ0IiB5MT0iMjgwIiB4Mj0iMjU2IiB5Mj0iMjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cGF0aCBkPSJNIDI1NiwyODAgQSA0LDQgMCwwLDEgMjYwLDI4NCIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxsaW5lIHgxPSIyNjAiIHkxPSIyODQiIHgyPSIyNjAiIHkyPSIzNDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxNDAiIHkxPSIzMTIiIHgyPSIyNjAiIHkyPSIzMTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwYXRoIGQ9Ik0gMTQwLDM0MCBBIDQsNCAwLDAsMCAxNDQsMzQ0IiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICAgICAgPGxpbmUgeDE9IjE0NCIgeTE9IjM0NCIgeDI9IjI1NiIgeTI9IjM0NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBhdGggZD0iTSAyNjAsMzQwIEEgNCw0IDAsMCwxIDI1NiwzNDQiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIzNzIiIHkxPSIzMzYiIHgyPSIzNzIiIHkyPSI0MDQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMzY4LDQwNCAzNzYsNDA0IDM3Miw0MTYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSI1NjQiIHkxPSIzMzYiIHgyPSI1NjQiIHkyPSI0MDQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iNTYwLDQwNCA1NjgsNDA0IDU2NCw0MTYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIxOTYiIHkxPSIzNTIiIHgyPSIxOTYiIHkyPSI0MDQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMTkyLDQwNCAyMDAsNDA0IDE5Niw0MTYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIxOTYiIHkxPSI0NjQiIHgyPSIxOTYiIHkyPSI2NjAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMTkyLDY2MCAyMDAsNjYwIDE5Niw2NzIiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIzNzIiIHkxPSI0NjQiIHgyPSIzNzIiIHkyPSI2NjAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMzY4LDY2MCAzNzYsNjYwIDM3Miw2NzIiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSI1NjQiIHkxPSI0NjQiIHgyPSI1NjQiIHkyPSI1MTYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iNTYwLDUxNiA1NjgsNTE2IDU2NCw1MjgiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KPC9zdmc+" alt="trait_binding" /></span></p>
+<p>A system type at least implements <a href="kernel/raw/trait.KernelBase.html" title="trait r3_core::kernel::raw::KernelBase"><code>r3::kernel::raw::KernelBase</code></a> (see <a href="kernel/raw/index.html" title="mod r3_core::kernel::raw">the parent module</a> for a full listing). The exact way of instantiating a system type is specific to each kernel implementation, but the usual way is that it provides a generic type with a type parameter taking references to a product of <a href="#static-configuration">static configuration</a> as well as other customization options.</p>
+<h3 id="static-configuration"><a href="#static-configuration">Static Configuration</a></h3>
+<p>An embedded system is designed to serve a particular purpose, so it’s often possible to predict many aspects of its operation, such as how many kernel objects of each kind are going to be used and how much memory is allocated in ROM and RAM. The process of collecting such information and specializing a kernel for a particular application <em>at compile time</em> is called <strong>static configuration</strong>.</p>
+<p>Kernel objects are <strong>defined</strong> (we use this specific word for static creation) in a <strong>configuration function</strong> having the signature <code>for&lt;C&gt; const fn (&amp;mut </code><a href="kernel/cfg/struct.Cfg.html" title="struct r3_core::kernel::cfg::Cfg"><code>r3::kernel::Cfg</code></a><code>&lt;C&gt;, ...) -&gt; T where C: </code><a href="https://github.com/rust-lang/rust/issues/77463"><code>~const</code></a><code> </code><a href="kernel/raw_cfg/trait.CfgBase.html" title="trait r3_core::kernel::raw_cfg::CfgBase"><code>r3::kernel::raw_cfg::CfgBase</code></a>. For each system type, an application provides a <strong>top-level configuration function</strong>, which defines all kernel objects belonging to that system type. A kernel-provided <strong>build macro</strong> processes its output (which mainly involves defining <code>static</code> items to store the state of all defined kernel objects) and somehow associates it with the system type.</p>
+<p><span class="center"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MDAiIGhlaWdodD0iMzIwIiBzdHlsZT0idHJhbnNmb3JtOnRyYW5zbGF0ZSgwLjVweCwwLjVweCkiPgogICAgPHN0eWxlPgogICAgICAgIGxpbmUsIHBhdGgsIGNpcmNsZSwgcmVjdCwgcG9seWdvbntzdHJva2U6YmxhY2s7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLW9wYWNpdHk6MTtmaWxsLW9wYWNpdHk6MTtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46bWl0ZXI7fXRleHR7Zm9udC1mYW1pbHk6J1NvdXJjZSBDb2RlIFBybycsJ0FuZGFsZSBNb25vJywnU2Vnb2UgVUkgTW9ubycsJ0RlamF2dSBTYW5zIE1vbm8nLCdDb25zb2xhcycsbW9ub3NwYWNlO2ZvbnQtc2l6ZToxM3B4O31yZWN0LmJhY2tkcm9we3N0cm9rZTpub25lO2ZpbGw6d2hpdGU7fS5icm9rZW57c3Ryb2tlLWRhc2hhcnJheTo4O30uZmlsbGVke2ZpbGw6YmxhY2s7fS5iZ19maWxsZWR7ZmlsbDp3aGl0ZTt9Lm5vZmlsbHtmaWxsOndoaXRlO30uZW5kX21hcmtlZF9hcnJvd3ttYXJrZXItZW5kOnVybCgjYXJyb3cpO30uc3RhcnRfbWFya2VkX2Fycm93e21hcmtlci1zdGFydDp1cmwoI2Fycm93KTt9LmVuZF9tYXJrZWRfZGlhbW9uZHttYXJrZXItZW5kOnVybCgjZGlhbW9uZCk7fS5zdGFydF9tYXJrZWRfZGlhbW9uZHttYXJrZXItc3RhcnQ6dXJsKCNkaWFtb25kKTt9LmVuZF9tYXJrZWRfY2lyY2xle21hcmtlci1lbmQ6dXJsKCNjaXJjbGUpO30uc3RhcnRfbWFya2VkX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNjaXJjbGUpO30uZW5kX21hcmtlZF9vcGVuX2NpcmNsZXttYXJrZXItZW5kOnVybCgjb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX29wZW5fY2lyY2xle21hcmtlci1zdGFydDp1cmwoI29wZW5fY2lyY2xlKTt9LmVuZF9tYXJrZWRfYmlnX29wZW5fY2lyY2xle21hcmtlci1lbmQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX2JpZ19vcGVuX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30KICAgICAgICA8IS0tc2VwYXJhdG9yLS0+CiAgICAgICAgCiAgICA8L3N0eWxlPgogICAgPGRlZnM+CiAgICAgICAgPG1hcmtlciBpZD0iYXJyb3ciIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCAwLDQgNCwyIDAsMCI+PC9wb2x5Z29uPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9ImRpYW1vbmQiIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMiAyLDAgNCwyIDIsNCAwLDIiPjwvcG9seWdvbj4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJjaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjIiIGNsYXNzPSJmaWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9Im9wZW5fY2lyY2xlIiB2aWV3Qm94PSIwIDAgOCA4IiByZWZYPSI0IiByZWZZPSI0IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgICAgICAgIDxjaXJjbGUgY3g9IjQiIGN5PSI0IiByPSIyIiBjbGFzcz0iYmdfZmlsbGVkIj48L2NpcmNsZT4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJiaWdfb3Blbl9jaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjMiIGNsYXNzPSJiZ19maWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgPC9kZWZzPgogICAgPHJlY3QgY2xhc3M9ImJhY2tkcm9wIiB4PSIwIiB5PSIwIiB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMzNiI+PC9yZWN0PgogICAgPHJlY3QgeD0iNjAiIHk9IjEyMCIgd2lkdGg9IjIwOCIgaGVpZ2h0PSIzMiIgY2xhc3M9InNvbGlkIG5vZmlsbCIgcng9IjQiPjwvcmVjdD4KICAgIDx0ZXh0IHg9Ijc0IiB5PSIxNDAiICB0ZXh0TGVuZ3RoPSI0OCI+c3RhdGljPC90ZXh0PgogICAgPHRleHQgeD0iMTMwIiB5PSIxNDAiICB0ZXh0TGVuZ3RoPSI2NCI+Q09UVEFHRTo8L3RleHQ+CiAgICA8dGV4dCB4PSIyMDIiIHk9IjE0MCIgIHRleHRMZW5ndGg9IjU2Ij5PYmplY3RzPC90ZXh0PgogICAgPHJlY3QgeD0iMzE2IiB5PSIxODQiIHdpZHRoPSIyNzIiIGhlaWdodD0iMTI4IiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMzYyIiB5PSIyMjAiICB0ZXh0TGVuZ3RoPSI0OCI+c3RhdGljPC90ZXh0PgogICAgPHRleHQgeD0iNDE4IiB5PSIyMjAiICB0ZXh0TGVuZ3RoPSIzMiI+VEFTSzwvdGV4dD4KICAgIDxsaW5lIHgxPSI0NDgiIHkxPSIyMjQiIHgyPSI0NTYiIHkyPSIyMjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iNDU4IiB5PSIyMjAiICB0ZXh0TGVuZ3RoPSIxNiI+Q0I8L3RleHQ+CiAgICA8bGluZSB4MT0iNDcyIiB5MT0iMjI0IiB4Mj0iNDgwIiB5Mj0iMjI0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjQ4MiIgeT0iMjIwIiAgdGV4dExlbmd0aD0iMzIiPlBPT0w8L3RleHQ+CiAgICA8dGV4dCB4PSI1MjIiIHk9IjIyMCIgIHRleHRMZW5ndGg9IjI0Ij4uLi48L3RleHQ+CiAgICA8dGV4dCB4PSIzNTQiIHk9IjI4NCIgIHRleHRMZW5ndGg9IjMyIj5pbXBsPC90ZXh0PgogICAgPHRleHQgeD0iMzk0IiB5PSIyODQiICB0ZXh0TGVuZ3RoPSIyNCI+Li4uPC90ZXh0PgogICAgPHRleHQgeD0iNDI2IiB5PSIyODQiICB0ZXh0TGVuZ3RoPSIyNCI+Zm9yPC90ZXh0PgogICAgPHRleHQgeD0iNDU4IiB5PSIyODQiICB0ZXh0TGVuZ3RoPSI5NiI+U3lzdGVtVHJhaXRzPC90ZXh0PgogICAgPHJlY3QgeD0iMjAiIHk9IjIxNiIgd2lkdGg9IjI3MiIgaGVpZ2h0PSI5NiIgY2xhc3M9InNvbGlkIG5vZmlsbCIgcng9IjQiPjwvcmVjdD4KICAgIDx0ZXh0IHg9IjM0IiB5PSIyMzYiICB0ZXh0TGVuZ3RoPSIxNiI+cjM8L3RleHQ+CiAgICA8bGluZSB4MT0iNDgiIHkxPSIyNDAiIHgyPSI1NiIgeTI9IjI0MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSI1OCIgeT0iMjM2IiAgdGV4dExlbmd0aD0iMjI0Ij5rZXJuZWw6OlN5c3RlbSZsdDtTeXN0ZW1UcmFpdHMmZ3Q7PC90ZXh0PgogICAgPHRleHQgeD0iMTcwIiB5PSIyODQiICB0ZXh0TGVuZ3RoPSI5NiI+U3lzdGVtVHJhaXRzPC90ZXh0PgogICAgPHRleHQgeD0iMjI2IiB5PSIxMiIgIHRleHRMZW5ndGg9IjMyIj4mYW1wO211dDwvdGV4dD4KICAgIDx0ZXh0IHg9IjI2NiIgeT0iMTIiICB0ZXh0TGVuZ3RoPSI0OCI+Q2ZnJmx0O0MmZ3Q7PC90ZXh0PgogICAgPHRleHQgeD0iMjQyIiB5PSI2MCIgIHRleHRMZW5ndGg9IjU2Ij5PYmplY3RzPC90ZXh0PgogICAgPHRleHQgeD0iMzQiIHk9IjI4IiAgdGV4dExlbmd0aD0iNDAiPmNvbnN0PC90ZXh0PgogICAgPHRleHQgeD0iODIiIHk9IjI4IiAgdGV4dExlbmd0aD0iMTYiPmZuPC90ZXh0PgogICAgPHRleHQgeD0iMTA2IiB5PSIyOCIgIHRleHRMZW5ndGg9IjcyIj5jb25maWd1cmU8L3RleHQ+CiAgICA8bGluZSB4MT0iMTc2IiB5MT0iMzIiIHgyPSIxODQiIHkyPSIzMiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSIxODYiIHk9IjI4IiAgdGV4dExlbmd0aD0iMjQiPmFwcDwvdGV4dD4KICAgIDx0ZXh0IHg9IjQyNiIgeT0iOTIiICB0ZXh0TGVuZ3RoPSI2NCI+R2VuZXJhdGU8L3RleHQ+CiAgICA8dGV4dCB4PSI0OTgiIHk9IjkyIiAgdGV4dExlbmd0aD0iMzIiPmNvZGU8L3RleHQ+CiAgICA8dGV4dCB4PSI1MzgiIHk9IjkyIiAgdGV4dExlbmd0aD0iMTYiPmluPC90ZXh0PgogICAgPHRleHQgeD0iNTYyIiB5PSI5MiIgIHRleHRMZW5ndGg9IjI0Ij50aGU8L3RleHQ+CiAgICA8dGV4dCB4PSI0MjYiIHk9IjEwOCIgIHRleHRMZW5ndGg9Ijg4Ij5hcHBsaWNhdGlvbjwvdGV4dD4KICAgIDx0ZXh0IHg9IjUyMiIgeT0iMTA4IiAgdGV4dExlbmd0aD0iNDAiPmNyYXRlPC90ZXh0PgogICAgPHRleHQgeD0iMzIyIiB5PSIxMDgiICB0ZXh0TGVuZ3RoPSI1NiI+T2JqZWN0czwvdGV4dD4KICAgIDx0ZXh0IHg9IjU4IiB5PSIxODgiICB0ZXh0TGVuZ3RoPSI1NiI+VGhyb3VnaDwvdGV4dD4KICAgIDx0ZXh0IHg9IjEyMiIgeT0iMTg4IiAgdGV4dExlbmd0aD0iMjQiPmFwcDwvdGV4dD4KICAgIDxsaW5lIHgxPSIxNDQiIHkxPSIxODQiIHgyPSIxNTIiIHkyPSIxODQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMTU0IiB5PSIxODgiICB0ZXh0TGVuZ3RoPSIzMiI+c2lkZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjE5NCIgeT0iMTg4IiAgdGV4dExlbmd0aD0iMjQiPkFQSTwvdGV4dD4KICAgIDx0ZXh0IHg9IjMzMCIgeT0iMjgiICB0ZXh0TGVuZ3RoPSIyNDgiPnIzX2tlcm5lbDo6YnVpbGQhKFN5c3RlbVRyYWl0cyw8L3RleHQ+CiAgICA8dGV4dCB4PSI4MiIgeT0iNDQiICB0ZXh0TGVuZ3RoPSIxMjgiPiguLi4pIC0mZ3Q7IE9iamVjdHM8L3RleHQ+CiAgICA8dGV4dCB4PSIzMzgiIHk9IjQ0IiAgdGV4dExlbmd0aD0iMjAwIj5jb25maWd1cmVfYXBwID0mZ3Q7IE9iamVjdHMpPC90ZXh0PgogICAgPHRleHQgeD0iMTAiIHk9Ijc2IiAgdGV4dExlbmd0aD0iMTI4Ij5mbiBub3JtYWxfY29kZSgpPC90ZXh0PgogICAgPGc+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSIyMjQsMjAgMjE2LDI0IDIyNCwyOCIgY2xhc3M9ImZpbGxlZCI+PC9wb2x5Z29uPgogICAgICAgIDxsaW5lIHgxPSIyMjQiIHkxPSIyNCIgeDI9IjMyMCIgeTI9IjI0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyMjQiIHkxPSI0MCIgeDI9IjMyMCIgeTI9IjQwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjMyMCwzNiAzMjgsNDAgMzIwLDQ0IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMzg4IiB5MT0iNDgiIHgyPSIzODgiIHkyPSIxMzIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjgwLDEzMiAyNzIsMTM2IDI4MCwxNDAiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgICAgICA8bGluZSB4MT0iMjgwIiB5MT0iMTM2IiB4Mj0iMzg0IiB5Mj0iMTM2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cGF0aCBkPSJNIDM4OCwxMzIgQSA0LDQgMCwwLDEgMzg0LDEzNiIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9Ijg0IiB5MT0iODAiIHgyPSI4NCIgeTI9IjEwMCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSI4MCwxMDAgODgsMTAwIDg0LDExMiIgY2xhc3M9ImZpbGxlZCI+PC9wb2x5Z29uPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjQxMiIgeTE9IjQ4IiB4Mj0iNDEyIiB5Mj0iMTY0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjQwOCwxNjQgNDE2LDE2NCA0MTIsMTc2IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iNDQiIHkxPSI4MCIgeDI9IjQ0IiB5Mj0iMTk2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjQwLDE5NiA0OCwxOTYgNDQsMjA4IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8cGF0aCBkPSJNIDM1MiwyMDAgQSA0LDQgMCwwLDAgMzQ4LDIwNCIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxsaW5lIHgxPSIzNDgiIHkxPSIyMDQiIHgyPSIzNDgiIHkyPSIyMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNTIiIHkxPSIyMDAiIHgyPSI1NTIiIHkyPSIyMDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwYXRoIGQ9Ik0gNTUyLDIwMCBBIDQsNCAwLDAsMSA1NTYsMjA0IiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICAgICAgPGxpbmUgeDE9IjU1NiIgeTE9IjIwNCIgeDI9IjU1NiIgeTI9IjIyOCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBhdGggZD0iTSAzNDgsMjI4IEEgNCw0IDAsMCwwIDM1MiwyMzIiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iMzUyIiB5MT0iMjMyIiB4Mj0iNTUyIiB5Mj0iMjMyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iNDUyIiB5MT0iMjMyIiB4Mj0iNDUyIiB5Mj0iMjY0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cGF0aCBkPSJNIDU1NiwyMjggQSA0LDQgMCwwLDEgNTUyLDIzMiIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxwYXRoIGQ9Ik0gMzQ0LDI2NCBBIDQsNCAwLDAsMCAzNDAsMjY4IiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICAgICAgPGxpbmUgeDE9IjM0MCIgeTE9IjI2OCIgeDI9IjM0MCIgeTI9IjI5MiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjM0NCIgeTE9IjI2NCIgeDI9IjU2MCIgeTI9IjI2NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBhdGggZD0iTSA1NjAsMjY0IEEgNCw0IDAsMCwxIDU2NCwyNjgiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iNTY0IiB5MT0iMjY4IiB4Mj0iNTY0IiB5Mj0iMjkyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjc2IiB5MT0iMjgwIiB4Mj0iMzQwIiB5Mj0iMjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cGF0aCBkPSJNIDM0MCwyOTIgQSA0LDQgMCwwLDAgMzQ0LDI5NiIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxsaW5lIHgxPSIzNDQiIHkxPSIyOTYiIHgyPSI1NjAiIHkyPSIyOTYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwYXRoIGQ9Ik0gNTY0LDI5MiBBIDQsNCAwLDAsMSA1NjAsMjk2IiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICAgICAgPHBhdGggZD0iTSAxNjAsMjY0IEEgNCw0IDAsMCwwIDE1NiwyNjgiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iMTU2IiB5MT0iMjY4IiB4Mj0iMTU2IiB5Mj0iMjkyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTYwIiB5MT0iMjY0IiB4Mj0iMjcyIiB5Mj0iMjY0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cGF0aCBkPSJNIDI3MiwyNjQgQSA0LDQgMCwwLDEgMjc2LDI2OCIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxsaW5lIHgxPSIyNzYiIHkxPSIyNjgiIHgyPSIyNzYiIHkyPSIyOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwYXRoIGQ9Ik0gMTU2LDI5MiBBIDQsNCAwLDAsMCAxNjAsMjk2IiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICAgICAgPGxpbmUgeDE9IjE2MCIgeTE9IjI5NiIgeDI9IjI3MiIgeTI9IjI5NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBhdGggZD0iTSAyNzYsMjkyIEEgNCw0IDAsMCwxIDI3MiwyOTYiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgIDwvZz4KPC9zdmc+" alt="static_cfg" /></span></p>
+<p>The configuration process assigns handles, such as <a href="kernel/task/type.StaticTask.html" title="type r3_core::kernel::task::StaticTask"><code>StaticTask</code></a><code>&lt;System&gt;</code>, to the defined kernel objects, which can be returned by a configuration function and passed over up to the build macro, which returns it to the caller. By storing it in a <code>const</code> item, application code can access the defined kernel objects from everywhere.</p>
+<!-- FIXME: To work around <https://github.com/rust-lang/cargo/issues/4242>, implement <https://github.com/rust-lang/futures-rs/pull/2305> and make the following code block doc-testable  -->
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">type </span>System = r3_kernel::System&lt;SystemTraits&gt;;
+<span class="macro">r3_port_std::use_port!</span>(<span class="kw">unsafe struct </span>SystemTraits);
+
+<span class="kw">struct </span>Objects { task: StaticTask&lt;System&gt; }
+
+<span class="comment">// Does the following things:
+//  - Creates control blocks for the kernel objects defined in `configure_app`.
+//  - Associates them to `SystemTraits` using trait implementations.
+//  - Assigns the output of `configure_app`, containing the defined object
+//    handles, to a `COTTAGE`, making it available globally.
+</span><span class="kw">const </span>COTTAGE: Objects = <span class="macro">r3_kernel::build!</span>(SystemTraits, configure_app =&gt; Objects);
+
+<span class="comment">// This is the top-level configuration function
+</span><span class="kw">const fn </span>configure_app&lt;C&gt;(b: <span class="kw-2">&amp;mut </span>Cfg&lt;C&gt;) -&gt; Objects
+<span class="kw">where
+    </span><span class="comment">// `C: ~const CfgBase` is implied by `CfgTask`&#39;s supertrait
+    </span>C: ~<span class="kw">const </span>traits::CfgTask&lt;System = System&gt;,
+{
+    b.num_task_priority_levels(<span class="number">4</span>);
+    <span class="kw">let </span>task = StaticTask::define()
+        .start(task_body).priority(<span class="number">3</span>).active(<span class="bool-val">true</span>).finish(b);
+    Objects { task }
+}
+
+<span class="kw">fn </span>task_body() {
+    <span class="macro">assert_eq!</span>(LocalTask::current().unwrap(), COTTAGE.task);
+}</code></pre></div>
+<p>Configuration functions are highly composable as they can make nested calls to other configuration functions. In some sense, this is a way to attribute a certain semantics to a group of kernel objects, encapsulate them, and expose a higher-level interface. For example, a <a href="../r3/sync/mutex/type.StaticMutex.html">mutex object</a> similar to <code>std::sync::Mutex</code> can be created by combining <a href="kernel/mutex/struct.Mutex.html" title="struct r3_core::kernel::mutex::Mutex"><code>kernel::Mutex</code></a><code>&lt;System&gt;</code> (a low-level mutex object) and a <a href="hunk/struct.Hunk.html" title="struct r3_core::hunk::Hunk"><code>hunk::Hunk</code></a><code>&lt;System, UnsafeCell&lt;T&gt;&gt;</code> (a typed hunk), which in turn is built on top of <a href="kernel/hunk/struct.Hunk.html" title="struct r3_core::kernel::hunk::Hunk"><code>kernel::Hunk</code></a><code>&lt;System&gt;</code> (a low-level untyped hunk).</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// Top-level configuration function
+</span><span class="kw">const fn </span>configure_app&lt;C&gt;(b: <span class="kw-2">&amp;mut </span>Cfg&lt;C&gt;) -&gt; Objects&lt;C::System&gt;
+<span class="kw">where
+    </span>C: ~<span class="kw">const </span>traits::CfgTask,
+{
+    b.num_task_priority_levels(<span class="number">4</span>);
+    <span class="kw">let </span>my_module = m::configure(b);
+    Objects { my_module }
+}
+
+<span class="kw">mod </span>m {
+    <span class="kw">pub const fn </span>configure&lt;C&gt;(b: <span class="kw-2">&amp;mut </span>Cfg&lt;C&gt;) -&gt; MyModule&lt;C::System&gt;
+    <span class="kw">where
+        </span>C: ~<span class="kw">const </span>traits::CfgTask,
+    {
+        <span class="kw">let </span>task = StaticTask::define()
+            .start(task_body).priority(<span class="number">3</span>).active(<span class="bool-val">true</span>).finish(b);
+        MyModule { task }
+    }
+
+    <span class="kw">fn </span>task_body() {}
+}</code></pre></div>
+<!-- Intra-doc links can't refer to downstream crates [ref:downstream_intra_doc_link] -->
+<h2 id="object-handles"><a href="#object-handles">Object Handles</a></h2>
+<p><strong>Object handles</strong> are opaque wrappers of raw kernel object IDs and provide methods to interact with the represented objects. There are three types of object handles:</p>
+<ul>
+<li>An <strong>owned handle</strong> represents a <a href="#creation">dynamically created</a> object. Dropping an owned handle deletes that object.</li>
+<li>A <strong>borrowed handle</strong> is a reference to an object owned by a different part of a program. They take a lifetime parameter.</li>
+<li>A <strong>static handle</strong> is a subtype of borrowed handle referencing a <a href="#creation">statically created</a> object.</li>
+</ul>
+<p>The following table lists all provided handle types:</p>
+<div><table><thead><tr><th>Object</th><th>Owned</th><th>Borrowed</th><th>Static</th></tr></thead><tbody>
+<tr><td>Event groups</td><td><a href="kernel/event_group/struct.EventGroup.html" title="struct r3_core::kernel::event_group::EventGroup"><code>EventGroup</code></a></td><td><a href="kernel/event_group/struct.EventGroupRef.html" title="struct r3_core::kernel::event_group::EventGroupRef"><code>EventGroupRef</code></a></td><td><a href="kernel/event_group/type.StaticEventGroup.html" title="type r3_core::kernel::event_group::StaticEventGroup"><code>StaticEventGroup</code></a></td></tr>
+<tr><td>Interrupt handlers</td><td>TBD</td><td>TBD</td><td><a href="kernel/interrupt/struct.StaticInterruptHandler.html" title="struct r3_core::kernel::interrupt::StaticInterruptHandler"><code>StaticInterruptHandler</code></a></td></tr>
+<tr><td>Mutexes</td><td><a href="kernel/mutex/struct.Mutex.html" title="struct r3_core::kernel::mutex::Mutex"><code>Mutex</code></a></td><td><a href="kernel/mutex/struct.MutexRef.html" title="struct r3_core::kernel::mutex::MutexRef"><code>MutexRef</code></a></td><td><a href="kernel/mutex/type.StaticMutex.html" title="type r3_core::kernel::mutex::StaticMutex"><code>StaticMutex</code></a></td></tr>
+<tr><td>Semaphores</td><td><a href="kernel/semaphore/struct.Semaphore.html" title="struct r3_core::kernel::semaphore::Semaphore"><code>Semaphore</code></a></td><td><a href="kernel/semaphore/struct.SemaphoreRef.html" title="struct r3_core::kernel::semaphore::SemaphoreRef"><code>SemaphoreRef</code></a></td><td><a href="kernel/semaphore/type.StaticSemaphore.html" title="type r3_core::kernel::semaphore::StaticSemaphore"><code>StaticSemaphore</code></a></td></tr>
+<tr><td>Tasks</td><td><a href="kernel/task/struct.Task.html" title="struct r3_core::kernel::task::Task"><code>Task</code></a></td><td><a href="kernel/task/struct.TaskRef.html" title="struct r3_core::kernel::task::TaskRef"><code>TaskRef</code></a></td><td><a href="kernel/task/type.StaticTask.html" title="type r3_core::kernel::task::StaticTask"><code>StaticTask</code></a></td></tr>
+<tr><td>Timers</td><td><a href="kernel/timer/struct.Timer.html" title="struct r3_core::kernel::timer::Timer"><code>Timer</code></a></td><td><a href="kernel/timer/struct.TimerRef.html" title="struct r3_core::kernel::timer::TimerRef"><code>TimerRef</code></a></td><td><a href="kernel/timer/type.StaticTimer.html" title="type r3_core::kernel::timer::StaticTimer"><code>StaticTimer</code></a></td></tr>
+</tbody></table>
+</div><h3 id="object-safety"><a href="#object-safety">Object Safety</a></h3>
+<p>R3 incorporates an idea inspired by I/O safety (<a href="https://rust-lang.github.io/rfcs/3128-io-safety.html">RFC 3128</a>), which we call <strong>object safety</strong> here, to enforce the ownership rules on kernel object handles. Object safety allows a high-level object to encapsulate its internally held kernel objects, free of interference from other code.</p>
+<p>This property is paramount for constructing sound, meaningful abstractions out of raw primitives. For example, a mutex (e.g., <a href="kernel/mutex/struct.Mutex.html" title="struct r3_core::kernel::mutex::Mutex"><code>r3::kernel::Mutex</code></a>) is used to protect data from concurrent accesses, but the mere existence of a mutex doesn’t protect anything. Only after it’s bundled with protected data does it become a sound abstraction (e.g., <a href="../r3/sync/mutex/type.StaticMutex.html"><code>r3::sync::StaticMutex</code></a>, <code>std::sync::Mutex</code>). If we didn’t have object safety, i.e., arbitrary code could fabricate any random mutex handle and use it, the encapsulation of this mutex abstraction would be broken, and it wouldn’t be sound anymore.</p>
+<p>R3 implements object safety in the following way:</p>
+<ul>
+<li>All functions that operate on raw object IDs, forming the majority of the kernel-side interface in <a href="kernel/raw/index.html" title="mod r3_core::kernel::raw"><code>r3::kernel::raw</code></a>, are marked as <code>unsafe</code>. Object handles represent permission for safe code to access the represented object and provide non-<code>unsafe</code> methods. Creating one from a raw ID (<code>HandleType::from_id</code>) is <code>unsafe</code>.</li>
+<li>The owner of owned handles (e.g., <a href="kernel/mutex/struct.Mutex.html" title="struct r3_core::kernel::mutex::Mutex"><code>Mutex</code></a>) controls the objects’ lifetimes.</li>
+<li>It’s possible to take a reference to an object as a normal reference (e.g., <code>&amp;'a Mutex</code>) or a more efficient “borrowed” handle (e.g., <a href="kernel/mutex/struct.MutexRef.html" title="struct r3_core::kernel::mutex::MutexRef"><code>MutexRef</code></a><code>&lt;'a, _&gt;</code>). In either case, Rust’s region-based memory management mechanism guarantees the absence of use-after-free at compile time.</li>
+<li><a href="#static-configuration">Static configuration</a> makes the defined objects available as borrowed handles with <code>'static</code> lifetime (e.g., <code>MutexRef&lt;'static, _&gt;</code>). There are type aliases for them (e.g., <a href="kernel/mutex/type.StaticMutex.html" title="type r3_core::kernel::mutex::StaticMutex"><code>StaticMutex</code></a>).</li>
+</ul>
+<p>When an invalid object ID is passed to a kernel function, it may cause an undefined behavior. If the kernel implementation can detect the use of an invalid ID, it’s recommended that it indicate the error condition by returning <code>Err(NoAccess)</code>.</p>
+<!-- Intra-doc links can't refer to downstream crates [ref:downstream_intra_doc_link] -->
+<h3 id="creation"><a href="#creation">Creation</a></h3>
+<p><strong>Static object creation</strong> refers to creating kernel objects in a <a href="#static-configuration">configuration function</a>. The object handles created in this way are static handles (e.g., <a href="kernel/mutex/type.StaticMutex.html" title="type r3_core::kernel::mutex::StaticMutex"><code>StaticMutex</code></a>), which are borrowed handles with <code>'static</code> lifetime (e.g., <a href="kernel/mutex/struct.MutexRef.html" title="struct r3_core::kernel::mutex::MutexRef"><code>MutexRef</code></a><code>&lt;'static, _&gt;</code>).</p>
+<p><strong>Dynamic object creation</strong> refers to creating and destroying kernel objects at runtime. The object handles created in this way are owned handles (e.g., <a href="kernel/mutex/struct.Mutex.html" title="struct r3_core::kernel::mutex::Mutex"><code>Mutex</code></a>). Dropping an owned handle destroys the object.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Unimplemented:</strong> Dynamic object creation is not supported yet. The owned kernel object handle types (e.g., <a href="kernel/task/struct.Task.html" title="struct r3_core::kernel::task::Task"><code>Task</code></a>) are currently just placeholders defined to make provision for supporting dynamic object creation in the future.</p>
+</blockquote>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Rationale:</strong> There are strengths in each mode of object creation. Static object creation allows for highly predictable operation and computational efficiency in terms of both processing and memory but wastes memory if the usage spans of the objects are dynamic, and it requires a level of cooperation between a compile-time mechanism and runtime code that is not supported out-of-the-box by most compiled languages. General-purpose OS abstractions, such as C++11 and the Rust standard library, require dynamic object creation for straightforward implementation. Dynamic object creation provides maximum flexibility but is prone to runtime errors and places more data on RAM (instead of ROM) than necessary.</p>
+<p>Although R3 started as static creation only, it’s being envisioned to also support dynamic creation to cover wider use cases.</p>
+</blockquote>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Relation to Other Specifications:</strong> Dynamic creation is prevalent in modern OS standards and abstractions, and despite the demand for predictable execution in embedded systems, there is only a handful of them providing support for <em>true</em> static object creation, including OSEK/VDX, <a href="https://rtic.rs/">RTIC</a>, <a href="https://www.toppers.jp/index.html">TOPPERS</a> (all versions so far), and <a href="http://www.ertl.jp/ITRON/SPEC/mitron4-e.html">μITRON4.0</a>. Those supporting both are even rarer.</p>
+</blockquote>
+<h2 id="system-states"><a href="#system-states">System States</a></h2>
+<p>A system can be in some of the system states described in this section at any point.</p>
+<p><strong>CPU Lock</strong> disables all managed interrupts and dispatching. On a uniprocessor system, this is a convenient way to create a critical section to protect a shared resource from concurrent accesses. Most system services are unavailable when CPU Lock is active and will return <a href="kernel/enum.ResultCode.html#variant.BadContext" title="variant r3_core::kernel::ResultCode::BadContext"><code>BadContext</code></a>. Application code can use <a href="kernel/trait.Kernel.html#tymethod.acquire_cpu_lock" title="associated function r3_core::kernel::Kernel::acquire_cpu_lock"><code>acquire_cpu_lock</code></a> to activate CPU Lock.</p>
+<p>Like a lock guard of a mutex, CPU Lock can be thought of as something to be “owned” by a current thread. This conception allows it to be seamlessly integrated with Rust’s vocabulary and mental model around the ownership model.</p>
+<p><strong>Priority Boost</strong> temporarily raises the effective priority of the current task to higher than any values possible in normal circumstances. Priority Boost can only be activated or deactivated in a task context. Potentially blocking system services are disallowed when Priority Boost is active and will return <a href="kernel/enum.ResultCode.html#variant.BadContext" title="variant r3_core::kernel::ResultCode::BadContext"><code>BadContext</code></a>. Application code can use <a href="kernel/trait.Kernel.html#tymethod.boost_priority" title="associated function r3_core::kernel::Kernel::boost_priority"><code>boost_priority</code></a> to activate Priority Boost.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Relation to Other Specifications:</strong> Inspired by the μITRON4.0 specification. CPU Lock and Priority Boost correspond to a CPU locked state and a dispatching state from μITRON4.0, respectively. In contrast to this specification, both concepts are denoted by proper nouns in R3-OS. This means phrases like “when the CPU is locked” are not allowed.</p>
+<p>CPU Lock corresponds to <code>SuspendOSInterrupts</code> and <code>ResumeOSInterrupts</code> from the OSEK/VDX specification.</p>
+</blockquote>
+<h2 id="threads"><a href="#threads">Threads</a></h2>
+<p>An <strong>(execution) thread</strong> is a logical sequence of instructions executed by a processor. There can be multiple threads existing at the same time, and the kernel is responsible for deciding which thread to run at any point on a processor (this process is called scheduling)². The location in a program where a thread starts execution is called the thread’s <strong>entry point function</strong> for the thread. A thread exits when it returns from its entry point function¹ or calls <a href="kernel/trait.Kernel.html#tymethod.exit_task" title="associated function r3_core::kernel::Kernel::exit_task"><code>exit_task</code></a> (valid only for tasks).</p>
+<p><small> ¹ More precisely, a thread starts execution with a hypothetical function call to the entry point function, and it exits when it returns from this hypothetical function call.</small></p>
+<p><small> ² The execution of code responsible for scheduling is not considered pertaining to any threads.</small></p>
+<p>The properties of threads such as how and when they are created and whether they can block or not are specific to each thread type.</p>
+<p>The initial thread that starts up the kernel is called the <strong>main thread</strong>. The part of the kernel’s lifecycle where the main thread executes is called the kernel’s <strong>boot phase</strong>, and this is where the initialization of kernel structures takes place. An application can register one or more <a href="kernel/hook/struct.StartupHook.html" title="struct r3_core::kernel::hook::StartupHook"><strong>startup hooks</strong></a> to execute user code here. <!-- [tag:startup_hook_cpu_lock_active] --> Startup hooks execute with CPU Lock active and <em>should never deactivate CPU Lock</em>. The main thread exits, i.e., the boot phase completes when the kernel dispatches the first task and starts multi-tasking. The following diagram depicts the kernel lifecycle during and after the boot phase.</p>
+<p><span class="center"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1NjAiIGhlaWdodD0iNjU2IiBzdHlsZT0idHJhbnNmb3JtOnRyYW5zbGF0ZSgwLjVweCwwLjVweCkiPgogICAgPHN0eWxlPgogICAgICAgIGxpbmUsIHBhdGgsIGNpcmNsZSwgcmVjdCwgcG9seWdvbntzdHJva2U6YmxhY2s7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLW9wYWNpdHk6MTtmaWxsLW9wYWNpdHk6MTtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46bWl0ZXI7fXRleHR7Zm9udC1mYW1pbHk6J1NvdXJjZSBDb2RlIFBybycsJ0FuZGFsZSBNb25vJywnU2Vnb2UgVUkgTW9ubycsJ0RlamF2dSBTYW5zIE1vbm8nLCdDb25zb2xhcycsbW9ub3NwYWNlO2ZvbnQtc2l6ZToxM3B4O31yZWN0LmJhY2tkcm9we3N0cm9rZTpub25lO2ZpbGw6d2hpdGU7fS5icm9rZW57c3Ryb2tlLWRhc2hhcnJheTo4O30uZmlsbGVke2ZpbGw6YmxhY2s7fS5iZ19maWxsZWR7ZmlsbDp3aGl0ZTt9Lm5vZmlsbHtmaWxsOndoaXRlO30uZW5kX21hcmtlZF9hcnJvd3ttYXJrZXItZW5kOnVybCgjYXJyb3cpO30uc3RhcnRfbWFya2VkX2Fycm93e21hcmtlci1zdGFydDp1cmwoI2Fycm93KTt9LmVuZF9tYXJrZWRfZGlhbW9uZHttYXJrZXItZW5kOnVybCgjZGlhbW9uZCk7fS5zdGFydF9tYXJrZWRfZGlhbW9uZHttYXJrZXItc3RhcnQ6dXJsKCNkaWFtb25kKTt9LmVuZF9tYXJrZWRfY2lyY2xle21hcmtlci1lbmQ6dXJsKCNjaXJjbGUpO30uc3RhcnRfbWFya2VkX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNjaXJjbGUpO30uZW5kX21hcmtlZF9vcGVuX2NpcmNsZXttYXJrZXItZW5kOnVybCgjb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX29wZW5fY2lyY2xle21hcmtlci1zdGFydDp1cmwoI29wZW5fY2lyY2xlKTt9LmVuZF9tYXJrZWRfYmlnX29wZW5fY2lyY2xle21hcmtlci1lbmQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX2JpZ19vcGVuX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30KICAgICAgICA8IS0tc2VwYXJhdG9yLS0+CiAgICAgICAgCiAgICA8L3N0eWxlPgogICAgPGRlZnM+CiAgICAgICAgPG1hcmtlciBpZD0iYXJyb3ciIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCAwLDQgNCwyIDAsMCI+PC9wb2x5Z29uPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9ImRpYW1vbmQiIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMiAyLDAgNCwyIDIsNCAwLDIiPjwvcG9seWdvbj4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJjaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjIiIGNsYXNzPSJmaWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9Im9wZW5fY2lyY2xlIiB2aWV3Qm94PSIwIDAgOCA4IiByZWZYPSI0IiByZWZZPSI0IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgICAgICAgIDxjaXJjbGUgY3g9IjQiIGN5PSI0IiByPSIyIiBjbGFzcz0iYmdfZmlsbGVkIj48L2NpcmNsZT4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJiaWdfb3Blbl9jaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjMiIGNsYXNzPSJiZ19maWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgPC9kZWZzPgogICAgPHJlY3QgY2xhc3M9ImJhY2tkcm9wIiB4PSIwIiB5PSIwIiB3aWR0aD0iNTYwIiBoZWlnaHQ9IjY3MiI+PC9yZWN0PgogICAgPHJlY3QgeD0iMTgwIiB5PSI0MCIgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxNzYiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8Y2lyY2xlIGN4PSIyNzYiIGN5PSI3MiIgcj0iMyIgY2xhc3M9ImZpbGxlZCI+PC9jaXJjbGU+CiAgICA8dGV4dCB4PSIyNTAiIHk9IjEyNCIgIHRleHRMZW5ndGg9IjExMiI+aW5pdGlhbGl6YXRpb248L3RleHQ+CiAgICA8dGV4dCB4PSIyMjYiIHk9IjE3MiIgIHRleHRMZW5ndGg9IjU2Ij5TdGFydHVwPC90ZXh0PgogICAgPHRleHQgeD0iMTk0IiB5PSIxMjQiICB0ZXh0TGVuZ3RoPSI0OCI+S2VybmVsPC90ZXh0PgogICAgPHRleHQgeD0iMjkwIiB5PSIxNzIiICB0ZXh0TGVuZ3RoPSI0MCI+aG9va3M8L3RleHQ+CiAgICA8dGV4dCB4PSIyMzQiIHk9IjE4OCIgIHRleHRMZW5ndGg9Ijg4Ij4odXNlciBjb2RlKTwvdGV4dD4KICAgIDxyZWN0IHg9IjQ0IiB5PSI0ODgiIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgY2xhc3M9InNvbGlkIG5vZmlsbCIgcng9IjQiPjwvcmVjdD4KICAgIDx0ZXh0IHg9IjU4IiB5PSI1NDAiICB0ZXh0TGVuZ3RoPSIzMiI+VXNlcjwvdGV4dD4KICAgIDx0ZXh0IHg9Ijk4IiB5PSI1NDAiICB0ZXh0TGVuZ3RoPSIzMiI+Y29kZTwvdGV4dD4KICAgIDxyZWN0IHg9IjE2NCIgeT0iNDg4IiB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSIxNzgiIHk9IjU0MCIgIHRleHRMZW5ndGg9IjMyIj5Vc2VyPC90ZXh0PgogICAgPHRleHQgeD0iMjE4IiB5PSI1NDAiICB0ZXh0TGVuZ3RoPSIzMiI+Y29kZTwvdGV4dD4KICAgIDxyZWN0IHg9IjI4NCIgeT0iNDg4IiB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSIyOTgiIHk9IjU0MCIgIHRleHRMZW5ndGg9IjMyIj5Vc2VyPC90ZXh0PgogICAgPHRleHQgeD0iMzM4IiB5PSI1NDAiICB0ZXh0TGVuZ3RoPSIzMiI+Y29kZTwvdGV4dD4KICAgIDxyZWN0IHg9IjQwNCIgeT0iNDg4IiB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSI0MTgiIHk9IjU0MCIgIHRleHRMZW5ndGg9IjMyIj5Vc2VyPC90ZXh0PgogICAgPHRleHQgeD0iNDU4IiB5PSI1NDAiICB0ZXh0TGVuZ3RoPSIzMiI+Y29kZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjE3OCIgeT0iMjgiICB0ZXh0TGVuZ3RoPSIzMiI+TWFpbjwvdGV4dD4KICAgIDx0ZXh0IHg9IjIxOCIgeT0iMjgiICB0ZXh0TGVuZ3RoPSI0OCI+dGhyZWFkPC90ZXh0PgogICAgPHRleHQgeD0iMjU4IiB5PSIzNjQiICB0ZXh0TGVuZ3RoPSIyNCI+dGhlPC90ZXh0PgogICAgPHRleHQgeD0iMjkwIiB5PSIzNjQiICB0ZXh0TGVuZ3RoPSIzMiI+bmV4dDwvdGV4dD4KICAgIDx0ZXh0IHg9IjI1OCIgeT0iMzgwIiAgdGV4dExlbmd0aD0iNTYiPmV4ZWN1dGU8L3RleHQ+CiAgICA8dGV4dCB4PSIyOTAiIHk9IjQ2MCIgIHRleHRMZW5ndGg9IjMyIj5JbnQuPC90ZXh0PgogICAgPHRleHQgeD0iNDEwIiB5PSI0NjAiICB0ZXh0TGVuZ3RoPSIzMiI+SW50LjwvdGV4dD4KICAgIDx0ZXh0IHg9IjM0IiB5PSI0NzYiICB0ZXh0TGVuZ3RoPSIzMiI+VGFzazwvdGV4dD4KICAgIDx0ZXh0IHg9Ijc0IiB5PSI0NzYiICB0ZXh0TGVuZ3RoPSI4Ij4xPC90ZXh0PgogICAgPHRleHQgeD0iMTU0IiB5PSI0NzYiICB0ZXh0TGVuZ3RoPSIzMiI+VGFzazwvdGV4dD4KICAgIDx0ZXh0IHg9IjE5NCIgeT0iNDc2IiAgdGV4dExlbmd0aD0iOCI+MjwvdGV4dD4KICAgIDx0ZXh0IHg9IjI1MCIgeT0iNDc2IiAgdGV4dExlbmd0aD0iNTYiPmhhbmRsZXI8L3RleHQ+CiAgICA8dGV4dCB4PSIzMTQiIHk9IjQ3NiIgIHRleHRMZW5ndGg9IjgiPjE8L3RleHQ+CiAgICA8dGV4dCB4PSIzNzAiIHk9IjQ3NiIgIHRleHRMZW5ndGg9IjU2Ij5oYW5kbGVyPC90ZXh0PgogICAgPHRleHQgeD0iNDM0IiB5PSI0NzYiICB0ZXh0TGVuZ3RoPSI4Ij4yPC90ZXh0PgogICAgPHRleHQgeD0iMTE0IiB5PSI2MzYiICB0ZXh0TGVuZ3RoPSIyNCI+VGhlPC90ZXh0PgogICAgPHRleHQgeD0iMTQ2IiB5PSI2MzYiICB0ZXh0TGVuZ3RoPSI0OCI+dGhyZWFkPC90ZXh0PgogICAgPHRleHQgeD0iMjAyIiB5PSI2MzYiICB0ZXh0TGVuZ3RoPSI2NCI+ZXhpdGluZyw8L3RleHQ+CiAgICA8dGV4dCB4PSIyNzQiIHk9IjYzNiIgIHRleHRMZW5ndGg9IjgwIj5wcmVlbXB0ZWQsPC90ZXh0PgogICAgPHRleHQgeD0iMzYyIiB5PSI2MzYiICB0ZXh0TGVuZ3RoPSIxNiI+b3I8L3RleHQ+CiAgICA8dGV4dCB4PSIzODYiIHk9IjYzNiIgIHRleHRMZW5ndGg9IjU2Ij5ibG9ja2VkPC90ZXh0PgogICAgPHRleHQgeD0iMTE0IiB5PSI2NTIiICB0ZXh0TGVuZ3RoPSIxNiI+b3I8L3RleHQ+CiAgICA8dGV4dCB4PSIxMzgiIHk9IjY1MiIgIHRleHRMZW5ndGg9IjE2Ij5hbjwvdGV4dD4KICAgIDx0ZXh0IHg9IjE2MiIgeT0iNjUyIiAgdGV4dExlbmd0aD0iNzIiPmludGVycnVwdDwvdGV4dD4KICAgIDx0ZXh0IHg9IjI0MiIgeT0iNjUyIiAgdGV4dExlbmd0aD0iNDAiPnRha2VuPC90ZXh0PgogICAgPHRleHQgeD0iMTgiIHk9IjEyNCIgIHRleHRMZW5ndGg9IjMyIj5Cb290PC90ZXh0PgogICAgPHRleHQgeD0iNTgiIHk9IjEyNCIgIHRleHRMZW5ndGg9IjQwIj5waGFzZTwvdGV4dD4KICAgIDxsaW5lIHgxPSIxNiIgeTE9IjI0OCIgeDI9IjI0IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIzMiIgeTE9IjI0OCIgeDI9IjQwIiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI0OCIgeTE9IjI0OCIgeDI9IjU2IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI2NCIgeTE9IjI0OCIgeDI9IjcyIiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI4MCIgeTE9IjI0OCIgeDI9Ijg4IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI5NiIgeTE9IjI0OCIgeDI9IjEwNCIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMTEyIiB5MT0iMjQ4IiB4Mj0iMTIwIiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIxMjgiIHkxPSIyNDgiIHgyPSIxMzYiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjE0NCIgeTE9IjI0OCIgeDI9IjE1MiIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMTYwIiB5MT0iMjQ4IiB4Mj0iMTY4IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIxNzYiIHkxPSIyNDgiIHgyPSIxODQiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjE5MiIgeTE9IjI0OCIgeDI9IjIwMCIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMjA4IiB5MT0iMjQ4IiB4Mj0iMjE2IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIyMjQiIHkxPSIyNDgiIHgyPSIyMzIiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjI0MCIgeTE9IjI0OCIgeDI9IjI0OCIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMjU2IiB5MT0iMjQ4IiB4Mj0iMjY0IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIyODgiIHkxPSIyNDgiIHgyPSIyOTYiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjMwNCIgeTE9IjI0OCIgeDI9IjMxMiIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMzIwIiB5MT0iMjQ4IiB4Mj0iMzI4IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIzMzYiIHkxPSIyNDgiIHgyPSIzNDQiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjM1MiIgeTE9IjI0OCIgeDI9IjM2MCIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iMzY4IiB5MT0iMjQ4IiB4Mj0iMzc2IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSIzODQiIHkxPSIyNDgiIHgyPSIzOTIiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQwMCIgeTE9IjI0OCIgeDI9IjQwOCIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDE2IiB5MT0iMjQ4IiB4Mj0iNDI0IiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI0MzIiIHkxPSIyNDgiIHgyPSI0NDAiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQ0OCIgeTE9IjI0OCIgeDI9IjQ1NiIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNDY0IiB5MT0iMjQ4IiB4Mj0iNDcyIiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI0ODAiIHkxPSIyNDgiIHgyPSI0ODgiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjQ5NiIgeTE9IjI0OCIgeDI9IjUwNCIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNTEyIiB5MT0iMjQ4IiB4Mj0iNTIwIiB5Mj0iMjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI1MjgiIHkxPSIyNDgiIHgyPSI1MzYiIHkyPSIyNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPGxpbmUgeDE9IjU0NCIgeTE9IjI0OCIgeDI9IjU1MiIgeTI9IjI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSIyOTAiIHk9IjI4NCIgIHRleHRMZW5ndGg9IjI0Ij5Gb3I8L3RleHQ+CiAgICA8dGV4dCB4PSIzMjIiIHk9IjI4NCIgIHRleHRMZW5ndGg9IjMyIj5lYWNoPC90ZXh0PgogICAgPHRleHQgeD0iMzYyIiB5PSIyODQiICB0ZXh0TGVuZ3RoPSI2NCI+aGFyZHdhcmU8L3RleHQ+CiAgICA8dGV4dCB4PSI0MzQiIHk9IjI4NCIgIHRleHRMZW5ndGg9IjcyIj50aHJlYWQuLi48L3RleHQ+CiAgICA8dGV4dCB4PSIxNzgiIHk9IjM2NCIgIHRleHRMZW5ndGg9IjcyIj5EZXRlcm1pbmU8L3RleHQ+CiAgICA8dGV4dCB4PSIyMzQiIHk9IjM4MCIgIHRleHRMZW5ndGg9IjE2Ij50bzwvdGV4dD4KICAgIDx0ZXh0IHg9IjMzMCIgeT0iMzY0IiAgdGV4dExlbmd0aD0iNDgiPnRocmVhZDwvdGV4dD4KICAgIDx0ZXh0IHg9IjQ5MCIgeT0iNDQ0IiAgdGV4dExlbmd0aD0iMjQiPi4uLjwvdGV4dD4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyNzYiIHkxPSIxOTIiIHgyPSIyNzYiIHkyPSIzNDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjcyLDM0MCAyODAsMzQwIDI3NiwzNTIiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjg4LDMwOCAyODAsMzEyIDI4OCwzMTYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgICAgICA8bGluZSB4MT0iMjg4IiB5MT0iMzEyIiB4Mj0iNTI4IiB5Mj0iMzEyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cGF0aCBkPSJNIDUyOCwzMTIgQSA0LDQgMCwwLDEgNTMyLDMxNiIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxsaW5lIHgxPSI1MzIiIHkxPSIzMTYiIHgyPSI1MzIiIHkyPSI2MTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI0NTIiIHkxPSI1NDQiIHgyPSI0NTIiIHkyPSI2MTYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI5NiIgeTE9IjYxNiIgeDI9IjUyOCIgeTI9IjYxNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBhdGggZD0iTSA1MzIsNjEyIEEgNCw0IDAsMCwxIDUyOCw2MTYiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iOTIiIHkxPSI1NDQiIHgyPSI5MiIgeTI9IjYxMiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBhdGggZD0iTSA5Miw2MTIgQSA0LDQgMCwwLDAgOTYsNjE2IiBjbGFzcz0ibm9maWxsIj48L3BhdGg+CiAgICAgICAgPGxpbmUgeDE9IjIxMiIgeTE9IjU0NCIgeDI9IjIxMiIgeTI9IjYxNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjMzMiIgeTE9IjU0NCIgeDI9IjMzMiIgeTI9IjYxNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMjc2IiB5MT0iMzg0IiB4Mj0iMjc2IiB5Mj0iNDIwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjI3Miw0MjAgMjgwLDQyMCAyNzYsNDMyIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8cGF0aCBkPSJNIDk2LDQ0MCBBIDQsNCAwLDAsMCA5Miw0NDQiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iOTIiIHkxPSI0NDQiIHgyPSI5MiIgeTI9IjUxNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9Ijk2IiB5MT0iNDQwIiB4Mj0iNDgwIiB5Mj0iNDQwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjEyIiB5MT0iNDQwIiB4Mj0iMjEyIiB5Mj0iNTE2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMzMyIiB5MT0iNDQwIiB4Mj0iMzMyIiB5Mj0iNTE2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iNDUyIiB5MT0iNDQwIiB4Mj0iNDUyIiB5Mj0iNTE2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9Ijg4LDUxNiA5Niw1MTYgOTIsNTI4IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSIyMDgsNTE2IDIxNiw1MTYgMjEyLDUyOCIgY2xhc3M9ImZpbGxlZCI+PC9wb2x5Z29uPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMzI4LDUxNiAzMzYsNTE2IDMzMiw1MjgiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjQ0OCw1MTYgNDU2LDUxNiA0NTIsNTI4IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMjc2IiB5MT0iNzYiIHgyPSIyNzYiIHkyPSIxMDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjcyLDEwMCAyODAsMTAwIDI3NiwxMTIiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyNzYiIHkxPSIxMjgiIHgyPSIyNzYiIHkyPSIxNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjcyLDE0OCAyODAsMTQ4IDI3NiwxNjAiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KPC9zdmc+" alt="system_lifecycle" /></span></p>
+<p>A <strong><a href="#interrupt-handling-framework">first-level interrupt handler</a></strong> starts execution in its own thread in response to asynchronous external events (interrupts). This type of thread always runs to completion but can be preempted by other interrupt handlers. No blocking system calls are allowed in an interrupt handler. A first-level interrupt handler calls the associated application-provided <strong>second-level interrupt handlers</strong> (<a href="kernel/interrupt/struct.StaticInterruptHandler.html" title="struct r3_core::kernel::interrupt::StaticInterruptHandler"><code>StaticInterruptHandler</code></a>) as well as the callback functions of <strong>timers</strong> (<a href="kernel/timer/struct.Timer.html" title="struct r3_core::kernel::timer::Timer"><code>Timer</code></a>) through a timer driver and the kernel timing core.</p>
+<p>A <strong>task</strong> (<a href="kernel/task/struct.Task.html" title="struct r3_core::kernel::task::Task"><code>Task</code></a>) is the kernel object that can create a thread whose execution is controlled by application code. Each task encapsulates a variety of state data necessary for the execution and scheduling of the associated thread, such as <a href="kernel/task/struct.TaskDefiner.html#method.stack_size" title="method r3_core::kernel::task::TaskDefiner::stack_size">a stack region</a> to store local variables and activation frames, the current <a href="kernel/task/struct.TaskDefiner.html#method.priority" title="method r3_core::kernel::task::TaskDefiner::priority">priority</a>, the <a href="kernel/task/trait.TaskMethods.html#method.unpark" title="method r3_core::kernel::task::TaskMethods::unpark">parking</a> state of the task, and a memory region used to save the state of CPU registers when the task is blocked or preempted. The associated thread can be started by <strong><a href="kernel/task/trait.TaskMethods.html#method.activate" title="method r3_core::kernel::task::TaskMethods::activate">activating</a></strong> that task. A task-based thread can make blocking system calls, which will temporarily block the execution of the thread until certain conditions are met. Task-based threads can be preempted by any kind of thread.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Relation to Other Specifications:</strong> Not many kernel designs use the word “thread” to describe the concept that applies to both of interrupts and tasks (one notable exception being <a href="http://software-dl.ti.com/lprf/simplelink_cc13x0_sdk/1_30_00_06/exports/docs/ti154stack/ti154stack-sdg/ti154stack-sdg/tirtos/rtos-overview.html">TI-RTOS</a>), most likely because threads are used to refer to a specific concept in general-purpose operating systems, or they are simply considered synonymous with tasks. For example, the closest concept in the μITRON4.0 specification is <em>processing units</em>. Despite that, it was decided that “thread” was an appropriate term to refer to this concept. The primary factors that drove this decision include: (1) the need for a conceptual entity that can “own” locks, and (2) that this concept is important for discussing thread safety without substituting every mention of “thread” with “task or interrupt handler”.</p>
+</blockquote>
+<h2 id="contexts"><a href="#contexts">Contexts</a></h2>
+<p>A context is a general term that is often used to describe the “environment” a function executes in. Terms like <em>a task context</em> are used to specify the type of thread a calling thread is expected to be. The following list shows the terms we use to describe contexts throughout this documentation:</p>
+<ul>
+<li>Being in a <strong>task context</strong> means the current <a href="#threads">thread</a> pertains to a task.</li>
+<li>Being in an <strong>interrupt context</strong> means the current thread pertains to an interrupt handler.</li>
+<li>Being in a <strong>boot context</strong> means the current thread is the main thread. <a href="kernel/hook/struct.StartupHook.html" title="struct r3_core::kernel::hook::StartupHook">Startup hooks</a> allow user code to execute in this context.</li>
+<li>Being in a <strong>waitable context</strong> means that the current context is a task context and <a href="#system-states">Priority Boost</a> is inactive.</li>
+</ul>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Relation to Other Specifications:</strong> <a href="http://www.ertl.jp/ITRON/SPEC/mitron4-e.html">The μITRON4.0 specification</a>, <a href="https://www.autosar.org/fileadmin/user_upload/standards/classic/4-3/AUTOSAR_SWS_OS.pdf">the AUTOSAR OS specification</a>, and <a href="https://www.rtems.org">RTEMS</a>’s user manuals use the term “context” in a similar way.</p>
+</blockquote>
+<h2 id="interrupt-handling-framework"><a href="#interrupt-handling-framework">Interrupt Handling Framework</a></h2>
+<p>A kernel implementation may support managing interrupt lines and interrupt handlers through an interface defined by the kernel. When it’s supported, an application can use this facility to configure interrupt lines and attach interrupt handlers. The interrupt management interface is provided by the optional trait <a href="kernel/raw/trait.KernelInterruptLine.html" title="trait r3_core::kernel::raw::KernelInterruptLine"><code>raw::KernelInterruptLine</code></a>. Even if a system type implements this trait, it’s <strong>implementation-defined</strong> whether it actually supports interrupt management (i.e., the functions may fail with <a href="kernel/enum.ResultCode.html#variant.NotSupported" title="variant r3_core::kernel::ResultCode::NotSupported"><code>NotSupported</code></a> for all possible inputs).</p>
+<p>The benefits of providing a standardized interface for interrupts include: (1) increased portability of applications and libraries across target platforms, (2) well-defined semantics of system calls inside an interrupt handler, and (3) decoupling hardware driver components on a system with a non-vectorized interrupt controller or multiplexed interrupt lines. The downsides include: (1) obscuring non-standard hardware features, (2) interference with other ways of managing interrupts (e.g., board support packages, IDEs), (3) additional layer of abstraction that makes the system mechanism unclear.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Implementation Note:</strong> System calls can provide well-defined semantics inside an interrupt handler only if the kernel adheres to this interrupt handling framework. If a kernel developer chooses not to follow this, they are responsible to properly explain the interaction between interrupts and the kernel.</p>
+</blockquote>
+<p>An interrupt request is delivered to a processor by sending a hardware signal to an interrupt controller through an <strong>interrupt line</strong>. It’s possible that more than one interrupt source is connected to a single interrupt line. Upon receiving an interrupt request, the interrupt controller translates the interrupt line to an <strong>interrupt number</strong> and transfers the control to the <strong>first-level interrupt handler</strong> associated with that interrupt number.</p>
+<p>Each interrupt line has configurable attributes such as an <strong>interrupt priority</strong>. An application can instruct the kernel to configure them at boot time by <a href="kernel/interrupt/struct.InterruptLineDefiner.html" title="struct r3_core::kernel::interrupt::InterruptLineDefiner"><code>InterruptLineDefiner</code></a> or at runtime by <a href="kernel/interrupt/struct.InterruptLine.html" title="struct r3_core::kernel::interrupt::InterruptLine"><code>InterruptLine</code></a>. The interpretation of interrupt priority values is up to a kernel, but they are usually used to define precedence among interrupt lines in some way, such as favoring one over another when multiple interrupt requests are received at the same time or allowing a higher-priority interrupt handler to preempt another.</p>
+<p>The kernel occasionally disables interrupts by activating CPU Lock. The additional interrupt latency introduced by this can pose a problem for time-sensitive applications. To resolve this problem, a kernel may implement CPU Lock in a way that doesn’t disable interrupt lines with a certain priority value and higher. Such priority values and the first-/second-level interrupt handlers for such interrupt lines are said to be <strong>unmanaged</strong>. The behavior of system calls inside unmanaged interrupt handlers is undefined. Interrupt handlers that aren’t unmanaged are said to be <strong>managed</strong>.</p>
+<p>An application can register one or more <strong>(second-level) interrupt handlers</strong> to an interrupt number. They execute in a serial fashion inside a first-level interrupt handler for the interrupt number. The static configuration system automatically combines multiple second-level interrupt handlers into one (thus taking care of the “execute in a serial fashion” part). <strong>It’s up to a kernel to generate a first-level interrupt handler</strong> that executes in an appropriate situation, takes care of low-level tasks such as saving and restoring registers, and calls the (combined) second-level interrupt handler.</p>
+<p>Interrupt handlers execute with CPU Lock inactive and may return with CPU Lock either active or inactive. Some system calls are not allowed in there and will return <a href="kernel/enum.ResultCode.html#variant.BadContext" title="variant r3_core::kernel::ResultCode::BadContext"><code>BadContext</code></a>.</p>
+<p>The behavior of system calls is undefined inside an unmanaged interrupt handler. The property of being protected from programming errors caused by making system calls inside an unmanaged interrupt handler is called <strong>unmanaged safety</strong>. Most system services are not marked as <code>unsafe</code>, so in order to ensure unmanaged safety, safe code shouldn’t be allowed to register an interrupt handler that potentially executes as an unmanaged interrupt handler. On the other hand, the number of <code>unsafe</code> blocks in application code should be minimized in common use cases. To meet this goal, this framework employs several safeguards: (1) Interrupt handlers can be <a href="kernel/interrupt/struct.InterruptHandlerDefiner.html#method.unmanaged" title="method r3_core::kernel::interrupt::InterruptHandlerDefiner::unmanaged">explicitly marked</a> as <strong>unmanaged-safe</strong> (safe to use as an unmanaged interrupt handler), but this requires an <code>unsafe</code> block. (2) An interrupt line must be initialized with a priority value that falls within <a href="kernel/raw/trait.KernelInterruptLine.html#associatedconstant.RAW_MANAGED_INTERRUPT_PRIORITY_RANGE" title="associated constant r3_core::kernel::raw::KernelInterruptLine::RAW_MANAGED_INTERRUPT_PRIORITY_RANGE">a managed range</a> if it has a non-unmanaged-safe interrupt handler. (3) When <a href="kernel/interrupt/struct.InterruptLine.html#method.set_priority" title="method r3_core::kernel::interrupt::InterruptLine::set_priority">changing</a> the priority of an interrupt line, the new priority must be in a managed range. It’s possible to <a href="kernel/interrupt/struct.InterruptLine.html#method.set_priority_unchecked" title="method r3_core::kernel::interrupt::InterruptLine::set_priority_unchecked">bypass</a> this check, but this requires an <code>unsafe</code> block.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Relation to Other Specifications:</strong> The division between managed and unmanaged interrupt handlers can be seen in FreeRTOS (some ports), μITRON4.0, and OSEK/VDX. The method of leveraging Rust’s <code>unsafe</code> system to ensure unmanaged safety is obviously Rust-specific and novel.</p>
+<p>Interrupt handlers and interrupt service routines (terms from μITRON4.0) have been renamed to first-level interrupt handlers and (second-level) interrupt handlers, respectively, because “interrupt service routine” was way too long to type and abbreviating it would result in a set of type names which is either excessively inconsistent (<code>InterruptLine</code>, <code>Irq</code>) or bizarre (<code>InterruptLine</code>, <code>InterruptRq</code>). Removing the term “interrupt service routine” should also remove a source of confusion because interrupt handlers and interrupt service routines are often regarded as synonymous with each other (as evident in <a href="https://en.wikipedia.org/w/index.php?title=Interrupt_handler&amp;oldid=934917582">the Wikipedia article</a> on interrupt handler), whereas there is a clear sequential relationship between first-level and second-level.</p>
+</blockquote>
+<h2 id="kernel-timing"><a href="#kernel-timing">Kernel Timing</a></h2>
+<p>R3-OS provides a timing system to enable tracking timed events such as wait operations with timeout.</p>
+<p>The kernel uses <strong>microseconds</strong> as the system time unit. A span of time (<a href="time/struct.Duration.html" title="struct r3_core::time::Duration"><code>Duration</code></a>) is represented by a 32-bit signed integer (the negative part is only used by the clock adjustment API), which can hold up to 35′47.483647″.</p>
+<p><strong>The system clock</strong> is a feature of the kernel that manages and exposes a global <strong>system time</strong> (<a href="time/struct.Time.html" title="struct r3_core::time::Time"><code>Time</code></a>), which is represented by a 64-bit integer. The system time starts at zero, thus behaving like uptime, but it can be updated by an application to represent a real calender time. The method <a href="kernel/trait.Kernel.html#tymethod.set_time" title="associated function r3_core::kernel::Kernel::set_time"><code>set_time</code></a> updates the global system time with a new value.</p>
+<p>Another way to update the system time is to move it forward or back by a specified delta by calling <a href="kernel/trait.Kernel.html#tymethod.adjust_time" title="associated function r3_core::kernel::Kernel::adjust_time"><code>adjust_time</code></a>. This update method <em>preserves the absolute (w.r.t. the system time) arrival times of existing timed events</em>. This means that if you have an event scheduled to occur in 10 seconds and you move the system time forward by 2 seconds, the event is now scheduled to occur in 8 seconds.</p>
+<p>The kernel expects that timer interrupts are handled in a timely manner. The resilience against overdue timer interrupts is kernel-specific, and once it’s exceeded, the kernel timing algorithm will start exhibiting an incorrect behavior. <strong>The application is responsible for ensuring these limitations are not exceeded</strong>, e.g., by avoiding holding CPU Lock for a prolonged period of time.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<details>
+<summary>Relation to Other Specifications</summary>
+<p>There are many major design choices when it comes to kernel timing and timed APIs, and they are quite diverse between operating system or kernel specifications. The following list shows some of them:</p>
+<ol>
+<li>
+<p><em>What time unit does the application-facing API use?</em> In embedded operating systems, it’s very common to expose internal ticks and provide C macros to convert real time values into ticks. The conversion is prone to unexpected rounding and integer overflow, and this sort of error is easy to go unnoticed. (For instance, <code>pdMS_TO_TICKS</code> from FreeRTOS uses <code>uint32_t</code> for intermediate value calculation, and <code>gcc</code> won’t report overflow even with <code>-Wall</code> because <code>uint32_t</code> is defined to exhibit a wrap-around behavior. <code>z_tmcvt</code> from Zephyr doesn’t detect overflow.) Even if it could be detected statically (which is never true for dynamically calculated values), the range of real time values that doesn’t cause overflow varies between target systems, harming the portability of software components written for the operating system (how often this cause a problem is debatable).</p>
+<p>Specifications emphasizing portability have often adopted real time values. The conversion to an internal tick value still happens, but because it’s done at a lower level, it’s easy to handle out-of-range cases gracefully, e.g., by dividing a long delay request into shorter ones. The downside of this approach is that it’s hard to avoid the runtime overhead of the conversion process. Supporting fractional times would require a special treatment in this approach. However, as for the conversion overhead, it can be avoided by matching internal ticks to real time values (see item 2).</p>
+<p>The overflow issue can be assuaged by using 64-bit time values.</p>
+</li>
+<li>
+<p><em>Who specifies the frequency of internal ticks? Is it configurable? Or is it bound to real time values?</em> It’s often tied to a hardware timer’s input clock frequency (most tickless kernels) or period (tickful kernels such as an old version of Linux).</p>
+<p>The tick frequency could be fixed at a predetermined value having a simple ratio to a real time unit such as 1kHz. This can reduce or eliminate the time conversion cost, but it can be tricky to get a hardware timer to operate in a desired frequency in some clock configurations.</p>
+</li>
+<li>
+<p><em>Are timed events associated with absolute time values that can be adjusted globally?</em> (I.e., the current absolute time can be adjusted at runtime, and that affects the relative arrival times of all existing time events.) This can be useful for compensating for <a href="https://en.wikipedia.org/wiki/Clock_drift">clock drift</a>, but breaks monotonicity.</p>
+<p>This functionality is tricky to implement because usually an embedded operating system often only tracks some LSBs of an absolute time value (in other words, using modulo-2ⁿ arithmetic), and the interpretation of a value could change if the system time was changed inadvertently. A specific example might further clarify the problem: Let’s say you have an alarm scheduled to fire in 49 days. You request the system to move the system time backward by 1 day. The alarm would npw be scheduled to fire in 50 days, which can’t be represented by a 32-bit integer with millisecond precision, so the request should be rejected.</p>
+</li>
+<li>
+<p><em>Is the timer rate variable?</em> This is another way to compensate for clock drift. This usually done by kernel software as the hardware might not provide sufficient adjustment granularity.</p>
+<p>If this feature is supported, it would be pointless for item 1 to be “ticks” because when this feature is in use, the ticks aren’t actual hardware ticks anymore.</p>
+</li>
+<li>
+<p><em>How many bits does a relative time value have?</em> Sixty four bits would be sufficient to represent any practically meaningful time interval (as far as an earthling civilization is concerned), but that would be overkill for most use cases. The present-day embedded operating systems mainly target 16- or 32-bit microcontrollers with a tight memory constraint. This means unnecessarily-wide data types (especially those wider than 32 bits) should be avoided.</p>
+<p>Thirty two bits can be restrictive, but it’s trivial for an application to work around. It could be made configurable to accommodate the rare use cases where 64-bit time intervals are needed, but then 64-bit arithmetic would increase the processing cost of all timed events, not just the ones needing 64 bits.</p>
+</li>
+<li>
+<p><em>How many bits does the operating system use to track the arrival time for a timed event?</em> This should be greater than or equal to the value of item 5. This interacts with item 3.</p>
+</li>
+</ol>
+<p>Based on these considerations, we decided to take the TOPPERS 3rd generation kernel specification as a model for the kernel timing system, with a few changes.</p>
+<p>The following table summarizes the choices made by each specification, including ours:</p>
+<div><table><thead><tr><th>Specification</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead><tbody>
+<tr><td><a href="https://www.autosar.org/fileadmin/user_upload/standards/classic/4-3/AUTOSAR_SWS_OS.pdf">AUTOSAR OS 4.3.1</a></td><td>ticks</td><td>N/A</td><td>?</td><td>?</td><td>?</td><td>N/A</td></tr>
+<tr><td>FreeRTOS V10</td><td>ticks</td><td>port-specific</td><td>no</td><td>no</td><td>16 or 32 bits</td><td>16 or 32 bits</td></tr>
+<tr><td>OSEX/VDX 2.2.3</td><td>ticks</td><td>N/A</td><td>no</td><td>no</td><td>unspecified bits</td><td>N/A</td></tr>
+<tr><td>POSIX</td><td>nanoseconds</td><td>N/A</td><td>mixed</td><td>no</td><td>≥ 62 bits</td><td>N/A</td></tr>
+<tr><td><a href="https://www.rtems.org">RTEMS</a> Classic</td><td>ticks</td><td>user-configurable</td><td>yes</td><td>no</td><td>32 bits</td><td>?</td></tr>
+<tr><td><a href="http://software-dl.ti.com/lprf/simplelink_cc13x0_sdk/1_30_00_06/exports/docs/ti154stack/ti154stack-sdg/ti154stack-sdg/tirtos/rtos-overview.html">TI-RTOS</a></td><td>ticks</td><td>user-configurable</td><td>no</td><td>no</td><td>?</td><td>?</td></tr>
+<tr><td><a href="https://www.toppers.jp/index.html">TOPPERS</a> New Gen.</td><td>milliseconds</td><td>fixed, milliseconds</td><td>no</td><td>no</td><td>16 bits</td><td>32 bits</td></tr>
+<tr><td>TOPPERS 3rd Gen.</td><td>microseconds</td><td>fixed, microseconds</td><td>yes</td><td>yes</td><td>32 bits</td><td>32 bits</td></tr>
+<tr><td><a href="https://docs.zephyrproject.org/2.3.0/">Zephyr 2.3</a></td><td>ticks</td><td>user-configurable</td><td>no</td><td>no</td><td>32 or 64 bits</td><td>32 or 64 bits</td></tr>
+<tr><td><a href="http://www.ertl.jp/ITRON/SPEC/mitron4-e.html">μITRON4.0</a></td><td>unspecified</td><td>N/A</td><td>no</td><td>no</td><td>unspecified bits</td><td>N/A</td></tr>
+<tr><td>μT-Kernel 3.0</td><td>milli- or micro-seconds</td><td>?</td><td>no</td><td>no</td><td>32 or 64 bits</td><td>?</td></tr>
+<tr><td><strong>R3</strong></td><td>microseconds</td><td>fixed, microseconds</td><td>yes</td><td>no</td><td>31 bits</td><td>32 bits</td></tr>
+</tbody></table>
+</div></details>
+</blockquote>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Rationale:</strong> As explained in <em>Relation to Other Specifications</em>, using real time values at an API boundary abstracts away the underlying hardware and leads to better portability of software written for the operating system. The microsecond precision should be practically sufficient to deal with non-integral timing requirements.</p>
+<p>Arrival times are tracked by 32-bit modulo-2³² integers. Relative timestamps are limited to 31 bits (excluding the sign bit) to ensure plenty of headroom is always available for global time adjustment. Setting the upper bound in terms of binary digits also lowers the processing cost marginally and avoids the use of an arbitrarily chosen number.</p>
+</blockquote>
+<h2 id="introspection"><a href="#introspection">Introspection</a></h2>
+<p>The entire kernel state can be dumped for inspection by applying debug formatting (<code>{:?}</code>, <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug"><code>Debug</code></a>) on the object returned by <a href="kernel/trait.Kernel.html#tymethod.debug" title="associated function r3_core::kernel::Kernel::debug"><code>Kernel::debug</code></a>. Note that this might consume a large amount of stack space.</p>
+<details>
+<summary>An example output of the kernel debug printing. This was captured during the <code>mutex_protect_priority_by_ceiling</code> test case. Click here to expand.</summary>
+<div class="example-wrap"><pre class="language-text"><code>Kernel {
+    state: State {
+        running_task: CpuLockCell(Some(
+            TaskCb {
+                self: 0x0000000108686058,
+                port_task_state: TaskState {
+                    tsm: TryLock {
+                        value: Running(
+                            ThreadId(
+                                PoolPtr(
+                                    4,
+                                ),
+                            ),
+                        ),
+                    },
+                },
+                attr: TaskAttr {
+                    entry_point: 0x00000001082d8d10,
+                    entry_param: 0,
+                    stack: StackHunk(
+                        0x0000000108691a08,
+                    ),
+                    priority: 1,
+                },
+                base_priority: CpuLockCell(1),
+                effective_priority: CpuLockCell(1),
+                st: CpuLockCell(Running),
+                link: CpuLockCell(None),
+                wait: TaskWait {
+                    current_wait: CpuLockCell(None),
+                    wait_result: CpuLockCell(Ok(
+                        (),
+                    )),
+                },
+                last_mutex_held: CpuLockCell(None),
+                park_token: CpuLockCell(false),
+            },
+        )),
+        task_ready_bitmap: CpuLockCell([]),
+        task_ready_queue: CpuLockCell([
+            ListHead(None),
+            ListHead(None),
+            ListHead(None),
+            ListHead(None),
+        ]),
+        priority_boost: false,
+        timeout: TimeoutGlobals {
+            last_tick_count: CpuLockCell(12648432),
+            last_tick_time: CpuLockCell(0),
+            last_tick_sys_time: CpuLockCell(0),
+            frontier_gap: CpuLockCell(0),
+            heap: CpuLockCell([
+                TimeoutRef(
+                    0x0000700009988bf8,
+                ),
+            ]),
+            handle_tick_in_progress: CpuLockCell(false),
+        },
+    },
+    task_cb_pool: {
+        0: TaskCb {
+            self: 0x0000000108686000,
+            port_task_state: TaskState {
+                tsm: TryLock {
+                    value: Running(
+                        ThreadId(
+                            PoolPtr(
+                                3,
+                            ),
+                        ),
+                    ),
+                },
+            },
+            attr: TaskAttr {
+                entry_point: 0x00000001082d8bc0,
+                entry_param: 0,
+                stack: StackHunk(
+                    0x0000000108691608,
+                ),
+                priority: 0,
+            },
+            base_priority: CpuLockCell(0),
+            effective_priority: CpuLockCell(0),
+            st: CpuLockCell(Waiting),
+            link: CpuLockCell(None),
+            wait: TaskWait {
+                current_wait: CpuLockCell(Some(
+                    Mutex(0x7000097860d0),
+                )),
+                wait_result: CpuLockCell(Ok(
+                    (),
+                )),
+            },
+            last_mutex_held: CpuLockCell(None),
+            park_token: CpuLockCell(false),
+        },
+        1: TaskCb {
+            self: 0x0000000108686058,
+            port_task_state: TaskState {
+                tsm: TryLock {
+                    value: Running(
+                        ThreadId(
+                            PoolPtr(
+                                4,
+                            ),
+                        ),
+                    ),
+                },
+            },
+            attr: TaskAttr {
+                entry_point: 0x00000001082d8d10,
+                entry_param: 0,
+                stack: StackHunk(
+                    0x0000000108691a08,
+                ),
+                priority: 1,
+            },
+            base_priority: CpuLockCell(1),
+            effective_priority: CpuLockCell(1),
+            st: CpuLockCell(Running),
+            link: CpuLockCell(None),
+            wait: TaskWait {
+                current_wait: CpuLockCell(None),
+                wait_result: CpuLockCell(Ok(
+                    (),
+                )),
+            },
+            last_mutex_held: CpuLockCell(None),
+            park_token: CpuLockCell(false),
+        },
+        2: TaskCb {
+            self: 0x00000001086860b0,
+            port_task_state: TaskState {
+                tsm: TryLock {
+                    value: Running(
+                        ThreadId(
+                            PoolPtr(
+                                1,
+                            ),
+                        ),
+                    ),
+                },
+            },
+            attr: TaskAttr {
+                entry_point: 0x00000001082d8f20,
+                entry_param: 0,
+                stack: StackHunk(
+                    0x0000000108691e08,
+                ),
+                priority: 2,
+            },
+            base_priority: CpuLockCell(2),
+            effective_priority: CpuLockCell(0),
+            st: CpuLockCell(Waiting),
+            link: CpuLockCell(None),
+            wait: TaskWait {
+                current_wait: CpuLockCell(Some(
+                    Sleep,
+                )),
+                wait_result: CpuLockCell(Ok(
+                    (),
+                )),
+            },
+            last_mutex_held: CpuLockCell(Some(
+                0x0000000108686108,
+            )),
+            park_token: CpuLockCell(false),
+        },
+    },
+    event_group_cb_pool: {},
+    mutex_cb_pool: {
+        0: MutexCb {
+            self: 0x0000000108686108,
+            ceiling: Some(
+                0,
+            ),
+            inconsistent: CpuLockCell(false),
+            wait_queue: WaitQueue {
+                waits: [
+                    { task: 0x108686000, payload: Mutex(0x7000097860d0) },
+                ],
+                order: TaskPriority,
+            },
+            prev_mutex_held: CpuLockCell(None),
+            owning_task: CpuLockCell(Some(
+                0x00000001086860b0,
+            )),
+        },
+    },
+    semaphore_cb_pool: {},
+    timer_cb_pool: {},
+}
+</code></pre></div></details>
+<h2 id="stability"><a href="#stability">Stability</a></h2><!-- [tag:core_version] -->
+<p><code>r3_core</code> defines two levels of API stability:</p>
+<ul>
+<li>
+<p><strong>The application-side API stability</strong> applies to the API used by application code.</p>
+</li>
+<li>
+<p><strong>The kernel-side API stability</strong> applies to the API used by a kernel implementation. The API coverage is strictly larger because a kernel implementation may use the application-side API as well, e.g., to install an interrupt handler for its own kernel timing mechanism.</p>
+</li>
+</ul>
+<p>All public and documented items are covered under the application-side API stability unless noted otherwise.</p>
+<p>This release of R3-OS is considered a preview version. During the preview period, <code>r3_core</code> follows <a href="https://semver.org/">the Semantic Versioning 2.0.0</a> and considers breaking either level of stability as a breaking change. It’s being planned to introduce a versioning scheme that maps each stability level to a distinct version component so that the kernel-side API can be extended substantially while maintaining compatibility with existing application and library code.</p>
+<p>Increasing the minimum supported Rust version (MSRV) is not considered a breaking change.</p>
+<h2 id="cargo-features"><a href="#cargo-features">Cargo Features</a></h2>
+<ul>
+<li><strong><code>chrono_0p4</code></strong>: Enables conversion between our <a href="time/struct.Duration.html" title="struct r3_core::time::Duration">duration</a> and <a href="time/struct.Time.html" title="struct r3_core::time::Time">timetamp</a> types and <code>chrono ^0.4</code>’s types.</li>
+</ul>
+<style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+<style type="text/css">.disabled-feature-warning { display: none; }</style></div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="_changelog_/index.html" title="mod r3_core::_changelog_">_changelog_</a></div><div class="desc docblock-short">Changelog</div></li><li><div class="item-name"><a class="mod" href="bag/index.html" title="mod r3_core::bag">bag</a></div><div class="desc docblock-short">A heterogeneous collection to store property values.</div></li><li><div class="item-name"><a class="mod" href="bind/index.html" title="mod r3_core::bind">bind</a></div><div class="desc docblock-short">Bindings (<a href="bind/struct.Bind.html" title="struct r3_core::bind::Bind"><code>Bind</code></a>), a static storage with <a href="bind/struct.BindDefiner.html#method.init" title="method r3_core::bind::BindDefiner::init">runtime initialization</a> and
+<a href="index.html#static-configuration" title="mod r3_core">configuration-time</a> borrow checking.</div></li><li><div class="item-name"><a class="mod" href="closure/index.html" title="mod r3_core::closure">closure</a></div><div class="desc docblock-short">Provides <a href="closure/struct.Closure.html" title="struct r3_core::closure::Closure"><code>Closure</code></a>, a light-weight closure type.</div></li><li><div class="item-name"><a class="mod" href="hunk/index.html" title="mod r3_core::hunk">hunk</a></div><div class="desc docblock-short">Type-safe hunks</div></li><li><div class="item-name"><a class="mod" href="kernel/index.html" title="mod r3_core::kernel">kernel</a></div><div class="desc docblock-short">The kernel interface.</div></li><li><div class="item-name"><a class="mod" href="prelude/index.html" title="mod r3_core::prelude">prelude</a></div><div class="desc docblock-short">The prelude module.</div></li><li><div class="item-name"><a class="mod" href="time/index.html" title="mod r3_core::time">time</a></div><div class="desc docblock-short">Temporal quantification for R3-OS.</div></li><li><div class="item-name"><a class="mod" href="utils/index.html" title="mod r3_core::utils">utils</a></div><div class="desc docblock-short">Utility</div></li></ul></section></div></main></body></html>

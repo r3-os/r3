@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"r3_core":[["impl&lt;System: <a class=\"trait\" href=\"r3_core/kernel/raw/trait.KernelBase.html\" title=\"trait r3_core::kernel::raw::KernelBase\">KernelBase</a> + <a class=\"trait\" href=\"r3_core/kernel/cfg/trait.KernelStatic.html\" title=\"trait r3_core::kernel::cfg::KernelStatic\">KernelStatic</a>, T: ?<a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html\" title=\"trait core::marker::Sized\">Sized</a>&gt; <a class=\"trait\" href=\"stable_deref_trait/trait.CloneStableDeref.html\" title=\"trait stable_deref_trait::CloneStableDeref\">CloneStableDeref</a> for <a class=\"struct\" href=\"r3_core/hunk/struct.Hunk.html\" title=\"struct r3_core::hunk::Hunk\">Hunk</a>&lt;System, T&gt;"]],
+"stable_deref_trait":[]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

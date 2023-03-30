@@ -1,0 +1,174 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="List of all items in this crate"><title>List of all items in this crate</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="r3_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">Crate r3_core</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#constants">Constants</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Definitions</a></li><li><a href="#derives">Derive Macros</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><h1>List of all items</h1><h3 id="structs">Structs</h3><ul class="all-items"><li><a href="bind/struct.Bind.html">bind::Bind</a></li><li><a href="bind/struct.BindBorrow.html">bind::BindBorrow</a></li><li><a href="bind/struct.BindBorrowMut.html">bind::BindBorrowMut</a></li><li><a href="bind/struct.BindDefiner.html">bind::BindDefiner</a></li><li><a href="bind/struct.BindRef.html">bind::BindRef</a></li><li><a href="bind/struct.BindTable.html">bind::BindTable</a></li><li><a href="bind/struct.BindTake.html">bind::BindTake</a></li><li><a href="bind/struct.BindTakeMut.html">bind::BindTakeMut</a></li><li><a href="bind/struct.BindTakeRef.html">bind::BindTakeRef</a></li><li><a href="bind/struct.FnBindMap.html">bind::FnBindMap</a></li><li><a href="bind/struct.RuntimeBindBorrow.html">bind::RuntimeBindBorrow</a></li><li><a href="bind/struct.RuntimeBindBorrowMut.html">bind::RuntimeBindBorrowMut</a></li><li><a href="bind/struct.RuntimeBindTake.html">bind::RuntimeBindTake</a></li><li><a href="bind/struct.RuntimeBindTakeMut.html">bind::RuntimeBindTakeMut</a></li><li><a href="bind/struct.RuntimeBindTakeRef.html">bind::RuntimeBindTakeRef</a></li><li><a href="closure/struct.Closure.html">closure::Closure</a></li><li><a href="closure/struct.ClosureEnv.html">closure::ClosureEnv</a></li><li><a href="hunk/struct.DefaultInitTag.html">hunk::DefaultInitTag</a></li><li><a href="hunk/struct.Hunk.html">hunk::Hunk</a></li><li><a href="hunk/struct.HunkDefiner.html">hunk::HunkDefiner</a></li><li><a href="hunk/struct.ZeroInitTag.html">hunk::ZeroInitTag</a></li><li><a href="kernel/cfg/struct.Cfg.html">kernel::cfg::Cfg</a></li><li><a href="kernel/cfg/struct.CfgPhase1Data.html">kernel::cfg::CfgPhase1Data</a></li><li><a href="kernel/cfg/struct.CfgPhase2Data.html">kernel::cfg::CfgPhase2Data</a></li><li><a href="kernel/cfg/struct.CfgPhase3Data.html">kernel::cfg::CfgPhase3Data</a></li><li><a href="kernel/event_group/struct.EventGroup.html">kernel::event_group::EventGroup</a></li><li><a href="kernel/event_group/struct.EventGroupDefiner.html">kernel::event_group::EventGroupDefiner</a></li><li><a href="kernel/event_group/struct.EventGroupRef.html">kernel::event_group::EventGroupRef</a></li><li><a href="kernel/hook/struct.StartupHook.html">kernel::hook::StartupHook</a></li><li><a href="kernel/hook/struct.StartupHookDefiner.html">kernel::hook::StartupHookDefiner</a></li><li><a href="kernel/hunk/struct.Hunk.html">kernel::hunk::Hunk</a></li><li><a href="kernel/hunk/struct.HunkDefiner.html">kernel::hunk::HunkDefiner</a></li><li><a href="kernel/interrupt/struct.InterruptHandlerDefiner.html">kernel::interrupt::InterruptHandlerDefiner</a></li><li><a href="kernel/interrupt/struct.InterruptLine.html">kernel::interrupt::InterruptLine</a></li><li><a href="kernel/interrupt/struct.InterruptLineDefiner.html">kernel::interrupt::InterruptLineDefiner</a></li><li><a href="kernel/interrupt/struct.StaticInterruptHandler.html">kernel::interrupt::StaticInterruptHandler</a></li><li><a href="kernel/mutex/struct.Mutex.html">kernel::mutex::Mutex</a></li><li><a href="kernel/mutex/struct.MutexDefiner.html">kernel::mutex::MutexDefiner</a></li><li><a href="kernel/mutex/struct.MutexRef.html">kernel::mutex::MutexRef</a></li><li><a href="kernel/raw/struct.EventGroupWaitFlags.html">kernel::raw::EventGroupWaitFlags</a></li><li><a href="kernel/raw_cfg/struct.EventGroupDescriptor.html">kernel::raw_cfg::EventGroupDescriptor</a></li><li><a href="kernel/raw_cfg/struct.InterruptLineDescriptor.html">kernel::raw_cfg::InterruptLineDescriptor</a></li><li><a href="kernel/raw_cfg/struct.MutexDescriptor.html">kernel::raw_cfg::MutexDescriptor</a></li><li><a href="kernel/raw_cfg/struct.SemaphoreDescriptor.html">kernel::raw_cfg::SemaphoreDescriptor</a></li><li><a href="kernel/raw_cfg/struct.TaskDescriptor.html">kernel::raw_cfg::TaskDescriptor</a></li><li><a href="kernel/raw_cfg/struct.TimerDescriptor.html">kernel::raw_cfg::TimerDescriptor</a></li><li><a href="kernel/semaphore/struct.Semaphore.html">kernel::semaphore::Semaphore</a></li><li><a href="kernel/semaphore/struct.SemaphoreDefiner.html">kernel::semaphore::SemaphoreDefiner</a></li><li><a href="kernel/semaphore/struct.SemaphoreRef.html">kernel::semaphore::SemaphoreRef</a></li><li><a href="kernel/task/struct.LocalTask.html">kernel::task::LocalTask</a></li><li><a href="kernel/task/struct.StackHunk.html">kernel::task::StackHunk</a></li><li><a href="kernel/task/struct.Task.html">kernel::task::Task</a></li><li><a href="kernel/task/struct.TaskDefiner.html">kernel::task::TaskDefiner</a></li><li><a href="kernel/task/struct.TaskRef.html">kernel::task::TaskRef</a></li><li><a href="kernel/timer/struct.Timer.html">kernel::timer::Timer</a></li><li><a href="kernel/timer/struct.TimerDefiner.html">kernel::timer::TimerDefiner</a></li><li><a href="kernel/timer/struct.TimerRef.html">kernel::timer::TimerRef</a></li><li><a href="time/struct.Duration.html">time::Duration</a></li><li><a href="time/struct.Time.html">time::Time</a></li><li><a href="time/struct.TryFromDateTimeError.html">time::TryFromDateTimeError</a></li><li><a href="time/struct.TryFromDurationError.html">time::TryFromDurationError</a></li><li><a href="utils/struct.AlignedStorage.html">utils::AlignedStorage</a></li><li><a href="utils/struct.AllocError.html">utils::AllocError</a></li><li><a href="utils/struct.ConstAllocator.html">utils::ConstAllocator</a></li><li><a href="utils/struct.Frozen.html">utils::Frozen</a></li><li><a href="utils/struct.RawCell.html">utils::RawCell</a></li><li><a href="utils/for_times/struct.B0.html">utils::for_times::B0</a></li><li><a href="utils/for_times/struct.B1.html">utils::for_times::B1</a></li><li><a href="utils/for_times/struct.IncrSatOp.html">utils::for_times::IncrSatOp</a></li><li><a href="utils/for_times/struct.Overflow.html">utils::for_times::Overflow</a></li><li><a href="utils/for_times/struct.U0.html">utils::for_times::U0</a></li><li><a href="utils/for_times/struct.UInt.html">utils::for_times::UInt</a></li></ul><h3 id="enums">Enums</h3><ul class="all-items"><li><a href="bind/enum.GetBindTableError.html">bind::GetBindTableError</a></li><li><a href="kernel/enum.ActivateTaskError.html">kernel::ActivateTaskError</a></li><li><a href="kernel/enum.AdjustTimeError.html">kernel::AdjustTimeError</a></li><li><a href="kernel/enum.BoostPriorityError.html">kernel::BoostPriorityError</a></li><li><a href="kernel/enum.ClearInterruptLineError.html">kernel::ClearInterruptLineError</a></li><li><a href="kernel/enum.CpuLockError.html">kernel::CpuLockError</a></li><li><a href="kernel/enum.DrainSemaphoreError.html">kernel::DrainSemaphoreError</a></li><li><a href="kernel/enum.EnableInterruptLineError.html">kernel::EnableInterruptLineError</a></li><li><a href="kernel/enum.ExitTaskError.html">kernel::ExitTaskError</a></li><li><a href="kernel/enum.GetCurrentTaskError.html">kernel::GetCurrentTaskError</a></li><li><a href="kernel/enum.GetEventGroupError.html">kernel::GetEventGroupError</a></li><li><a href="kernel/enum.GetSemaphoreError.html">kernel::GetSemaphoreError</a></li><li><a href="kernel/enum.GetTaskPriorityError.html">kernel::GetTaskPriorityError</a></li><li><a href="kernel/enum.InterruptTaskError.html">kernel::InterruptTaskError</a></li><li><a href="kernel/enum.LockMutexError.html">kernel::LockMutexError</a></li><li><a href="kernel/enum.LockMutexTimeoutError.html">kernel::LockMutexTimeoutError</a></li><li><a href="kernel/enum.MarkConsistentMutexError.html">kernel::MarkConsistentMutexError</a></li><li><a href="kernel/enum.ParkError.html">kernel::ParkError</a></li><li><a href="kernel/enum.ParkTimeoutError.html">kernel::ParkTimeoutError</a></li><li><a href="kernel/enum.PendInterruptLineError.html">kernel::PendInterruptLineError</a></li><li><a href="kernel/enum.PollEventGroupError.html">kernel::PollEventGroupError</a></li><li><a href="kernel/enum.PollSemaphoreError.html">kernel::PollSemaphoreError</a></li><li><a href="kernel/enum.QueryInterruptLineError.html">kernel::QueryInterruptLineError</a></li><li><a href="kernel/enum.QueryMutexError.html">kernel::QueryMutexError</a></li><li><a href="kernel/enum.ResultCode.html">kernel::ResultCode</a></li><li><a href="kernel/enum.SetInterruptLinePriorityError.html">kernel::SetInterruptLinePriorityError</a></li><li><a href="kernel/enum.SetTaskPriorityError.html">kernel::SetTaskPriorityError</a></li><li><a href="kernel/enum.SetTimerDelayError.html">kernel::SetTimerDelayError</a></li><li><a href="kernel/enum.SetTimerPeriodError.html">kernel::SetTimerPeriodError</a></li><li><a href="kernel/enum.SignalSemaphoreError.html">kernel::SignalSemaphoreError</a></li><li><a href="kernel/enum.SleepError.html">kernel::SleepError</a></li><li><a href="kernel/enum.StartTimerError.html">kernel::StartTimerError</a></li><li><a href="kernel/enum.StopTimerError.html">kernel::StopTimerError</a></li><li><a href="kernel/enum.TimeError.html">kernel::TimeError</a></li><li><a href="kernel/enum.TryLockMutexError.html">kernel::TryLockMutexError</a></li><li><a href="kernel/enum.UnlockMutexError.html">kernel::UnlockMutexError</a></li><li><a href="kernel/enum.UnparkError.html">kernel::UnparkError</a></li><li><a href="kernel/enum.UnparkExactError.html">kernel::UnparkExactError</a></li><li><a href="kernel/enum.UpdateEventGroupError.html">kernel::UpdateEventGroupError</a></li><li><a href="kernel/enum.WaitError.html">kernel::WaitError</a></li><li><a href="kernel/enum.WaitEventGroupError.html">kernel::WaitEventGroupError</a></li><li><a href="kernel/enum.WaitEventGroupTimeoutError.html">kernel::WaitEventGroupTimeoutError</a></li><li><a href="kernel/enum.WaitSemaphoreError.html">kernel::WaitSemaphoreError</a></li><li><a href="kernel/enum.WaitSemaphoreTimeoutError.html">kernel::WaitSemaphoreTimeoutError</a></li><li><a href="kernel/enum.WaitTimeoutError.html">kernel::WaitTimeoutError</a></li><li><a href="kernel/raw/enum.MutexProtocol.html">kernel::raw::MutexProtocol</a></li><li><a href="kernel/raw/enum.MutexProtocolKind.html">kernel::raw::MutexProtocolKind</a></li><li><a href="kernel/raw/enum.QueueOrder.html">kernel::raw::QueueOrder</a></li><li><a href="kernel/raw/enum.QueueOrderKind.html">kernel::raw::QueueOrderKind</a></li></ul><h3 id="traits">Traits</h3><ul class="all-items"><li><a href="bag/trait.Bag.html">bag::Bag</a></li><li><a href="bind/trait.Binder.html">bind::Binder</a></li><li><a href="bind/trait.ExecutableDefiner.html">bind::ExecutableDefiner</a></li><li><a href="bind/trait.ExecutableDefinerExt.html">bind::ExecutableDefinerExt</a></li><li><a href="bind/trait.FnBind.html">bind::FnBind</a></li><li><a href="bind/trait.RuntimeBinder.html">bind::RuntimeBinder</a></li><li><a href="bind/trait.UnzipBind.html">bind::UnzipBind</a></li><li><a href="closure/trait.IntoClosureConst.html">closure::IntoClosureConst</a></li><li><a href="hunk/trait.HunkIniter.html">hunk::HunkIniter</a></li><li><a href="kernel/trait.Kernel.html">kernel::Kernel</a></li><li><a href="kernel/cfg/trait.CfgPhase1.html">kernel::cfg::CfgPhase1</a></li><li><a href="kernel/cfg/trait.CfgPhase2.html">kernel::cfg::CfgPhase2</a></li><li><a href="kernel/cfg/trait.CfgStatic.html">kernel::cfg::CfgStatic</a></li><li><a href="kernel/cfg/trait.DelegateKernelStatic.html">kernel::cfg::DelegateKernelStatic</a></li><li><a href="kernel/cfg/trait.KernelStatic.html">kernel::cfg::KernelStatic</a></li><li><a href="kernel/event_group/trait.EventGroupHandle.html">kernel::event_group::EventGroupHandle</a></li><li><a href="kernel/event_group/trait.EventGroupMethods.html">kernel::event_group::EventGroupMethods</a></li><li><a href="kernel/mutex/trait.MutexHandle.html">kernel::mutex::MutexHandle</a></li><li><a href="kernel/mutex/trait.MutexMethods.html">kernel::mutex::MutexMethods</a></li><li><a href="kernel/raw/trait.Id.html">kernel::raw::Id</a></li><li><a href="kernel/raw/trait.KernelAdjustTime.html">kernel::raw::KernelAdjustTime</a></li><li><a href="kernel/raw/trait.KernelBase.html">kernel::raw::KernelBase</a></li><li><a href="kernel/raw/trait.KernelBoostPriority.html">kernel::raw::KernelBoostPriority</a></li><li><a href="kernel/raw/trait.KernelEventGroup.html">kernel::raw::KernelEventGroup</a></li><li><a href="kernel/raw/trait.KernelInterruptLine.html">kernel::raw::KernelInterruptLine</a></li><li><a href="kernel/raw/trait.KernelMutex.html">kernel::raw::KernelMutex</a></li><li><a href="kernel/raw/trait.KernelSemaphore.html">kernel::raw::KernelSemaphore</a></li><li><a href="kernel/raw/trait.KernelTaskSetPriority.html">kernel::raw::KernelTaskSetPriority</a></li><li><a href="kernel/raw/trait.KernelTime.html">kernel::raw::KernelTime</a></li><li><a href="kernel/raw/trait.KernelTimer.html">kernel::raw::KernelTimer</a></li><li><a href="kernel/raw_cfg/trait.CfgBase.html">kernel::raw_cfg::CfgBase</a></li><li><a href="kernel/raw_cfg/trait.CfgEventGroup.html">kernel::raw_cfg::CfgEventGroup</a></li><li><a href="kernel/raw_cfg/trait.CfgInterruptLine.html">kernel::raw_cfg::CfgInterruptLine</a></li><li><a href="kernel/raw_cfg/trait.CfgMutex.html">kernel::raw_cfg::CfgMutex</a></li><li><a href="kernel/raw_cfg/trait.CfgSemaphore.html">kernel::raw_cfg::CfgSemaphore</a></li><li><a href="kernel/raw_cfg/trait.CfgTask.html">kernel::raw_cfg::CfgTask</a></li><li><a href="kernel/raw_cfg/trait.CfgTimer.html">kernel::raw_cfg::CfgTimer</a></li><li><a href="kernel/semaphore/trait.SemaphoreHandle.html">kernel::semaphore::SemaphoreHandle</a></li><li><a href="kernel/semaphore/trait.SemaphoreMethods.html">kernel::semaphore::SemaphoreMethods</a></li><li><a href="kernel/task/trait.TaskHandle.html">kernel::task::TaskHandle</a></li><li><a href="kernel/task/trait.TaskMethods.html">kernel::task::TaskMethods</a></li><li><a href="kernel/timer/trait.TimerHandle.html">kernel::timer::TimerHandle</a></li><li><a href="kernel/timer/trait.TimerMethods.html">kernel::timer::TimerMethods</a></li><li><a href="utils/trait.Allocator.html">utils::Allocator</a></li><li><a href="utils/trait.Init.html">utils::Init</a></li><li><a href="utils/trait.Zeroable.html">utils::Zeroable</a></li><li><a href="utils/trait.ZeroableInOption.html">utils::ZeroableInOption</a></li><li><a href="utils/for_times/trait.Nat.html">utils::for_times::Nat</a></li><li><a href="utils/for_times/trait.NatFn.html">utils::for_times::NatFn</a></li></ul><h3 id="macros">Macros</h3><ul class="all-items"><li><a href="kernel/cfg/macro.attach_phase1.html">kernel::cfg::attach_phase1</a></li><li><a href="kernel/cfg/macro.attach_phase2.html">kernel::cfg::attach_phase2</a></li><li><a href="kernel/cfg/macro.attach_phase3.html">kernel::cfg::attach_phase3</a></li><li><a href="kernel/cfg/macro.cfg_phase1.html">kernel::cfg::cfg_phase1</a></li><li><a href="kernel/cfg/macro.cfg_phase2.html">kernel::cfg::cfg_phase2</a></li><li><a href="kernel/cfg/macro.cfg_phase3.html">kernel::cfg::cfg_phase3</a></li></ul><h3 id="derives">Derive Macros</h3><ul class="all-items"><li><a href="utils/derive.Zeroable.html">utils::Zeroable</a></li></ul><h3 id="functions">Functions</h3><ul class="all-items"><li><a href="bind/fn.fn_bind_map.html">bind::fn_bind_map</a></li><li><a href="utils/mem/fn.transmute.html">utils::mem::transmute</a></li><li><a href="utils/mem/fn.uninit_array.html">utils::mem::uninit_array</a></li></ul><h3 id="types">Type Definitions</h3><ul class="all-items"><li><a href="bag/type.Empty.html">bag::Empty</a></li><li><a href="bag/type.List.html">bag::List</a></li><li><a href="kernel/event_group/type.StaticEventGroup.html">kernel::event_group::StaticEventGroup</a></li><li><a href="kernel/interrupt/type.InterruptHandlerFn.html">kernel::interrupt::InterruptHandlerFn</a></li><li><a href="kernel/mutex/type.StaticMutex.html">kernel::mutex::StaticMutex</a></li><li><a href="kernel/raw/type.EventGroupBits.html">kernel::raw::EventGroupBits</a></li><li><a href="kernel/raw/type.InterruptHandlerFn.html">kernel::raw::InterruptHandlerFn</a></li><li><a href="kernel/raw/type.InterruptNum.html">kernel::raw::InterruptNum</a></li><li><a href="kernel/raw/type.InterruptPriority.html">kernel::raw::InterruptPriority</a></li><li><a href="kernel/raw/type.SemaphoreValue.html">kernel::raw::SemaphoreValue</a></li><li><a href="kernel/semaphore/type.StaticSemaphore.html">kernel::semaphore::StaticSemaphore</a></li><li><a href="kernel/task/type.StaticTask.html">kernel::task::StaticTask</a></li><li><a href="kernel/timer/type.StaticTimer.html">kernel::timer::StaticTimer</a></li><li><a href="utils/type.PhantomInvariant.html">utils::PhantomInvariant</a></li><li><a href="utils/for_times/type.IncrSat.html">utils::for_times::IncrSat</a></li><li><a href="utils/for_times/type.U.html">utils::for_times::U</a></li><li><a href="utils/for_times/type.WrappingU.html">utils::for_times::WrappingU</a></li></ul><h3 id="constants">Constants</h3><ul class="all-items"><li><a href="bag/constant.EMPTY.html">bag::EMPTY</a></li><li><a href="bind/constant.INIT_HOOK_PRIORITY.html">bind::INIT_HOOK_PRIORITY</a></li><li><a href="hunk/constant.INIT_HOOK_PRIORITY.html">hunk::INIT_HOOK_PRIORITY</a></li><li><a href="utils/for_times/constant.U_MAX.html">utils::for_times::U_MAX</a></li></ul></section></div></main></body></html>

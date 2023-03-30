@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["TIME_HARD_HEADROOM","TIME_USER_HEADROOM"],"macro":["build"],"mod":["_changelog_","cfg","utils"],"struct":["KernelDebugPrinter","StackHunk","State","System","TaskAttr","TaskCb"],"trait":["KernelCfg1","KernelCfg2","KernelTraits","Port","PortInterrupts","PortThreading","PortTimer","PortToKernel"],"type":["Cfg","Id","UTicks"]};

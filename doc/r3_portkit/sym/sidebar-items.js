@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["sym_static"]};

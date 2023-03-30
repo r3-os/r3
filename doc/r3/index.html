@@ -1,0 +1,424 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="R3 Real-Time Operating System"><title>r3 - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="r3" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../r3/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../r3/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">Crate r3</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.2.4</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">r3</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/r3/lib.rs.html#1-73">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h1 align="center" style="border: none">
+<p><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMjIxLjIyIDg1LjA1Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIxMy40NyIgeTE9IjE5LjE1IiB4Mj0iMTMuNDciIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNkYzAwNTYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNhZDAyNDQiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjQuMTYiIHkxPSIxOS4xNSIgeDI9IjQuMTYiIHkyPSIxNC4zNiIgeGxpbms6aHJlZj0iI2EiLz48bGluZWFyR3JhZGllbnQgaWQ9ImMiIHgxPSIyNS43IiB5MT0iNDIuNyIgeDI9IjI1LjciIHkyPSIyMy40OCIgeGxpbms6aHJlZj0iI2EiLz48bGluZWFyR3JhZGllbnQgaWQ9ImQiIHgxPSI5LjY2IiB5MT0iNDIuNjIiIHgyPSI5LjY2IiB5Mj0iMjMuNDgiIHhsaW5rOmhyZWY9IiNhIi8+PGxpbmVhckdyYWRpZW50IGlkPSJlIiB4MT0iMTYuMDUiIHkxPSIzNC4xOCIgeDI9IjE2LjA1IiB5Mj0iMzAuMzEiIHhsaW5rOmhyZWY9IiNhIi8+PGxpbmVhckdyYWRpZW50IGlkPSJmIiB4MT0iMjMuMjMiIHkxPSI2NC41NSIgeDI9IjIzLjIzIiB5Mj0iNDcuMDMiIHhsaW5rOmhyZWY9IiNhIi8+PHN5bWJvbCBpZD0iZyIgdmlld0JveD0iMCAwIDM1Ljc3IDY0LjU1Ij48cGF0aCBkPSJNMi44Miw3LjI2LDMuNDksOS44bC43NC4zMUw3LDguNTJhLjk0Ljk0LDAsMCwxLC45MiwwLDEsMSwwLDAsMSwuNDkuNzhsLjE5LDMuMmMuMjIuMTQuNDUuMjkuNjcuNDVsMy0xYS45NS45NSwwLDAsMSwxLjIzLDFsLS40NCwzLjE4LjU2LjU3LDMuMTktLjQyYTEsMSwwLDAsMSwuODUuMzQuOTQuOTQsMCwwLDEsLjE1LjlsLS41NywxLjY2aDYuODNMMTcuODYsMCw5LDBaIiBzdHlsZT0iZmlsbDp1cmwoI2EpIi8+PHBhdGggZD0iTTEuNTcsMTkuMTVIOC4zMUEyMy42NSwyMy42NSwwLDAsMCwwLDE0LjM2WiIgc3R5bGU9ImZpbGw6dXJsKCNiKSIvPjxwYXRoIGQ9Ik0xOS41OSwyNS41OWMuMS4yNS4yMS40OS4zLjc0bDMuMS44NGEuOTEuOTEsMCwwLDEsLjY1LjY0LjkzLjkzLDAsMCwxLS4xOS44OWwtMi4xMywyLjM5Yy4wNi4yNy4xMS41My4xNi44bDIuODcsMS40MmEuOTMuOTMsMCwwLDEsLjUxLjc1LjkxLjkxLDAsMCwxLS4zNi44NGwtMi41NiwxLjk0di44bDIuNTQsMmEuOTQuOTQsMCwwLDEtLjE2LDEuNTlsLTIuODksMS40di4wNmwxMC40LjA1TDI1LjUzLDIzLjQ4SDIwLjgyWiIgc3R5bGU9ImZpbGw6dXJsKCNjKSIvPjxwYXRoIGQ9Ik05LjI0LDQyLjU5bDYuNCwwQTIzLjUzLDIzLjUzLDAsMCwwLDE2LjMzLDM3bC00LjItMi40YTEuNzYsMS43NiwwLDAsMS0uNjYtMi40bDIuNzktNC44OWEyMy44LDIzLjgsMCwwLDAtMi4xNC0zLjgySDNaIiBzdHlsZT0iZmlsbDp1cmwoI2QpIi8+PHBhdGggZD0iTTE3LDMwLjU2YTEuOTMsMS45MywwLDEsMCwuNzIsMi42NEExLjkzLDEuOTMsMCwwLDAsMTcsMzAuNTZaIiBzdHlsZT0iZmlsbDp1cmwoI2UpIi8+PHBvbHlnb24gcG9pbnRzPSIyNS45NCA2NC41NSAxNi40MSA2NC41IDEwLjY5IDQ3LjAzIDIzLjcgNDcuMSAyNC43OSA0Ny44MyAyNi45MyA1NC4xMiAzNC42NiA1NC4wOCAzNS43NyA1NC43OCAyNS45NCA2NC41NSIgc3R5bGU9ImZpbGw6dXJsKCNmKSIvPjxwb2x5Z29uIHBvaW50cz0iMzUuNzcgNTQuNzggMjYuMzIgNTQuNzggMjMuNyA0Ny4xIDMzLjI3IDQ3LjE0IDM1Ljc3IDU0Ljc4IiBzdHlsZT0iZmlsbDojYTYwMjQxIi8+PC9zeW1ib2w+PC9kZWZzPjxwYXRoIGQ9Ik03NSw0NC40OVYxNC43OUg4Ny4yOUExMi44OSwxMi44OSwwLDAsMSw5My4wNiwxNmE4LjcyLDguNzIsMCwwLDEsMy43NSwzLjQzLDEwLjEzLDEwLjEzLDAsMCwxLDEuMzIsNS4yNyw5LjY4LDkuNjgsMCwwLDEtMS4zNSw1LjI0QTguNTYsOC41NiwwLDAsMSw5MywzMy4yYTE0LjEyLDE0LjEyLDAsMCwxLTUuODgsMS4xMkg3OS4zMlYyOC42N2g2LjQyYTcuNjQsNy42NCwwLDAsMCwyLjcyLS40MywzLjM4LDMuMzgsMCwwLDAsMS42Ni0xLjMxLDQsNCwwLDAsMCwuNTctMi4yNSw0LjI1LDQuMjUsMCwwLDAtLjU3LTIuMjlBMy40NCwzLjQ0LDAsMCwwLDg4LjQ1LDIxYTcuMTcsNy4xNywwLDAsMC0yLjcxLS40Nkg4Mi4yVjQ0LjQ5Wk05MS43NCwzMC45MWw3LjQsMTMuNThIOTEuMzFMODQuMDYsMzAuOTFaIi8+PHBhdGggZD0iTTExMS4xOSw0NC44OWExNC43OCwxNC43OCwwLDAsMS02LTEuMTYsMTAuMDgsMTAuMDgsMCwwLDEtNC4xMi0zLjIzLDcuOTMsNy45MywwLDAsMS0xLjU0LTQuNzRoNy4yMmEzLDMsMCwwLDAsLjYyLDEuNzIsNCw0LDAsMCwwLDEuNTgsMS4xNiw1Ljg3LDUuODcsMCwwLDAsMi4yOC40Miw1LjQsNS40LDAsMCwwLDIuMjYtLjQ1QTMuODMsMy44MywwLDAsMCwxMTUsMzcuMzVhMy4xOCwzLjE4LDAsMCwwLC41My0xLjg1LDIuOTEsMi45MSwwLDAsMC0uNTktMS44Niw0LDQsMCwwLDAtMS43Mi0xLjI2LDYuOTQsNi45NCwwLDAsMC0yLjYyLS40NWgtMi44OFYyNi44MmgyLjg4YTUuODQsNS44NCwwLDAsMCwyLjMzLS40MywzLjYxLDMuNjEsMCwwLDAsMS41Ny0xLjIzLDMsMywwLDAsMCwuNTYtMS44MiwzLjEzLDMuMTMsMCwwLDAtMS44My0yLjk0LDQuNDgsNC40OCwwLDAsMC0yLS40Miw1LjMyLDUuMzIsMCwwLDAtMi4xNS40MiwzLjYxLDMuNjEsMCwwLDAtMS41MywxLjE5LDMuMDcsMy4wNywwLDAsMC0uNiwxLjc4aC02Ljg2YTgsOCwwLDAsMSwxLjQ4LTQuNjgsOS44MSw5LjgxLDAsMCwxLDQtMy4xNiwxMy40OCwxMy40OCwwLDAsMSw1LjcxLTEuMTUsMTMuMTYsMTMuMTYsMCwwLDEsNS42MSwxLjEyLDksOSwwLDAsMSwzLjc3LDNBNy4zNSw3LjM1LDAsMCwxLDEyMiwyMi44OCw1LjQ5LDUuNDksMCwwLDEsMTIwLjM1LDI3YTcuMzcsNy4zNywwLDAsMS00LjIzLDJ2LjI0YTguMzYsOC4zNiwwLDAsMSw1LjIyLDIuMjMsNi4yOCw2LjI4LDAsMCwxLDEuNzQsNC41Nyw3LjM0LDcuMzQsMCwwLDEtMS41MSw0LjU3LDEwLjA1LDEwLjA1LDAsMCwxLTQuMjEsMy4xNEExNS44NiwxNS44NiwwLDAsMSwxMTEuMTksNDQuODlaIi8+PHBhdGggZD0iTTc0Ljk0LDU3LjY5VjQ2Ljk0aDQuMzRhNC41Nyw0LjU3LDAsMCwxLDIuMDguNDNBMy4xNCwzLjE0LDAsMCwxLDgyLjcsNDguNmEzLjY2LDMuNjYsMCwwLDEsLjQ2LDEuODgsMy40OSwzLjQ5LDAsMCwxLS40NywxLjg3LDMsMywwLDAsMS0xLjM2LDEuMTgsNS4wNyw1LjA3LDAsMCwxLTIuMTIuNDFINzYuMzlWNTJoMi40YTIuNzcsMi43NywwLDAsMCwxLS4xNywxLjI0LDEuMjQsMCwwLDAsLjYzLS41MSwxLjU3LDEuNTcsMCwwLDAsLjIxLS44NSwxLjY0LDEuNjQsMCwwLDAtLjIxLS44NiwxLjMyLDEuMzIsMCwwLDAtLjYzLS41MywyLjYsMi42LDAsMCwwLTEtLjE4SDc3LjM3djguNzhabTUuOTMtNC45LDIuNjcsNC45SDgwLjg3bC0yLjYxLTQuOVoiLz48cGF0aCBkPSJNODcuNTMsNTcuODRhNC40MSw0LjQxLDAsMCwxLTIuMTUtLjVBMy4zNiwzLjM2LDAsMCwxLDg0LDU1LjkxYTQuNjksNC42OSwwLDAsMS0uNDktMi4yMkE0LjU4LDQuNTgsMCwwLDEsODQsNTEuNTFhMy41MSwzLjUxLDAsMCwxLDEuMzctMS40Niw0LjA2LDQuMDYsMCwwLDEsMi4wOS0uNTMsNC40Nyw0LjQ3LDAsMCwxLDEuNTMuMjYsMy4yNywzLjI3LDAsMCwxLDEuMjIuNzhBMy40NiwzLjQ2LDAsMCwxLDkxLDUxLjg1YTUuMDUsNS4wNSwwLDAsMSwuMjksMS43N3YuNjNIODQuMzlWNTIuODJoNC42N2ExLjU0LDEuNTQsMCwwLDAtLjc2LTEuMzUsMS42MSwxLjYxLDAsMCwwLS44LS4yLDEuNjQsMS42NCwwLDAsMC0uODQuMjIsMS41NCwxLjU0LDAsMCwwLS41OC41OCwxLjY4LDEuNjgsMCwwLDAtLjIyLjh2MS40MmEyLDIsMCwwLDAsLjIxLDEsMS41MiwxLjUyLDAsMCwwLC42LjYzLDEuODQsMS44NCwwLDAsMCwuOS4yMiwyLDIsMCwwLDAsLjY2LS4xMSwxLjMyLDEuMzIsMCwwLDAsLjUtLjI5LDEuMzksMS4zOSwwLDAsMCwuMzItLjQ4bDIuMjEuMWEyLjk0LDIuOTQsMCwwLDEtLjY0LDEuMzQsMy4yOSwzLjI5LDAsMCwxLTEuMjguODhBNC44LDQuOCwwLDAsMSw4Ny41Myw1Ny44NFoiLz48cGF0aCBkPSJNOTQuMTUsNTcuODNhMy4zMiwzLjMyLDAsMCwxLTEuMzctLjI2LDIuMjUsMi4yNSwwLDAsMS0xLS44LDIuNzUsMi43NSwwLDAsMS0uMS0yLjQ1LDIsMiwwLDAsMSwuNjYtLjc1LDMuMjMsMy4yMywwLDAsMSwxLS40Myw2LjcyLDYuNzIsMCwwLDEsMS4xNS0uMmMuNDYsMCwuODQtLjA5LDEuMTItLjEzYTEuNTgsMS41OCwwLDAsMCwuNjItLjIxLjQxLjQxLDAsMCwwLC4xOS0uMzh2MGEuODguODgsMCwwLDAtLjI5LS43LDEuMywxLjMsMCwwLDAtLjgzLS4yNSwxLjQ0LDEuNDQsMCwwLDAtLjg5LjI1LDEuMTEsMS4xMSwwLDAsMC0uNDMuNjNMOTEuNzgsNTJhMi43MiwyLjcyLDAsMCwxLC41OC0xLjI5LDMsMywwLDAsMSwxLjItLjg3LDQuNTUsNC41NSwwLDAsMSwxLjc3LS4zMSw1LjM5LDUuMzksMCwwLDEsMS4zNi4xNywzLjUyLDMuNTIsMCwwLDEsMS4xMS41LDIuNDQsMi40NCwwLDAsMSwuNzUuODUsMi40OSwyLjQ5LDAsMCwxLC4yNywxLjE5djUuNDZIOTYuNTZWNTYuNTZIOTYuNWEyLjIzLDIuMjMsMCwwLDEtLjUzLjY4LDIuMjksMi4yOSwwLDAsMS0uNzguNDRBMy4zNSwzLjM1LDAsMCwxLDk0LjE1LDU3LjgzWm0uNzItMS42MWExLjc5LDEuNzksMCwwLDAsLjgxLS4xOCwxLjUsMS41LDAsMCwwLC41Ni0uNSwxLjMsMS4zLDAsMCwwLC4yMS0uNzNWNTRhMS4wOSwxLjA5LDAsMCwxLS4yOC4xMSwzLjI5LDMuMjksMCwwLDEtLjM3LjFsLS40Mi4wNy0uMzkuMDZhMi4yNywyLjI3LDAsMCwwLS42NS4xOSwxLDEsMCwwLDAtLjQzLjMyLjg5Ljg5LDAsMCwwLS4xNC41Ljc1Ljc1LDAsMCwwLC4zMS42NUExLjMsMS4zLDAsMCwwLDk0Ljg3LDU2LjIyWiIvPjxwYXRoIGQ9Ik0xMDIuMTMsNDYuOTRWNTcuNjloLTIuNFY0Ni45NFoiLz48cGF0aCBkPSJNMTA4LjEsNTIuMzd2MS44N2gtNC45M1Y1Mi4zN1oiLz48cGF0aCBkPSJNMTA3LjMzLDQ4Ljkzdi0yaDl2MkgxMTN2OC43NmgtMi40VjQ4LjkzWiIvPjxwYXRoIGQ9Ik0xMTguMTEsNDguNjNhMS4yNiwxLjI2LDAsMCwxLS45LS4zNCwxLjA5LDEuMDksMCwwLDEtLjM3LS44MywxLjA3LDEuMDcsMCwwLDEsLjM3LS44MywxLjI2LDEuMjYsMCwwLDEsLjg5LS4zNSwxLjI1LDEuMjUsMCwwLDEsLjg5LjM1LDEuMDcsMS4wNywwLDAsMSwuMzcuODMsMS4wOSwxLjA5LDAsMCwxLS4zNy44M0ExLjIzLDEuMjMsMCwwLDEsMTE4LjExLDQ4LjYzWm0tMS4yMSw5LjA2VjQ5LjYzaDIuNHY4LjA2WiIvPjxwYXRoIGQ9Ik0xMjAuMjcsNTcuNjlWNDkuNjNoMi4yOHYxLjQ0aC4wOWEyLjI1LDIuMjUsMCwwLDEsLjg1LTEuMTMsMi42MSwyLjYxLDAsMCwxLDIuODQsMCwyLDIsMCwwLDEsLjc3LDEuMTNoLjA4YTIuMTcsMi4xNywwLDAsMSwuODktMS4xMiwyLjcyLDIuNzIsMCwwLDEsMS41NC0uNDMsMi40NSwyLjQ1LDAsMCwxLDEuODUuNzMsMi43MSwyLjcxLDAsMCwxLC43MSwydjUuNDNoLTIuMzlWNTIuNzhhMS4yNywxLjI3LDAsMCwwLS4zNC0xLDEuMTUsMS4xNSwwLDAsMC0uODUtLjMzLDEuMTEsMS4xMSwwLDAsMC0uODkuMzcsMS40NCwxLjQ0LDAsMCwwLS4zMiwxdjQuODdoLTIuMzFWNTIuNzRhMS4yNSwxLjI1LDAsMCwwLS4zMy0uOTIsMS4wOCwxLjA4LDAsMCwwLS44NC0uMzQsMS4yNSwxLjI1LDAsMCwwLS42NC4xNywxLjIxLDEuMjEsMCwwLDAtLjQzLjQ5LDEuNTgsMS41OCwwLDAsMC0uMTYuNzR2NC44MVoiLz48cGF0aCBkPSJNMTM2LjgsNTcuODRhNC40Miw0LjQyLDAsMCwxLTIuMTYtLjUsMy40OCwzLjQ4LDAsMCwxLTEuMzktMS40Myw0LjgxLDQuODEsMCwwLDEtLjQ5LTIuMjIsNC43LDQuNywwLDAsMSwuNDktMi4xOCwzLjYsMy42LDAsMCwxLDEuMzgtMS40Niw0LDQsMCwwLDEsMi4wOS0uNTMsNC40Nyw0LjQ3LDAsMCwxLDEuNTMuMjYsMy4zNSwzLjM1LDAsMCwxLDEuMjIuNzgsMy43NCwzLjc0LDAsMCwxLC44MSwxLjI5LDUuMDYsNS4wNiwwLDAsMSwuMjgsMS43N3YuNjNoLTYuOVY1Mi44Mmg0LjY2YTEuNTEsMS41MSwwLDAsMC0uMi0uOCwxLjUzLDEuNTMsMCwwLDAtLjU1LS41NSwxLjYyLDEuNjIsMCwwLDAtLjgxLS4yLDEuNywxLjcsMCwwLDAtLjg0LjIyLDEuNTksMS41OSwwLDAsMC0uNTcuNTgsMS42OCwxLjY4LDAsMCwwLS4yMi44djEuNDJhMiwyLDAsMCwwLC4yMSwxLDEuNTYsMS41NiwwLDAsMCwuNTkuNjMsMiwyLDAsMCwwLDEuNTYuMTEsMS4yOCwxLjI4LDAsMCwwLC41MS0uMjksMS4zOSwxLjM5LDAsMCwwLC4zMi0uNDhsMi4yMS4xYTIuODUsMi44NSwwLDAsMS0uNjUsMS4zNCwzLjE4LDMuMTgsMCwwLDEtMS4yNy44OEE0LjgsNC44LDAsMCwxLDEzNi44LDU3Ljg0WiIvPjxwYXRoIGQ9Ik04NSw2NC4zMWE2LjI3LDYuMjcsMCwwLDEtLjY3LDMsNC42Nyw0LjY3LDAsMCwxLTEuODMsMS44OCw1LjU0LDUuNTQsMCwwLDEtNS4xNywwLDQuNjcsNC42NywwLDAsMS0xLjgyLTEuODksNyw3LDAsMCwxLDAtNiw0LjYyLDQuNjIsMCwwLDEsMS44Mi0xLjg3LDUuNDcsNS40NywwLDAsMSw1LjE3LDAsNC42NCw0LjY0LDAsMCwxLDEuODMsMS44N0E2LjI3LDYuMjcsMCwwLDEsODUsNjQuMzFabS0yLjQ3LDBhNC43OSw0Ljc5LDAsMCwwLS4zMi0xLjg1LDIuNTQsMi41NCwwLDAsMC0zLjY4LTEuMTQsMi40OCwyLjQ4LDAsMCwwLS45LDEuMTQsNS41MSw1LjUxLDAsMCwwLDAsMy43LDIuNTIsMi41MiwwLDAsMCwzLjY3LDEuMTUsMi40MSwyLjQxLDAsMCwwLC45MS0xLjE1QTQuNzksNC43OSwwLDAsMCw4Mi40OCw2NC4zMVoiLz48cGF0aCBkPSJNODUuODYsNzIuNzFWNjEuNjNoMi4zN1Y2M2guMDlhMi41NSwyLjU1LDAsMCwxLC40My0uNjksMi4yNSwyLjI1LDAsMCwxLC43NC0uNTcsMi42MSwyLjYxLDAsMCwxLDEuMTEtLjIyLDMsMywwLDAsMSwxLjYuNDUsMy4xNiwzLjE2LDAsMCwxLDEuMTksMS4zNyw1LjI3LDUuMjcsMCwwLDEsLjQ1LDIuMzJBNS41NCw1LjU0LDAsMCwxLDkzLjQxLDY4YTMuMTgsMy4xOCwwLDAsMS0xLjE3LDEuMzksMywzLDAsMCwxLTEuNjQuNDcsMi41NCwyLjU0LDAsMCwxLTEuMDgtLjIxLDIuMiwyLjIsMCwwLDEtLjc1LS41MywyLjM2LDIuMzYsMCwwLDEtLjQ1LS42OGgtLjA2djQuMzJabTIuMzQtN2EzLjUzLDMuNTMsMCwwLDAsLjE5LDEuMTksMS43MywxLjczLDAsMCwwLC41NS43OSwxLjMzLDEuMzMsMCwwLDAsLjg2LjI4LDEuMzUsMS4zNSwwLDAsMCwuODctLjI4LDEuNzUsMS43NSwwLDAsMCwuNTMtLjc5LDMuMzgsMy4zOCwwLDAsMCwuMTktMS4xOSwzLjQ5LDMuNDksMCwwLDAtLjE4LTEuMTgsMS42OSwxLjY5LDAsMCwwLS41NC0uNzksMS4zNCwxLjM0LDAsMCwwLS44Ny0uMjgsMS4zNiwxLjM2LDAsMCwwLS44Ni4yNywxLjc1LDEuNzUsMCwwLDAtLjU1Ljc4QTMuNiwzLjYsMCwwLDAsODguMiw2NS42NloiLz48cGF0aCBkPSJNOTguMjIsNjkuODRhNC40MSw0LjQxLDAsMCwxLTIuMTUtLjUsMy4zNiwzLjM2LDAsMCwxLTEuMzktMS40Myw0LjY5LDQuNjksMCwwLDEtLjQ5LTIuMjIsNC41OCw0LjU4LDAsMCwxLC40OS0yLjE4LDMuNTEsMy41MSwwLDAsMSwxLjM3LTEuNDYsNC4wNiw0LjA2LDAsMCwxLDIuMDktLjUzLDQuNDcsNC40NywwLDAsMSwxLjUzLjI2LDMuMjcsMy4yNywwLDAsMSwxLjIyLjc4LDMuNDYsMy40NiwwLDAsMSwuODEsMS4yOSw1LjA1LDUuMDUsMCwwLDEsLjI5LDEuNzd2LjYzSDk1LjA4VjY0LjgyaDQuNjdhMS41MiwxLjUyLDAsMCwwLS4yMS0uOCwxLjQ1LDEuNDUsMCwwLDAtLjU1LS41NSwxLjYxLDEuNjEsMCwwLDAtLjgtLjIsMS42NCwxLjY0LDAsMCwwLS44NC4yMiwxLjU0LDEuNTQsMCwwLDAtLjU4LjU4LDEuNjgsMS42OCwwLDAsMC0uMjIuOHYxLjQyYTIsMiwwLDAsMCwuMjEuOTUsMS41MiwxLjUyLDAsMCwwLC42LjYzLDEuODYsMS44NiwwLDAsMCwuOTEuMjIsMiwyLDAsMCwwLC42NS0uMTEsMS4zMiwxLjMyLDAsMCwwLC41LS4yOSwxLjM5LDEuMzksMCwwLDAsLjMyLS40OGwyLjIxLjFhMi45NCwyLjk0LDAsMCwxLS42NCwxLjM0LDMuMjIsMy4yMiwwLDAsMS0xLjI4Ljg4QTQuOCw0LjgsMCwwLDEsOTguMjIsNjkuODRaIi8+PHBhdGggZD0iTTEwMi42NCw2OS42OVY2MS42M0gxMDV2MS40M0gxMDVhMi4xOCwyLjE4LDAsMCwxLC43My0xLjE2LDEuOTEsMS45MSwwLDAsMSwxLjE4LS4zOCwyLjM2LDIuMzYsMCwwLDEsLjM3LDAsMS43MiwxLjcyLDAsMCwxLC4zNC4wNnYyLjFhMiwyLDAsMCwwLS40NS0uMDksMy4zNywzLjM3LDAsMCwwLS41MiwwLDEuNywxLjcsMCwwLDAtLjg1LjIxLDEuNSwxLjUsMCwwLDAtLjU5LjU4LDEuNiwxLjYsMCwwLDAtLjIyLjg2djQuNDdaIi8+PHBhdGggZD0iTTExMC4zLDY5LjgzYTMuMzIsMy4zMiwwLDAsMS0xLjM3LS4yNiwyLjE2LDIuMTYsMCwwLDEtLjk0LS44LDIuMzEsMi4zMSwwLDAsMS0uMzUtMS4zMywyLjM4LDIuMzgsMCwwLDEsLjI0LTEuMTIsMiwyLDAsMCwxLC42Ni0uNzUsMy4yMywzLjIzLDAsMCwxLDEtLjQzLDYuNzIsNi43MiwwLDAsMSwxLjE1LS4yYy40NiwwLC44NC0uMDksMS4xMi0uMTNhMS41OCwxLjU4LDAsMCwwLC42Mi0uMjEuNDEuNDEsMCwwLDAsLjE5LS4zOHYwYS44OC44OCwwLDAsMC0uMjktLjcsMS4zLDEuMywwLDAsMC0uODMtLjI1LDEuNDQsMS40NCwwLDAsMC0uODkuMjUsMS4xMSwxLjExLDAsMCwwLS40My42M0wxMDcuOTMsNjRhMi43MiwyLjcyLDAsMCwxLC41OC0xLjI5LDMsMywwLDAsMSwxLjItLjg3LDQuNTUsNC41NSwwLDAsMSwxLjc3LS4zMSw1LjM5LDUuMzksMCwwLDEsMS4zNi4xNywzLjUyLDMuNTIsMCwwLDEsMS4xMS41LDIuNDQsMi40NCwwLDAsMSwuNzUuODUsMi40OSwyLjQ5LDAsMCwxLC4yOCwxLjE5djUuNDZoLTIuMjdWNjguNTZoLS4wNmEyLjIzLDIuMjMsMCwwLDEtLjUzLjY4LDIuMjksMi4yOSwwLDAsMS0uNzguNDRBMy4zNSwzLjM1LDAsMCwxLDExMC4zLDY5LjgzWm0uNzItMS42MWExLjc5LDEuNzksMCwwLDAsLjgxLS4xOCwxLjUsMS41LDAsMCwwLC41Ni0uNSwxLjMsMS4zLDAsMCwwLC4yMS0uNzNWNjZhMS4wOSwxLjA5LDAsMCwxLS4yOC4xMSwzLjI5LDMuMjksMCwwLDEtLjM3LjFsLS40Mi4wNy0uMzkuMDZhMi4yNywyLjI3LDAsMCwwLS42NS4xOSwxLDEsMCwwLDAtLjQzLjMyLjg5Ljg5LDAsMCwwLS4xNC41Ljc1Ljc1LDAsMCwwLC4zMS42NUExLjMsMS4zLDAsMCwwLDExMSw2OC4yMloiLz48cGF0aCBkPSJNMTIwLjEsNjEuNjN2MS43OGgtNVY2MS42M1ptLTMuODgtMS45NGgyLjM5djcuNDlhLjg2Ljg2LDAsMCwwLC4wOS40My41My41MywwLDAsMCwuMjQuMjMsMS4wOCwxLjA4LDAsMCwwLC4zOC4wNmwuMzEsMGEuODkuODksMCwwLDAsLjI0LS4wNWwuMzgsMS43Ni0uNS4xM2E0LDQsMCwwLDEtLjc2LjA5LDMuNTUsMy41NSwwLDAsMS0xLjQ4LS4yMiwxLjksMS45LDAsMCwxLTEtLjc3LDIuMzQsMi4zNCwwLDAsMS0uMzMtMS4zNFoiLz48cGF0aCBkPSJNMTIxLjgzLDYwLjYzYTEuMjgsMS4yOCwwLDAsMS0uOS0uMzQsMS4xMiwxLjEyLDAsMCwxLS4zNy0uODMsMS4xMSwxLjExLDAsMCwxLC4zNy0uODMsMS4zMiwxLjMyLDAsMCwxLDEuNzksMCwxLjExLDEuMTEsMCwwLDEsLjM3LjgzLDEuMTIsMS4xMiwwLDAsMS0uMzcuODNBMS4yNywxLjI3LDAsMCwxLDEyMS44Myw2MC42M1ptLTEuMiw5LjA2VjYxLjYzSDEyM3Y4LjA2WiIvPjxwYXRoIGQ9Ik0xMjYuMzksNjUuMDZ2NC42M0gxMjRWNjEuNjNoMi4yOHYxLjQ0aC4wOWEyLjI1LDIuMjUsMCwwLDEsLjkxLTEuMTMsMi43LDIuNywwLDAsMSwxLjUzLS40MiwyLjkyLDIuOTIsMCwwLDEsMS40Ny4zNywyLjQ5LDIuNDksMCwwLDEsMSwxLjA2LDMuMzQsMy4zNCwwLDAsMSwuMzUsMS42djUuMTRoLTIuNFY2NWExLjUyLDEuNTIsMCwwLDAtLjM2LTEuMTEsMS4zMSwxLjMxLDAsMCwwLTEtLjQsMS41NiwxLjU2LDAsMCwwLS43Ni4xOSwxLjE5LDEuMTksMCwwLDAtLjUuNTRBMS45MywxLjkzLDAsMCwwLDEyNi4zOSw2NS4wNloiLz48cGF0aCBkPSJNMTM2LjE4LDcyLjgyYTUuNDMsNS40MywwLDAsMS0xLjkxLS4zLDMuMDgsMy4wOCwwLDAsMS0xLjI2LS44MywyLjMzLDIuMzMsMCwwLDEtLjU4LTEuMTZsMi4yNC0uMjFhMS4wOCwxLjA4LDAsMCwwLC4yOC40LDEuNTYsMS41NiwwLDAsMCwuNTEuMywyLjU3LDIuNTcsMCwwLDAsLjc4LjExLDEuODMsMS44MywwLDAsMCwxLjEzLS4zMywxLjI1LDEuMjUsMCwwLDAsLjQ1LTEuMDhWNjguMjdoLS4wOWEyLjExLDIuMTEsMCwwLDEtLjQ1LjY1LDIuMTUsMi4xNSwwLDAsMS0uNzYuNDgsMywzLDAsMCwxLTEuMDguMTgsMy4yNCwzLjI0LDAsMCwxLTEuNjMtLjQyLDMsMywwLDAsMS0xLjE3LTEuMjksNC44Miw0LjgyLDAsMCwxLS40NC0yLjIyLDUuMyw1LjMsMCwwLDEsLjQ1LTIuMzJBMy4xMSwzLjExLDAsMCwxLDEzMy44Myw2MmEzLDMsMCwwLDEsMS42MS0uNDUsMi42OCwyLjY4LDAsMCwxLDEuMTEuMjIsMi4yNSwyLjI1LDAsMCwxLC43NC41NywyLjU5LDIuNTksMCwwLDEsLjQ0LjY5aC4wOFY2MS42M2gyLjM4djguMTJhMi43NSwyLjc1LDAsMCwxLS41MSwxLjY4LDMuMjIsMy4yMiwwLDAsMS0xLjQxLDFBNS44Nyw1Ljg3LDAsMCwxLDEzNi4xOCw3Mi44MlptLjA2LTVhMS40NiwxLjQ2LDAsMCwwLC44Ni0uMjYsMS42LDEuNiwwLDAsMCwuNTUtLjc1LDMuMzMsMy4zMywwLDAsMCwuMTgtMS4xNiwzLjQ1LDMuNDUsMCwwLDAtLjE4LTEuMTgsMS43NSwxLjc1LDAsMCwwLS41NS0uNzgsMS41LDEuNSwwLDAsMC0xLjczLDAsMS42MSwxLjYxLDAsMCwwLS41NC43OCwzLjUxLDMuNTEsMCwwLDAtLjE4LDEuMTcsMy4zMSwzLjMxLDAsMCwwLC4xOCwxLjE1LDEuNTIsMS41MiwwLDAsMCwuNTQuNzVBMS40MSwxLjQxLDAsMCwwLDEzNi4yNCw2Ny44MVoiLz48cGF0aCBkPSJNMTQ5LjU4LDYyLjA5YTEuMjcsMS4yNywwLDAsMC0uNTEtLjk0LDIsMiwwLDAsMC0xLjI0LS4zNCwyLjU2LDIuNTYsMCwwLDAtLjg5LjE0LDEuMiwxLjIsMCwwLDAtLjU0LjQuOTEuOTEsMCwwLDAtLjE5LjU3LjgyLjgyLDAsMCwwLC4xMS40NywxLjEzLDEuMTMsMCwwLDAsLjM0LjM1LDIuMzcsMi4zNywwLDAsMCwuNTMuMjUsNS4xOSw1LjE5LDAsMCwwLC42Ni4xOWwuOTQuMjJhNi4yOSw2LjI5LDAsMCwxLDEuMzUuNDQsNCw0LDAsMCwxLDEsLjY2LDIuOCwyLjgsMCwwLDEsLjY1LjkyLDMuMTUsMy4xNSwwLDAsMS0uMjgsMi45LDMuMSwzLjEsMCwwLDEtMS40NCwxLjEyLDYuODEsNi44MSwwLDAsMS00LjU3LDAsMy4yNCwzLjI0LDAsMCwxLTEuNTMtMS4yLDMuNTcsMy41NywwLDAsMS0uNTctMmgyLjM0YTEuNTEsMS41MSwwLDAsMCwxLDEuNDIsMi43NCwyLjc0LDAsMCwwLDEsLjE4LDIuNDUsMi40NSwwLDAsMCwuOTUtLjE2LDEuMzYsMS4zNiwwLDAsMCwuNjItLjQzLDEsMSwwLDAsMCwuMjItLjYzLjg4Ljg4LDAsMCwwLS4yLS41NywxLjYsMS42LDAsMCwwLS41OS0uNCw2LjA5LDYuMDksMCwwLDAtMS0uM0wxNDYuNjcsNjVhNC44NCw0Ljg0LDAsMCwxLTIuMTctMSwyLjQyLDIuNDIsMCwwLDEtLjc5LTEuOTEsMi44NCwyLjg0LDAsMCwxLC41My0xLjczLDMuNTQsMy41NCwwLDAsMSwxLjQ3LTEuMTUsNS4yMSw1LjIxLDAsMCwxLDIuMTQtLjQyLDUuMDYsNS4wNiwwLDAsMSwyLjEzLjQyLDMuMywzLjMsMCwwLDEsMS40MSwxLjE2LDMuMTEsMy4xMSwwLDAsMSwuNTEsMS43MloiLz48cGF0aCBkPSJNMTU0LjI0LDcyLjdhNS4yMiw1LjIyLDAsMCwxLS44Mi0uMDcsMy44NSwzLjg1LDAsMCwxLS42Ni0uMThsLjUzLTEuNzZhMi4wOSwyLjA5LDAsMCwwLDEsLjExLjg2Ljg2LDAsMCwwLC42My0uNTZMMTU1LDcwbC0yLjg4LTguMzJoMi41MWwxLjU5LDUuODRoLjA4bDEuNi01Ljg0aDIuNTNsLTMuMDksOC44OGEzLjkxLDMuOTEsMCwwLDEtLjYyLDEuMTQsMi41NiwyLjU2LDAsMCwxLTEsLjc3QTMuNjcsMy42NywwLDAsMSwxNTQuMjQsNzIuN1oiLz48cGF0aCBkPSJNMTY3LjMyLDY0bC0yLjE5LjFhMSwxLDAsMCwwLS4yMS0uNDYsMS4yMiwxLjIyLDAsMCwwLS40NC0uMzMsMS41OSwxLjU5LDAsMCwwLS42NC0uMTIsMS42MSwxLjYxLDAsMCwwLS44Mi4yLjYuNiwwLDAsMC0uMzMuNTMuNTguNTgsMCwwLDAsLjIxLjQ1LDEuNTYsMS41NiwwLDAsMCwuNzUuM2wxLjUxLjI5YTMuNjQsMy42NCwwLDAsMSwxLjc3Ljc4LDEuOCwxLjgsMCwwLDEsLjU4LDEuNDEsMi4yMywyLjIzLDAsMCwxLS40NywxLjQyLDMuMTksMy4xOSwwLDAsMS0xLjMuOTQsNSw1LDAsMCwxLTEuODguMzMsNC40NCw0LjQ0LDAsMCwxLTIuNjMtLjY5LDIuNiwyLjYsMCwwLDEtMS4xMy0xLjg2bDIuMzYtLjA5YTEuMDksMS4wOSwwLDAsMCwuNDYuNzEsMS43MiwxLjcyLDAsMCwwLDEsLjI0LDEuNiwxLjYsMCwwLDAsLjg3LS4yMS42MS42MSwwLDAsMCwuMzQtLjU0LjU1LjU1LDAsMCwwLS4yNS0uNDcsMS43OCwxLjc4LDAsMCwwLS43NS0uMjhsLTEuNDEtLjI3YTMuMzYsMy4zNiwwLDAsMS0xLjc4LS44MiwyLDIsMCwwLDEtLjU4LTEuNSwyLjE1LDIuMTUsMCwwLDEsLjQzLTEuMzYsMi42OSwyLjY5LDAsMCwxLDEuMjEtLjg3LDUsNSwwLDAsMSwxLjg1LS4zMSw0LjE4LDQuMTgsMCwwLDEsMi40OS42NkEyLjQ3LDIuNDcsMCwwLDEsMTY3LjMyLDY0WiIvPjxwYXRoIGQ9Ik0xNzIuNDgsNjEuNjN2MS43OGgtNVY2MS42M1ptLTMuODktMS45NEgxNzF2Ny40OWEuODYuODYsMCwwLDAsLjA5LjQzLjUzLjUzLDAsMCwwLC4yNC4yMywxLjA2LDEuMDYsMCwwLDAsLjM3LjA2LDEuNzMsMS43MywwLDAsMCwuMzIsMCwuODkuODksMCwwLDAsLjI0LS4wNWwuMzcsMS43NmMtLjExLDAtLjI4LjA4LS40OS4xM2E0LDQsMCwwLDEtLjc3LjA5LDMuNTgsMy41OCwwLDAsMS0xLjQ4LS4yMiwyLDIsMCwwLDEtMS0uNzcsMi41MSwyLjUxLDAsMCwxLS4zMy0xLjM0WiIvPjxwYXRoIGQ9Ik0xNzYuNDMsNjkuODRhNC40Miw0LjQyLDAsMCwxLTIuMTYtLjUsMy40OCwzLjQ4LDAsMCwxLTEuMzktMS40Myw0LjgxLDQuODEsMCwwLDEtLjQ5LTIuMjIsNC43LDQuNywwLDAsMSwuNDktMi4xOCwzLjYsMy42LDAsMCwxLDEuMzgtMS40Niw0LDQsMCwwLDEsMi4wOS0uNTMsNC40Nyw0LjQ3LDAsMCwxLDEuNTMuMjYsMy4zNSwzLjM1LDAsMCwxLDEuMjIuNzgsMy41OCwzLjU4LDAsMCwxLC44LDEuMjksNC44Myw0LjgzLDAsMCwxLC4yOSwxLjc3di42M2gtNi45VjY0LjgySDE3OGExLjUxLDEuNTEsMCwwLDAtLjItLjgsMS41MywxLjUzLDAsMCwwLS41NS0uNTUsMS42MiwxLjYyLDAsMCwwLS44MS0uMiwxLjcsMS43LDAsMCwwLS44NC4yMiwxLjU5LDEuNTksMCwwLDAtLjU3LjU4LDEuNjgsMS42OCwwLDAsMC0uMjIuOHYxLjQyYTIsMiwwLDAsMCwuMjEuOTUsMS41NiwxLjU2LDAsMCwwLC41OS42MywyLDIsMCwwLDAsMS41Ni4xMSwxLjI4LDEuMjgsMCwwLDAsLjUxLS4yOSwxLjM5LDEuMzksMCwwLDAsLjMyLS40OGwyLjIxLjFhMi44NSwyLjg1LDAsMCwxLS42NSwxLjM0LDMuMTgsMy4xOCwwLDAsMS0xLjI3Ljg4QTQuOCw0LjgsMCwwLDEsMTc2LjQzLDY5Ljg0WiIvPjxwYXRoIGQ9Ik0xODAuODUsNjkuNjlWNjEuNjNoMi4yN3YxLjQ0aC4wOWEyLjI1LDIuMjUsMCwwLDEsLjg1LTEuMTMsMi40MSwyLjQxLDAsMCwxLDEuNDItLjQyLDIuMzYsMi4zNiwwLDAsMSwxLjQyLjQyLDIsMiwwLDAsMSwuNzcsMS4xM2guMDhhMi4xNywyLjE3LDAsMCwxLC44OS0xLjEyLDIuNzIsMi43MiwwLDAsMSwxLjU0LS40MywyLjQ1LDIuNDUsMCwwLDEsMS44NS43MywyLjcxLDIuNzEsMCwwLDEsLjcxLDJ2NS40M2gtMi4zOVY2NC43OGExLjI3LDEuMjcsMCwwLDAtLjM0LTEsMS4xNSwxLjE1LDAsMCwwLS44NS0uMzMsMS4xMywxLjEzLDAsMCwwLS44OS4zNywxLjQ0LDEuNDQsMCwwLDAtLjMyLDF2NC44N2gtMi4zMXYtNWExLjI1LDEuMjUsMCwwLDAtLjMzLS45MiwxLjA4LDEuMDgsMCwwLDAtLjg0LS4zNCwxLjI1LDEuMjUsMCwwLDAtLjY0LjE3LDEuMjksMS4yOSwwLDAsMC0uNDMuNDksMS41OCwxLjU4LDAsMCwwLS4xNi43NHY0LjgxWiIvPjx1c2Ugd2lkdGg9IjM1Ljc3IiBoZWlnaHQ9IjY0LjU1IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyMS43OSAxMC45MSkiIHhsaW5rOmhyZWY9IiNnIi8+PC9zdmc+" alt="R3 Real-Time Operating System" /></p>
+</h1>
+<style type="text/css">
+body.theme-dark h1 img:nth-of-type(1) { filter: brightness(8) hue-rotate(-120deg) invert(90%) saturate(2.8) brightness(1); }
+body.theme-ayu h1 img:nth-of-type(1) { filter: brightness(8) hue-rotate(-120deg) invert(90%) saturate(2.8) brightness(0.9); }
+</style>
+<p><strong>R3-OS</strong> (or simply <strong>R3</strong>) is an experimental static RTOS that utilizes Rust’s compile-time function evaluation mechanism for static configuration (creation of kernel objects and memory allocation) and const traits to decouple kernel interfaces from implementation.</p>
+<ul>
+<li><strong>All kernel objects are defined statically</strong> for faster boot times, compile-time checking, predictable execution, reduced RAM consumption, no runtime allocation failures, and extra security.</li>
+<li>A kernel and its configurator <strong>don’t require an external build tool or a specialized procedural macro</strong>, maintaining transparency and inter-crate composability.</li>
+<li>The kernel API is <strong>not tied to any specific kernel implementations</strong>. Kernels are provided as separate crates, one of which an application chooses and instantiates using the trait system.</li>
+<li>Leverages Rust’s type safety for access control of kernel objects. Safe code can’t access an object that it doesn’t own.</li>
+</ul>
+<p>See <a href="../r3_core/index.html" title="mod r3_core"><code>r3_core</code></a>’s crate-level documentation for a general description of kernel features and concepts used in R3.</p>
+<!-- Display a "some Cargo features are disabled" warning in the documentation so that the user can know some items are missing for that reason. But we don't want this message to be displayed when someone is viewing `lib.md` directly, so the actual message is rendered by CSS. -->
+<div class="admonition-follows"></div>
+<blockquote class="disabled-feature-warning"><p><span></span><code></code></p></blockquote>
+<h2 id="package-ecosystem"><a href="#package-ecosystem">Package Ecosystem</a></h2>
+<p>The R3 ecosystem revolves around the <a href="../r3_core/index.html" title="mod r3_core"><code>r3_core</code></a> package. Applications and libraries, including this <code>r3</code> package, are built on top of <code>r3_core</code>’s application-side API. This is in contrast with the kernel-side API, which intentionally has a weaker <a href="../r3_core/index.html#stability" title="mod r3_core">stability guarantee</a> for continuous optimization and improvement.</p>
+<p>The following diagram shows a possible package configuration of an R3 application.</p>
+<div class="package-ecosystem-table-wrap">
+    <table class="package-ecosystem-table" align="center">
+        <tr>
+            <th>Application code</th>
+            <td colspan="2">Application</td>
+            <td colspan="2">Library</td>
+            <td colspan="2">Library</td>
+            <td class="noborder">...</td>
+        </tr>
+        <tr>
+            <th>Façade API</th>
+            <td colspan="3"><code>r3 1.0¹</code></td>
+            <td colspan="3"><code>r3 2.0</code></td>
+            <td class="noborder">...</td>
+        </tr>
+        <tr>
+            <th>Core API definition</th>
+            <td colspan="7"><code>r3_core 1.0</code></td>
+        </tr>
+        <tr>
+            <th>Kernel (API implementor)²</th>
+            <td colspan="7"><code>r3_kernel</code></td>
+        </tr>
+        <tr>
+            <th>Ports²</th>
+            <td colspan="7"><code>r3_port_std</code> || <code>_arm</code> || <code>_arm_m</code> || <code>_riscv</code></td>
+        </tr>
+    </table>
+</div>
+<p><sub>¹ Version numbers shown here are illustrative.</sub></p>
+<p><sub>² Application code chooses kernel and port implementations.</sub></p>
+<style type="text/css">
+.package-ecosystem-table-wrap { text-align: center; }
+.package-ecosystem-table {
+    border-collapse: separate !important; border-spacing: 5px !important;
+    margin: 0.5em auto !important; width: auto !important; display: inline-block !important;
+    padding-right: 0.5em;
+}
+.package-ecosystem-table td { border: 0.5px currentColor solid !important; text-align: center; vertical-align: middle !important }
+.package-ecosystem-table td.noborder,
+.package-ecosystem-table th { border: none !important; font-weight: normal; }
+</style>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Notes:</strong> Many items of this crate are re-exported from <a href="../r3_core/index.html" title="mod r3_core"><code>r3_core</code></a>, and consequently their example code refers to them through paths starting with <code>r3_core::</code>. You can replace them with <code>r3::</code> in your application code.</p>
+</blockquote>
+<h2 id="stability"><a href="#stability">Stability</a></h2>
+<p>This package is versioned in accordance with <a href="https://semver.org/">the Semantic Versioning 2.0.0</a>. Requiring a newer version of <a href="../r3_core/index.html" title="mod r3_core"><code>r3_core</code></a> that breaks <a href="../r3_core/index.html#stability" title="mod r3_core">the application-side API stability guarantee</a> is considered a breaking change.</p>
+<p>Increasing the minimum supported Rust version (MSRV) is not considered a breaking change.</p>
+<h2 id="cargo-features"><a href="#cargo-features">Cargo Features</a></h2>
+<ul>
+<li><strong><code>sync</code></strong> exports <a href="sync/index.html" title="mod r3::sync"><code>r3::sync</code></a>.</li>
+</ul>
+<p>This package also exposes the Cargo features of <a href="../r3_core/index.html" title="mod r3_core"><code>r3_core</code></a>. Please refer to <a href="../r3_core/index.html#cargo-features" title="mod r3_core">its documentation</a>.</p>
+<style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+<style type="text/css">.disabled-feature-warning { display: none; }</style></div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="_changelog_/index.html" title="mod r3::_changelog_">_changelog_</a></div><div class="desc docblock-short">Changelog</div></li><li><div class="item-name"><a class="mod" href="bag/index.html" title="mod r3::bag">bag</a></div><div class="desc docblock-short">A heterogeneous collection to store property values.</div></li><li><div class="item-name"><a class="mod" href="bind/index.html" title="mod r3::bind">bind</a></div><div class="desc docblock-short">Bindings (<a href="bind/struct.Bind.html" title="struct r3::bind::Bind"><code>Bind</code></a>), a static storage with <a href="bind/struct.BindDefiner.html#method.init" title="method r3::bind::BindDefiner::init">runtime initialization</a> and
+<a href="../r3_core/index.html#static-configuration" title="mod r3_core">configuration-time</a> borrow checking.</div></li><li><div class="item-name"><a class="mod" href="hunk/index.html" title="mod r3::hunk">hunk</a></div><div class="desc docblock-short">Type-safe hunks</div></li><li><div class="item-name"><a class="mod" href="kernel/index.html" title="mod r3::kernel">kernel</a></div><div class="desc docblock-short">The kernel interface.</div></li><li><div class="item-name"><a class="mod" href="prelude/index.html" title="mod r3::prelude">prelude</a></div><div class="desc docblock-short">The prelude module.</div></li><li><div class="item-name"><a class="mod" href="sync/index.html" title="mod r3::sync">sync</a><span class="stab portability" title="Available on crate feature `sync` only"><code>sync</code></span></div><div class="desc docblock-short">Safe synchronization primitives.</div></li><li><div class="item-name"><a class="mod" href="time/index.html" title="mod r3::time">time</a></div><div class="desc docblock-short">Temporal quantification for R3-OS.</div></li><li><div class="item-name"><a class="mod" href="utils/index.html" title="mod r3::utils">utils</a></div><div class="desc docblock-short">Utilities. This module re-exports items from <a href="../r3_core/utils/index.html" title="mod r3_core::utils"><code>r3_core::utils</code></a> that are
+subject to <a href="../r3_core/index.html#stability" title="mod r3_core">the application-side API stability guarantee</a>.</div></li></ul></section></div></main></body></html>

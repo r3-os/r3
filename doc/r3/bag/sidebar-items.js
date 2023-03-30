@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["EMPTY"],"enum":["Either"],"trait":["Bag"],"type":["Empty","List"]};

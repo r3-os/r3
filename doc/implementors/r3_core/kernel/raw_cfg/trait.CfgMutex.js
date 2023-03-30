@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"r3_kernel":[["impl&lt;Traits: <a class=\"trait\" href=\"r3_kernel/trait.KernelTraits.html\" title=\"trait r3_kernel::KernelTraits\">KernelTraits</a>&gt; <a class=\"trait\" href=\"r3_core/kernel/raw_cfg/trait.CfgMutex.html\" title=\"trait r3_core::kernel::raw_cfg::CfgMutex\">CfgMutex</a> for <a class=\"struct\" href=\"r3_kernel/cfg/struct.CfgBuilder.html\" title=\"struct r3_kernel::cfg::CfgBuilder\">CfgBuilder</a>&lt;Traits&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

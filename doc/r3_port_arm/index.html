@@ -1,0 +1,274 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The Arm-A port for the R3 kernel."><title>r3_port_arm - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="r3_port_arm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../r3_port_arm/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../r3_port_arm/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">Crate r3_port_arm</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.2.3</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">r3_port_arm</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/r3_port_arm/lib.rs.html#1-83">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The Arm-A port for <a href="../r3_kernel/index.html" title="mod r3_kernel">the R3 kernel</a>.</p>
+<h2 id="startup-code"><a href="#startup-code">Startup Code</a></h2>
+<p><a href="macro.use_startup.html" title="macro r3_port_arm::use_startup"><code>use_startup!</code></a> generates an entry point (with a symbol name <code>start</code>), which is expected to be called by a bootloader. The startup code configures MMU to assign appropriate memory attributes based on the memory map supplied by <a href="trait.StartupOptions.html#associatedconstant.MEMORY_MAP" title="associated constant r3_port_arm::StartupOptions::MEMORY_MAP"><code>StartupOptions::MEMORY_MAP</code></a> and to map an exception vector table at <code>0x0000_0000</code> or <code>0xffff_0000</code>.</p>
+<h3 id="linker-scripts"><a href="#linker-scripts">Linker Scripts</a></h3>
+<p>This crate provides linker scripts that define some standard sections, suitable for use with a bootloader that can handle ELF sections. Put files as follows under your crate’s directory:</p>
+<p><code>.cargo/config.toml</code>:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[target.armv7a-none-eabi]
+rustflags = [&quot;-C&quot;, &quot;link-arg=-Tlink_ram.x&quot;]
+</code></pre></div>
+<p><code>memory.x</code>:</p>
+<div class="example-wrap"><pre class="language-text"><code>MEMORY
+{
+  RAM : ORIGIN = 0x20000000, LENGTH = 10240K
+}
+</code></pre></div>
+<p><code>build.rs</code>:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>main() {
+    <span class="comment">// Use the linker script `memory.x` at the crate root
+    </span><span class="macro">println!</span>(
+        <span class="string">&quot;cargo:rustc-link-search={}&quot;</span>,
+        std::env::current_dir().unwrap().display()
+    );
+}</code></pre></div>
+<p>The following linker scripts are provided:</p>
+<ul>
+<li><code>link_ram.x</code> places all sections in <code>RAM</code>.</li>
+<li><code>link_ram_harvard.x</code> places <code>.text</code> in <code>RAM_CODE</code> and all remaining sections in <code>RAM_DATA</code>. Combined with an approriate MMU configuration, this can be used to implement the W⊕X (<a href="https://en.wikipedia.org/wiki/W%5EX">write xor execute</a>) memory policy for enhanced security. It might also lead to a performance improvement on a processor having separate buses for instruction and data access.</li>
+</ul>
+<h2 id="kernel-timing"><a href="#kernel-timing">Kernel Timing</a></h2>
+<p>As far as kernel timing is concerned, there is no universal solution for a Cortex-A system. This crate provides a port timer driver for <a href="https://developer.arm.com/documentation/ddi0271/d/">Arm PrimeCell SP804 Dual Timer</a>, which can be instantiated by <a href="macro.use_sp804.html" title="macro r3_port_arm::use_sp804"><code>use_sp804!</code></a>.</p>
+<h2 id="interrupt-controller"><a href="#interrupt-controller">Interrupt Controller</a></h2>
+<p>Your kernel trait type should be combined with an interrupt controller driver by implementing <a href="../r3_kernel/trait.PortInterrupts.html" title="trait r3_kernel::PortInterrupts"><code>PortInterrupts</code></a> and <a href="trait.InterruptController.html" title="trait r3_port_arm::InterruptController"><code>InterruptController</code></a>. Most systems are equipped with Arm Generic Interrupt Controller (GIC), whose driver is provided by <a href="macro.use_gic.html" title="macro r3_port_arm::use_gic"><code>use_gic!</code></a>.</p>
+<p>The maximum possible range of valid interrupt numbers is <code>0..1020</code> (the upper bound varies across implementations). The range is statically partitioned as follows:</p>
+<ul>
+<li><code>0..16</code> is used for SGIs (Software-Generated Interrupts), which are used for inter-processor communication. SGIs don’t support enabling, disabling, or changing their trigger modes.</li>
+<li><code>16..32</code> is used for PPIs (Private Peripheral Interrupts), which are peripheral interrupts specific to a single processor.</li>
+<li><code>32..</code> is used for SPIs (Shared Peripheral Interrupts), which are peripheral interrupts that the Distributor can route to a specified set of processors. The current implementation of the GIC driver routes all interrupts to CPU 0, assuming that’s where the application runs.</li>
+</ul>
+<p>The valid priority range is <code>0..255</code>. All priorities are <a href="../r3_kernel/trait.PortInterrupts.html#associatedconstant.MANAGED_INTERRUPT_PRIORITY_RANGE" title="associated constant r3_kernel::PortInterrupts::MANAGED_INTERRUPT_PRIORITY_RANGE"><em>managed</em></a> - unmanaged interrupts aren’t supported yet.</p>
+<p>The GIC driver exposes additional operations on interrupt lines through <a href="trait.Gic.html" title="trait r3_port_arm::Gic"><code>Gic</code></a> implemented on your kernel trait type.</p>
+<h2 id="implementation"><a href="#implementation">Implementation</a></h2><h3 id="context-state"><a href="#context-state">Context state</a></h3>
+<p>The state of an interrupted thread is stored to the interrupted thread’s stack in the following form:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[repr(C)]
+</span><span class="kw">struct </span>ContextState {
+    <span class="comment">// Second-level state
+    //
+    // Includes everything that is not included in the first-level state. These
+    // are moved between memory and registers only when switching tasks.
+    // TODO: Floating-point registers
+    </span>r4: u32,
+    r5: u32,
+    r6: u32,
+    r7: u32,
+    r8: u32,
+    r9: u32,
+    r10: u32,
+    r11: u32,
+
+    <span class="comment">// First-level state
+    //
+    // This was designed after Arm-M&#39;s exception frame.
+    //
+    // The GPR potion is comprised of caller-saved registers. In an exception
+    // handler, saving/restoring this set of registers at entry and exit allows
+    // it to call Rust functions.
+    //
+    // `{pc, cpsr}` is the sequence of registers that the RFE (return from
+    // exception) instruction expects to be in memory in this exact order.
+    </span>r0: u32,
+    r1: u32,
+    r2: u32,
+    r3: u32,
+    r12: u32,
+    lr: u32,
+    pc: u32,
+    cpsr: u32,
+}</code></pre></div>
+<p><code>sp</code> is stored in <a href="../r3_kernel/task/struct.TaskCb.html#structfield.port_task_state" title="field r3_kernel::task::TaskCb::port_task_state"><code>TaskCb::port_task_state</code></a>.</p>
+<p>When a task is activated, a new context state is created inside the task’s stack. By default, only essential registers are preloaded with known values. The <strong><code>preload-registers</code></strong> Cargo feature enables preloading for all GPRs, which might help in debugging at the cost of performance and code size.</p>
+<p>For the idle task, saving and restoring the context store is essentially replaced with no-op or loads of hard-coded values. In particular, <code>pc</code> is always “restored” with the entry point of the idle task.</p>
+<h3 id="processor-modes"><a href="#processor-modes">Processor Modes</a></h3>
+<ul>
+<li><strong>System</strong>: Task context. The idle task (the implicit task that runs when <code>*</code><a href="../r3_kernel/struct.State.html#method.running_task_ptr" title="method r3_kernel::State::running_task_ptr"><code>running_task_ptr</code></a><code>().is_none()</code>) uses this mode with <code>sp_usr == 0</code> (no other tasks or non-task contexts use <code>sp == 0</code>, so this is straightforward to detect).</li>
+<li><strong>Supervisor</strong>: Non-task context</li>
+<li><strong>IRQ</strong>: The processor enters this mode when it takes an exception. This state lasts only briefly because the IRQ handler switches to Supervisor as soon as possible to allow reentry. <code>sp_irq</code> is only used as a scratch register.</li>
+</ul>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="_changelog_/index.html" title="mod r3_port_arm::_changelog_">_changelog_</a></div><div class="desc docblock-short">Changelog</div></li></ul><h2 id="macros" class="small-section-header"><a href="#macros">Macros</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.use_gic.html" title="macro r3_port_arm::use_gic">use_gic</a></div><div class="desc docblock-short">Implement <a href="../r3_kernel/trait.PortInterrupts.html" title="trait r3_kernel::PortInterrupts"><code>PortInterrupts</code></a>, <a href="trait.InterruptController.html" title="trait r3_port_arm::InterruptController"><code>InterruptController</code></a>, and <a href="trait.Gic.html" title="trait r3_port_arm::Gic"><code>Gic</code></a> on
+the given kernel trait type using the General Interrupt Controller (GIC) on
+the target.
+<strong>Requires <a href="trait.GicOptions.html" title="trait r3_port_arm::GicOptions"><code>GicOptions</code></a>.</strong></div></li><li><div class="item-name"><a class="macro" href="macro.use_port.html" title="macro r3_port_arm::use_port">use_port</a></div><div class="desc docblock-short">Define a kernel trait type implementing <a href="../r3_kernel/trait.PortThreading.html" title="trait r3_kernel::PortThreading"><code>PortThreading</code></a> and
+<a href="trait.EntryPoint.html" title="trait r3_port_arm::EntryPoint"><code>EntryPoint</code></a>. <strong>Requires <a href="trait.ThreadingOptions.html" title="trait r3_port_arm::ThreadingOptions"><code>ThreadingOptions</code></a>, <a href="trait.InterruptController.html" title="trait r3_port_arm::InterruptController"><code>InterruptController</code></a>,
+and <a href="trait.Timer.html" title="trait r3_port_arm::Timer"><code>Timer</code></a>.</strong></div></li><li><div class="item-name"><a class="macro" href="macro.use_sp804.html" title="macro r3_port_arm::use_sp804">use_sp804</a></div><div class="desc docblock-short">Attach the implementation of <a href="../r3_kernel/trait.PortTimer.html" title="trait r3_kernel::PortTimer"><code>PortTimer</code></a> that is based on
+<a href="https://developer.arm.com/documentation/ddi0271/d/">Arm PrimeCell SP804 Dual Timer</a> to a given kernel trait type. This macro
+also implements <a href="trait.Timer.html" title="trait r3_port_arm::Timer"><code>Timer</code></a> on the kernel trait type.
+<strong>Requires <a href="trait.Sp804Options.html" title="trait r3_port_arm::Sp804Options"><code>Sp804Options</code></a>.</strong></div></li><li><div class="item-name"><a class="macro" href="macro.use_startup.html" title="macro r3_port_arm::use_startup">use_startup</a></div><div class="desc docblock-short">Generate <a href="index.html#startup-code" title="mod r3_port_arm">startup code</a>. <strong>Requires <a href="trait.StartupOptions.html" title="trait r3_port_arm::StartupOptions"><code>StartupOptions</code></a> and <a href="trait.EntryPoint.html" title="trait r3_port_arm::EntryPoint"><code>EntryPoint</code></a> to
+be implemented.</strong></div></li></ul><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.MemoryMapSection.html" title="struct r3_port_arm::MemoryMapSection">MemoryMapSection</a></div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.InterruptLineTriggerMode.html" title="enum r3_port_arm::InterruptLineTriggerMode">InterruptLineTriggerMode</a></div><div class="desc docblock-short">Specifies the type of signal transition that pends an interrupt.</div></li><li><div class="item-name"><a class="enum" href="enum.SetInterruptLineTriggerModeError.html" title="enum r3_port_arm::SetInterruptLineTriggerModeError">SetInterruptLineTriggerModeError</a></div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.EntryPoint.html" title="trait r3_port_arm::EntryPoint">EntryPoint</a></div><div class="desc docblock-short">Defines the entry points of a port instantiation. Implemented by
+<a href="macro.use_port.html" title="macro r3_port_arm::use_port"><code>use_port!</code></a>.</div></li><li><div class="item-name"><a class="trait" href="trait.Gic.html" title="trait r3_port_arm::Gic">Gic</a></div><div class="desc docblock-short">Provides access to a system-global GIC instance. Implemented by <a href="macro.use_gic.html" title="macro r3_port_arm::use_gic"><code>use_gic!</code></a>.</div></li><li><div class="item-name"><a class="trait" href="trait.GicOptions.html" title="trait r3_port_arm::GicOptions">GicOptions</a></div><div class="desc docblock-short">The options for <a href="macro.use_gic.html" title="macro r3_port_arm::use_gic"><code>use_gic!</code></a>.</div></li><li><div class="item-name"><a class="trait" href="trait.InterruptController.html" title="trait r3_port_arm::InterruptController">InterruptController</a></div><div class="desc docblock-short">An abstract interface to an interrupt controller. Implemented by
+<a href="macro.use_gic.html" title="macro r3_port_arm::use_gic"><code>use_gic!</code></a>.</div></li><li><div class="item-name"><a class="trait" href="trait.Sp804Options.html" title="trait r3_port_arm::Sp804Options">Sp804Options</a></div><div class="desc docblock-short">The options for <a href="macro.use_sp804.html" title="macro r3_port_arm::use_sp804"><code>use_sp804!</code></a>.</div></li><li><div class="item-name"><a class="trait" href="trait.StartupOptions.html" title="trait r3_port_arm::StartupOptions">StartupOptions</a></div><div class="desc docblock-short">The options for <a href="macro.use_startup.html" title="macro r3_port_arm::use_startup"><code>use_startup!</code></a>.</div></li><li><div class="item-name"><a class="trait" href="trait.ThreadingOptions.html" title="trait r3_port_arm::ThreadingOptions">ThreadingOptions</a></div><div class="desc docblock-short">The configuration of the port.</div></li><li><div class="item-name"><a class="trait" href="trait.Timer.html" title="trait r3_port_arm::Timer">Timer</a></div><div class="desc docblock-short">An abstract inferface to a port timer driver. Implemented by
+<a href="macro.use_sp804.html" title="macro r3_port_arm::use_sp804"><code>use_sp804!</code></a>.</div></li></ul></section></div></main></body></html>

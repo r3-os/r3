@@ -1,0 +1,390 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Associates static data to a system type."><title>KernelStatic in r3_core::kernel::cfg - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="r3_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../../r3_core/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">KernelStatic</a></h2><div class="sidebar-elems"><section><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In r3_core::kernel::cfg</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../../index.html">r3_core</a>::<wbr><a href="../index.html">kernel</a>::<wbr><a href="index.html">cfg</a>::<wbr><a class="trait" href="#">KernelStatic</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../../src/r3_core/kernel/cfg.rs.html#443">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait KernelStatic&lt;System = Self&gt;: <a class="trait" href="trait.CfgPhase2.html" title="trait r3_core::kernel::cfg::CfgPhase2">CfgPhase2</a>&lt;System&gt; { }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Associates static data to a system type.</p>
+<p>The members of this trait are implementation details and not meant to be
+used externally. Use <a href="macro.attach_phase3.html" title="macro r3_core::kernel::cfg::attach_phase3"><code>attach_phase3!</code></a> or <a href="trait.DelegateKernelStatic.html" title="trait r3_core::kernel::cfg::DelegateKernelStatic"><code>DelegateKernelStatic</code></a>
+to implement this trait.</p>
+<h2 id="derivation-and-usage"><a href="#derivation-and-usage">Derivation and Usage</a></h2>
+<p>This is one of the traits implemented by <strong>the kernel-independent
+configuration process</strong>. This process is divided into three phases. The
+first phase involves the following steps, mostly happening in a
+macro-generated function (let’s call this <code>do_cfg_phase1</code>):</p>
+<ul>
+<li><code>do_cfg_phase1</code> constructs a <code>C: const </code><a href="../raw_cfg/trait.CfgBase.html" title="trait r3_core::kernel::raw_cfg::CfgBase"><code>CfgBase</code></a> and binds it to a
+local variable <code>c</code>.</li>
+<li><code>do_cfg_phase1</code> invokes <a href="macro.cfg_phase1.html" title="macro r3_core::kernel::cfg::cfg_phase1"><code>cfg_phase1!</code></a>, passing <code>&amp;mut c</code>, to construct
+and bind a <a href="struct.Cfg.html" title="struct r3_core::kernel::cfg::Cfg"><code>Cfg</code></a><code>&lt;C&gt;</code> to a local variable <code>b</code>.</li>
+<li><code>do_cfg_phase1</code> invokes an application-provided configuration function to
+register objects through <code>b</code>.</li>
+<li><code>do_cfg_phase1</code> calls <a href="struct.Cfg.html#method.finish_phase1" title="method r3_core::kernel::cfg::Cfg::finish_phase1"><code>Cfg::finish_phase1</code></a> to obtain a
+<a href="struct.CfgPhase1Data.html" title="struct r3_core::kernel::cfg::CfgPhase1Data"><code>CfgPhase1Data</code></a>.</li>
+<li><code>do_cfg_phase1</code> returns this <code>CfgPhase1Data</code>.</li>
+<li>Using this <code>CfgPhase1Data</code>, <a href="macro.attach_phase1.html" title="macro r3_core::kernel::cfg::attach_phase1"><code>attach_phase1!</code></a> produces <code>static</code> items
+and an implementation of <a href="trait.CfgPhase1.html" title="trait r3_core::kernel::cfg::CfgPhase1"><code>CfgPhase1</code></a> for <code>C::System</code> (directly or
+indirectly through <a href="trait.DelegateKernelStatic.html" title="trait r3_core::kernel::cfg::DelegateKernelStatic"><code>DelegateKernelStatic</code></a>).</li>
+</ul>
+<p>The remaining phases repeat these steps using the prospective macros and
+functions as well as the constant values derived so far (through the
+implemented traits), each time recreating <code>C</code> and <code>Cfg&lt;C&gt;</code> from scratch.
+The final phase produces the finalized <code>C</code>, which the kernel-specific
+configuration process can use to complete the rest of the configuration
+process. (<code>C</code>s produced by other phases are incomplete and therefore
+should be disregarded.) The final phase also produces an implementation of
+<code>KernelStatic</code> for <code>C::System</code>.</p>
+<div class="admonition-follows"></div>
+<blockquote>
+<p><strong>Rationale:</strong>
+Usually <code>const fn</code>s can’t use constant values derived by themselves as
+constant values, but splitting into multiple phases makes this possible.</p>
+<p>The current implementation doesn’t fully utilize all of the three phases.
+The extra phases are kept to leave room for future internal changes.</p>
+</blockquote>
+<p>The following diagram outlines the data flow in this process.</p>
+<center>
+<p><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NzIiIGhlaWdodD0iMTEyMCIgc3R5bGU9InRyYW5zZm9ybTp0cmFuc2xhdGUoMC41cHgsMC41cHgpIj4KICAgIDxzdHlsZT4KICAgICAgICBsaW5lLCBwYXRoLCBjaXJjbGUsIHJlY3QsIHBvbHlnb257c3Ryb2tlOmJsYWNrO3N0cm9rZS13aWR0aDoxO3N0cm9rZS1vcGFjaXR5OjE7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLWxpbmVjYXA6cm91bmQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO310ZXh0e2ZvbnQtZmFtaWx5OidTb3VyY2UgQ29kZSBQcm8nLCdBbmRhbGUgTW9ubycsJ1NlZ29lIFVJIE1vbm8nLCdEZWphdnUgU2FucyBNb25vJywnQ29uc29sYXMnLG1vbm9zcGFjZTtmb250LXNpemU6MTNweDt9cmVjdC5iYWNrZHJvcHtzdHJva2U6bm9uZTtmaWxsOndoaXRlO30uYnJva2Vue3N0cm9rZS1kYXNoYXJyYXk6ODt9LmZpbGxlZHtmaWxsOmJsYWNrO30uYmdfZmlsbGVke2ZpbGw6d2hpdGU7fS5ub2ZpbGx7ZmlsbDp3aGl0ZTt9LmVuZF9tYXJrZWRfYXJyb3d7bWFya2VyLWVuZDp1cmwoI2Fycm93KTt9LnN0YXJ0X21hcmtlZF9hcnJvd3ttYXJrZXItc3RhcnQ6dXJsKCNhcnJvdyk7fS5lbmRfbWFya2VkX2RpYW1vbmR7bWFya2VyLWVuZDp1cmwoI2RpYW1vbmQpO30uc3RhcnRfbWFya2VkX2RpYW1vbmR7bWFya2VyLXN0YXJ0OnVybCgjZGlhbW9uZCk7fS5lbmRfbWFya2VkX2NpcmNsZXttYXJrZXItZW5kOnVybCgjY2lyY2xlKTt9LnN0YXJ0X21hcmtlZF9jaXJjbGV7bWFya2VyLXN0YXJ0OnVybCgjY2lyY2xlKTt9LmVuZF9tYXJrZWRfb3Blbl9jaXJjbGV7bWFya2VyLWVuZDp1cmwoI29wZW5fY2lyY2xlKTt9LnN0YXJ0X21hcmtlZF9vcGVuX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNvcGVuX2NpcmNsZSk7fS5lbmRfbWFya2VkX2JpZ19vcGVuX2NpcmNsZXttYXJrZXItZW5kOnVybCgjYmlnX29wZW5fY2lyY2xlKTt9LnN0YXJ0X21hcmtlZF9iaWdfb3Blbl9jaXJjbGV7bWFya2VyLXN0YXJ0OnVybCgjYmlnX29wZW5fY2lyY2xlKTt9CiAgICAgICAgPCEtLXNlcGFyYXRvci0tPgogICAgICAgIAogICAgPC9zdHlsZT4KICAgIDxkZWZzPgogICAgICAgIDxtYXJrZXIgaWQ9ImFycm93IiB2aWV3Qm94PSItMiAtMiA4IDgiIHJlZlg9IjQiIHJlZlk9IjIiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPHBvbHlnb24gcG9pbnRzPSIwLDAgMCw0IDQsMiAwLDAiPjwvcG9seWdvbj4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJkaWFtb25kIiB2aWV3Qm94PSItMiAtMiA4IDgiIHJlZlg9IjQiIHJlZlk9IjIiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPHBvbHlnb24gcG9pbnRzPSIwLDIgMiwwIDQsMiAyLDQgMCwyIj48L3BvbHlnb24+CiAgICAgICAgPC9tYXJrZXI+CiAgICAgICAgPG1hcmtlciBpZD0iY2lyY2xlIiB2aWV3Qm94PSIwIDAgOCA4IiByZWZYPSI0IiByZWZZPSI0IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgICAgICAgIDxjaXJjbGUgY3g9IjQiIGN5PSI0IiByPSIyIiBjbGFzcz0iZmlsbGVkIj48L2NpcmNsZT4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJvcGVuX2NpcmNsZSIgdmlld0JveD0iMCAwIDggOCIgcmVmWD0iNCIgcmVmWT0iNCIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8Y2lyY2xlIGN4PSI0IiBjeT0iNCIgcj0iMiIgY2xhc3M9ImJnX2ZpbGxlZCI+PC9jaXJjbGU+CiAgICAgICAgPC9tYXJrZXI+CiAgICAgICAgPG1hcmtlciBpZD0iYmlnX29wZW5fY2lyY2xlIiB2aWV3Qm94PSIwIDAgOCA4IiByZWZYPSI0IiByZWZZPSI0IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgICAgICAgIDxjaXJjbGUgY3g9IjQiIGN5PSI0IiByPSIzIiBjbGFzcz0iYmdfZmlsbGVkIj48L2NpcmNsZT4KICAgICAgICA8L21hcmtlcj4KICAgIDwvZGVmcz4KICAgIDxyZWN0IGNsYXNzPSJiYWNrZHJvcCIgeD0iMCIgeT0iMCIgd2lkdGg9IjY3MiIgaGVpZ2h0PSIxMTM2Ij48L3JlY3Q+CiAgICA8cmVjdCB4PSIxNzIiIHk9IjI0OCIgd2lkdGg9IjE0NCIgaGVpZ2h0PSIzMiIgY2xhc3M9InNvbGlkIG5vZmlsbCIgcng9IjQiPjwvcmVjdD4KICAgIDx0ZXh0IHg9IjE5NCIgeT0iMjY4IiAgdGV4dExlbmd0aD0iMTA0Ij5DZmdQaGFzZTFEYXRhPC90ZXh0PgogICAgPHJlY3QgeD0iMTY0IiB5PSIzNzYiIHdpZHRoPSIxNjAiIGhlaWdodD0iNDgiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSIxODYiIHk9IjM5NiIgIHRleHRMZW5ndGg9IjMyIj5pbXBsPC90ZXh0PgogICAgPHRleHQgeD0iMjI2IiB5PSIzOTYiICB0ZXh0TGVuZ3RoPSI3MiI+Q2ZnUGhhc2UxPC90ZXh0PgogICAgPHRleHQgeD0iMTk0IiB5PSI0MTIiICB0ZXh0TGVuZ3RoPSIyNCI+Zm9yPC90ZXh0PgogICAgPHRleHQgeD0iMjI2IiB5PSI0MTIiICB0ZXh0TGVuZ3RoPSI3MiI+Qzo6U3lzdGVtPC90ZXh0PgogICAgPHJlY3QgeD0iMTcyIiB5PSI1ODQiIHdpZHRoPSIxNDQiIGhlaWdodD0iMzIiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSIxOTQiIHk9IjYwNCIgIHRleHRMZW5ndGg9IjEwNCI+Q2ZnUGhhc2UyRGF0YTwvdGV4dD4KICAgIDxyZWN0IHg9IjE2NCIgeT0iNzEyIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjQ4IiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMTg2IiB5PSI3MzIiICB0ZXh0TGVuZ3RoPSIzMiI+aW1wbDwvdGV4dD4KICAgIDx0ZXh0IHg9IjIyNiIgeT0iNzMyIiAgdGV4dExlbmd0aD0iNzIiPkNmZ1BoYXNlMjwvdGV4dD4KICAgIDx0ZXh0IHg9IjE5NCIgeT0iNzQ4IiAgdGV4dExlbmd0aD0iMjQiPmZvcjwvdGV4dD4KICAgIDx0ZXh0IHg9IjIyNiIgeT0iNzQ4IiAgdGV4dExlbmd0aD0iNzIiPkM6OlN5c3RlbTwvdGV4dD4KICAgIDxyZWN0IHg9IjE3MiIgeT0iOTIwIiB3aWR0aD0iMTQ0IiBoZWlnaHQ9IjMyIiBjbGFzcz0ic29saWQgbm9maWxsIiByeD0iNCI+PC9yZWN0PgogICAgPHRleHQgeD0iMTk0IiB5PSI5NDAiICB0ZXh0TGVuZ3RoPSIxMDQiPkNmZ1BoYXNlM0RhdGE8L3RleHQ+CiAgICA8cmVjdCB4PSIxNjQiIHk9IjEwNDgiIHdpZHRoPSIxNjAiIGhlaWdodD0iNDgiIGNsYXNzPSJzb2xpZCBub2ZpbGwiIHJ4PSI0Ij48L3JlY3Q+CiAgICA8dGV4dCB4PSIxNzgiIHk9IjEwNjgiICB0ZXh0TGVuZ3RoPSIzMiI+aW1wbDwvdGV4dD4KICAgIDx0ZXh0IHg9IjIxOCIgeT0iMTA2OCIgIHRleHRMZW5ndGg9Ijk2Ij5LZXJuZWxTdGF0aWM8L3RleHQ+CiAgICA8dGV4dCB4PSIxOTQiIHk9IjEwODQiICB0ZXh0TGVuZ3RoPSIyNCI+Zm9yPC90ZXh0PgogICAgPHRleHQgeD0iMjI2IiB5PSIxMDg0IiAgdGV4dExlbmd0aD0iNzIiPkM6OlN5c3RlbTwvdGV4dD4KICAgIDx0ZXh0IHg9IjE4NiIgeT0iMTIiICB0ZXh0TGVuZ3RoPSI0OCI+S2VybmVsPC90ZXh0PgogICAgPGxpbmUgeDE9IjIzMiIgeTE9IjgiIHgyPSIyNDAiIHkyPSI4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjI0MiIgeT0iMTIiICB0ZXh0TGVuZ3RoPSI2NCI+cHJvdmlkZWQ8L3RleHQ+CiAgICA8bGluZSB4MT0iNDA0IiB5MT0iMCIgeDI9IjQwNCIgeTI9IjMyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjQ1MCIgeT0iMTIiICB0ZXh0TGVuZ3RoPSI4OCI+QXBwbGljYXRpb248L3RleHQ+CiAgICA8bGluZSB4MT0iNTM2IiB5MT0iOCIgeDI9IjU0NCIgeTI9IjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iNTQ2IiB5PSIxMiIgIHRleHRMZW5ndGg9IjY0Ij5wcm92aWRlZDwvdGV4dD4KICAgIDx0ZXh0IHg9IjE3MCIgeT0iMjgiICB0ZXh0TGVuZ3RoPSIxMDQiPmNvbmZpZ3VyYXRpb248L3RleHQ+CiAgICA8dGV4dCB4PSIyODIiIHk9IjI4IiAgdGV4dExlbmd0aD0iNDAiPm1hY3JvPC90ZXh0PgogICAgPHRleHQgeD0iNDQyIiB5PSIyOCIgIHRleHRMZW5ndGg9IjEwNCI+Y29uZmlndXJhdGlvbjwvdGV4dD4KICAgIDx0ZXh0IHg9IjU1NCIgeT0iMjgiICB0ZXh0TGVuZ3RoPSI2NCI+ZnVuY3Rpb248L3RleHQ+CiAgICA8bGluZSB4MT0iNjQiIHkxPSI0MCIgeDI9IjY2NCIgeTI9IjQwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjE0NiIgeT0iNzYiICB0ZXh0TGVuZ3RoPSI4Ij5DPC90ZXh0PgogICAgPHRleHQgeD0iMTYyIiB5PSIxMjQiICB0ZXh0TGVuZ3RoPSI0OCI+Qzo6bmV3PC90ZXh0PgogICAgPHRleHQgeD0iMTYyIiB5PSI0NjAiICB0ZXh0TGVuZ3RoPSI0OCI+Qzo6bmV3PC90ZXh0PgogICAgPHRleHQgeD0iMTYyIiB5PSI3OTYiICB0ZXh0TGVuZ3RoPSI0OCI+Qzo6bmV3PC90ZXh0PgogICAgPHRleHQgeD0iMzk0IiB5PSIxNTYiICB0ZXh0TGVuZ3RoPSI4MCI+JGNvbmZpZ3VyZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjIxOCIgeT0iMTg4IiAgdGV4dExlbmd0aD0iNDgiPmZpbmlzaDwvdGV4dD4KICAgIDxsaW5lIHgxPSIyNjQiIHkxPSIxOTIiIHgyPSIyNzIiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMjc0IiB5PSIxODgiICB0ZXh0TGVuZ3RoPSI0OCI+cGhhc2UxPC90ZXh0PgogICAgPHRleHQgeD0iMzk0IiB5PSI0OTIiICB0ZXh0TGVuZ3RoPSI4MCI+JGNvbmZpZ3VyZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjIxOCIgeT0iNTI0IiAgdGV4dExlbmd0aD0iNDgiPmZpbmlzaDwvdGV4dD4KICAgIDxsaW5lIHgxPSIyNjQiIHkxPSI1MjgiIHgyPSIyNzIiIHkyPSI1MjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMjc0IiB5PSI1MjQiICB0ZXh0TGVuZ3RoPSI0OCI+cGhhc2UyPC90ZXh0PgogICAgPHRleHQgeD0iMzk0IiB5PSI4MjgiICB0ZXh0TGVuZ3RoPSI4MCI+JGNvbmZpZ3VyZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjE5NCIgeT0iODYwIiAgdGV4dExlbmd0aD0iNDgiPmZpbmlzaDwvdGV4dD4KICAgIDxsaW5lIHgxPSIyNDAiIHkxPSI4NjQiIHgyPSIyNDgiIHkyPSI4NjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMjUwIiB5PSI4NjAiICB0ZXh0TGVuZ3RoPSI0OCI+cGhhc2UzPC90ZXh0PgogICAgPHRleHQgeD0iMTgiIHk9Ijk0MCIgIHRleHRMZW5ndGg9IjQ4Ij5LZXJuZWw8L3RleHQ+CiAgICA8bGluZSB4MT0iNjQiIHkxPSI5MzYiIHgyPSI3MiIgeTI9IjkzNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSI3NCIgeT0iOTQwIiAgdGV4dExlbmd0aD0iNjQiPnNwZWNpZmljPC90ZXh0PgogICAgPHRleHQgeD0iMjYiIHk9Ijk1NiIgIHRleHRMZW5ndGg9IjEwNCI+Y29uZmlndXJhdGlvbjwvdGV4dD4KICAgIDx0ZXh0IHg9IjUwIiB5PSI5NzIiICB0ZXh0TGVuZ3RoPSI1NiI+cHJvY2VzczwvdGV4dD4KICAgIDx0ZXh0IHg9IjMxNCIgeT0iNzYiICB0ZXh0TGVuZ3RoPSI0OCI+Q2ZnJmx0O0MmZ3Q7PC90ZXh0PgogICAgPHRleHQgeD0iNDkwIiB5PSI3NiIgIHRleHRMZW5ndGg9Ijg4Ij4mYW1wO211dCBDZmcmbHQ7QyZndDs8L3RleHQ+CiAgICA8dGV4dCB4PSIyMDIiIHk9IjE0MCIgIHRleHRMZW5ndGg9Ijg4Ij5jZmdfcGhhc2UxITwvdGV4dD4KICAgIDx0ZXh0IHg9IjE4NiIgeT0iMzMyIiAgdGV4dExlbmd0aD0iMTEyIj5hdHRhY2hfcGhhc2UxITwvdGV4dD4KICAgIDx0ZXh0IHg9IjIzNCIgeT0iNDc2IiAgdGV4dExlbmd0aD0iODgiPmNmZ19waGFzZTIhPC90ZXh0PgogICAgPHRleHQgeD0iMTg2IiB5PSI2NjgiICB0ZXh0TGVuZ3RoPSIxMTIiPmF0dGFjaF9waGFzZTIhPC90ZXh0PgogICAgPHRleHQgeD0iMjM0IiB5PSI4MTIiICB0ZXh0TGVuZ3RoPSI4OCI+Y2ZnX3BoYXNlMyE8L3RleHQ+CiAgICA8dGV4dCB4PSIxODYiIHk9IjEwMDQiICB0ZXh0TGVuZ3RoPSIxMTIiPmF0dGFjaF9waGFzZTMhPC90ZXh0PgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjE0OCIgeTE9Ijk2IiB4Mj0iMTQ4IiB5Mj0iMTIwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iMTIwIiB4Mj0iMTU2IiB5Mj0iMTIwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iMTIwIiB4Mj0iMTQwIiB5Mj0iMjAwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTU2IiB5MT0iMTIwIiB4Mj0iMTU2IiB5Mj0iMjAwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iMjAwIiB4Mj0iMTU2IiB5Mj0iMjAwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQ4IiB5MT0iMjAwIiB4Mj0iMTQ4IiB5Mj0iNDU2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iNDU2IiB4Mj0iMTU2IiB5Mj0iNDU2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iNDU2IiB4Mj0iMTQwIiB5Mj0iNTM2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTU2IiB5MT0iNDU2IiB4Mj0iMTU2IiB5Mj0iNTM2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iNTM2IiB4Mj0iMTU2IiB5Mj0iNTM2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQ4IiB5MT0iNTM2IiB4Mj0iMTQ4IiB5Mj0iNzkyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iNzkyIiB4Mj0iMTU2IiB5Mj0iNzkyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iNzkyIiB4Mj0iMTQwIiB5Mj0iODg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTU2IiB5MT0iNzkyIiB4Mj0iMTU2IiB5Mj0iODg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iODg4IiB4Mj0iMTU2IiB5Mj0iODg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTQ4IiB5MT0iODg4IiB4Mj0iMTQ4IiB5Mj0iMTEyMCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMzQwIiB5MT0iOTYiIHgyPSIzNDAiIHkyPSIxNTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSIxNTIiIHgyPSIzNDgiIHkyPSIxNTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSIxNTIiIHgyPSIzMzIiIHkyPSIyMDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNDgiIHkxPSIxNTIiIHgyPSIzNDgiIHkyPSIyMDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSIyMDAiIHgyPSIzNDgiIHkyPSIyMDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNDAiIHkxPSIyMDAiIHgyPSIzNDAiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSI0ODgiIHgyPSIzNDgiIHkyPSI0ODgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSI0ODgiIHgyPSIzMzIiIHkyPSI1MzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNDgiIHkxPSI0ODgiIHgyPSIzNDgiIHkyPSI1MzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSI1MzYiIHgyPSIzNDgiIHkyPSI1MzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNDAiIHkxPSI1MzYiIHgyPSIzNDAiIHkyPSI4MjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSI4MjQiIHgyPSIzNDgiIHkyPSI4MjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSI4MjQiIHgyPSIzMzIiIHkyPSI4NzIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNDgiIHkxPSI4MjQiIHgyPSIzNDgiIHkyPSI4NzIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSI4NzIiIHgyPSIzNDgiIHkyPSI4NzIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNDAiIHkxPSI4NzIiIHgyPSIzNDAiIHkyPSIxMTIwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSI1MzIiIHkxPSI5NiIgeDI9IjUzMiIgeTI9IjE2OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9IjE2OCIgeDI9IjU0MCIgeTI9IjE2OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9IjE2OCIgeDI9IjUyNCIgeTI9IjE4NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjU0MCIgeTE9IjE2OCIgeDI9IjU0MCIgeTI9IjE4NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9IjE4NCIgeDI9IjU0MCIgeTI9IjE4NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUzMiIgeTE9IjE4NCIgeDI9IjUzMiIgeTI9IjUwNCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9IjUwNCIgeDI9IjU0MCIgeTI9IjUwNCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9IjUwNCIgeDI9IjUyNCIgeTI9IjUyMCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjU0MCIgeTE9IjUwNCIgeDI9IjU0MCIgeTI9IjUyMCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9IjUyMCIgeDI9IjU0MCIgeTI9IjUyMCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUzMiIgeTE9IjUyMCIgeDI9IjUzMiIgeTI9Ijg0MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9Ijg0MCIgeDI9IjU0MCIgeTI9Ijg0MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9Ijg0MCIgeDI9IjUyNCIgeTI9Ijg1NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjU0MCIgeTE9Ijg0MCIgeDI9IjU0MCIgeTI9Ijg1NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUyNCIgeTE9Ijg1NiIgeDI9IjU0MCIgeTI9Ijg1NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUzMiIgeTE9Ijg1NiIgeDI9IjUzMiIgeTI9IjExMjAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjE2OCIgeTE9IjE1MiIgeDI9IjMxMiIgeTI9IjE1MiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSIzMTIsMTQ4IDMyMCwxNTIgMzEyLDE1NiIgY2xhc3M9ImZpbGxlZCI+PC9wb2x5Z29uPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjM2MCIgeTE9IjE2OCIgeDI9IjUwNCIgeTI9IjE2OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSI1MDQsMTY0IDUxMiwxNjggNTA0LDE3MiIgY2xhc3M9ImZpbGxlZCI+PC9wb2x5Z29uPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPHBhdGggZD0iTSAyNDgsMjAwIEEgNCw0IDAsMCwwIDI0NCwyMDQiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iMjQ0IiB5MT0iMjA0IiB4Mj0iMjQ0IiB5Mj0iMjI4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjQ4IiB5MT0iMjAwIiB4Mj0iMzIwIiB5Mj0iMjAwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjI0MCwyMjggMjQ4LDIyOCAyNDQsMjQwIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMjQ0IiB5MT0iMjg4IiB4Mj0iMjQ0IiB5Mj0iMzA4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjI0MCwzMDggMjQ4LDMwOCAyNDQsMzIwIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMjQ0IiB5MT0iMzM2IiB4Mj0iMjQ0IiB5Mj0iMzU2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjI0MCwzNTYgMjQ4LDM1NiAyNDQsMzY4IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMjIwIiB5MT0iNDMyIiB4Mj0iMjIwIiB5Mj0iNDY4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjIxNiw0NjggMjI0LDQ2OCAyMjAsNDgwIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMTY4IiB5MT0iNDg4IiB4Mj0iMzEyIiB5Mj0iNDg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjMxMiw0ODQgMzIwLDQ4OCAzMTIsNDkyIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMzYwIiB5MT0iNTA0IiB4Mj0iNTA0IiB5Mj0iNTA0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjUwNCw1MDAgNTEyLDUwNCA1MDQsNTA4IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8cGF0aCBkPSJNIDI0OCw1MzYgQSA0LDQgMCwwLDAgMjQ0LDU0MCIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxsaW5lIHgxPSIyNDQiIHkxPSI1NDAiIHgyPSIyNDQiIHkyPSI1NjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyNDgiIHkxPSI1MzYiIHgyPSIzMjAiIHkyPSI1MzYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjQwLDU2NCAyNDgsNTY0IDI0NCw1NzYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyNDQiIHkxPSI2MjQiIHgyPSIyNDQiIHkyPSI2NDQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjQwLDY0NCAyNDgsNjQ0IDI0NCw2NTYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyNDQiIHkxPSI2NzIiIHgyPSIyNDQiIHkyPSI2OTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjQwLDY5MiAyNDgsNjkyIDI0NCw3MDQiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyMjAiIHkxPSI3NjgiIHgyPSIyMjAiIHkyPSI4MDQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjE2LDgwNCAyMjQsODA0IDIyMCw4MTYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIxNjgiIHkxPSI4MjQiIHgyPSIzMTIiIHkyPSI4MjQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMzEyLDgyMCAzMjAsODI0IDMxMiw4MjgiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIzNjAiIHkxPSI4NDAiIHgyPSI1MDQiIHkyPSI4NDAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iNTA0LDgzNiA1MTIsODQwIDUwNCw4NDQiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMTc2LDg2OCAxNjgsODcyIDE3Niw4NzYiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgICAgICA8bGluZSB4MT0iMTc2IiB5MT0iODcyIiB4Mj0iMzIwIiB5Mj0iODcyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjQ0IiB5MT0iODcyIiB4Mj0iMjQ0IiB5Mj0iOTAwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjI0MCw5MDAgMjQ4LDkwMCAyNDQsOTEyIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMjQ0IiB5MT0iOTYwIiB4Mj0iMjQ0IiB5Mj0iOTgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjI0MCw5ODAgMjQ4LDk4MCAyNDQsOTkyIiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8cGF0aCBkPSJNIDgwLDg4OCBBIDQsNCAwLDAsMCA3Niw4OTIiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iNzYiIHkxPSI4OTIiIHgyPSI3NiIgeTI9IjkxNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjgwIiB5MT0iODg4IiB4Mj0iMTI4IiB5Mj0iODg4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjcyLDkxNiA4MCw5MTYgNzYsOTI4IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMjQ0IiB5MT0iMTAwOCIgeDI9IjI0NCIgeTI9IjEwMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjQwLDEwMjggMjQ4LDEwMjggMjQ0LDEwNDAiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KPC9zdmc+" alt="" /></p>
+</center>
+<style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script></div></details><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-KernelStatic%3CSystem%3E-for-T" class="impl"><a class="srclink rightside" href="../../../src/r3_core/kernel/cfg.rs.html#527-530">source</a><a href="#impl-KernelStatic%3CSystem%3E-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T: <a class="trait" href="trait.DelegateKernelStatic.html" title="trait r3_core::kernel::cfg::DelegateKernelStatic">DelegateKernelStatic</a>&lt;System&gt;, System&gt; <a class="trait" href="trait.KernelStatic.html" title="trait r3_core::kernel::cfg::KernelStatic">KernelStatic</a>&lt;System&gt; for T<span class="where fmt-newline">where
+    T::<a class="associatedtype" href="trait.DelegateKernelStatic.html#associatedtype.Target" title="type r3_core::kernel::cfg::DelegateKernelStatic::Target">Target</a>: <a class="trait" href="trait.KernelStatic.html" title="trait r3_core::kernel::cfg::KernelStatic">KernelStatic</a>&lt;System&gt;,</span></h3></section></div><script src="../../../implementors/r3_core/kernel/cfg/trait.KernelStatic.js" async></script></section></div></main></body></html>

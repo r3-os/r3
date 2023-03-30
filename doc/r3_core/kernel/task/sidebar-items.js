@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["LocalTask","StackHunk","Task","TaskDefiner","TaskRef"],"trait":["TaskHandle","TaskMethods"],"type":["StaticTask"]};

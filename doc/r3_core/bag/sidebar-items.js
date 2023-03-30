@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["EMPTY"],"trait":["Bag"],"type":["Empty","List"]};

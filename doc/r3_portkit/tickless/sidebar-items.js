@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CfgError"],"struct":["Measurement","TicklessCfg","TicklessOptions","TicklessStateCore","TicklessStatelessCore"],"trait":["TicklessStateTrait"],"type":["TicklessState"]};

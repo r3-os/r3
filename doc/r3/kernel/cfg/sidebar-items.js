@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["attach_phase1","attach_phase2","attach_phase3","cfg_phase1","cfg_phase2","cfg_phase3"],"struct":["Cfg","CfgPhase1Data","CfgPhase2Data","CfgPhase3Data"],"trait":["CfgPhase1","CfgPhase2","CfgStatic","DelegateKernelStatic","KernelStatic"]};

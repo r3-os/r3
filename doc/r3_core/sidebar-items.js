@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["_changelog_","bag","bind","closure","hunk","kernel","prelude","time","utils"]};

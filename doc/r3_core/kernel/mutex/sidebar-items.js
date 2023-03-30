@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Mutex","MutexDefiner","MutexRef"],"trait":["MutexHandle","MutexMethods"],"type":["StaticMutex"]};

@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"svgbob":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html\" title=\"trait alloc::string::ToString\">ToString</a> for <a class=\"struct\" href=\"svgbob/buffer/struct.StringBuffer.html\" title=\"struct svgbob::buffer::StringBuffer\">StringBuffer</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"derive":["Zeroable"],"mod":["for_times","mem"],"struct":["AlignedStorage","AllocError","ConstAllocator","Frozen","RawCell"],"trait":["Allocator","Init","Zeroable","ZeroableInOption"],"type":["PhantomInvariant"]};

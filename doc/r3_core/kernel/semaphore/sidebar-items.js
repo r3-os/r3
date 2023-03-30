@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Semaphore","SemaphoreDefiner","SemaphoreRef"],"trait":["SemaphoreHandle","SemaphoreMethods"],"type":["StaticSemaphore"]};

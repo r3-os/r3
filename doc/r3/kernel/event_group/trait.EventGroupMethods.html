@@ -1,0 +1,395 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The supported operations on `EventGroupHandle`."><title>EventGroupMethods in r3::kernel::event_group - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="r3" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../../r3/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../../r3/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">EventGroupMethods</a></h2><div class="sidebar-elems"><section><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.clear">clear</a></li><li><a href="#method.get">get</a></li><li><a href="#method.poll">poll</a></li><li><a href="#method.set">set</a></li><li><a href="#method.wait">wait</a></li><li><a href="#method.wait_timeout">wait_timeout</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In r3::kernel::event_group</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../../index.html">r3</a>::<wbr><a href="../index.html">kernel</a>::<wbr><a href="index.html">event_group</a>::<wbr><a class="trait" href="#">EventGroupMethods</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../../src/r3_core/kernel/event_group.rs.html#51">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait EventGroupMethods: <a class="trait" href="../traits/trait.EventGroupHandle.html" title="trait r3::kernel::traits::EventGroupHandle">EventGroupHandle</a> {
+    // Provided methods
+    fn <a href="#method.set" class="fn">set</a>(&amp;self, bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.UpdateEventGroupError.html" title="enum r3::kernel::UpdateEventGroupError">UpdateEventGroupError</a>&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.clear" class="fn">clear</a>(&amp;self, bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.UpdateEventGroupError.html" title="enum r3::kernel::UpdateEventGroupError">UpdateEventGroupError</a>&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get" class="fn">get</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.GetEventGroupError.html" title="enum r3::kernel::GetEventGroupError">GetEventGroupError</a>&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.wait" class="fn">wait</a>(
+        &amp;self,
+        bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+        flags: <a class="struct" href="../struct.EventGroupWaitFlags.html" title="struct r3::kernel::EventGroupWaitFlags">EventGroupWaitFlags</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.WaitEventGroupError.html" title="enum r3::kernel::WaitEventGroupError">WaitEventGroupError</a>&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.wait_timeout" class="fn">wait_timeout</a>(
+        &amp;self,
+        bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+        flags: <a class="struct" href="../struct.EventGroupWaitFlags.html" title="struct r3::kernel::EventGroupWaitFlags">EventGroupWaitFlags</a>,
+        timeout: <a class="struct" href="../../time/struct.Duration.html" title="struct r3::time::Duration">Duration</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.WaitEventGroupTimeoutError.html" title="enum r3::kernel::WaitEventGroupTimeoutError">WaitEventGroupTimeoutError</a>&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.poll" class="fn">poll</a>(
+        &amp;self,
+        bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+        flags: <a class="struct" href="../struct.EventGroupWaitFlags.html" title="struct r3::kernel::EventGroupWaitFlags">EventGroupWaitFlags</a>
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.PollEventGroupError.html" title="enum r3::kernel::PollEventGroupError">PollEventGroupError</a>&gt; { ... }
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The supported operations on <a href="../traits/trait.EventGroupHandle.html" title="trait r3::kernel::traits::EventGroupHandle"><code>EventGroupHandle</code></a>.</p>
+<style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script></div></details><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.set" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/event_group.rs.html#54">source</a><h4 class="code-header">fn <a href="#method.set" class="fn">set</a>(&amp;self, bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.UpdateEventGroupError.html" title="enum r3::kernel::UpdateEventGroupError">UpdateEventGroupError</a>&gt;</h4></section></summary><div class="docblock"><p>Set the specified bits.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.clear" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/event_group.rs.html#62">source</a><h4 class="code-header">fn <a href="#method.clear" class="fn">clear</a>(&amp;self, bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.unit.html">()</a>, <a class="enum" href="../enum.UpdateEventGroupError.html" title="enum r3::kernel::UpdateEventGroupError">UpdateEventGroupError</a>&gt;</h4></section></summary><div class="docblock"><p>Clear the specified bits.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/event_group.rs.html#70">source</a><h4 class="code-header">fn <a href="#method.get" class="fn">get</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.GetEventGroupError.html" title="enum r3::kernel::GetEventGroupError">GetEventGroupError</a>&gt;</h4></section></summary><div class="docblock"><p>Get the currently set bits.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.wait" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/event_group.rs.html#87-91">source</a><h4 class="code-header">fn <a href="#method.wait" class="fn">wait</a>(
+    &amp;self,
+    bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+    flags: <a class="struct" href="../struct.EventGroupWaitFlags.html" title="struct r3::kernel::EventGroupWaitFlags">EventGroupWaitFlags</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.WaitEventGroupError.html" title="enum r3::kernel::WaitEventGroupError">WaitEventGroupError</a>&gt;</h4></section></summary><div class="docblock"><p>Wait for all or any of the specified bits to be set. Optionally, clear
+the specified bits.</p>
+<p>Returns the currently set bits. If <code>EventGroupWaitFlags::CLEAR</code> is
+specified, this method returns the bits before clearing.</p>
+<p>This system service may block. Therefore, calling this method is not
+allowed in <a href="../../../r3_core/index.html#contexts" title="mod r3_core">a non-waitable context</a> and will return <code>Err(BadContext)</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.wait_timeout" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/event_group.rs.html#101-106">source</a><h4 class="code-header">fn <a href="#method.wait_timeout" class="fn">wait_timeout</a>(
+    &amp;self,
+    bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+    flags: <a class="struct" href="../struct.EventGroupWaitFlags.html" title="struct r3::kernel::EventGroupWaitFlags">EventGroupWaitFlags</a>,
+    timeout: <a class="struct" href="../../time/struct.Duration.html" title="struct r3::time::Duration">Duration</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.WaitEventGroupTimeoutError.html" title="enum r3::kernel::WaitEventGroupTimeoutError">WaitEventGroupTimeoutError</a>&gt;</h4></section></summary><div class="docblock"><p><a href="../traits/trait.EventGroupMethods.html#method.wait" title="method r3_core::kernel::event_group::EventGroupMethods::wait::wait"><code>wait</code></a> with timeout.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.poll" class="method"><a class="srclink rightside" href="../../../src/r3_core/kernel/event_group.rs.html#123-127">source</a><h4 class="code-header">fn <a href="#method.poll" class="fn">poll</a>(
+    &amp;self,
+    bits: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+    flags: <a class="struct" href="../struct.EventGroupWaitFlags.html" title="struct r3::kernel::EventGroupWaitFlags">EventGroupWaitFlags</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>, <a class="enum" href="../enum.PollEventGroupError.html" title="enum r3::kernel::PollEventGroupError">PollEventGroupError</a>&gt;</h4></section></summary><div class="docblock"><p>Non-blocking version of <a href="../traits/trait.EventGroupMethods.html#method.wait" title="method r3_core::kernel::event_group::EventGroupMethods::wait::wait"><code>wait</code></a>. Returns immediately with
+<a href="../enum.PollEventGroupError.html#variant.Timeout" title="variant r3::kernel::PollEventGroupError::Timeout"><code>PollEventGroupError::Timeout</code></a> if the unblocking condition is not
+satisfied.</p>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-EventGroupMethods-for-T" class="impl"><a class="srclink rightside" href="../../../src/r3_core/kernel/event_group.rs.html#136">source</a><a href="#impl-EventGroupMethods-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; <a class="trait" href="../traits/trait.EventGroupMethods.html" title="trait r3::kernel::traits::EventGroupMethods">EventGroupMethods</a> for T<span class="where fmt-newline">where
+    T: <a class="trait" href="../traits/trait.EventGroupHandle.html" title="trait r3::kernel::traits::EventGroupHandle">EventGroupHandle</a>,</span></h3></section></div><script src="../../../implementors/r3_core/kernel/event_group/trait.EventGroupMethods.js" async></script></section></div></main></body></html>

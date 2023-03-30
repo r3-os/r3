@@ -1,0 +1,440 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Operations implemented by all valid instantiations of `TicklessState`."><title>TicklessStateTrait in r3_portkit::tickless - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="r3_portkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script>
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../r3_portkit/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../r3_portkit/index.html"><img src="https://r3-os.github.io/r3/logo-small.svg" alt="logo"></a><h2 class="location"><a href="#">TicklessStateTrait</a></h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.mark_reference">mark_reference</a></li><li><a href="#tymethod.reset">reset</a></li><li><a href="#tymethod.tick_count">tick_count</a></li><li><a href="#tymethod.tick_count_to_hw_tick_count">tick_count_to_hw_tick_count</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.mark_reference_and_measure">mark_reference_and_measure</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In r3_portkit::tickless</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../index.html">r3_portkit</a>::<wbr><a href="index.html">tickless</a>::<wbr><a class="trait" href="#">TicklessStateTrait</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/r3_portkit/tickless.rs.html#407-603">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait TicklessStateTrait: <a class="trait" href="../../r3_core/utils/init/trait.Init.html" title="trait r3_core::utils::init::Init">Init</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> {
+    // Required methods
+    fn <a href="#tymethod.reset" class="fn">reset</a>(&amp;mut self, cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>, hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>);
+<span class="item-spacer"></span>    fn <a href="#tymethod.mark_reference" class="fn">mark_reference</a>(&amp;mut self, cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>, hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.tick_count_to_hw_tick_count" class="fn">tick_count_to_hw_tick_count</a>(
+        &amp;self,
+        cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>,
+        tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>
+    ) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.tick_count" class="fn">tick_count</a>(&amp;self, cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>, hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>;
+
+    // Provided method
+    fn <a href="#method.mark_reference_and_measure" class="fn">mark_reference_and_measure</a>(
+        &amp;mut self,
+        cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>,
+        hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+        ticks: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>
+    ) -&gt; <a class="struct" href="struct.Measurement.html" title="struct r3_portkit::tickless::Measurement">Measurement</a> { ... }
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Operations implemented by all valid instantiations of <a href="type.TicklessState.html" title="type r3_portkit::tickless::TicklessState"><code>TicklessState</code></a>.</p>
+<style type="text/css">
+/* Cover image, something that is definitely relevant to the subject */
+.distractor {
+    margin: 0 auto;
+    max-width: 600px;
+}
+.distractor > a {
+    display: block;
+    background-size: cover;
+    /* background: ...; — specified by inline style */
+    /* padding-bottom: ...; — specified by inline style */
+}
+
+/* #![doc(html_logo_url = ...)] */
+body.theme-dark .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.9);
+}
+body.theme-ayu .logo-container > img[src$="logo-small.svg"] {
+    filter: brightness(0) invert(1) brightness(0.85);
+}
+
+/* Table of contents */
+.toc-header + ul {
+    background: rgba(128, 128, 128, 0.1);
+    margin: 1em 0; padding: 1em;
+    width: 40%;
+    min-width: 280px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    font-family: 'Fira Sans'; /* The UI/heading font of rustdoc */
+    font-size: 95%;
+}
+.toc-header + ul::before {
+    content: "Contents";
+    font-weight: bold;
+}
+.toc-header + ul ul { margin-bottom: 0; }
+.toc-header + ul li { list-style: none; }
+
+/* Poor man's admonition
+ *
+ * # Usage
+ *
+ * ## Normal
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > **Title:** lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     > lorem ipsum
+ *
+ * ## Collapsible
+ *
+ *     <div class="admonition-follows"></div>
+ *
+ *     > <details>
+ *     > <summary>Title</summary>
+ *     >
+ *     > lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum
+ *     >
+ *     > </details>
+ */
+.admonition-follows + blockquote {
+    background: rgba(128, 128, 128, 0.1) !important;
+    margin: 1em !important; padding: 1em 1em 0 !important;
+    color: inherit !important; overflow: hidden;
+}
+.admonition-follows + blockquote::after { /* collapsible padding */
+    content: ""; display: block; margin-top: 1em;
+}
+
+.admonition-follows + blockquote summary {
+    cursor: pointer;
+    will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: bold;
+}
+.admonition-follows + blockquote summary:not([open]):not(:hover) {
+    opacity: 0.5;
+}
+.admonition-follows + blockquote summary + * {
+    margin-top: 1em;
+}
+
+/* Display a warning if some Cargo features are disabled. */
+.disabled-feature-warning > p > span:before { content: "Warning:"; font-weight: bold; }
+.disabled-feature-warning > p > span:after { content: " This documentation was built without a "; }
+.disabled-feature-warning > p > code:before { content: "--all-features"; }
+.disabled-feature-warning > p:after { content: " build option. Some items might be missing."; }
+
+/* Center an inline image
+ *
+ * # Usage
+ *
+ *    <span class="center">![kernel-traits]</span>
+ *
+ *    [kernel-traits]: data:image/svg+xml;base64,< super long base64 data >
+ *
+ * The image wouldn't render if `![kernel-traits]` were wrapped with `<center>`
+ * because the Markdown processor doesn't do Markdown processing inside a block
+ * element. On the other hand, it thinks `<span>` is an inline element (by
+ * default), so markups inside `<span>` are processed.
+ *
+ * For diagrams processed by `::svgbobdoc`, just use `<center>`.
+ */
+span.center {
+    display: block;
+    text-align: center;
+}
+
+/* Add margins to SvgBob images */
+span.center img, center img {
+    border: 10px solid white;
+    background: white;
+}
+
+/* Auto-invert SvgBob images in a dark theme */
+body.theme-dark span.center img, body.theme-dark center img {
+    filter: invert(88%);
+}
+
+body.theme-ayu span.center img, body.theme-ayu center img {
+    filter: invert(89%) sepia(90%) hue-rotate(180deg);
+}
+
+/* FIXME: rustdoc's intra-doc processor generates a warning when it encounters a
+   bracketed text with an unknown link target. This misfires for CSS attribute
+   selectors. Make rustdoc happy by defining a fake link target. I'm not sure if
+   it's worth reporting.
+
+[open]: #dummy
+
+*/
+</style>
+<script type="application/javascript">
+<!--
+// Monitors the current rustdoc theme and adds `.theme-NAME` to `<body>`
+function initThemeMonitor() {
+    if (typeof switchTheme !== 'function' ||
+        typeof themeStyle !== 'object' ||
+        typeof document.body.classList === 'undefined')
+    {
+        // Something is wrong, don't do anything
+        return;
+    }
+
+    var currentClassName = null;
+    function onApplyTheme(name) {
+        if (currentClassName != null) {
+            document.body.classList.remove(currentClassName);
+        }
+        currentClassName = "theme-" + name;
+        document.body.classList.add(currentClassName);
+    }
+
+    var match = themeStyle.href.match(/\/([a-z]+)(-[-a-zA-Z0-9.]*)?\.css$/);
+    var currentStyle = (match && match[1]) || "light";
+    onApplyTheme(currentStyle);
+
+    // Intercept calls to `switchTheme`
+    var originalSwitchTheme = switchTheme;
+    switchTheme = function (_0, _1, newTheme) {
+        onApplyTheme(newTheme);
+        originalSwitchTheme.apply(this, arguments);
+    };
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initThemeMonitor();
+} else {
+    document.addEventListener('DOMContentLoaded', initThemeMonitor);
+}
+-->
+</script></div></details><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.reset" class="method"><a class="srclink rightside" href="../../src/r3_portkit/tickless.rs.html#416">source</a><h4 class="code-header">fn <a href="#tymethod.reset" class="fn">reset</a>(&amp;mut self, cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>, hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>)</h4></section></summary><div class="docblock"><p>Mark the given hardware tick count as the origin (where
+OS tick count is exactly zero).</p>
+<p>To use this method, <a href="struct.TicklessOptions.html#structfield.resettable" title="field r3_portkit::tickless::TicklessOptions::resettable"><code>TicklessOptions::resettable</code></a> must be set to
+<code>true</code> when constructing <a href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg"><code>TicklessCfg</code></a>.</p>
+<p><code>self</code> must be in the initial state (<code>Init::INIT</code>) when this method is
+called.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.mark_reference" class="method"><a class="srclink rightside" href="../../src/r3_portkit/tickless.rs.html#436">source</a><h4 class="code-header">fn <a href="#tymethod.mark_reference" class="fn">mark_reference</a>(&amp;mut self, cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>, hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a></h4></section></summary><div class="docblock"><p>Mark a reference point. Returns the reference point’s OS tick count
+(in range <code>0..=cfg.</code><a href="struct.TicklessCfg.html#method.max_tick_count" title="method r3_portkit::tickless::TicklessCfg::max_tick_count"><code>max_tick_count</code></a><code>()</code>).</p>
+<p><code>hw_tick_count</code> should be in range <code>0..=cfg.</code><a href="struct.TicklessCfg.html#method.hw_max_tick_count" title="method r3_portkit::tickless::TicklessCfg::hw_max_tick_count"><code>hw_max_tick_count</code></a><code>()</code>
+and satisfy the requirements of <a href="trait.TicklessStateTrait.html#tymethod.tick_count" title="method r3_portkit::tickless::TicklessStateTrait::tick_count"><code>TicklessStateTrait::tick_count</code></a>.</p>
+<p>All reference points are exactly aligned to OS ticks (microseconds).</p>
+<p>The client should call this method periodically for a correct behavior.
+The client should use the <a href="trait.TicklessStateTrait.html#tymethod.tick_count_to_hw_tick_count"><code>Self::tick_count_to_hw_tick_count</code></a> method
+to determine the next hardware tick count to mark the next reference
+point on.</p>
+<p><code>cfg</code> must be the instance of <a href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg"><code>TicklessCfg</code></a> that was passed to
+<a href="type.TicklessState.html" title="type r3_portkit::tickless::TicklessState"><code>TicklessState</code></a> to derive <code>Self</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.tick_count_to_hw_tick_count" class="method"><a class="srclink rightside" href="../../src/r3_portkit/tickless.rs.html#544">source</a><h4 class="code-header">fn <a href="#tymethod.tick_count_to_hw_tick_count" class="fn">tick_count_to_hw_tick_count</a>(&amp;self, cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>, tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a></h4></section></summary><div class="docblock"><p>Calculate the earliest hardware tick count representing a point of time
+that coincides or follows the one represented by the specified OS tick
+count.</p>
+<p>Returns a value in range <code>0..=cfg.</code><a href="struct.TicklessCfg.html#method.hw_max_tick_count" title="method r3_portkit::tickless::TicklessCfg::hw_max_tick_count"><code>hw_max_tick_count</code></a><code>()</code>.</p>
+<p><code>tick_count</code> must satisfy the following condition: Given a last
+reference point <code>ref_tick_count</code> (a value returned by
+<a href="trait.TicklessStateTrait.html#tymethod.mark_reference"><code>mark_reference</code></a>), there must exist <code>i</code> such that
+<code>i ∈ 1..=cfg.</code><a href="struct.TicklessCfg.html#method.max_timeout" title="method r3_portkit::tickless::TicklessCfg::max_timeout"><code>max_timeout</code></a><code>()</code> and <code>tick_count == (ref_tick_count + i) % (cfg.</code><a href="struct.TicklessCfg.html#method.max_tick_count" title="method r3_portkit::tickless::TicklessCfg::max_tick_count"><code>max_tick_count</code></a><code>() + 1)</code>.</p>
+<p>In particular, <code>tick_count</code> must not be identical to <code>ref_tick_count</code>.
+If this was allowed, the result could refer to the past. Consider the
+following diagram. In this case, <code>mark_reference</code> is called at the 6th
+hardware tick, creating a reference point at time 2μs. Now if you call
+<code>tick_count_to_hw_tick_count</code> with <code>tick_count = 2</code>, the returned value
+will refer to the 5th hardware tick, which is in the past. Because of
+wrap-around arithmetics, it’s impossible to tell if the returned value
+refers to the past or not.</p>
+<center>
+<p><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NjQiIGhlaWdodD0iMTkyIiBzdHlsZT0idHJhbnNmb3JtOnRyYW5zbGF0ZSgwLjVweCwwLjVweCkiPgogICAgPHN0eWxlPgogICAgICAgIGxpbmUsIHBhdGgsIGNpcmNsZSwgcmVjdCwgcG9seWdvbntzdHJva2U6YmxhY2s7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLW9wYWNpdHk6MTtmaWxsLW9wYWNpdHk6MTtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46bWl0ZXI7fXRleHR7Zm9udC1mYW1pbHk6J1NvdXJjZSBDb2RlIFBybycsJ0FuZGFsZSBNb25vJywnU2Vnb2UgVUkgTW9ubycsJ0RlamF2dSBTYW5zIE1vbm8nLCdDb25zb2xhcycsbW9ub3NwYWNlO2ZvbnQtc2l6ZToxM3B4O31yZWN0LmJhY2tkcm9we3N0cm9rZTpub25lO2ZpbGw6d2hpdGU7fS5icm9rZW57c3Ryb2tlLWRhc2hhcnJheTo4O30uZmlsbGVke2ZpbGw6YmxhY2s7fS5iZ19maWxsZWR7ZmlsbDp3aGl0ZTt9Lm5vZmlsbHtmaWxsOndoaXRlO30uZW5kX21hcmtlZF9hcnJvd3ttYXJrZXItZW5kOnVybCgjYXJyb3cpO30uc3RhcnRfbWFya2VkX2Fycm93e21hcmtlci1zdGFydDp1cmwoI2Fycm93KTt9LmVuZF9tYXJrZWRfZGlhbW9uZHttYXJrZXItZW5kOnVybCgjZGlhbW9uZCk7fS5zdGFydF9tYXJrZWRfZGlhbW9uZHttYXJrZXItc3RhcnQ6dXJsKCNkaWFtb25kKTt9LmVuZF9tYXJrZWRfY2lyY2xle21hcmtlci1lbmQ6dXJsKCNjaXJjbGUpO30uc3RhcnRfbWFya2VkX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNjaXJjbGUpO30uZW5kX21hcmtlZF9vcGVuX2NpcmNsZXttYXJrZXItZW5kOnVybCgjb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX29wZW5fY2lyY2xle21hcmtlci1zdGFydDp1cmwoI29wZW5fY2lyY2xlKTt9LmVuZF9tYXJrZWRfYmlnX29wZW5fY2lyY2xle21hcmtlci1lbmQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX2JpZ19vcGVuX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30KICAgICAgICA8IS0tc2VwYXJhdG9yLS0+CiAgICAgICAgCiAgICA8L3N0eWxlPgogICAgPGRlZnM+CiAgICAgICAgPG1hcmtlciBpZD0iYXJyb3ciIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCAwLDQgNCwyIDAsMCI+PC9wb2x5Z29uPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9ImRpYW1vbmQiIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMiAyLDAgNCwyIDIsNCAwLDIiPjwvcG9seWdvbj4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJjaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjIiIGNsYXNzPSJmaWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9Im9wZW5fY2lyY2xlIiB2aWV3Qm94PSIwIDAgOCA4IiByZWZYPSI0IiByZWZZPSI0IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgICAgICAgIDxjaXJjbGUgY3g9IjQiIGN5PSI0IiByPSIyIiBjbGFzcz0iYmdfZmlsbGVkIj48L2NpcmNsZT4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJiaWdfb3Blbl9jaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjMiIGNsYXNzPSJiZ19maWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgPC9kZWZzPgogICAgPHJlY3QgY2xhc3M9ImJhY2tkcm9wIiB4PSIwIiB5PSIwIiB3aWR0aD0iNDY0IiBoZWlnaHQ9IjIwOCI+PC9yZWN0PgogICAgPHRleHQgeD0iMjAyIiB5PSIxMiIgIHRleHRMZW5ndGg9IjQwIj50aW1lcjwvdGV4dD4KICAgIDx0ZXh0IHg9IjI1MCIgeT0iMTIiICB0ZXh0TGVuZ3RoPSI4MCI+aW50ZXJydXB0LDwvdGV4dD4KICAgIDx0ZXh0IHg9IjE4NiIgeT0iMjgiICB0ZXh0TGVuZ3RoPSI0MCI+Y2FsbHM8L3RleHQ+CiAgICA8dGV4dCB4PSIyMzQiIHk9IjI4IiAgdGV4dExlbmd0aD0iMzIiPm1hcms8L3RleHQ+CiAgICA8bGluZSB4MT0iMjY0IiB5MT0iMzIiIHgyPSIyNzIiIHkyPSIzMiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSIyNzQiIHk9IjI4IiAgdGV4dExlbmd0aD0iNzIiPnJlZmVyZW5jZTwvdGV4dD4KICAgIDx0ZXh0IHg9IjEwNiIgeT0iOTIiICB0ZXh0TGVuZ3RoPSI4Ij4wPC90ZXh0PgogICAgPHRleHQgeD0iMjUwIiB5PSI5MiIgIHRleHRMZW5ndGg9IjgiPiw8L3RleHQ+CiAgICA8dGV4dCB4PSIyNzQiIHk9IjkyIiAgdGV4dExlbmd0aD0iOCI+NzwvdGV4dD4KICAgIDx0ZXh0IHg9IjQ0MiIgeT0iOTIiICB0ZXh0TGVuZ3RoPSIxNiI+MTQ8L3RleHQ+CiAgICA8dGV4dCB4PSIxMDYiIHk9IjE1NiIgIHRleHRMZW5ndGg9IjgiPjA8L3RleHQ+CiAgICA8dGV4dCB4PSI0NDIiIHk9IjE1NiIgIHRleHRMZW5ndGg9IjgiPjY8L3RleHQ+CiAgICA8dGV4dCB4PSIxNzAiIHk9IjE4OCIgIHRleHRMZW5ndGg9IjI0Ij5yZWY8L3RleHQ+CiAgICA8bGluZSB4MT0iMTkyIiB5MT0iMTkyIiB4Mj0iMjAwIiB5Mj0iMTkyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjIwMiIgeT0iMTg4IiAgdGV4dExlbmd0aD0iMzIiPnRpY2s8L3RleHQ+CiAgICA8bGluZSB4MT0iMjMyIiB5MT0iMTkyIiB4Mj0iMjQwIiB5Mj0iMTkyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjI0MiIgeT0iMTg4IiAgdGV4dExlbmd0aD0iNDAiPmNvdW50PC90ZXh0PgogICAgPHRleHQgeD0iMTAiIHk9Ijc2IiAgdGV4dExlbmd0aD0iMTYiPkhXPC90ZXh0PgogICAgPHRleHQgeD0iMzQiIHk9Ijc2IiAgdGV4dExlbmd0aD0iNDAiPnRpY2tzPC90ZXh0PgogICAgPGxpbmUgeDE9IjI0IiB5MT0iODAiIHgyPSIxNiIgeTI9Ijk2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDxsaW5lIHgxPSI1NiIgeTE9IjgwIiB4Mj0iNDgiIHkyPSI5NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSI1OCIgeT0iOTIiICB0ZXh0TGVuZ3RoPSIzMiI+dGljazwvdGV4dD4KICAgIDx0ZXh0IHg9IjEwIiB5PSIxNDAiICB0ZXh0TGVuZ3RoPSIxNiI+T1M8L3RleHQ+CiAgICA8dGV4dCB4PSIzNCIgeT0iMTQwIiAgdGV4dExlbmd0aD0iNDAiPnRpY2tzPC90ZXh0PgogICAgPGxpbmUgeDE9IjQwIiB5MT0iMTQ0IiB4Mj0iMzIiIHkyPSIxNjAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iNDIiIHk9IjE1NiIgIHRleHRMZW5ndGg9IjMyIj50aWNrPC90ZXh0PgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjI1MiIgeTE9IjMyIiB4Mj0iMjUyIiB5Mj0iNTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwb2x5Z29uIHBvaW50cz0iMjQ4LDUyIDI1Niw1MiAyNTIsNjQiIGNsYXNzPSJmaWxsZWQiPjwvcG9seWdvbj4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIxMDgiIHkxPSI3MiIgeDI9IjQ0NCIgeTI9IjcyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTA4IiB5MT0iNzIiIHgyPSIxMDgiIHkyPSI4MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjEzMiIgeTE9IjcyIiB4Mj0iMTMyIiB5Mj0iODAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxNTYiIHkxPSI3MiIgeDI9IjE1NiIgeTI9IjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTgwIiB5MT0iNzIiIHgyPSIxODAiIHkyPSI4MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjIwNCIgeTE9IjcyIiB4Mj0iMjA0IiB5Mj0iODAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyMjgiIHkxPSI3MiIgeDI9IjIyOCIgeTI9IjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjUyIiB5MT0iNzIiIHgyPSIyNTIiIHkyPSI4MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjI3NiIgeTE9IjcyIiB4Mj0iMjc2IiB5Mj0iODAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMDAiIHkxPSI3MiIgeDI9IjMwMCIgeTI9IjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMzI0IiB5MT0iNzIiIHgyPSIzMjQiIHkyPSI4MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjM0OCIgeTE9IjcyIiB4Mj0iMzQ4IiB5Mj0iODAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNzIiIHkxPSI3MiIgeDI9IjM3MiIgeTI9IjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMzk2IiB5MT0iNzIiIHgyPSIzOTYiIHkyPSI4MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjQyMCIgeTE9IjcyIiB4Mj0iNDIwIiB5Mj0iODAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI0NDQiIHkxPSI3MiIgeDI9IjQ0NCIgeTI9IjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyMjAiIHkxPSIxMDQiIHgyPSIyNTIiIHkyPSIxMDQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyMjAiIHkxPSIxMDQiIHgyPSIyMjAiIHkyPSIxMTYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyNTIiIHkxPSI5NiIgeDI9IjI1MiIgeTI9IjEwNCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMTA4IiB5MT0iMTM2IiB4Mj0iNDQ0IiB5Mj0iMTM2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTA4IiB5MT0iMTM2IiB4Mj0iMTA4IiB5Mj0iMTQ0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMTY0IiB5MT0iMTM2IiB4Mj0iMTY0IiB5Mj0iMTQ0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjIwIiB5MT0iMTM2IiB4Mj0iMjIwIiB5Mj0iMTQ0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjc2IiB5MT0iMTM2IiB4Mj0iMjc2IiB5Mj0iMTQ0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMzMyIiB5MT0iMTM2IiB4Mj0iMzMyIiB5Mj0iMTQ0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMzg4IiB5MT0iMTM2IiB4Mj0iMzg4IiB5Mj0iMTQ0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iNDQ0IiB5MT0iMTM2IiB4Mj0iNDQ0IiB5Mj0iMTQ0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjIxNiwxNTYgMjIwLDE0NCAyMjQsMTU2IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICAgICAgPGxpbmUgeDE9IjIyMCIgeTE9IjE1NiIgeDI9IjIyMCIgeTI9IjE3NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8dGV4dCB4PSIxMCIgeT0iOTIiIHRleHRMZW5ndGg9IjE2Ij7Cs+KChzwvdGV4dD4KICAgICAgICA8dGV4dCB4PSIzNCIgeT0iOTIiIHRleHRMZW5ndGg9IjgiPs68PC90ZXh0PgogICAgICAgIDx0ZXh0IHg9IjQyIiB5PSI5MiIgdGV4dExlbmd0aD0iOCI+czwvdGV4dD4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDx0ZXh0IHg9IjEwIiB5PSIxNTYiIHRleHRMZW5ndGg9IjE2Ij4xzrw8L3RleHQ+CiAgICAgICAgPHRleHQgeD0iMjYiIHk9IjE1NiIgdGV4dExlbmd0aD0iOCI+czwvdGV4dD4KICAgIDwvZz4KPC9zdmc+" alt="" /></p>
+</center>
+<p><code>cfg</code> must be the instance of <a href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg"><code>TicklessCfg</code></a> that was passed to
+<a href="type.TicklessState.html" title="type r3_portkit::tickless::TicklessState"><code>TicklessState</code></a> to derive <code>Self</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.tick_count" class="method"><a class="srclink rightside" href="../../src/r3_portkit/tickless.rs.html#602">source</a><h4 class="code-header">fn <a href="#tymethod.tick_count" class="fn">tick_count</a>(&amp;self, cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>, hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a></h4></section></summary><div class="docblock"><p>Get the OS tick count
+(in range <code>0..=cfg.</code><a href="struct.TicklessCfg.html#method.max_tick_count" title="method r3_portkit::tickless::TicklessCfg::max_tick_count"><code>max_tick_count</code></a><code>()</code>).</p>
+<p><code>cfg</code> must be the instance of <a href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg"><code>TicklessCfg</code></a> that was passed to
+<a href="type.TicklessState.html" title="type r3_portkit::tickless::TicklessState"><code>TicklessState</code></a> to derive <code>Self</code>.</p>
+<p><code>hw_tick_count</code> should be in range <code>0..=cfg.</code><a href="struct.TicklessCfg.html#method.hw_max_tick_count" title="method r3_portkit::tickless::TicklessCfg::hw_max_tick_count"><code>hw_max_tick_count</code></a><code>()</code>.
+In addition, <code>hw_tick_count</code> must satisfy the following condition:</p>
+<ul>
+<li>Let <code>ref_hw_tick_count</code> and <code>ref_tick_count</code> be the last reference
+point (the last values passed to and returned by <a href="trait.TicklessStateTrait.html#tymethod.mark_reference"><code>mark_reference</code></a>,
+respectively).</li>
+<li>Let <code>period = cfg.</code><a href="struct.TicklessCfg.html#method.max_tick_count" title="method r3_portkit::tickless::TicklessCfg::max_tick_count"><code>max_tick_count</code></a><code>() + 1</code>.</li>
+<li>Let <code>hw_period = cfg.</code><a href="struct.TicklessCfg.html#method.hw_max_tick_count" title="method r3_portkit::tickless::TicklessCfg::hw_max_tick_count"><code>hw_max_tick_count</code></a><code>() + 1</code>.</li>
+<li>Let <code>hw_max_timeout = (tick_count_to_hw_tick_count((ref_tick_count + cfg.max_timeout) % period) + hw_period - ref_hw_tick_count) % hw_period</code>.</li>
+<li>There must exist <code>hw_timeout</code> and <code>latency</code> such that
+<code>hw_timeout ∈ 0..=hw_max_timeout</code>, <code>latency ∈ 0..=hw_headroom_ticks</code>,
+and <code>hw_tick_count == (ref_hw_tick_count + hw_timeout + latency) % hw_period</code>.</li>
+</ul>
+<p><strong>Note:</strong> <code>ref_hw_tick_count</code> should not be confused with the
+identically-named private field of <a href="struct.TicklessStateCore.html" title="struct r3_portkit::tickless::TicklessStateCore"><code>TicklessStateCore</code></a>.</p>
+<center>
+<p><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NjQiIGhlaWdodD0iMjcyIiBzdHlsZT0idHJhbnNmb3JtOnRyYW5zbGF0ZSgwLjVweCwwLjVweCkiPgogICAgPHN0eWxlPgogICAgICAgIGxpbmUsIHBhdGgsIGNpcmNsZSwgcmVjdCwgcG9seWdvbntzdHJva2U6YmxhY2s7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLW9wYWNpdHk6MTtmaWxsLW9wYWNpdHk6MTtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46bWl0ZXI7fXRleHR7Zm9udC1mYW1pbHk6J1NvdXJjZSBDb2RlIFBybycsJ0FuZGFsZSBNb25vJywnU2Vnb2UgVUkgTW9ubycsJ0RlamF2dSBTYW5zIE1vbm8nLCdDb25zb2xhcycsbW9ub3NwYWNlO2ZvbnQtc2l6ZToxM3B4O31yZWN0LmJhY2tkcm9we3N0cm9rZTpub25lO2ZpbGw6d2hpdGU7fS5icm9rZW57c3Ryb2tlLWRhc2hhcnJheTo4O30uZmlsbGVke2ZpbGw6YmxhY2s7fS5iZ19maWxsZWR7ZmlsbDp3aGl0ZTt9Lm5vZmlsbHtmaWxsOndoaXRlO30uZW5kX21hcmtlZF9hcnJvd3ttYXJrZXItZW5kOnVybCgjYXJyb3cpO30uc3RhcnRfbWFya2VkX2Fycm93e21hcmtlci1zdGFydDp1cmwoI2Fycm93KTt9LmVuZF9tYXJrZWRfZGlhbW9uZHttYXJrZXItZW5kOnVybCgjZGlhbW9uZCk7fS5zdGFydF9tYXJrZWRfZGlhbW9uZHttYXJrZXItc3RhcnQ6dXJsKCNkaWFtb25kKTt9LmVuZF9tYXJrZWRfY2lyY2xle21hcmtlci1lbmQ6dXJsKCNjaXJjbGUpO30uc3RhcnRfbWFya2VkX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNjaXJjbGUpO30uZW5kX21hcmtlZF9vcGVuX2NpcmNsZXttYXJrZXItZW5kOnVybCgjb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX29wZW5fY2lyY2xle21hcmtlci1zdGFydDp1cmwoI29wZW5fY2lyY2xlKTt9LmVuZF9tYXJrZWRfYmlnX29wZW5fY2lyY2xle21hcmtlci1lbmQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30uc3RhcnRfbWFya2VkX2JpZ19vcGVuX2NpcmNsZXttYXJrZXItc3RhcnQ6dXJsKCNiaWdfb3Blbl9jaXJjbGUpO30KICAgICAgICA8IS0tc2VwYXJhdG9yLS0+CiAgICAgICAgCiAgICA8L3N0eWxlPgogICAgPGRlZnM+CiAgICAgICAgPG1hcmtlciBpZD0iYXJyb3ciIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMCAwLDQgNCwyIDAsMCI+PC9wb2x5Z29uPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9ImRpYW1vbmQiIHZpZXdCb3g9Ii0yIC0yIDggOCIgcmVmWD0iNCIgcmVmWT0iMiIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPgogICAgICAgICAgICA8cG9seWdvbiBwb2ludHM9IjAsMiAyLDAgNCwyIDIsNCAwLDIiPjwvcG9seWdvbj4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJjaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjIiIGNsYXNzPSJmaWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgICAgIDxtYXJrZXIgaWQ9Im9wZW5fY2lyY2xlIiB2aWV3Qm94PSIwIDAgOCA4IiByZWZYPSI0IiByZWZZPSI0IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgICAgICAgIDxjaXJjbGUgY3g9IjQiIGN5PSI0IiByPSIyIiBjbGFzcz0iYmdfZmlsbGVkIj48L2NpcmNsZT4KICAgICAgICA8L21hcmtlcj4KICAgICAgICA8bWFya2VyIGlkPSJiaWdfb3Blbl9jaXJjbGUiIHZpZXdCb3g9IjAgMCA4IDgiIHJlZlg9IjQiIHJlZlk9IjQiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgICAgICAgPGNpcmNsZSBjeD0iNCIgY3k9IjQiIHI9IjMiIGNsYXNzPSJiZ19maWxsZWQiPjwvY2lyY2xlPgogICAgICAgIDwvbWFya2VyPgogICAgPC9kZWZzPgogICAgPHJlY3QgY2xhc3M9ImJhY2tkcm9wIiB4PSIwIiB5PSIwIiB3aWR0aD0iNjY0IiBoZWlnaHQ9IjI4OCI+PC9yZWN0PgogICAgPHRleHQgeD0iMTc4IiB5PSIxMiIgIHRleHRMZW5ndGg9IjI0Ij5yZWY8L3RleHQ+CiAgICA8bGluZSB4MT0iMjAwIiB5MT0iMTYiIHgyPSIyMDgiIHkyPSIxNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSIyMTAiIHk9IjEyIiAgdGV4dExlbmd0aD0iMTYiPmh3PC90ZXh0PgogICAgPGxpbmUgeDE9IjIyNCIgeTE9IjE2IiB4Mj0iMjMyIiB5Mj0iMTYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMjM0IiB5PSIxMiIgIHRleHRMZW5ndGg9IjMyIj50aWNrPC90ZXh0PgogICAgPGxpbmUgeDE9IjI2NCIgeTE9IjE2IiB4Mj0iMjcyIiB5Mj0iMTYiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMjc0IiB5PSIxMiIgIHRleHRMZW5ndGg9IjQwIj5jb3VudDwvdGV4dD4KICAgIDx0ZXh0IHg9Ijc0IiB5PSI0NCIgIHRleHRMZW5ndGg9IjE2Ij5odzwvdGV4dD4KICAgIDxsaW5lIHgxPSI4OCIgeTE9IjQ4IiB4Mj0iOTYiIHkyPSI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSI5OCIgeT0iNDQiICB0ZXh0TGVuZ3RoPSI0MCI+aGVhZHI8L3RleHQ+CiAgICA8Y2lyY2xlIGN4PSIxNDAiIGN5PSI0MCIgcj0iMyIgY2xhc3M9Im5vZmlsbCI+PC9jaXJjbGU+CiAgICA8dGV4dCB4PSIxNDYiIHk9IjQ0IiAgdGV4dExlbmd0aD0iMTYiPm9tPC90ZXh0PgogICAgPGxpbmUgeDE9IjE2MCIgeTE9IjQ4IiB4Mj0iMTY4IiB5Mj0iNDgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPHRleHQgeD0iMTcwIiB5PSI0NCIgIHRleHRMZW5ndGg9IjQwIj50aWNrczwvdGV4dD4KICAgIDx0ZXh0IHg9IjM1NCIgeT0iNDQiICB0ZXh0TGVuZ3RoPSIxNiI+aHc8L3RleHQ+CiAgICA8bGluZSB4MT0iMzY4IiB5MT0iNDgiIHgyPSIzNzYiIHkyPSI0OCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSIzNzgiIHk9IjQ0IiAgdGV4dExlbmd0aD0iMjQiPm1heDwvdGV4dD4KICAgIDxsaW5lIHgxPSI0MDAiIHkxPSI0OCIgeDI9IjQwOCIgeTI9IjQ4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjQxMCIgeT0iNDQiICB0ZXh0TGVuZ3RoPSI1NiI+dGltZW91dDwvdGV4dD4KICAgIDx0ZXh0IHg9IjIwMiIgeT0iNzYiICB0ZXh0TGVuZ3RoPSI4Ij4sPC90ZXh0PgogICAgPHRleHQgeD0iNTYyIiB5PSI3NiIgIHRleHRMZW5ndGg9IjgiPiw8L3RleHQ+CiAgICA8dGV4dCB4PSIyMDIiIHk9IjkyIiAgdGV4dExlbmd0aD0iOCI+JiMzOTs8L3RleHQ+CiAgICA8dGV4dCB4PSIyNTAiIHk9IjkyIiAgdGV4dExlbmd0aD0iOCI+JiMzOTs8L3RleHQ+CiAgICA8dGV4dCB4PSI1NjIiIHk9IjkyIiAgdGV4dExlbmd0aD0iOCI+JiMzOTs8L3RleHQ+CiAgICA8dGV4dCB4PSI1NzgiIHk9IjkyIiAgdGV4dExlbmd0aD0iOCI+JiMzOTs8L3RleHQ+CiAgICA8dGV4dCB4PSIxMDYiIHk9IjE0MCIgIHRleHRMZW5ndGg9IjgiPjA8L3RleHQ+CiAgICA8dGV4dCB4PSIyNTAiIHk9IjE0MCIgIHRleHRMZW5ndGg9IjgiPiw8L3RleHQ+CiAgICA8dGV4dCB4PSIyNzQiIHk9IjE0MCIgIHRleHRMZW5ndGg9IjgiPjc8L3RleHQ+CiAgICA8dGV4dCB4PSI0NDIiIHk9IjE0MCIgIHRleHRMZW5ndGg9IjE2Ij4xNDwvdGV4dD4KICAgIDx0ZXh0IHg9IjU2MiIgeT0iMTQwIiAgdGV4dExlbmd0aD0iOCI+LDwvdGV4dD4KICAgIDx0ZXh0IHg9IjYxMCIgeT0iMTQwIiAgdGV4dExlbmd0aD0iMTYiPjIxPC90ZXh0PgogICAgPHRleHQgeD0iNTg2IiB5PSIxNTYiICB0ZXh0TGVuZ3RoPSIxNiI+aHc8L3RleHQ+CiAgICA8bGluZSB4MT0iNjAwIiB5MT0iMTYwIiB4Mj0iNjA4IiB5Mj0iMTYwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjYxMCIgeT0iMTU2IiAgdGV4dExlbmd0aD0iNDgiPnBlcmlvZDwvdGV4dD4KICAgIDx0ZXh0IHg9IjEwNiIgeT0iMjA0IiAgdGV4dExlbmd0aD0iOCI+MDwvdGV4dD4KICAgIDx0ZXh0IHg9IjIxOCIgeT0iMjA0IiAgdGV4dExlbmd0aD0iOCI+LDwvdGV4dD4KICAgIDx0ZXh0IHg9IjI3NCIgeT0iMjA0IiAgdGV4dExlbmd0aD0iOCI+MzwvdGV4dD4KICAgIDx0ZXh0IHg9IjQ0MiIgeT0iMjA0IiAgdGV4dExlbmd0aD0iOCI+NjwvdGV4dD4KICAgIDx0ZXh0IHg9IjU1NCIgeT0iMjA0IiAgdGV4dExlbmd0aD0iOCI+LDwvdGV4dD4KICAgIDx0ZXh0IHg9IjYxMCIgeT0iMjA0IiAgdGV4dExlbmd0aD0iMTYiPjEyPC90ZXh0PgogICAgPHRleHQgeD0iMjE4IiB5PSIyMjAiICB0ZXh0TGVuZ3RoPSI4Ij4mIzM5OzwvdGV4dD4KICAgIDx0ZXh0IHg9IjU1NCIgeT0iMjIwIiAgdGV4dExlbmd0aD0iOCI+JiMzOTs8L3RleHQ+CiAgICA8dGV4dCB4PSI1OTQiIHk9IjIyMCIgIHRleHRMZW5ndGg9IjQ4Ij5wZXJpb2Q8L3RleHQ+CiAgICA8dGV4dCB4PSI0NjYiIHk9IjI1MiIgIHRleHRMZW5ndGg9IjI0Ij5tYXg8L3RleHQ+CiAgICA8bGluZSB4MT0iNDg4IiB5MT0iMjU2IiB4Mj0iNDk2IiB5Mj0iMjU2IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjQ5OCIgeT0iMjUyIiAgdGV4dExlbmd0aD0iNTYiPnRpbWVvdXQ8L3RleHQ+CiAgICA8dGV4dCB4PSIxNDYiIHk9IjI2OCIgIHRleHRMZW5ndGg9IjI0Ij5yZWY8L3RleHQ+CiAgICA8bGluZSB4MT0iMTY4IiB5MT0iMjcyIiB4Mj0iMTc2IiB5Mj0iMjcyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjE3OCIgeT0iMjY4IiAgdGV4dExlbmd0aD0iMzIiPnRpY2s8L3RleHQ+CiAgICA8bGluZSB4MT0iMjA4IiB5MT0iMjcyIiB4Mj0iMjE2IiB5Mj0iMjcyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjIxOCIgeT0iMjY4IiAgdGV4dExlbmd0aD0iNDAiPmNvdW50PC90ZXh0PgogICAgPHRleHQgeD0iMTAiIHk9IjEyNCIgIHRleHRMZW5ndGg9IjE2Ij5IVzwvdGV4dD4KICAgIDx0ZXh0IHg9IjM0IiB5PSIxMjQiICB0ZXh0TGVuZ3RoPSI0MCI+dGlja3M8L3RleHQ+CiAgICA8bGluZSB4MT0iMjQiIHkxPSIxMjgiIHgyPSIxNiIgeTI9IjE0NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8bGluZSB4MT0iNTYiIHkxPSIxMjgiIHgyPSI0OCIgeTI9IjE0NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8dGV4dCB4PSI1OCIgeT0iMTQwIiAgdGV4dExlbmd0aD0iMzIiPnRpY2s8L3RleHQ+CiAgICA8dGV4dCB4PSIxMCIgeT0iMTg4IiAgdGV4dExlbmd0aD0iMTYiPk9TPC90ZXh0PgogICAgPHRleHQgeD0iMzQiIHk9IjE4OCIgIHRleHRMZW5ndGg9IjQwIj50aWNrczwvdGV4dD4KICAgIDxsaW5lIHgxPSI0MCIgeTE9IjE5MiIgeDI9IjMyIiB5Mj0iMjA4IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDx0ZXh0IHg9IjQyIiB5PSIyMDQiICB0ZXh0TGVuZ3RoPSIzMiI+dGljazwvdGV4dD4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIyNTIiIHkxPSIxNiIgeDI9IjI1MiIgeTI9IjUyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjI0OCw1MiAyNTYsNTIgMjUyLDY0IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iMTQwIiB5MT0iNDQiIHgyPSIxNDAiIHkyPSI3MiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjEwNCIgeTE9IjcyIiB4Mj0iMjAwIiB5Mj0iNzIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjQyMCIgeTE9IjQ4IiB4Mj0iNDIwIiB5Mj0iNzIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxwYXRoIGQ9Ik0gMjU2LDcyIEEgNCw0IDAsMCwwIDI1Miw3NiIgY2xhc3M9Im5vZmlsbCI+PC9wYXRoPgogICAgICAgIDxsaW5lIHgxPSIyNTIiIHkxPSI3NiIgeDI9IjI1MiIgeTI9IjgwIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iMjU2IiB5MT0iNzIiIHgyPSI1NjAiIHkyPSI3MiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8cGF0aCBkPSJNIDU4NCw3MiBBIDQsNCAwLDAsMCA1ODAsNzYiIGNsYXNzPSJub2ZpbGwiPjwvcGF0aD4KICAgICAgICA8bGluZSB4MT0iNTgwIiB5MT0iNzYiIHgyPSI1ODAiIHkyPSI4MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjU4NCIgeTE9IjcyIiB4Mj0iNjE2IiB5Mj0iNzIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPHRleHQgeD0iMTA2IiB5PSIxMDgiIHRleHRMZW5ndGg9IjQwIj7ilpHilpHilpHilpHilpE8L3RleHQ+CiAgICAgICAgPHRleHQgeD0iMTE0IiB5PSIxMDgiIHRleHRMZW5ndGg9IjMyIj7ilpHilpHilpHilpE8L3RleHQ+CiAgICAgICAgPHRleHQgeD0iMTIyIiB5PSIxMDgiIHRleHRMZW5ndGg9IjMyIj7ilpHilpHilpHilpE8L3RleHQ+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8dGV4dCB4PSIyNTAiIHk9IjEwOCIgdGV4dExlbmd0aD0iMTI4Ij7ilpHilpHilpHilpHilpHilpHilpHilpHilpHilpHilpHilpHilpHilpHilpHilpE8L3RleHQ+CiAgICAgICAgPHRleHQgeD0iMjU4IiB5PSIxMDgiIHRleHRMZW5ndGg9IjEyMCI+4paR4paR4paR4paR4paR4paR4paR4paR4paR4paR4paR4paR4paR4paR4paRPC90ZXh0PgogICAgICAgIDx0ZXh0IHg9IjI2NiIgeT0iMTA4IiB0ZXh0TGVuZ3RoPSIxMjAiPuKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkeKWkTwvdGV4dD4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIxMDgiIHkxPSIxMjAiIHgyPSI2MTIiIHkyPSIxMjAiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxMDgiIHkxPSIxMjAiIHgyPSIxMDgiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxMzIiIHkxPSIxMjAiIHgyPSIxMzIiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxNTYiIHkxPSIxMjAiIHgyPSIxNTYiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxODAiIHkxPSIxMjAiIHgyPSIxODAiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyMDQiIHkxPSIxMjAiIHgyPSIyMDQiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyMjgiIHkxPSIxMjAiIHgyPSIyMjgiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyNTIiIHkxPSIxMjAiIHgyPSIyNTIiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyNzYiIHkxPSIxMjAiIHgyPSIyNzYiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMDAiIHkxPSIxMjAiIHgyPSIzMDAiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMjQiIHkxPSIxMjAiIHgyPSIzMjQiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNDgiIHkxPSIxMjAiIHgyPSIzNDgiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzNzIiIHkxPSIxMjAiIHgyPSIzNzIiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzOTYiIHkxPSIxMjAiIHgyPSIzOTYiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI0MjAiIHkxPSIxMjAiIHgyPSI0MjAiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI0NDQiIHkxPSIxMjAiIHgyPSI0NDQiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI0NjgiIHkxPSIxMjAiIHgyPSI0NjgiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI0OTIiIHkxPSIxMjAiIHgyPSI0OTIiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI1MTYiIHkxPSIxMjAiIHgyPSI1MTYiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI1NDAiIHkxPSIxMjAiIHgyPSI1NDAiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI1NjQiIHkxPSIxMjAiIHgyPSI1NjQiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI1ODgiIHkxPSIxMjAiIHgyPSI1ODgiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI2MTIiIHkxPSIxMjAiIHgyPSI2MTIiIHkyPSIxMjgiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjIyMCIgeTE9IjE1MiIgeDI9IjI1MiIgeTI9IjE1MiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjIyMCIgeTE9IjE1MiIgeDI9IjIyMCIgeTI9IjE2NCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjI1MiIgeTE9IjE0NCIgeDI9IjI1MiIgeTI9IjE1MiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8bGluZSB4MT0iNTU2IiB5MT0iMTUyIiB4Mj0iNTY0IiB5Mj0iMTUyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iNTU2IiB5MT0iMTUyIiB4Mj0iNTU2IiB5Mj0iMTY0IiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgICAgICA8bGluZSB4MT0iNTY0IiB5MT0iMTQ0IiB4Mj0iNTY0IiB5Mj0iMTUyIiBjbGFzcz0ic29saWQiPjwvbGluZT4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDxsaW5lIHgxPSIxMDgiIHkxPSIxODQiIHgyPSI2MTIiIHkyPSIxODQiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxMDgiIHkxPSIxODQiIHgyPSIxMDgiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIxNjQiIHkxPSIxODQiIHgyPSIxNjQiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyMjAiIHkxPSIxODQiIHgyPSIyMjAiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIyNzYiIHkxPSIxODQiIHgyPSIyNzYiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzMzIiIHkxPSIxODQiIHgyPSIzMzIiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSIzODgiIHkxPSIxODQiIHgyPSIzODgiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI0NDQiIHkxPSIxODQiIHgyPSI0NDQiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI1MDAiIHkxPSIxODQiIHgyPSI1MDAiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI1NTYiIHkxPSIxODQiIHgyPSI1NTYiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgICAgIDxsaW5lIHgxPSI2MTIiIHkxPSIxODQiIHgyPSI2MTIiIHkyPSIxOTIiIGNsYXNzPSJzb2xpZCI+PC9saW5lPgogICAgPC9nPgogICAgPGc+CiAgICAgICAgPGxpbmUgeDE9IjIyNCIgeTE9IjIxNiIgeDI9IjU1MiIgeTI9IjIxNiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICAgICAgPGxpbmUgeDE9IjUwOCIgeTE9IjIxNiIgeDI9IjUwOCIgeTI9IjI0MCIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8cG9seWdvbiBwb2ludHM9IjIxNiwyMzYgMjIwLDIyNCAyMjQsMjM2IiBjbGFzcz0iZmlsbGVkIj48L3BvbHlnb24+CiAgICAgICAgPGxpbmUgeDE9IjIyMCIgeTE9IjIzNiIgeDI9IjIyMCIgeTI9IjI1NiIgY2xhc3M9InNvbGlkIj48L2xpbmU+CiAgICA8L2c+CiAgICA8Zz4KICAgICAgICA8dGV4dCB4PSIxMCIgeT0iMTQwIiB0ZXh0TGVuZ3RoPSIxNiI+wrPigoc8L3RleHQ+CiAgICAgICAgPHRleHQgeD0iMzQiIHk9IjE0MCIgdGV4dExlbmd0aD0iOCI+zrw8L3RleHQ+CiAgICAgICAgPHRleHQgeD0iNDIiIHk9IjE0MCIgdGV4dExlbmd0aD0iOCI+czwvdGV4dD4KICAgIDwvZz4KICAgIDxnPgogICAgICAgIDx0ZXh0IHg9IjEwIiB5PSIyMDQiIHRleHRMZW5ndGg9IjE2Ij4xzrw8L3RleHQ+CiAgICAgICAgPHRleHQgeD0iMjYiIHk9IjIwNCIgdGV4dExlbmd0aD0iOCI+czwvdGV4dD4KICAgIDwvZz4KPC9zdmc+" alt="" /></p>
+</center>
+<p>In the above diagram, <code>hw_tick_count</code> should fall within the filled
+zone.</p>
+</div></details></div><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.mark_reference_and_measure" class="method"><a class="srclink rightside" href="../../src/r3_portkit/tickless.rs.html#454-495">source</a><h4 class="code-header">fn <a href="#method.mark_reference_and_measure" class="fn">mark_reference_and_measure</a>(
+    &amp;mut self,
+    cfg: &amp;<a class="struct" href="struct.TicklessCfg.html" title="struct r3_portkit::tickless::TicklessCfg">TicklessCfg</a>,
+    hw_tick_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>,
+    ticks: <a class="primitive" href="https://doc.rust-lang.org/nightly/core/primitive.u32.html">u32</a>
+) -&gt; <a class="struct" href="struct.Measurement.html" title="struct r3_portkit::tickless::Measurement">Measurement</a></h4></section></summary><div class="docblock"><p><a href="trait.TicklessStateTrait.html#tymethod.mark_reference">Mark a reference point</a> and start measuring the specified time interval
+<code>ticks</code> (measured in OS ticks = microseconds).</p>
+<p>The caller can use the information contained in the returned
+<a href="struct.Measurement.html" title="struct r3_portkit::tickless::Measurement"><code>Measurement</code></a> to configure timer hardware and receive an interrupt
+at the end of measurement.</p>
+<p><code>hw_tick_count</code> should be in range <code>0..=cfg.</code><a href="struct.TicklessCfg.html#method.hw_max_tick_count" title="method r3_portkit::tickless::TicklessCfg::hw_max_tick_count"><code>hw_max_tick_count</code></a><code>()</code>
+and satisfy the requirements of <a href="trait.TicklessStateTrait.html#tymethod.tick_count" title="method r3_portkit::tickless::TicklessStateTrait::tick_count"><code>TicklessStateTrait::tick_count</code></a>.</p>
+<p><code>ticks</code> should be in range <code>1..=cfg.</code><a href="struct.TicklessCfg.html#method.max_timeout" title="method r3_portkit::tickless::TicklessCfg::max_timeout"><code>max_timeout</code></a><code>()</code>.</p>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-TicklessStateTrait-for-TicklessStatelessCore" class="impl"><a class="srclink rightside" href="../../src/r3_portkit/tickless.rs.html#631-677">source</a><a href="#impl-TicklessStateTrait-for-TicklessStatelessCore" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.TicklessStateTrait.html" title="trait r3_portkit::tickless::TicklessStateTrait">TicklessStateTrait</a> for <a class="struct" href="struct.TicklessStatelessCore.html" title="struct r3_portkit::tickless::TicklessStatelessCore">TicklessStatelessCore</a></h3></section><section id="impl-TicklessStateTrait-for-TicklessStateCore%3CSubticks%3E" class="impl"><a class="srclink rightside" href="../../src/r3_portkit/tickless.rs.html#679-749">source</a><a href="#impl-TicklessStateTrait-for-TicklessStateCore%3CSubticks%3E" class="anchor">§</a><h3 class="code-header">impl&lt;Subticks: <a class="trait" href="../num/wrapping/trait.WrappingTrait.html" title="trait r3_portkit::num::wrapping::WrappingTrait">WrappingTrait</a>&gt; <a class="trait" href="trait.TicklessStateTrait.html" title="trait r3_portkit::tickless::TicklessStateTrait">TicklessStateTrait</a> for <a class="struct" href="struct.TicklessStateCore.html" title="struct r3_portkit::tickless::TicklessStateCore">TicklessStateCore</a>&lt;Subticks&gt;</h3></section></div><script src="../../implementors/r3_portkit/tickless/trait.TicklessStateTrait.js" async></script></section></div></main></body></html>
