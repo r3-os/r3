@@ -1,7 +1,6 @@
 #![feature(cfg_target_has_atomic)] // `#[cfg(target_has_atomic_load_store)]`
 #![feature(thread_local)]
 #![feature(deadline_api)]
-#![feature(once_cell)]
 #![cfg_attr(
     feature = "doc",
     doc(html_logo_url = "https://r3-os.github.io/r3/logo-small.svg")
